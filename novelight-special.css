@@ -1,0 +1,52 @@
+/* NOVELIGHT SPECIAL: simple, static, no database or admin console */
+.novelight-special-home{
+  max-width:1180px;margin:34px auto 26px;padding:27px 32px;
+  display:flex;align-items:center;justify-content:space-between;gap:22px;
+  background:linear-gradient(120deg,#091729,#13213a 70%,#302b24);
+  border:1px solid rgba(214,164,71,.5);border-radius:18px;color:#f7f4ed;
+  box-shadow:0 10px 30px rgba(0,0,0,.18)
+}
+.novelight-special-eyebrow{margin:0 0 8px;color:#ba8e38;font-size:.79rem;font-weight:800;letter-spacing:.17em}
+.novelight-special-home .novelight-special-eyebrow{color:#e2c47d}
+.novelight-special-home h2{font-family:"Yu Mincho","Hiragino Mincho ProN",Georgia,serif;font-size:clamp(1.5rem,3vw,2rem);margin:0 0 8px}
+.novelight-special-home-copy>p:last-child{margin:0;line-height:1.75;color:#d7dbe3}
+.novelight-special-home-action{display:inline-flex;align-items:center;gap:12px;white-space:nowrap;background:#d6a447;color:#101825!important;padding:13px 21px;border-radius:99px;font-weight:800;text-decoration:none}
+.novelight-special-home-action:hover{background:#ebc778}
+.novelight-special-home-action:focus-visible,.novelight-special-action:focus-visible,.novelight-special-card a:focus-visible{outline:3px solid #d6a447;outline-offset:4px}
+.novelight-special-main{max-width:1050px}
+.novelight-special-breadcrumb{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin:0 0 24px;color:#666;font-size:.92rem}
+.novelight-special-breadcrumb a{color:#76581d}
+.novelight-special-hero{padding:42px 35px;background:linear-gradient(118deg,#0a182e,#192640);border-radius:18px;border:1px solid #ac853c;color:#fff}
+.novelight-special-hero .novelight-special-eyebrow{color:#dfc17b}
+.novelight-special-hero h1{font-family:"Yu Mincho","Hiragino Mincho ProN",Georgia,serif;font-size:clamp(2rem,4vw,3rem);line-height:1.35;margin:0 0 14px;color:#fff}
+.novelight-special-hero>p:last-child{font-size:1.03rem;line-height:1.9;color:#e0e3e9;max-width:42rem;margin:0}
+.novelight-special-section{margin-top:33px}
+.novelight-special-section h2{font-size:1.38rem;color:#1b2430;margin:0 0 18px}
+.novelight-special-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px}
+.novelight-special-card,.novelight-special-detail{border-radius:17px;border:1px solid #e5d8bc;background:#fffdf9;box-shadow:0 6px 20px rgba(8,20,38,.06)}
+.novelight-special-card{padding:25px;display:flex;flex-direction:column;gap:12px}
+.novelight-special-card-category{font-size:.77rem;letter-spacing:.08em;color:#947020;font-weight:800;margin:0}
+.novelight-special-card-title{font-size:1.35rem;margin:0;line-height:1.5}
+.novelight-special-card-title a{text-decoration:none;color:#1b2430}
+.novelight-special-card-title a:hover,.novelight-special-text-link:hover{text-decoration:underline}
+.novelight-special-card-summary{line-height:1.85;color:#545b65;margin:0}
+.novelight-special-text-link{margin-top:auto;padding-top:12px;color:#80601d;font-weight:750;text-decoration:none}
+.novelight-special-empty{grid-column:1/-1;background:#fffdf9;border:1px dashed #c9b993;border-radius:14px;text-align:center;padding:32px 18px;color:#556071;line-height:1.8}
+.novelight-special-notice{margin:30px 0 0;line-height:1.9;font-size:.9rem;color:#69717d}
+.novelight-special-detail{padding:36px 40px}
+.novelight-special-detail-heading{font-size:clamp(1.65rem,3vw,2.5rem);line-height:1.45;color:#1b2430;margin:0 0 20px;font-family:"Yu Mincho","Hiragino Mincho ProN",Georgia,serif}
+.novelight-special-detail-lead{font-size:1.12rem;color:#414b57;line-height:1.95;margin:0 0 26px}
+.novelight-special-detail-author{border-left:3px solid #d6a447;padding-left:12px;color:#76581d}
+.novelight-special-detail-paragraph{white-space:pre-line;line-height:2;overflow-wrap:anywhere}
+.novelight-special-links-heading{margin:28px 0 16px;font-size:1.2rem}
+.novelight-special-actions{display:flex;flex-wrap:wrap;gap:12px}
+.novelight-special-action{display:inline-block;padding:12px 20px;border-radius:10px;background:#102238;color:#fff!important;font-weight:750;text-decoration:none}
+.novelight-special-action:hover{background:#294668}
+.novelight-special-return{margin:26px 0}
+.novelight-special-return a{color:#76581d;font-weight:750}
+@media(max-width:720px){
+  .novelight-special-home{margin:22px 16px;flex-direction:column;align-items:stretch;padding:22px}
+  .novelight-special-home-action{align-self:flex-start}
+  .novelight-special-hero{padding:32px 23px}
+  .novelight-special-detail{padding:26px 22px}
+}
