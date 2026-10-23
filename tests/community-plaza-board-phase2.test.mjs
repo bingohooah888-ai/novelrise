@@ -47,8 +47,10 @@ test('board uses shared plaza page, timeline UI and responsive layer', () => {
   assert.ok(notices.includes('board:'));
   assert.ok(read('novelight-community.js').includes('!flags.board'));
   assert.ok(notices.includes('board !== true'));
-  assert.ok(
-    read('novelight-client.js').includes('NOVELIGHT_COMMUNITY_FLAGS.board')
+  assert.match(read('novelight-client.js'), /board:\s*true/u);
+  assert.match(
+    read('shared/header/public-header.html'),
+    /href="community\.html"/u
   );
   assert.match(html, /両機能が完成してから同時に公開/);
 });

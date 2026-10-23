@@ -1,0 +1,15 @@
+/* Default readable ivory theme for NEW ordinary public pages. */
+body.novelight-public-ivory {
+  --public-page-bg: #f7f4ed;
+  --public-page-paper: #fffdf8;
+  --public-page-ink: #352719;
+  --public-page-muted: #655644;
+  --public-page-gold: #99621e;
+  --public-page-line: #d9c6a2;
+  background: var(--public-page-bg) !important;
+  color: var(--public-page-ink);
+  font-size: 17px;
+  line-height: 1.7;
+}
+body.novelight-public-ivory main { color: var(--public-page-ink); }
+body.novelight-public-ivory :is(button, input, textarea, select) { font: inherit; }
