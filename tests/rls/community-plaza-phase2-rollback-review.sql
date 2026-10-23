@@ -2,7 +2,7 @@
 -- Disposable CI migration-replay database only, NEVER a hosted project.
 -- The precheck in the rollback candidate must prevent loss of board data.
 BEGIN;
-\ir ../../docs/community/phase2-board-schema-review.sql
+\ir ../../supabase/migrations/20261023055617_community_plaza_phase2_board.sql
 \ir ../../docs/community/phase2-board-rollback-review.sql
 DO $board_review_rollback$
 BEGIN
