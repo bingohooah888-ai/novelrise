@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 import test from 'node:test';
 import { specialDatabaseTargetAllowed } from '../api/_lib/special-environment.js';
 import { createAdminSpecialHandler } from '../api/admin-special.js';
