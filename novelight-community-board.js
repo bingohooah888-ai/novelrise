@@ -248,5 +248,12 @@
     } catch (_) {say('返信できませんでした。時間をおいてお試しください。');}
     finally {busy=false;byId('boardReplySend').disabled=false;}
   });
-  void loadList(true);
+  let firstBoardOpen = false;
+  function activateBoard() {
+    if (firstBoardOpen) return;
+    firstBoardOpen = true;
+    void loadList(true);
+  }
+  byId('communityBoardTab').addEventListener('click', activateBoard);
+  if (location.hash === '#board') activateBoard();
 })();
