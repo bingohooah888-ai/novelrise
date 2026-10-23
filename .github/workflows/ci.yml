@@ -329,6 +329,15 @@ jobs:
         working-directory: tests/e2e
         run: npx playwright test "${{ matrix.spec }}" --project="${{ matrix.project }}"
 
+      - name: Upload SPECIAL review screenshots and offline pages
+        if: always() && matrix.name == 'smoke'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: novelight-special-review-${{ matrix.device }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/e2e/artifacts/novelight-special
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Summarize Playwright failure diagnostics
         if: failure()
         shell: bash
