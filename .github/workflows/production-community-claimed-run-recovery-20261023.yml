@@ -1,0 +1,97 @@
+name: NOVELIGHT One-Time Community Migration Hung Setup Recovery
+
+# One-time, immutable 2026-10-23 incident only. No database access or deployment.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/production-community-claimed-run-recovery-20261023.yml'
+
+permissions:
+  actions: write
+  contents: read
+  issues: read
+
+concurrency:
+  group: novelight-20261023-community-stuck-setup-only
+  cancel-in-progress: false
+
+jobs:
+  cancel-confirmed-stuck-setup:
+    if: >-
+      github.repository == 'bingohooah888-ai/novelrise' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CLAIMED_RUN_ID: '39883987410'
+      APPROVED_MAIN: '841ab0e985774eeda2a40a9019abbe1345377111'
+    steps:
+      - name: Authenticate immutable old owner approval and current execution step
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CLAIMED_RUN_ID" > /tmp/old-run.json
+          jq -e --arg sha "$APPROVED_MAIN" '
+            .id == 39883987410 and
+            .event == "issue_comment" and
+            .head_sha == $sha and
+            .status == "in_progress"
+          ' /tmp/old-run.json > /dev/null || {
+            echo 'Safety stop: incident run is no longer in the exact expected state.'
+            exit 1
+          }
+          gh api "repos/$GITHUB_REPOSITORY/issues/2139/comments?per_page=100" > /tmp/approval-ledger.json
+          jq -e '
+            length < 100 and
+            any(.[]; .id == 6355151673 and .user.login == "bingohooah888-ai"
+              and .author_association == "OWNER"
+              and (.body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_APPROVE "))) and
+            any(.[]; .id == 6355155650 and .user.login == "github-actions[bot]"
+              and (.body | startswith("NOVELIGHT_PRODUCTION_MIGRATION_DEPLOY_CLAIMED ")))
+          ' /tmp/approval-ledger.json > /dev/null || {
+            echo 'Safety stop: immutable OWNER claim ledger evidence failed.'
+            exit 1
+          }
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CLAIMED_RUN_ID/jobs?per_page=100" > /tmp/old-jobs.json
+          jq -e '
+            ([.jobs[] | select(.name == "Execute fixed chat-approved Production migration deploy")] | length) == 1
+            and
+            ([.jobs[] | select(.name == "Execute fixed chat-approved Production migration deploy")
+              | select(.status == "in_progress")
+              | .steps[] | select(.status == "in_progress") | .name]
+            == ["Setup Supabase CLI"])
+          ' /tmp/old-jobs.json > /dev/null || {
+            echo 'Safety stop: the old run may have entered DB migration; no cancellation.'
+            exit 1
+          }
+
+      - name: Cancel only verified stuck pre-mutation workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Recheck the exact step at the write boundary; NEVER force-cancel a DB action.
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CLAIMED_RUN_ID/jobs?per_page=100" > /tmp/old-jobs-final.json
+          jq -e '
+            ([.jobs[] | select(.name == "Execute fixed chat-approved Production migration deploy")
+              | select(.status == "in_progress")
+              | .steps[] | select(.status == "in_progress") | .name]
+            == ["Setup Supabase CLI"])
+          ' /tmp/old-jobs-final.json >/dev/null
+          gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$CLAIMED_RUN_ID/cancel" >/dev/null
+          for attempt in $(seq 1 50); do
+            echo "Cancellation verification attempt $attempt"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CLAIMED_RUN_ID" > /tmp/old-run-after.json
+            if jq -e '.status == "completed" and .conclusion == "cancelled"' /tmp/old-run-after.json >/dev/null; then
+              echo "Safely cancelled setup-stalled Production run $CLAIMED_RUN_ID before DB mutation."
+              exit 0
+            fi
+            if jq -e '.status == "completed" and .conclusion != "cancelled"' /tmp/old-run-after.json >/dev/null; then
+              echo 'Safety stop: old run ended without cancellation; verify migration ledger manually.'
+              exit 1
+            fi
+            sleep 2
+          done
+          echo 'Safety stop: cancellation not confirmed; no migration retry permitted.'
+          exit 1
