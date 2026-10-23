@@ -68,10 +68,16 @@ for migration in supabase/migrations/*.sql; do
   if [[ "$migration" == "supabase/migrations/20261014052000_community_plaza_phase1.sql" ]]; then
     "${REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_precheck.sql
   fi
+  if [[ "$migration" == "supabase/migrations/20261023055617_community_plaza_phase2_board.sql" ]]; then
+    "${REPLAY[@]}" -f supabase/checks/20261023055617_community_plaza_phase2_precheck.sql
+  fi
   echo "::group::Replay $migration"
   "${REPLAY[@]}" -f "$migration"
   if [[ "$migration" == "supabase/migrations/20261014052000_community_plaza_phase1.sql" ]]; then
     "${REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
+  fi
+  if [[ "$migration" == "supabase/migrations/20261023055617_community_plaza_phase2_board.sql" ]]; then
+    "${REPLAY[@]}" -f supabase/checks/20261023055617_community_plaza_phase2_postcheck.sql
   fi
   echo '::endgroup::'
 done
