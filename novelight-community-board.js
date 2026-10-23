@@ -229,7 +229,7 @@
       resetReplyTarget();
       await loadReplies(row.post_key);
       say('');
-      history.replaceState(null,'','community.html#board');
+      history.replaceState(null,'','community.html#board-thread-' + encodeURIComponent(row.id));
     } catch (_) {say('スレッドを取得できませんでした。');}
   }
   byId('boardReplyForm').addEventListener('submit',async event=>{
