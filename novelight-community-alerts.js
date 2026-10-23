@@ -1,6 +1,6 @@
 /* Community reaction notices, separate from author-follow update notifications. */
 (() => {
-  if (window.NOVELIGHT_COMMUNITY_FLAGS?.timeline !== true) return;
+  if (window.NOVELIGHT_COMMUNITY_FLAGS?.timeline !== true || window.NOVELIGHT_COMMUNITY_FLAGS?.board !== true) return;
   const target = document.getElementById('communityNotifications');
   if (!target || !window.supabase) return;
   const client = supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
