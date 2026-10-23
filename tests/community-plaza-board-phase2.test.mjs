@@ -23,6 +23,13 @@ test('board uses shared plaza page, timeline UI and responsive layer', () => {
   }
   assert.match(html, /novelight-community-board\.js/);
   assert.match(html, /novelight-community-board\.css/);
+  assert.ok(html.includes('NOVELIGHT_BOARD_INITIAL_THREAD'));
+  const notices = read('novelight-community-alerts.js');
+  assert.ok(notices.includes('board-thread-'));
+  assert.ok(notices.includes('board:'));
+  assert.ok(read('novelight-community.js').includes('!flags.board'));
+  assert.ok(notices.includes('board !== true'));
+  assert.ok(read('novelight-client.js').includes('NOVELIGHT_COMMUNITY_FLAGS.board'));
   assert.match(html, /両機能が完成してから同時に公開/);
 });
 
