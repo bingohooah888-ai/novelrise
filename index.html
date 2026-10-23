@@ -61,7 +61,7 @@
 <main id="main-content" tabindex="-1">
 <section class="home-promo-carousel" aria-label="NOVELIGHT プロモーション">
   <div class="home-promo-track">
-    <article id="novelightContestHeroSlide" class="home-promo-slide" aria-label="第1回 星灯祭">
+    <article id="novelightContestHeroSlide" class="home-promo-slide" aria-label="第1回 星灯祭" hidden>
       <a class="home-promo-link" href="contest.html#enter" aria-label="第1回 星灯祭へエントリーする">
         <img class="home-promo-image" src="assets/home/06_starfestival_hero_1600x900.webp" width="1600" height="900" alt="第1回 星灯祭開催！上位5作品に各1万円。エントリー締切は2026年11月30日23時59分、コンテスト開催は12月1日から31日。" loading="eager" fetchpriority="high" decoding="async">
       </a>
@@ -100,7 +100,7 @@
   </div>
 
   <script>
-    (() => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const homeLeadVisuals = Object.freeze({
         teaser: {
           src: 'assets/home/05_event_teaser_1600x900.png',
@@ -131,9 +131,25 @@
       }
 
       const carousel = lead.closest('.home-promo-carousel');
-      // The entry CTA must not continue advertising after registration closes.
+      // Preserve the existing registration gate: drafts, cancellation, errors and
+      // expired enrollment must not appear as an active entry promotion.
       const contestSlide = document.getElementById('novelightContestHeroSlide');
-      if (contestSlide && Date.now() > Date.parse('2026-11-30T23:59:00+09:00')) {
+      let registrationOpen = false;
+      try {
+        const { data, error } = await client.rpc('novelight_public_contest_catalog', {
+          p_limit: 1,
+          p_offset: 0
+        });
+        const deadline = Date.parse(data?.entry_deadline_at || '');
+        registrationOpen = !error && data?.ok === true &&
+          data.contest_status === 'registration' &&
+          Number.isFinite(deadline) && Date.now() <= deadline;
+      } catch {
+        registrationOpen = false;
+      }
+      if (registrationOpen) {
+        contestSlide.hidden = false;
+      } else {
         contestSlide.remove();
         carousel.querySelector('.home-promo-dot:first-child')?.remove();
       }
@@ -290,7 +306,7 @@
         goTo(1, 'auto');
         startAutoplay();
       });
-    })();
+    });
   </script>
 </section>
 
