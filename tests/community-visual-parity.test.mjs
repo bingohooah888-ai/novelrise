@@ -55,22 +55,20 @@ test('community and board read clearly on ivory backgrounds', () => {
   assert.match(css, /color: #302214/u);
 });
 
-test(
-  'new public HTML files are gated on canonical header and ivory theme',
-    () => {
-    const pkg = JSON.parse(read('package.json'));
-    assert.match(
-      pkg.scripts['header:check'],
-      /check-public-page-standards\.mjs/u
-    );
-    const gate = read('scripts/check-public-page-standards.mjs');
-    for (const fragment of [
-      'manifest.managed.includes(page)',
-      'novelight-public-header-page',
-      'novelight-public-ivory',
-      'data-novelight-shared-header',
-      'publicPageThemeExceptions'
-    ]) {
-      assert.ok(gate.includes(fragment), fragment);
+test('new public pages use the shared header and ivory style', () => {
+  const pkg = JSON.parse(read('package.json'));
+  assert.match(
+    pkg.scripts['header:check'],
+    /check-public-page-standards\.mjs/u
+  );
+  const gate = read('scripts/check-public-page-standards.mjs');
+  for (const fragment of [
+    'manifest.managed.includes(page)',
+    'novelight-public-header-page',
+    'novelight-public-ivory',
+    'data-novelight-shared-header',
+    'publicPageThemeExceptions'
+  ]) {
+    assert.ok(gate.includes(fragment), fragment);
   }
-);
+});
