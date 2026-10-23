@@ -69,9 +69,10 @@ test('homepage promotional carousel uses approved artwork and avoids fake scale 
   const reader = home.indexOf(
     'data-src="assets/home/04_reader_promo_1600x900.png"'
   );
-  assert.ok(
-    festival >= 0 && campaign > festival && author > campaign && reader > author
-  );
+  assert.ok(festival >= 0);
+  assert.ok(campaign > festival);
+  assert.ok(author > campaign);
+  assert.ok(reader > author);
 
   assert.match(home, /class="recommend-ribbon">おすすめ<\/div>/u);
   assert.match(css, /--public-gold:/u);
