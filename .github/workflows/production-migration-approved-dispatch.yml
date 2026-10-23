@@ -327,7 +327,7 @@ jobs:
           install_dir="$RUNNER_TEMP/novelight-supabase-cli"
           mkdir -p "$install_dir"
           cd "$install_dir"
-          printf '%s\\n' '{"private":true}' > package.json
+          printf '%s\n' '{"private":true}' > package.json
           npm install --no-audit --no-fund --save-exact supabase@2.111.0
           test "$("$install_dir/node_modules/.bin/supabase" --version)" = '2.111.0'
           echo "$install_dir/node_modules/.bin" >> "$GITHUB_PATH"
