@@ -219,15 +219,22 @@ export async function executePhase2JointHostedContract({ run, operations }) {
     failure = true;
   } finally {
     // Never short circuit cleanup, even when browser or migration fails.
-    const settled = await Promise.allSettled([
+    const removals = await Promise.allSettled([
       operations.disposeProtectedPreview(run, preview),
-      operations.destroyIsolatedBranch(run, branch),
-      operations.readBackCleanup(run, branch, preview)
+      operations.destroyIsolatedBranch(run, branch)
     ]);
-    cleanupVerified = settled.every((entry) =>
-      entry.status === 'fulfilled' &&
-      entry.value?.status === 'CONFIRMED_CLEAN'
-    );
+    let verification;
+    try {
+      // Read-back must run only AFTER both disposal attempts settle.
+      verification = await operations.readBackCleanup(run, branch, preview);
+    } catch {
+      verification = null;
+    }
+    cleanupVerified =
+      removals.every((entry) =>
+        entry.status === 'fulfilled' &&
+        entry.value?.status === 'CONFIRMED_CLEAN'
+      ) && verification?.status === 'CONFIRMED_CLEAN';
     if (!cleanupVerified) {
       outcome = 'failure';
       failure = true;
