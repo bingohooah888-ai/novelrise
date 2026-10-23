@@ -125,6 +125,8 @@ async function isolatedContext(browser, cfg) {
   return { context, violations };
 }
 
+// Staging-only scripted auth flow; keep the audited action order unchanged.
+// prettier-ignore
 test('real isolated author/reader/admin sessions and moderation', async ({
   browser,
   request
