@@ -68,6 +68,7 @@ echo "::endgroup::"
 # private table permissions against the fully replayed Phase 1 schema.
 echo "::group::Community Phase 2 rollback-only board contract (disposable replay)"
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase2-review.sql
+"${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase2-rollback-review.sql
 echo "::endgroup::"
 
 rm -f "$SEARCH_CARD_COMPAT_MIGRATION"
