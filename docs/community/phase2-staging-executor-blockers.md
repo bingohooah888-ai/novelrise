@@ -73,3 +73,32 @@ workflow_dispatchの結果はIssue #188が閉じたままでは
 **failed gate**として終了する。承認がないのに「成功」扱いにはしない。
 実行Grantは正しいblobでも一切付与せず、実装中のコードを読み取り
 監査対象とするためだけの機構である。
+
+
+## Phase 2独立したStaging実行シーケンス（2026-10-23）
+
+`scripts/community-phase2-hosted-execution-contract.mjs` と
+`tests/community-phase2-hosted-execution-contract.test.mjs` は
+**依存注入による実行順序の機械的契約**を提供する。
+対象scopeは `community-phase2-joint-hosted-authenticated-write` であり、
+Phase 1 scopeを使ってPhase 2承認を取得・使用することは拒否する。
+
+厳密な順序は、OWNER本人確認・台帳・SHA・予算・独立Watchdog・
+一回限りの請求境界 → 不可逆なone-use CLAIM →
+独立保護環境からの実行grant → 先行Watch登録 →
+生データのないisolated branch → Phase 2 migration / RLS ->
+保護Previewのexact HEAD及び別DB接続の確認 →
+匿名/作者/読者/運営のブラウザ動作（Phase1/2同時検証） →
+Preview・DB Branch破棄 → read-back →
+一回限りのCONSUMED記録である。
+
+APIが曖昧な成功を返す場合はブランチ再照合が必要。後片付けの
+途中に失敗があっても他の掃除と最終記録を試みる。環境削除が
+不確かなら独立Watchdogによる回復が前提であり、成功と偽装しない。
+Production project `fiepaguycecrredwrcwx`、共用Staging
+`wmlzjgvxgoyrovdhbqbg` は両方拒否する。
+
+**このモジュールには実行アダプタ、認証済みの予算Grant、
+Supabase/Vercel Secret、Issue書込、ワークフロートリガーを付けていない。
+純粋なモックを使った失敗時テストに成功しても、実際のHosted
+実行経路が完成したとはみなさない。**
