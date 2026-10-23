@@ -157,6 +157,22 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
       "historicalReferences": []
     },
     {
+      "path": "docs/COMMUNITY-PLAZA-PHASE1-HANDOFF.md",
+      "status": "CURRENT",
+      "role": "community-plaza-phase1-work-handoff",
+      "singletonRole": true,
+      "classification": "CURRENT_CANDIDATE",
+      "historicalReferences": []
+    },
+    {
+      "path": "docs/COMMUNITY-STAGING-CANDIDATE-CONTRACT.md",
+      "status": "CURRENT",
+      "role": "community-staging-candidate-approval-contract",
+      "singletonRole": true,
+      "classification": "CURRENT_CANDIDATE",
+      "historicalReferences": []
+    },
+    {
       "path": "docs/COMMUNITY-STAGING-FORWARD-RECONCILE.md",
       "status": "CURRENT",
       "role": "community-staging-forward-reconcile",
@@ -168,6 +184,14 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
       "path": "docs/COMMUNITY-STAGING-TRANSACTION-EXECUTOR-REVIEW.md",
       "status": "CURRENT",
       "role": "community-staging-transaction-executor-review",
+      "singletonRole": true,
+      "classification": "CURRENT_CANDIDATE",
+      "historicalReferences": []
+    },
+    {
+      "path": "docs/COMMUNITY-STAGING-VERIFICATION-ROUTE.md",
+      "status": "CURRENT",
+      "role": "community-staging-verification-route",
       "singletonRole": true,
       "classification": "CURRENT_CANDIDATE",
       "historicalReferences": []

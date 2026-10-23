@@ -23,7 +23,7 @@ footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:960px;
 <section class="novelight-curation-hero">
 <h1>読者キュレーション</h1>
 <p>「この作品たちを一緒に読んでほしい」を、自分の選書リストとしてまとめられます。β版では公開ディレクトリを作らず、共有URLを知っている人だけが閲覧できます。</p>
-<div class="novelight-curation-policy">リストの人気・閲覧・作品追加は、作品Rank・露出・LIGHT SEED・SCOUT・おすすめに影響しません。</div>
+<div class="novelight-curation-policy">リストの人気・閲覧・作品追加は、作品Rank・露出・LIGHT SEED・SCOUT・おすすめに影響しません。交流広場への掲載はリストごとに別途同意が必要です。</div>
 </section>
 <form id="createForm" class="novelight-curation-create"><strong>新しいリストを作成</strong>
 <input id="createTitle" maxlength="80" required placeholder="例：静かな夜に読みたい物語">
@@ -41,6 +41,7 @@ footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:960px;
 <script>
 const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
 const api=NovelightCuration;
+const communityEnabled=window.NOVELIGHT_COMMUNITY_FLAGS?.timeline===true;
 const listsNode=document.getElementById('lists');
 const listStatus=document.getElementById('listStatus');
 const createForm=document.getElementById('createForm');
@@ -104,6 +105,29 @@ function listCard(list){
   const shareValue=node('span','',list.visibility==='shared'?api.shareUrl(list.share_token):'公開状態を「共有URLで公開」にするとリンクを使えます。');
   share.append(shareLabel,shareValue);
   card.append(share);
+  if(communityEnabled){
+    const optin=node('label','novelight-curation-community-optin');
+    const checkbox=document.createElement('input');
+    checkbox.type='checkbox';
+    checkbox.checked=list.community_share_enabled===true;
+    checkbox.disabled=list.visibility!=='shared';
+    optin.append(checkbox,node('span','',' このリストを交流広場にも掲載する（公開範囲が広がります）'));
+    if(checkbox.disabled)optin.append(node('small','',' ※先に共有URLで公開して保存してください'));
+    checkbox.addEventListener('change',async()=>{
+      const desired=checkbox.checked;checkbox.disabled=true;
+      try{
+        const result=await client.rpc('novelight_set_my_curation_community_share',{
+          p_list_id:Number(list.list_id),p_enabled:desired
+        });
+        if(result.error||result.data!==true)throw result.error||new Error('更新できませんでした');
+        await load();
+      }catch(error){
+        console.error(error);checkbox.checked=!desired;checkbox.disabled=false;
+        listStatus.textContent='交流広場への掲載設定を変更できませんでした。';
+      }
+    });
+    card.append(optin);
+  }
 
   const actions=node('div','novelight-curation-actions');
   const save=node('button','primary','保存');
@@ -177,7 +201,11 @@ function render(lists){
 async function load(){
   listStatus.textContent='読み込み中...';
   try{
-    const result=await api.loadMyLists(client);
+    const result=communityEnabled
+      ? await (async()=>{const response=await client.rpc('novelight_manage_my_curation_lists_v2');
+          if(response.error)throw response.error;
+          return {available:true,lists:Array.isArray(response.data)?response.data:[]};})()
+      : await api.loadMyLists(client);
     if(!result.available){
       createForm.hidden=true;
       render([]);

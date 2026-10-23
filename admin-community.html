@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>交流広場管理 | NOVELIGHT ADMIN</title>
+<link rel="stylesheet" href="novelight-accessibility.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0c1422;color:#f3f0e9;font-family:system-ui,sans-serif}
+main{max-width:1100px;margin:auto;padding:26px 18px}a{color:#e5c17d}.bar{display:flex;gap:18px;align-items:center;justify-content:space-between}
+h1{font-size:1.5rem}.status{padding:16px;background:#18243a;border-radius:12px;color:#d0d7e0}
+table{border-collapse:collapse;width:100%;margin:10px 0 30px}td,th{padding:10px;border-bottom:1px solid #39445a;text-align:left;overflow-wrap:anywhere}
+button{background:#d0a45b;color:#101927;border:0;padding:9px;border-radius:7px;cursor:pointer;margin:3px}
+input,select,textarea{width:100%;background:#102039;color:#fff;border:1px solid #697182;border-radius:7px;padding:9px}
+textarea{min-height:60px}section{margin-top:25px}form{display:grid;gap:12px;max-width:620px}
+[hidden]{display:none!important}@media(max-width:650px){table,tbody,td,tr{display:block}thead{display:none}tr{padding:12px 0;border-bottom:1px solid #555}}
+</style></head>
+<body>
+<a class="skip-link" href="#main-content">本文へスキップ</a>
+<main id="main-content" tabindex="-1">
+<div class="bar"><h1>交流広場の管理</h1><a href="admin.html">ADMINへ戻る</a></div>
+<p id="communityAdminStatus" class="status" role="status">管理者権限を確認しています。</p>
+<div id="communityAdminContent" hidden>
+<section aria-labelledby="metricsTitle"><h2 id="metricsTitle">交流広場の指標（直近7日）</h2>
+<ul id="communityMetrics" aria-live="polite"></ul>
+<p>有効読書は既存の認定済み読書記録から算出します。作品ランキング・SCOUTのポイントには影響しません。</p>
+</section>
+<section aria-labelledby="reportsTitle"><h2 id="reportsTitle">未処理の通報</h2>
+<label for="communityReportSearch">通報を絞り込み（対象ID・理由）</label>
+<input id="communityReportSearch" type="search" placeholder="対象ID・通報理由で検索" autocomplete="off">
+<p id="communityReportCount" class="status" role="status">最新100件を表示します。</p>
+<table><thead><tr><th>対象ID（投稿・コメント）</th><th>理由</th><th>日時</th><th>管理</th></tr></thead><tbody id="communityReportRows"></tbody></table></section>
+<section aria-labelledby="hiddenTitle"><h2 id="hiddenTitle">非表示中</h2><ul id="communityHiddenRows"></ul></section>
+<section aria-labelledby="restrictedTitle"><h2 id="restrictedTitle">投稿制限中</h2><ul id="communityRestrictedRows"></ul></section>
+<section aria-labelledby="restrictionFormHeading"><h2 id="restrictionFormHeading">利用制限</h2>
+<form id="communityRestrictForm">
+<label>利用者ID（UUID）<input name="userId" required placeholder="対象のユーザーID"></label>
+<label>理由（必須）<textarea name="reason" maxlength="500" required></textarea></label>
+<button type="submit">7日間の交流投稿制限</button>
+</form></section>
+</div>
+</main>
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+<script src="novelight-client.js"></script>
+<script>
+(() => {
+ const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+ const status=document.getElementById('communityAdminStatus');
+ const root=document.getElementById('communityAdminContent');
+ const reportSearch=document.getElementById('communityReportSearch');
+ const reportCount=document.getElementById('communityReportCount');
+ let currentReports=[];
+ const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
+ async function access(method,body){
+  const result=await client.auth.getSession();
+  if(result.error||!result.data.session){location.href='login.html?redirect=admin-community.html';return null;}
+  const response=await fetch('/api/admin-community',{method,headers:{
+   Authorization:'Bearer '+result.data.session.access_token,'Content-Type':'application/json',
+   Accept:'application/json'},body:body?JSON.stringify(body):undefined,cache:'no-store',credentials:'same-origin'});
+  if(!response.ok)throw new Error(response.status===403?'管理者権限がありません。':'管理画面を読み込めませんでした。');
+  return response.json();
+ }
+ async function moderate(action,id,reason=''){
+  try{
+   const body={action,reason};
+   if(action==='dismiss')body.report_id=id;
+   else body[['hide','restore'].includes(action)?'post_key':'user_id']=id;
+   await access('POST',body);status.textContent='処理を記録しました。';
+   await load();
+  }catch(error){status.textContent=error.message||'更新できませんでした。';}
+ }
+ function button(text,action,id,reason){
+  const b=node('button',text);b.type='button';
+  b.addEventListener('click',()=>{if(confirm(text+'を実行しますか？'))void moderate(action,id,reason);});return b;
+ }
+ function renderReports(){
+  const reports=document.getElementById('communityReportRows');
+  reports.replaceChildren();
+  const q=reportSearch.value.trim().toLocaleLowerCase('ja-JP');
+  const filtered=currentReports.filter(row=>
+   !q||String(row.post_key||'').toLocaleLowerCase('ja-JP').includes(q)||
+   String(row.reason||'').toLocaleLowerCase('ja-JP').includes(q)
+  );
+  reportCount.textContent=filtered.length+'件を表示（取得済みの最新'+currentReports.length+'件から検索）';
+  if(!filtered.length){
+   const r=node('tr','');const t=node('td',q?'一致する通報はありません':'未処理の通報はありません');
+   t.colSpan=4;r.append(t);reports.append(r);
+  }
+  filtered.forEach(row=>{
+   const tr=node('tr','');
+   [row.post_key,row.reason,new Date(row.created_at).toLocaleString('ja-JP')].forEach(value=>tr.append(node('td',value)));
+   const actions=node('td','');
+   actions.append(button('非表示','hide',row.post_key,row.reason));
+   actions.append(button('通報を却下','dismiss',row.id));
+   tr.append(actions);reports.append(tr);
+  });
+ }
+ reportSearch.addEventListener('input',renderReports);
+ async function load(){
+  try{
+   const data=await access('GET');
+   if(!data)return;
+   root.hidden=false;status.textContent='最新の管理状況を表示しています。';
+   const metrics=document.getElementById('communityMetrics');metrics.replaceChildren();
+   const values=data.metrics||{};
+   for(const [key,label] of [
+    ['journey_entries','交流経由の作品・話閲覧'],
+    ['unique_visitors','交流経由のユニーク閲覧者'],
+    ['qualified_reads','交流経由の認定有効読書'],
+    ['interactors','交流参加ユーザー'],
+    ['repeat_interactors','複数日参加ユーザー']
+   ]){metrics.append(node('li',label+'：'+Number(values[key]||0).toLocaleString('ja-JP')));}
+
+   currentReports=Array.isArray(data.reports)?data.reports:[];
+   renderReports();
+   const hidden=document.getElementById('communityHiddenRows');hidden.replaceChildren();
+   data.hidden.forEach(row=>{const li=node('li',row.post_key+' ／ '+(row.reason||''));li.append(button('復元','restore',row.post_key));hidden.append(li);});
+   const users=document.getElementById('communityRestrictedRows');users.replaceChildren();
+   data.restrictions.forEach(row=>{const li=node('li',row.user_id+' ／ 期限 '+new Date(row.expires_at).toLocaleString('ja-JP'));li.append(button('解除','unrestrict',row.user_id));users.append(li);});
+  }catch(error){status.textContent=error.message||'読み込めませんでした。';root.hidden=true;}
+ }
+ document.getElementById('communityRestrictForm').addEventListener('submit',async event=>{
+  event.preventDefault();const form=event.target;const id=form.elements.userId.value.trim();const reason=form.elements.reason.value.trim();
+  if(!id||!reason)return;
+  if(!confirm('指定ユーザーの交流投稿を7日間制限しますか？'))return;
+  await moderate('restrict',id,reason);form.reset();
+ });
+ void load();
+})();
+</script></body></html>
