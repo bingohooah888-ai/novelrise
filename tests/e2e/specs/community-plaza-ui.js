@@ -146,7 +146,7 @@ async function installIsolatedMock(page, enabled, options = {}) {
       response,
       body: original
         .replace(marker, enabled ? 'timeline: true,' : 'timeline: false,')
-        .replace(/board: (?:false|true),/, enabled ? 'board: true,' : 'board: false,')
+        .replace(/board:\s*(?:false|true)(?=\s*[,}])/, enabled ? 'board: true' : 'board: false')
     });
   });
 }
