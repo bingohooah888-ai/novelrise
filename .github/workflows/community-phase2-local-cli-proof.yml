@@ -1,0 +1,45 @@
+name: Community Phase 2 Local CLI Generation Proof (Temporary)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/community-phase2-local-cli-proof.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  cli-local-only:
+    name: Generate a local Phase 2 CLI migration artifact
+    if: github.head_ref == 'feat/community-plaza-board-phase2-20261023'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout only the PR code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Use Node 24 for Supabase CLI
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Supabase CLI migration new (NO LOGIN, NO DATABASE)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_EVENT_NAME}" = pull_request
+          test "${GITHUB_HEAD_REF}" = feat/community-plaza-board-phase2-20261023
+          test -f docs/community/phase2-board-schema-review.sql
+          echo 'Installing pinned CLI strictly for local generation; no hosted project credentials.'
+          npx --yes supabase@2.81.3 --version
+          npx --yes supabase@2.81.3 migration new --help >/dev/null
+          npx --yes supabase@2.81.3 migration new community_plaza_phase2_board < docs/community/phase2-board-schema-review.sql
+          generated="$(find supabase/migrations -maxdepth 1 -name '*_community_plaza_phase2_board.sql' -type f -print)"
+          test -n "$generated"
+          [[ "$generated" != *$'\n'* ]]
+          cmp docs/community/phase2-board-schema-review.sql "$generated"
+          echo "PHASE2_GENERATED_PATH=$generated"
+          echo "PHASE2_SQL_SHA256=$(sha256sum "$generated" | cut -d' ' -f1)"
+          echo 'CLI_GENERATED_FILE_EQUALS_REVIEW_SOURCE=true'
+          echo 'NO_DATABASE_CONNECTED_OR_CHANGED=true'
