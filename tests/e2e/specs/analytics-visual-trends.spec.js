@@ -223,3 +223,31 @@ test('visual analytics stays within the mobile viewport', async ({ page }) => {
     page.locator('section[aria-labelledby="trendTitle"]')
   ).toBeVisible();
 });
+
+
+test('LIGHT ANALYTICS mobile title does not inherit the desktop 700px height', async ({
+  page
+}) => {
+  await installAnalyticsStub(page, 'standard');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/analytics.html');
+
+  const layout = await page.evaluate(() => {
+    const title = document.querySelector('.analytics-title-wrap');
+    const period = document.querySelector('#period');
+    const heading = title.getBoundingClientRect();
+    const controls = period.getBoundingClientRect();
+    return {
+      height: heading.height,
+      gap: controls.top - heading.bottom,
+      flexBasis: getComputedStyle(title).flexBasis,
+      overflow: document.documentElement.scrollWidth - innerWidth
+    };
+  });
+  expect(layout.height).toBeGreaterThan(0);
+  expect(layout.height).toBeLessThan(380);
+  expect(layout.gap).toBeGreaterThanOrEqual(0);
+  expect(layout.gap).toBeLessThan(50);
+  expect(layout.flexBasis).toBe('auto');
+  expect(layout.overflow).toBeLessThanOrEqual(1);
+});
