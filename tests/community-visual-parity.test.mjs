@@ -21,17 +21,23 @@ test('plaza syncs its logged-in account navigation via shared client', () => {
     read('novelight-community.js'),
     /NovelightClient\?\.syncAuthHeader\(client\)/u
   );
-  assert.match(read('novelight-client.js'), /function syncAuthHeader\(client\)/u);
+  assert.match(
+    read('novelight-client.js'),
+    /function syncAuthHeader\(client\)/u
+  );
 });
 
-test('navigation is a single row on desktop and switches to menu on narrow screens', () => {
+test(
+  'navigation is a single row on desktop and switches to menu on narrow screens',
+  () => {
   const shared = read('shared/header/public-header.html');
   assert.equal((shared.match(/href="community\.html"/gu) || []).length, 2);
   const css = read('shared/header/public-header.css');
   assert.match(css, /flex-wrap: nowrap !important/u);
   assert.match(css, /max-width: 1510px/u);
   assert.match(css, /mobile-menu/u);
-});
+  }
+);
 
 test('community and board read clearly on ivory backgrounds', () => {
   const css = read('novelight-community-ivory.css');
