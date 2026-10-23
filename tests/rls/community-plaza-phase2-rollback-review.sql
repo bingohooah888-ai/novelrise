@@ -3,7 +3,7 @@
 -- The precheck in the rollback candidate must prevent loss of board data.
 BEGIN;
 \ir ../../supabase/migrations/20261023055617_community_plaza_phase2_board.sql
-\ir ../../docs/community/phase2-board-rollback-review.sql
+\ir ../../supabase/rollback/20261023055617_community_plaza_phase2_board_rollback.sql
 DO $board_review_rollback$
 BEGIN
  IF to_regclass('public.community_board_threads') IS NOT NULL THEN
