@@ -7,8 +7,8 @@ const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'
 
 test('Phase 2 remains hidden until both site release flags are enabled', () => {
   const shared = read('novelight-client.js');
-  assert.match(shared, /timeline:\\s*false/);
-  assert.match(shared, /board:\\s*false/);
+  assert.match(shared, /timeline:\s*false/);
+  assert.match(shared, /board:\s*false/);
   const script = read('novelight-community-board.js');
   assert.match(script, /if \(!flags\.timeline \|\| !flags\.board/);
   assert.doesNotMatch(script, /\.innerHTML\s*=/);
@@ -41,7 +41,7 @@ test('board review SQL denies raw table access and keeps server-side gate', () =
   assert.match(sql, /user_mutes/);
   assert.match(sql, /community_hidden_posts/);
   assert.equal((sql.match(/CREATE OR REPLACE FUNCTION /g) || []).length, 9);
-  assert.equal((sql.match(/\\$\\$;/g) || []).length, 9);
+  assert.equal((sql.match(/\$\$;/g) || []).length, 9);
   assert.doesNotMatch(sql, /(?:scout_xp|novelight_ranking_feed|novel_view_events)/i);
 });
 
@@ -49,7 +49,7 @@ test('shared comments, reports and admin moderation recognize board keys', () =>
   const sql = read('docs/community/phase2-board-schema-review.sql');
   const board = read('novelight-community-board.js');
   const admin = read('api/_lib/admin-community.js');
-  assert.match(sql, /WHEN p_key ~ '\\^board:/);
+  assert.ok(sql.includes("WHEN p_key ~ '^board:"));
   assert.match(sql, /novelight_community_post_author/);
   assert.match(sql, /novelight_community_interaction_allowed/);
   assert.match(sql, /novelight_admin_community_moderate/);
