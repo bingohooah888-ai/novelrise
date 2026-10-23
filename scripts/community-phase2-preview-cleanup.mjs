@@ -54,7 +54,7 @@ function validateDeployment(raw, grant, target) {
   const safeAliases = Array.isArray(raw?.alias) && raw.alias.every(
     (alias) =>
       typeof alias === 'string' &&
-      /^[a-z0-9-]+\\.vercel\\.app$/u.test(alias) &&
+      /^[a-z0-9-]+\.vercel\.app$/u.test(alias) &&
       alias !== 'novelrise.vercel.app'
   );
   if (
