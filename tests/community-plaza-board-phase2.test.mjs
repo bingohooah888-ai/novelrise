@@ -53,7 +53,7 @@ test('board uses shared plaza page, timeline UI and responsive layer', () => {
   assert.match(html, /両機能が完成してから同時に公開/);
 });
 
-test('board review SQL denies raw table access and keeps server-side gate', () => {
+test('board schema protects private data and release gate', () => {
   const sql = read('docs/community/phase2-board-schema-review.sql');
   assert.match(sql, /REVIEW-ONLY/);
   assert.match(
@@ -93,7 +93,7 @@ test('board review SQL denies raw table access and keeps server-side gate', () =
   );
 });
 
-test('shared comments, reports and admin moderation recognize board keys', () => {
+test('board actions reuse existing comment and moderation records', () => {
   const sql = read('docs/community/phase2-board-schema-review.sql');
   const board = read('novelight-community-board.js');
   const admin = read('api/_lib/admin-community.js');
