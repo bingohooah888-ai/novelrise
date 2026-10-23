@@ -224,7 +224,6 @@ test('visual analytics stays within the mobile viewport', async ({ page }) => {
   ).toBeVisible();
 });
 
-
 test('LIGHT ANALYTICS mobile title does not inherit the desktop 700px height', async ({
   page
 }) => {
