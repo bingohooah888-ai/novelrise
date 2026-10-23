@@ -238,9 +238,7 @@ AS $$
         AND a.status = 'published'
         AND a.published_at <= now()
     )
-    WHEN p_key ~ '^board:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}
-  END AND NOT EXISTS (SELECT 1 FROM public.community_hidden_posts h WHERE h.post_key=p_key)
-$$; THEN
+    WHEN p_key ~ '^board:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' THEN
       public.novelight_community_board_visible(substring(p_key FROM 7)::uuid)
     ELSE false
   END AND NOT EXISTS (SELECT 1 FROM public.community_hidden_posts h WHERE h.post_key=p_key)
