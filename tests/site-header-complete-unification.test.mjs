@@ -20,8 +20,8 @@ test('no root HTML page exposes the retired Features header link', () => {
   assert.doesNotMatch(client, /index\.html#features/u);
 });
 
-test('public headers use the four requested navigation links', () => {
-  const labels = ['作品を探す', 'ランキング', 'お知らせ', '料金プラン'];
+test('public headers use the five shared navigation links', () => {
+  const labels = ['作品を探す', 'ランキング', '交流', 'お知らせ', '料金プラン'];
   let audited = 0;
   for (const page of htmlFiles) {
     const header = read(page).match(HEADER_PATTERN)?.[0] || '';
@@ -33,8 +33,8 @@ test('public headers use the four requested navigation links', () => {
     for (const block of [desktop, ...mobile]) {
       const nav = block.split('</nav>')[0];
       const items = Array.from(nav.matchAll(/>([^<]+)<\/a>/gu), (m) => m[1]);
-      assert.deepEqual(items.slice(0, 4), labels, page);
-      if (block === desktop) assert.equal(items.length, 4, page);
+      assert.deepEqual(items.slice(0, 5), labels, page);
+      if (block === desktop) assert.equal(items.length, 5, page);
     }
   }
   assert.ok(audited >= 17, 'static public headers were audited');
