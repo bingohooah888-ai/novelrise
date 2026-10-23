@@ -198,6 +198,7 @@ jobs:
       postcheck_result: ${{ steps.execution_phase.outputs.postcheck_result }}
       failure_phase: ${{ steps.execution_phase.outputs.failure_phase }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     environment: production
     concurrency:
       group: supabase-production-migration
@@ -312,10 +313,24 @@ jobs:
             exit 1
           }
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf
+      # The former composite installer may hang indefinitely while bootstrapping Bun.
+      # Install only this pinned CLI into an isolated runner-local package directory.
+      - name: Setup Node.js for pinned Supabase CLI
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          version: 2.111.0
+          node-version: 24
+      - name: Install pinned Supabase CLI with hard timeout
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          install_dir="$RUNNER_TEMP/novelight-supabase-cli"
+          mkdir -p "$install_dir"
+          cd "$install_dir"
+          printf '%s\n' '{"private":true}' > package.json
+          npm install --no-audit --no-fund --save-exact supabase@2.111.0
+          test "$("$install_dir/node_modules/.bin/supabase" --version)" = '2.111.0'
+          echo "$install_dir/node_modules/.bin" >> "$GITHUB_PATH"
 
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
