@@ -38,6 +38,11 @@ body.novelight-page-index.novelight-public-dark .home-promo-slide {
   background: #02070d;
 }
 
+/* Keep the Star Festival hidden until registration is confirmed. */
+body.novelight-page-index.novelight-public-dark .home-promo-slide[hidden] {
+  display: none !important;
+}
+
 body.novelight-page-index.novelight-public-dark .home-promo-link {
   display: block;
   width: 100%;
