@@ -48,10 +48,7 @@ test('homepage promotional carousel uses approved artwork and avoids fake scale 
     home,
     /src="assets\/home\/06_starfestival_hero_1600x900\.webp"/u
   );
-  assert.doesNotMatch(
-    home,
-    /src="assets\/home\/01_hero_pc_2560x1280\.png"/u
-  );
+  assert.doesNotMatch(home, /src="assets\/home\/01_hero_pc_2560x1280\.png"/u);
   assert.match(
     home,
     /data-src="assets\/home\/03_author_features_1600x900\.png"[^>]*loading="lazy"/u
