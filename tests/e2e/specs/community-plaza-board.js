@@ -63,7 +63,14 @@ function installFakeSupabase(seeded) {
         return okay(true);
       }
       if (name === 'novelight_community_comments') {
-        return okay(args.p_post_key?.startsWith('board:') ? replies : []);
+        const data = args.p_post_key?.startsWith('board:') ? replies.slice() : [];
+        if (globalThis.__boardDelayNextReplies) {
+          globalThis.__boardDelayNextReplies = false;
+          return new Promise(resolve => {
+            globalThis.__boardReleaseReplies = () => resolve(okay(data));
+          });
+        }
+        return okay(data);
       }
       if (name === 'novelight_community_post_comment') {
         replies.push({
@@ -219,3 +226,23 @@ test('board thread deep link is shareable and content is escaped', async ({
   await expect(page.locator('#boardDetailTitle img')).toHaveCount(0);
   expect(await page.evaluate(() => globalThis.__boardTestXssExecuted)).toBe(false);
 });
+// Preserve browser interaction test without external Supabase I/O.
+// prettier-ignore
+test('back navigation wins over a delayed reply response', async ({ page }) => {
+  await installBoardMock(page, true, true);
+  await page.goto('/community.html#board', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#boardThreadList .board-thread-card')).toHaveCount(1);
+  await page.evaluate(() => { globalThis.__boardDelayNextReplies = true; });
+  await page.locator('#boardThreadList .board-thread-card').click();
+  await expect(page.locator('#boardThreadDetail')).toBeVisible();
+  await expect.poll(() =>
+    page.evaluate(() => typeof globalThis.__boardReleaseReplies)
+  ).toBe('function');
+  await page.locator('#boardBack').click();
+  await expect(page.locator('#boardThreadDetail')).toBeHidden();
+  await expect(page).toHaveURL(/community\.html#board$/);
+  await page.evaluate(() => globalThis.__boardReleaseReplies());
+  await expect(page).toHaveURL(/community\.html#board$/);
+  await expect(page.locator('#boardThreadDetail')).toBeHidden();
+});
+
