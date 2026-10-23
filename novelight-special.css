@@ -1,8 +1,11 @@
 /* NOVELIGHT SPECIAL: simple, static, no database or admin console */
-/* Inherit NOVELIGHT's sans-serif site typography rather than the legal page's serif defaults. */
+/* NOVELIGHT's canonical editorial Mincho fonts are defined in legal.css.
+   Do not override --brand-display-font/--brand-reading-font here. */
 html body.novelight-special-page {
-  --brand-display-font: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-  --brand-reading-font: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: var(--brand-reading-font);
+}
+html body.novelight-special-page .novelight-special-main,
+html body.novelight-special-page .novelight-special-home {
   font-family: var(--brand-reading-font);
 }
 
@@ -15,7 +18,7 @@ html body.novelight-special-page {
 }
 .novelight-special-eyebrow{margin:0 0 8px;color:#ba8e38;font-size:.79rem;font-weight:800;letter-spacing:.17em}
 .novelight-special-home .novelight-special-eyebrow{color:#e2c47d}
-.novelight-special-home h2{font-family:var(--brand-display-font, -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif);font-size:clamp(1.5rem,3vw,2rem);margin:0 0 8px}
+.novelight-special-home h2{font-family:var(--brand-display-font);font-size:clamp(1.5rem,3vw,2rem);margin:0 0 8px}
 .novelight-special-home-copy>p:last-child{margin:0;line-height:1.75;color:#d7dbe3}
 .novelight-special-home-action{display:inline-flex;align-items:center;gap:12px;white-space:nowrap;background:#d6a447;color:#101825!important;padding:13px 21px;border-radius:99px;font-weight:800;text-decoration:none}
 .novelight-special-home-action:hover{background:#ebc778}
@@ -25,7 +28,7 @@ html body.novelight-special-page {
 .novelight-special-breadcrumb a{color:#76581d}
 .novelight-special-hero{padding:42px 35px;background:linear-gradient(118deg,#0a182e,#192640);border-radius:18px;border:1px solid #ac853c;color:#fff}
 .novelight-special-hero .novelight-special-eyebrow{color:#dfc17b}
-.novelight-special-hero h1{font-family:var(--brand-display-font, -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif);font-size:clamp(2rem,4vw,3rem);line-height:1.35;margin:0 0 14px;color:#fff}
+.novelight-special-hero h1{font-family:var(--brand-display-font);font-size:clamp(2rem,4vw,3rem);line-height:1.35;margin:0 0 14px;color:#fff}
 .novelight-special-hero>p:last-child{font-size:1.03rem;line-height:1.9;color:#e0e3e9;max-width:42rem;margin:0}
 .novelight-special-section{margin-top:33px}
 .novelight-special-section h2{font-size:1.38rem;color:#1b2430;margin:0 0 18px}
@@ -41,7 +44,7 @@ html body.novelight-special-page {
 .novelight-special-empty{grid-column:1/-1;background:#fffdf9;border:1px dashed #c9b993;border-radius:14px;text-align:center;padding:32px 18px;color:#556071;line-height:1.8}
 .novelight-special-notice{margin:30px 0 0;line-height:1.9;font-size:.9rem;color:#69717d}
 .novelight-special-detail{padding:36px 40px}
-.novelight-special-detail-heading{font-size:clamp(1.65rem,3vw,2.5rem);line-height:1.45;color:#1b2430;margin:0 0 20px;font-family:var(--brand-display-font, -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif)}
+.novelight-special-detail-heading{font-size:clamp(1.65rem,3vw,2.5rem);line-height:1.45;color:#1b2430;margin:0 0 20px;font-family:var(--brand-display-font)}
 .novelight-special-detail-lead{font-size:1.12rem;color:#414b57;line-height:1.95;margin:0 0 26px}
 .novelight-special-detail-author{border-left:3px solid #d6a447;padding-left:12px;color:#76581d}
 .novelight-special-detail-paragraph{white-space:pre-line;line-height:2;overflow-wrap:anywhere}

@@ -99,10 +99,24 @@ test('both SPECIAL pages participate in the canonical shared-header sync', () =>
   }
 });
 
-test('SPECIAL page typography follows NOVELIGHT sans-serif, not Mincho', () => {
+test('SPECIAL page inherits exactly the editorial Mincho tokens from legal.css', () => {
   const css = read('novelight-special.css');
-  assert.match(css, /body\.novelight-special-page/);
-  assert.match(css, /--brand-display-font:[^;]*sans-serif/);
-  assert.match(css, /--brand-reading-font:[^;]*sans-serif/);
-  assert.doesNotMatch(css, /Mincho|(?<!-)serif\s*;/i);
+  const legal = read('legal.css');
+  const pages = [read('special.html'), read('special-detail.html')];
+  for (const html of pages) {
+    assert.match(html, /href="legal\.css"/);
+    assert.match(html, /href="novelight-special\.css"/);
+    assert.ok(
+      html.indexOf('href="legal.css"') < html.indexOf('href="novelight-special.css"'),
+      'canonical font tokens must load before the page styling'
+    );
+  }
+  assert.match(legal, /--brand-display-font:\s*"Yu Mincho"/);
+  assert.match(legal, /--brand-reading-font:\s*"Yu Mincho"/);
+  assert.match(css, /body\.novelight-special-page\s*\{/);
+  assert.match(css, /font-family:\s*var\(--brand-reading-font\)/);
+  assert.match(css, /\.novelight-special-hero h1\{font-family:var\(--brand-display-font\)/);
+  assert.match(css, /\.novelight-special-detail-heading\{[^}]*font-family:var\(--brand-display-font\)/);
+  assert.doesNotMatch(css, /--brand-display-font\s*:|--brand-reading-font\s*:/);
+  assert.doesNotMatch(css, /Noto Sans|Yu Gothic|Hiragino Kaku|Segoe UI/);
 });
