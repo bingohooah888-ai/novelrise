@@ -133,22 +133,23 @@ async function installIsolatedMock(page, enabled, options = {}) {
       `
     });
   });
-  if (enabled) {
-    await page.route('**/novelight-client.js', async (route) => {
-      const response = await route.fetch();
-      const original = await response.text();
-      const marker = 'timeline: false,';
-      if (!original.includes(marker)) {
-        throw new Error(
-          'Preview-only fixture could not find the exact release flag'
-        );
-      }
-      await route.fulfill({
-        response,
-        body: original.replace(marker, 'timeline: true,')
-      });
+  await page.route('**/novelight-client.js', async (route) => {
+    const response = await route.fetch();
+    const original = await response.text();
+    const marker = /timeline: (?:false|true),/;
+    if (!marker.test(original)) {
+      throw new Error(
+        'Isolated mock could not find the exact community release flag'
+      );
+    }
+    await route.fulfill({
+      response,
+      body: original.replace(
+        marker,
+        enabled ? 'timeline: true,' : 'timeline: false,'
+      )
     });
-  }
+  });
 }
 
 // prettier-ignore
