@@ -24,6 +24,8 @@
   let replyTo = null;
   let offset = 0;
   let revision = 0;
+  let threadRevision = 0;
+  let replyRevision = 0;
   let busy = false;
 
   const node = (tag, cls, text) => {
@@ -147,6 +149,7 @@
   byId('boardCategoryFilter').addEventListener('change', () => { void loadList(true); });
   byId('boardLoadMore').addEventListener('click', () => { void loadList(false); });
   byId('boardBack').addEventListener('click', () => {
+    ++threadRevision; ++replyRevision;
     selection = null; detail.hidden = true; panel.hidden = false;
     history.replaceState(null,'','community.html#board');
   });
@@ -157,9 +160,11 @@
   }
   byId('boardReplyCancel').addEventListener('click', resetReplyTarget);
   async function loadReplies(postKey) {
+    const currentRevision = ++replyRevision;
     replyList.replaceChildren(node('p','community-state','返信を読み込み中...'));
     try {
       const rows = await rpc('novelight_community_comments', {p_post_key:postKey,p_limit:50});
+      if (currentRevision !== replyRevision || selection?.post_key !== postKey) return;
       if (!Array.isArray(rows)) throw new Error('Invalid reply list');
       replyList.replaceChildren();
       for (const row of rows) {
@@ -196,14 +201,18 @@
       }
       if (!rows.length) replyList.append(node('p','community-state','まだ返信はありません。'));
     } catch (_) {
-      replyList.replaceChildren(node('p','community-state','返信を取得できませんでした。'));
+      if (currentRevision === replyRevision && selection?.post_key === postKey)
+        replyList.replaceChildren(node('p','community-state','返信を取得できませんでした。'));
     }
   }
   async function openThread(id) {
     if (!UUID.test(id)) return;
+    const currentThreadRevision = ++threadRevision;
+    ++replyRevision;
     say('スレッドを読み込み中...');
     try {
       const row = await rpc('novelight_community_board_detail',{p_thread_id:id});
+      if (currentThreadRevision !== threadRevision) return;
       if (!row || row.id !== id) {say('スレッドは公開されていません。');return;}
       selection = row;
       panel.hidden = true;
@@ -219,6 +228,7 @@
           if (!window.confirm('このスレッドと公開中の返信を非表示にしますか？')) return;
           try {
             await rpc('novelight_community_board_delete',{p_thread_id:row.id});
+            ++threadRevision; ++replyRevision;
             selection=null;detail.hidden=true;panel.hidden=false;
             history.replaceState(null,'','community.html#board');
             await loadList(true);say('スレッドを削除しました。');
@@ -228,10 +238,14 @@
         actions.append(button('通報する',()=>{void report('novelight_community_report',{p_post_key:row.post_key});}));
       }
       resetReplyTarget();
-      await loadReplies(row.post_key);
-      say('');
       history.replaceState(null,'','community.html#board-thread-' + encodeURIComponent(row.id));
-    } catch (_) {say('スレッドを取得できませんでした。');}
+      await loadReplies(row.post_key);
+      if (currentThreadRevision !== threadRevision) return;
+      say('');
+    } catch (_) {
+      if (currentThreadRevision === threadRevision)
+        say('スレッドを取得できませんでした。');
+    }
   }
   byId('boardReplyForm').addEventListener('submit',async event=>{
     event.preventDefault();
