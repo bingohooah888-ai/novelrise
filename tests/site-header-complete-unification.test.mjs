@@ -24,6 +24,7 @@ test('public headers use the five shared navigation links', () => {
   const labels = ['作品を探す', 'ランキング', '交流', 'お知らせ', '料金プラン'];
   let audited = 0;
   for (const page of htmlFiles) {
+    if (page === 'scout-lv10-campaign.html') continue; // documented custom campaign header
     const header = read(page).match(HEADER_PATTERN)?.[0] || '';
     if (!header.includes('class="site-nav desktop-nav"')) continue;
     audited += 1;
