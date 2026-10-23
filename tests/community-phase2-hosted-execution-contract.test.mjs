@@ -158,7 +158,7 @@ function harness({
       projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
       ref: 'feat/community-plaza-board-phase2-20261023',
       candidateSha,
-      previewOrigin: url
+      previewOrigin: new URL(url).origin
     }),
     reconcileProtectedPreview: wrap('reconcile_preview', {
       status: 'PREVIEW_FOUND_REQUIRES_CLEANUP',
@@ -169,7 +169,7 @@ function harness({
         projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
         ref: 'feat/community-plaza-board-phase2-20261023',
         projectRef,
-        previewOrigin: url,
+        previewOrigin: new URL(url).origin,
         candidateSha
       }
     }),
@@ -185,7 +185,7 @@ function harness({
       projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
       ref: 'feat/community-plaza-board-phase2-20261023',
       candidateSha,
-      previewOrigin: url
+      previewOrigin: new URL(url).origin
     }),
     runThreeRoleHostedAcceptance: wrap('browser', {
       ...fields,
