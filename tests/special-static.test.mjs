@@ -90,7 +90,11 @@ test('both SPECIAL pages participate in the canonical shared-header sync', () =>
     const header = html.match(
       /<header class="site-header">[\s\S]*?<\/header>/
     )?.[0];
-    assert.equal(header, canonical, page + ' header must match the shared header');
+    assert.equal(
+      header,
+      canonical,
+      page + ' header must match the shared header'
+    );
     assert.match(html, /shared\/header\/public-header\.css/);
   }
 });
