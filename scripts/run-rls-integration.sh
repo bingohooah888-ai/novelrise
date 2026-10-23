@@ -44,7 +44,7 @@ echo "::group::Community Phase 2 formal migration rollback before Phase 1 replay
 "${CONTEST_REPLAY[@]}" -f supabase/migrations/20261014052000_community_plaza_phase1.sql
 "${CONTEST_REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
 "${CONTEST_REPLAY[@]}" -f supabase/checks/20261023055617_community_plaza_phase2_postcheck.sql
-"${CONTEST_REPLAY[@]}" -f docs/community/phase2-board-rollback-review.sql
+"${CONTEST_REPLAY[@]}" -f supabase/rollback/20261023055617_community_plaza_phase2_board_rollback.sql
 "${CONTEST_REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
 echo "::endgroup::"
 
