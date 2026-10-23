@@ -142,3 +142,13 @@ html.novelight-page-account-settings body.novelight-author-studio-shell .page-he
     display: none !important;
   }
 }
+
+/* When Analytics stacks vertically, the desktop flex-basis must not become
+   a tall blank area above the mobile period controls. */
+@media (max-width: 720px) {
+  html body.novelight-theme.novelight-page-analytics .analytics-hero.novelight-page-heading .analytics-title-wrap {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    align-self: stretch;
+  }
+}
