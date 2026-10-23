@@ -39,7 +39,6 @@
   <link rel="stylesheet" href="novelight-home-thumbnails.css">
   <link rel="stylesheet" href="novelight-home-promo.css">
   <link rel="stylesheet" href="novelight-community.css">
-  <link rel="stylesheet" href="novelight-contest-home-promo.css">
 <link rel="stylesheet" href="novelight-accessibility.css"><link rel="stylesheet" href="/shared/header/public-header.css" data-novelight-shared-header="true">
 <script src="novelight-return-position.js"></script>
 </head>
@@ -62,14 +61,16 @@
 <main id="main-content" tabindex="-1">
 <section class="home-promo-carousel" aria-label="NOVELIGHT プロモーション">
   <div class="home-promo-track">
-    <article class="home-promo-slide" aria-label="NOVELIGHT イベント告知">
-      <a id="homeLeadLink" class="home-promo-link">
-        <img id="homeLeadVisual" class="home-promo-image" width="1600" height="900" alt="NOVELIGHT イベント告知" loading="eager" fetchpriority="high" decoding="async">
+    <article id="novelightContestHeroSlide" class="home-promo-slide" aria-label="第1回 星灯祭">
+      <a class="home-promo-link" href="contest.html#enter" aria-label="第1回 星灯祭へエントリーする">
+        <img class="home-promo-image" src="assets/home/06_starfestival_hero_1600x900.webp" width="1600" height="900" alt="第1回 星灯祭開催！上位5作品に各1万円。エントリー締切は2026年11月30日23時59分、コンテスト開催は12月1日から31日。" loading="eager" fetchpriority="high" decoding="async">
       </a>
     </article>
 
-    <article class="home-promo-slide" aria-label="NOVELIGHT メインビジュアル">
-      <img class="home-promo-image" data-src="assets/home/01_hero_pc_2560x1280.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。" loading="lazy" fetchpriority="low" decoding="async">
+    <article class="home-promo-slide" aria-label="500円図書カードキャンペーン">
+      <a id="homeLeadLink" class="home-promo-link">
+        <img id="homeLeadVisual" class="home-promo-image" width="1600" height="900" alt="SCOUT LEVEL 10 達成キャンペーン" loading="lazy" fetchpriority="low" decoding="async">
+      </a>
     </article>
 
     <article class="home-promo-slide" aria-label="作者向け機能">
@@ -117,7 +118,7 @@
       const lead = document.getElementById('homeLeadVisual');
       const leadLink = document.getElementById('homeLeadLink');
       const leadVisual = homeLeadVisuals[currentLeadVisual];
-      lead.src = leadVisual.src;
+      lead.dataset.src = leadVisual.src;
       lead.alt = leadVisual.alt;
       if (leadVisual.href) {
         leadLink.href = leadVisual.href;
@@ -130,6 +131,12 @@
       }
 
       const carousel = lead.closest('.home-promo-carousel');
+      // The entry CTA must not continue advertising after registration closes.
+      const contestSlide = document.getElementById('novelightContestHeroSlide');
+      if (contestSlide && Date.now() > Date.parse('2026-11-30T23:59:00+09:00')) {
+        contestSlide.remove();
+        carousel.querySelector('.home-promo-dot:last-child')?.remove();
+      }
       const track = carousel.querySelector('.home-promo-track');
       const previousButton = carousel.querySelector('[data-carousel-prev]');
       const nextButton = carousel.querySelector('[data-carousel-next]');
@@ -302,21 +309,7 @@
   <a class="hero-secondary" href="post.html">小説を投稿する</a>
 </div>
 
-<section class="novelight-contest-home-promo" id="novelightContestHomePromo" aria-labelledby="novelightContestHomePromoHeading" hidden>
-  <h2 class="novelight-contest-home-promo-heading" id="novelightContestHomePromoHeading">第1回 星灯祭 エントリー受付中</h2>
-  <p class="novelight-contest-home-promo-description" id="novelightContestHomePromoDescription">応募作品を募集中です。公開10話以上の作品で参加できます。</p>
-  <a class="novelight-contest-home-promo-link" href="contest.html#enter" id="novelightContestHomePromoLink" aria-label="第1回 星灯祭のエントリー画面へ">
-    <span class="starfestival-banner">
-      <span class="starfestival-banner-eyebrow">NOVELIGHT PRESENTS · DECEMBER 2026</span>
-      <span class="starfestival-banner-title">第1回 星灯祭</span>
-      <span class="starfestival-banner-subtitle">物語の輝きが、読者の心に届く一か月。</span>
-      <span class="starfestival-banner-awards">上位5作品に各1万円 <small>※有効得点1pt以上・5位同点は同順位</small></span>
-      <span class="starfestival-banner-deadline">エントリー締切 2026年11月30日（月）23:59</span>
-      <span class="starfestival-banner-dates">コンテスト開催 12月1日（火）〜31日（木）</span>
-      <span class="starfestival-banner-cta">エントリーはこちら →</span>
-    </span>
-  </a>
-</section>
+
 
 <h1 class="home-heading-a11y">NOVELIGHT（ノベライト）｜小説投稿サイト</h1>
 
@@ -416,4 +409,4 @@ async function loadRankDiscoveryShelves(){await Promise.all([loadRankShelf('unse
 async function loadSeedShelf(){const section=document.getElementById('seedShelfSection'),grid=document.getElementById('seedGrid'),limit=discoveryVisibleLimit();try{const result=await lightSeedFeed(limit,0);if(result.error)throw result.error;let seeded=(Array.isArray(result.data)?result.data:[]).filter(row=>row.status==='published'&&Number(row.light_seed_count||0)>0).slice(0,limit);seeded=await NovelightUserSafety.filterNovelRows(client,seeded);section.hidden=!seeded.length;grid.innerHTML=seeded.length?seeded.map(seedCard).join(''):'';if(seeded.length)void issueAndRecord('home_seed',seeded)}catch(e){console.error('LIGHT SEED feed failed',e);section.hidden=true;grid.innerHTML=''}}
 async function loadNewArrivals(){const grid=document.getElementById('newGrid'),limit=discoveryVisibleLimit();try{const r=await neutralNew(10);if(r.error)throw r.error;const rows=Array.isArray(r.data)?r.data:[],hydrated=await withOfficialThumbnails(rows);let visible=hydrated.slice(0,limit);visible=await NovelightUserSafety.filterNovelRows(client,visible);visible=await NovelightR15.filterRows(visible,client);grid.innerHTML=visible.length?visible.map(card).join(''):'<div class="state">まだ新着作品がありません。</div>';if(visible.length)void issueAndRecord('home_new',visible)}catch(e){console.error(e);grid.innerHTML='<div class="state">新着作品を読み込めませんでした。時間をおいて再度お試しください。</div>'}}
 (async()=>{await NovelightClient.captureAcquisition(client);await NovelightClient.recordVisit(client);void NovelightClient.claimAcquisition(client);try{await Promise.all([loadDiscovery(),loadNewArrivals(),loadSeedShelf(),loadRankDiscoveryShelves()])}finally{window.dispatchEvent(new Event("novelight:page-content-ready"))}})();
-</script><script src="novelight-community-config.js"></script><script src="novelight-community.js"></script><script src="novelight-contest-home-promo.js"></script><script src="novelight-bookshelf.js"></script><script src="novelight-reader-account.js"></script><script src="novelight-today-book-guard.js"></script><script src="novelight-today-book.js"></script></body></html>
+</script><script src="novelight-community-config.js"></script><script src="novelight-community.js"></script><script src="novelight-bookshelf.js"></script><script src="novelight-reader-account.js"></script><script src="novelight-today-book-guard.js"></script><script src="novelight-today-book.js"></script></body></html>
