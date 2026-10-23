@@ -2,8 +2,9 @@
   'use strict';
 
   // Single public release gate; also applies to all shared public headers.
+  // Joint release hold: do not expose either feature until board Phase 2 is ready.
   window.NOVELIGHT_COMMUNITY_FLAGS = Object.freeze({
-    timeline: true,
+    timeline: false,
     board: false
   });
   const VISITOR_KEY = 'novelight_visitor_token';
