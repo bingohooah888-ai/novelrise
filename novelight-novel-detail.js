@@ -581,6 +581,7 @@
       const element = document.getElementById(elementId);
       if (element) support.appendChild(element);
     });
+    window.dispatchEvent(new Event('novelight:page-content-ready'));
   }
 
   window.NovelightNovelDetailV2 = Object.freeze({ boot, episodeRows, buildToc });

@@ -6,10 +6,10 @@ import { URL } from 'node:url';
 const read = (path) =>
   readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
-test('Phase 2 remains hidden until both site release flags are enabled', () => {
+test('Phase 2 only initializes with both site release flags enabled', () => {
   const shared = read('novelight-client.js');
-  assert.match(shared, /timeline:\s*false/);
-  assert.match(shared, /board:\s*false/);
+  assert.match(shared, /timeline:\s*true/);
+  assert.match(shared, /board:\s*true/);
   const script = read('novelight-community-board.js');
   assert.match(script, /if \(!flags\.timeline \|\| !flags\.board/);
   assert.doesNotMatch(script, /\.innerHTML\s*=/);
