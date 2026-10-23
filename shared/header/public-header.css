@@ -30,3 +30,77 @@ html header.site-header {
 html body.novelight-theme.novelight-public-header-page:not(.novelight-public-dark) header.site-header {
   height: auto !important;
 }
+
+/* Fail closed if either plaza release flag is OFF or the shared client failed to load. */
+html:not(.novelight-community-released) header.site-header a[href="community.html"] {
+  display: none !important;
+}
+
+/* Five-link navigation cannot wrap; a menu replaces it before desktop collision. */
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+}
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav a {
+  text-decoration: none !important;
+}
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+  flex-wrap: nowrap !important;
+}
+@media (min-width: 901px) and (max-width: 1510px) {
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .public-header-inner {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
+    display: none !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu {
+    display: block !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu > nav {
+    z-index: 60;
+  }
+  /* Keep a stable header action box through login and account hydration. */
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
+    display: flex !important;
+    position: relative !important;
+    width: 430px !important;
+    min-width: 430px !important;
+    height: 60px !important;
+    flex: 0 0 430px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .mobile-menu {
+    position: absolute !important;
+    top: 50% !important;
+    right: 0 !important;
+    transform: translateY(-50%) !important;
+  }
+  /* Middle widths use the mobile navigation instead of squeezing account and
+     owner shortcuts into the same compact action row. Those destinations remain
+     available in the menu, while the logo/search/login/menu coordinates stay fixed. */
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .nl-reader-account-bar,
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .novelight-admin-shortcut-desktop {
+    display: none !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu .nl-reader-mobile-items {
+    display: contents !important;
+  }
+}
+
+/* Canonical Home signup treatment on every ordinary public header. */
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .signup-action {
+  border: 1px solid #e0ae4c !important;
+  background: linear-gradient(135deg, #b87a17, #e2ad43) !important;
+  color: #0b1018 !important;
+  box-shadow: 0 8px 22px rgba(214, 164, 71, 0.18) !important;
+}
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .signup-action:hover {
+  background: linear-gradient(135deg, #c98b23, #f0c35d) !important;
+  box-shadow: 0 10px 28px rgba(214, 164, 71, 0.27) !important;
+}

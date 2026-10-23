@@ -17,6 +17,8 @@
     filterStatus.hidden = !value;
   }
   const client = supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co', 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
+  // Community does not call acquisition tracking; reuse the shared account navigation sync.
+  if (!isHome) void window.NovelightClient?.syncAuthHeader(client);
   let page = 0;
   let following = false;
   let loading = false;
