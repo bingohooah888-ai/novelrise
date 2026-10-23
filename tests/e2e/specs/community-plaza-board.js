@@ -2,7 +2,6 @@
 import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
 const THREAD_ID = 'c0a00000-0000-4000-8000-000000000123';
-const REPLY_ID = 'c0a00000-0000-4000-8000-000000000124';
 
 // Preserve the standalone browser mock verbatim (no hosted calls).
 // prettier-ignore
@@ -33,7 +32,7 @@ function installFakeSupabase(seeded) {
       })
     },
     rpc: async (name, args = {}) => {
-      window.__boardCalls.push(name);
+      globalThis.__boardCalls.push(name);
       const okay = data => ({ data, error: null });
       if (name === 'novelight_community_board_list') {
         return okay(thread && (!args.p_category || args.p_category === thread.category)
@@ -91,15 +90,15 @@ function installFakeSupabase(seeded) {
       return okay([]);
     }
   };
-  window.supabase = { createClient: () => client };
+  globalThis.supabase = { createClient: () => client };
 }
 
 // Preserve the standalone browser mock verbatim (no hosted calls).
 // prettier-ignore
 async function installBoardMock(page, enabled, seeded = false) {
   await page.addInitScript(() => {
-    window.__boardCalls = [];
-    window.__boardTestXssExecuted = false;
+    globalThis.__boardCalls = [];
+    globalThis.__boardTestXssExecuted = false;
   });
   await page.route('**/*.supabase.co/**', route =>
     route.abort('blockedbyclient')
@@ -134,7 +133,7 @@ test('board remains closed with joint release flags disabled', async ({ page }) 
   await expect(page.locator('#communityPending')).toBeVisible();
   await expect(page.locator('#communityTabs')).toBeHidden();
   await expect(page.locator('#communityBoardInfo')).toBeHidden();
-  const calls = await page.evaluate(() => window.__boardCalls);
+  const calls = await page.evaluate(() => globalThis.__boardCalls);
   expect(calls.some(name => name.includes('community_board'))).toBe(false);
 });
 
@@ -182,7 +181,7 @@ test('board create, reply, owner edit and soft delete use isolated RPCs', async 
   await expect(page.locator('#boardThreadDetail')).toBeHidden();
   await expect(page.locator('#boardThreadList .board-thread-card')).toHaveCount(0);
 
-  const calls = await page.evaluate(() => window.__boardCalls);
+  const calls = await page.evaluate(() => globalThis.__boardCalls);
   for (const operation of [
     'novelight_community_board_list',
     'novelight_community_board_save',
@@ -211,11 +210,11 @@ test('board thread deep link is shareable and content is escaped', async ({
     name: '編集する'
   }).click();
   await page.locator('#boardComposeTitle').fill(
-    '<img src=x onerror="window.__boardTestXssExecuted=true">'
+    '<img src=x onerror="globalThis.__boardTestXssExecuted=true">'
   );
   await page.locator('#boardComposeSafety').check();
   await page.locator('#boardComposeSave').click();
   await expect(page.locator('#boardDetailTitle')).toContainText('<img');
   await expect(page.locator('#boardDetailTitle img')).toHaveCount(0);
-  expect(await page.evaluate(() => window.__boardTestXssExecuted)).toBe(false);
+  expect(await page.evaluate(() => globalThis.__boardTestXssExecuted)).toBe(false);
 });
