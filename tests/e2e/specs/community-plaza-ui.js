@@ -144,10 +144,12 @@ async function installIsolatedMock(page, enabled, options = {}) {
     }
     await route.fulfill({
       response,
-      body: original.replace(
-        marker,
-        enabled ? 'timeline: true,' : 'timeline: false,'
-      )
+      body: original
+        .replace(marker, enabled ? 'timeline: true,' : 'timeline: false,')
+        .replace(
+          /board:\s*(?:false|true)(?=\s*[,}])/,
+          enabled ? 'board: true' : 'board: false'
+        )
     });
   });
 }
