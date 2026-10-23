@@ -2,10 +2,8 @@ name: NOVELIGHT One-Time Community Migration Hung Setup Recovery
 
 # One-time, immutable 2026-10-23 incident only. No database access or deployment.
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/production-community-claimed-run-recovery-20261023.yml'
+  issue_comment:
+    types: [created]
 
 permissions:
   actions: write
@@ -20,7 +18,14 @@ jobs:
   cancel-confirmed-stuck-setup:
     if: >-
       github.repository == 'bingohooah888-ai/novelrise' &&
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/main' &&
+      github.event.issue.number == 2139 &&
+      github.event.issue.pull_request == null &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      github.event.comment.body == 'NOVELIGHT_COMMUNITY_MIGRATION_SETUP_RECOVER 39883987410'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
