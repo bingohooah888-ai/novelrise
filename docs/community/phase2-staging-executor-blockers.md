@@ -118,3 +118,19 @@ Phase 2の`novelight_community_board_save`はDBの`community_runtime_control.pub
 Preview側の`NOVELIGHT_ADMIN_EMAILS`はテスト運営の1件だけとし、`/api/admin-community`のサービスロールは隔離DB用に固定する。PreviewのSupabase公開キー／サーバーSecretの参照先と、Stripeのtest modeを確認する。これらが確認されるまでは隔離DBをONにせず、保護Previewを起動しない。
 
 `scripts/community-phase2-synthetic-fixture-readiness.mjs`は実行時証跡の**形・整合性**のみ検証する。提出されたJSONを本物のプロバイダー証跡と認証する機能は持たない。実際のプロビジョン／環境接続／課金Grantは未実装であり、なおStaging実行は不可。
+
+## Phase 2 隔離ブランチアダプタ（未呼び出し）
+
+`scripts/community-phase2-branch-manager.mjs` は既存のPhase 1 API
+transportを元に、scope `community-phase2-joint-hosted-authenticated-write`
+の**独立Protected Grantを引数として必須**にしたもの。
+データなし・一回限りのbranchのみの作成、タイムアウト時の再GET照合、
+削除直前の同一ID＋parent照合に対応する。Production本体と共有Staging
+をbranch refとして拒否する。
+
+これは保護ランナーから呼べるAPIアダプタであり、単体では秘密鍵取得・
+approval発行・外部実行・課金上限設定・Staging起動を行わない。
+追加により本Draft PRには**潜在的な外部副作用を持つexported関数が含まれる**。
+既存の`read-only` admission workflowはこれをimport／実行しない。
+そのため実運用への反映時には、read-only規約だけではなくPhase 2の
+専用外部書き込みアダプタとしてセキュリティ審査が必要。
