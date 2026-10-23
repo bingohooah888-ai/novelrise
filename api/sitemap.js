@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { projectIsVisible } from './_lib/special-core.js';
+import { specialDatabaseTargetAllowed } from './_lib/special-environment.js';
 
 const SITE_ORIGIN = 'https://novelight.jp';
 const PAGE_SIZE = 1000;
@@ -168,6 +169,12 @@ export function createSitemapHandler({ supabase }) {
 let productionHandler;
 
 export default function handler(req, res) {
+  if (
+    String(req.query?.type || '').toLowerCase() === 'special' &&
+    !specialDatabaseTargetAllowed(process.env)
+  ) {
+    return res.status(503).send('Sitemap temporarily unavailable');
+  }
   if (!productionHandler) {
     const supabase = createClient(
       process.env.SUPABASE_URL,
