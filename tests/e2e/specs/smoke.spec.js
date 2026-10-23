@@ -1,6 +1,8 @@
 import { expect, test } from '../fixtures/diagnostic-fixture.js';
 // Local mock only; runs on CI desktop/mobile Chromium without Staging traffic.
 import './community-plaza-ui.js';
+// Verify SPECIAL through the same real-asset browser smoke used in CI.
+import './novelight-special-display.spec.js';
 
 const publicPages = [
   ['home', '/index.html'],

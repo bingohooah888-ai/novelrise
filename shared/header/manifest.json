@@ -10,6 +10,8 @@
     "login.html",
     "signup.html",
     "profile-settings.html",
+    "special.html",
+    "special-detail.html",
     "special-zone.html",
     "special-light.html",
     "news-detail.html",
