@@ -10,11 +10,11 @@ const promoCss = readTextSync(
   'utf8'
 );
 
-test('Home promo uses the desktop hero artwork in the horizontal carousel', () => {
+test('Home promo uses approved Star Festival artwork in the horizontal carousel', () => {
   assert.match(homeHtml, /class="home-promo-track"/u);
   assert.match(
     homeHtml,
-    /<img class="home-promo-image" data-src="assets\/home\/01_hero_pc_2560x1280\.png" width="2560" height="1280" alt="NOVELIGHT すべての物語に、光を。"/u
+    /<img class="home-promo-image" src="assets\/home\/06_starfestival_hero_1600x900\.webp" width="1600" height="900"/u
   );
   assert.doesNotMatch(homeHtml, /02_hero_mobile_900x1600\.png/u);
   assert.match(promoCss, /scroll-snap-type:\s*x mandatory/u);
