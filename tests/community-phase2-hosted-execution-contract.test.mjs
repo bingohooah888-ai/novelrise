@@ -90,11 +90,14 @@ function harness({
       withData: false
     }),
     reconcileIsolatedBranch: wrap('reconcile_branch', {
-      ...fields,
-      ref: projectRef,
-      parentRef: 'fiepaguycecrredwrcwx',
-      name: 'community-phase2-hosted-' + run.runId,
-      withData: false
+      status: 'BRANCH_FOUND_REQUIRES_CLEANUP',
+      created: {
+        ...fields,
+        ref: projectRef,
+        parentRef: 'fiepaguycecrredwrcwx',
+        name: 'community-phase2-hosted-' + run.runId,
+        withData: false
+      }
     }),
     applyPinnedPhase2Schema: wrap('apply_schema', {
       ...fields,
@@ -225,11 +228,15 @@ test('missing grant blocks ALL hosted staging operations', async () => {
 });
 
 // prettier-ignore
-test('failed provisioning reconciles the branch before continuing', async () => {
+test('ambiguous creation reconciles once then cleans, never runs hosted proof', async () => {
   const h = harness({ failStep: 'create_branch' });
-  await lifecycle.executePhase2JointHostedContract(h);
+  await assert.rejects(lifecycle.executePhase2JointHostedContract(h),
+    /execution_or_cleanup_incomplete/);
   assert.ok(h.names.indexOf('create_branch') < h.names.indexOf('reconcile_branch'));
-  assert.ok(h.names.indexOf('reconcile_branch') < h.names.indexOf('apply_schema'));
+  assert.ok(!h.names.includes('apply_schema'));
+  assert.ok(!h.names.includes('deploy_preview'));
+  assert.ok(h.names.includes('remove_branch'));
+  assert.equal(h.names.at(-1), 'consume');
 });
 
 // prettier-ignore

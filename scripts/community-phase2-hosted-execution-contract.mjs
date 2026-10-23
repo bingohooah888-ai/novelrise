@@ -199,9 +199,17 @@ export async function executePhase2JointHostedContract({ run, operations }) {
     try {
       branch = await operations.createIsolatedBranch(run, grant, watch);
     } catch {
-      // A failed API request may have created the branch, so an independent
-      // read-back / reconciliation is required before any other action.
-      branch = await operations.reconcileIsolatedBranch(run, grant, watch);
+      // The POST may have succeeded even if its response was lost.
+      // Reconcile once, never create again. A found branch is cleanup-only;
+      // do not continue the hosted proof from an ambiguous creation.
+      const reconciled = await operations.reconcileIsolatedBranch(
+        run, grant, watch
+      );
+      if (reconciled?.status === 'BRANCH_FOUND_REQUIRES_CLEANUP') {
+        branch = reconciled.created;
+        checkBranch(branch, run);
+      }
+      stop('ambiguous_branch_creation_cleanup_only');
     }
     checkBranch(branch, run);
     const db = await operations.applyPinnedPhase2Schema(run, branch, grant);

@@ -97,6 +97,9 @@ test('branch timeout never retries POST; an exact GET may reconcile', async () =
   });
   assert.equal(report.status, 'BRANCH_FOUND_REQUIRES_CLEANUP');
   assert.equal(report.created.ref, CHILD);
+  assert.equal(report.created.mainSha, MAIN);
+  assert.equal(report.created.candidateSha, HEAD);
+  assert.equal(report.created.withData, false);
   assert.deepEqual(calls, ['POST', 'GET']);
 });
 

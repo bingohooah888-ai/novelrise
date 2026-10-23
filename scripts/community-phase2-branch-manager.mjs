@@ -171,6 +171,9 @@ export async function reconcilePhase2IsolatedBranchCreation({
     name,
     runId: String(grant.runId),
     requestCommentId: String(grant.requestCommentId),
+    mainSha: grant.mainSha,
+    candidateSha: grant.candidateSha,
+    withData: false,
     dataCopied: false,
     deleteRequired: true
   });

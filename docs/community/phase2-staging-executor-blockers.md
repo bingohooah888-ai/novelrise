@@ -149,3 +149,8 @@ Productionデプロイ、他人のPreview、別PR SHAには触れない。
 **注意:** 今回のPRは候補の書き込み可能APIアダプタのソースと
 モックテストを含むが、Workflowから呼び出されていない。
 実際の削除・Preview生成・GitHub承認操作は行っていない。
+
+
+## Branch作成の曖昧成功からの回復（2026-10-23修正）
+
+Supabaseブランチ生成POSTがtimeout／応答不正の場合、GETで同名ブランチを一度照合する。見つかったブランチの返却値は `{status:'BRANCH_FOUND_REQUIRES_CLEANUP',created:{...}}` なので、Phase 2実行コーディネータは `created` を安全な削除用入力として取り出す。**曖昧な作成結果からDB migration・Preview生成へ続行することは禁止**し、cleanupとONE-USE CONSUMEDを実施する。見つからなくてもPOSTを再試行しない。独立Watchdogは未消去の同名ブランチを監視する必要がある。これらはmock検証のみ、実際のbranchを作成・削除していない。
