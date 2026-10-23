@@ -8,7 +8,10 @@ for (const url of specialPages) {
   }) => {
     const failedResources = [];
     page.on('requestfailed', (request) => {
-      if (request.url().includes('/assets/') || request.url().endsWith('.css')) {
+      if (
+        request.url().includes('/assets/') ||
+        request.url().endsWith('.css')
+      ) {
         failedResources.push(request.url());
       }
     });
@@ -16,9 +19,15 @@ for (const url of specialPages) {
     const response = await page.goto(url);
     expect(response?.ok()).toBe(true);
     await expect(page.locator('header.site-header')).toBeVisible();
-    await expect(page.locator('header.site-header img.logo-image, header.site-header .logo img')).toHaveCount(1);
+    await expect(
+      page.locator(
+        'header.site-header img.logo-image, header.site-header .logo img'
+      )
+    ).toHaveCount(1);
     await expect(page.locator('main#main-content')).toBeVisible();
-    await expect(page.locator('header.site-header .site-nav.desktop-nav a')).toHaveCount(4);
+    await expect(
+      page.locator('header.site-header .site-nav.desktop-nav a')
+    ).toHaveCount(4);
     const styles = await page.evaluate(() => {
       const header = document.querySelector('header.site-header');
       const img = header.querySelector('img');
@@ -45,16 +54,20 @@ for (const url of specialPages) {
   });
 }
 
-test('SPECIAL header matches the existing announcements page at the same viewport', async ({ page }) => {
+test('SPECIAL header matches the existing announcements page at the same viewport', async ({
+  page
+}) => {
   await page.goto('/announcements.html');
-  const reference = await page.locator('header.site-header').evaluate((header) => {
-    const styles = getComputedStyle(header);
-    return {
-      height: header.getBoundingClientRect().height,
-      background: styles.backgroundColor,
-      image: header.querySelector('img')?.getAttribute('src')
-    };
-  });
+  const reference = await page
+    .locator('header.site-header')
+    .evaluate((header) => {
+      const styles = getComputedStyle(header);
+      return {
+        height: header.getBoundingClientRect().height,
+        background: styles.backgroundColor,
+        image: header.querySelector('img')?.getAttribute('src')
+      };
+    });
   await page.goto('/special.html');
   const actual = await page.locator('header.site-header').evaluate((header) => {
     const styles = getComputedStyle(header);
