@@ -1,0 +1,35 @@
+name: SPECIAL typography test formatter once
+on:
+  push:
+    branches:
+      - feat/novelight-special-static-20261023
+permissions:
+  contents: write
+concurrency:
+  group: special-static-font-format-once
+  cancel-in-progress: false
+jobs:
+  format:
+    if: github.repository == 'bingohooah888-ai/novelrise' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/novelight-special-static-20261023
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - name: Format only the SPECIAL static contract test
+        run: ./node_modules/.bin/prettier --write tests/special-static.test.mjs
+      - name: Commit formatting to feature branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/special-static.test.mjs
+          if ! git diff --cached --quiet; then
+            git diff --cached --check
+            git commit -m 'style(special): format header and typography checks'
+            git push origin HEAD:refs/heads/feat/novelight-special-static-20261023
+          fi
