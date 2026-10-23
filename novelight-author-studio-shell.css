@@ -369,3 +369,15 @@ body.novelight-theme.novelight-page-mypage .logout{
   font-size:17px!important;
   padding:9px 14px;
 }
+
+/* Inquiry #74: a tapped mobile menu can keep :hover on touch browsers.
+ * Protect both closed (☰) and open (×) states from legacy button styles. */
+@media (max-width: 900px) {
+  html body.novelight-author-studio-shell #menuToggle,
+  html body.novelight-author-studio-shell #menuToggle:is(:hover, :active, :focus, :focus-visible) {
+    background: rgba(3, 17, 31, 0.96) !important;
+    border-color: var(--novelight-author-shell-line) !important;
+    color: var(--novelight-author-shell-gold-bright) !important;
+    -webkit-text-fill-color: var(--novelight-author-shell-gold-bright) !important;
+  }
+}

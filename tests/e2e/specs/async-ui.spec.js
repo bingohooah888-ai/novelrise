@@ -9,3 +9,5 @@ import './contest-admin-review.js';
 import './community-plaza-ui.js';
 import './community-admin-ui.js';
 import './inquiry71-author-profile.js';
+import './inquiry74-mobile-qa.js';
+import './analytics-visual-trends.spec.js';
