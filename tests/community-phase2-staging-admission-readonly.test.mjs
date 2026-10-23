@@ -7,6 +7,7 @@ import {
 const MAIN_SHA = 'f6028c77915ffce5f01149cd374d03a3c81dca8f';
 const FEATURE_SHA = 'feb1d7728e4d8cef917df52355d873807eba5cc9';
 
+// prettier-ignore
 function facts() {
   return {
     repository: 'bingohooah888-ai/novelrise',
@@ -43,6 +44,7 @@ function facts() {
   };
 }
 
+// prettier-ignore
 test('even green preflight never issues a billable staging grant', () => {
   const actual = inspectPhase2StagingAdmission(facts());
   assert.equal(actual.status, 'PHASE2_READINESS_FACTS_PASSED_NO_EXECUTION');
@@ -60,6 +62,7 @@ test('even green preflight never issues a billable staging grant', () => {
   }
 });
 
+// prettier-ignore
 test('current closed Preview ledger prevents Phase 2 staging entry', () => {
   const input = facts();
   input.previewLedger.state = 'closed';
@@ -68,6 +71,7 @@ test('current closed Preview ledger prevents Phase 2 staging entry', () => {
   assert.ok(actual.reasons.includes('PREVIEW_LEDGER_CLOSED_OR_MISSING'));
 });
 
+// prettier-ignore
 test('old Phase 1 PR cannot masquerade as Phase 2', () => {
   const input = facts();
   input.feature.number = 2222;
@@ -75,6 +79,7 @@ test('old Phase 1 PR cannot masquerade as Phase 2', () => {
   assert.ok(actual.reasons.includes('WRONG_OR_MISSING_PHASE2_PR'));
 });
 
+// prettier-ignore
 test('stale candidate, main drift and altered compare all block entry', () => {
   const input = facts();
   input.compare.commits[0].sha = MAIN_SHA;
@@ -85,6 +90,7 @@ test('stale candidate, main drift and altered compare all block entry', () => {
   assert.ok(actual.reasons.includes('CANDIDATE_NOT_BASED_ON_CURRENT_MAIN'));
 });
 
+// prettier-ignore
 test('no non-owner requests and no incomplete Staging ledger', () => {
   const input = facts();
   input.actor = 'attacker';
@@ -94,6 +100,7 @@ test('no non-owner requests and no incomplete Staging ledger', () => {
   assert.ok(actual.reasons.includes('STAGING_LEDGER_CLOSED_OR_MISSING'));
 });
 
+// prettier-ignore
 test('a forged candidate repository fails closed', () => {
   const input = facts();
   input.feature.head.repo.full_name = 'attacker/novelrise';
