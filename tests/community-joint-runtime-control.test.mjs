@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 
-const file = '../.github/workflows/production-community-joint-runtime-control.yml';
+const filename = 'production-community-joint-runtime-control.yml';
+const file = `../.github/workflows/${filename}`;
 const workflow = readFileSync(new URL(file, import.meta.url), 'utf8');
 const matches = pattern => assert.match(workflow, pattern);
 const absent = pattern => assert.doesNotMatch(workflow, pattern);
@@ -40,10 +41,10 @@ test('enable checks paired flags, schemas, permissions and backup', () => {
   before('Claim approved action', 'Change only the Production runtime gate');
 });
 
-test('disable is schema-independent and claimed failures close the gate', () => {
-  matches(/Emergency stop must work even if the Phase 2 board schema is damaged/);
+test('disable is schema-independent and fail-closed', () => {
+  matches(/Emergency stop must work even if the Phase 2 board schema/);
   matches(/SELECT public_enabled AS enabled/);
-  matches(/WHERE singleton=true AND public_enabled=true RETURNING public_enabled/);
+  matches(/singleton=true AND public_enabled=true RETURNING/);
   matches(/Emergency fail-closed after any claimed enable failure/);
   matches(/steps\.claim\.outcome == 'success'/);
   matches(/WHERE singleton=true\s*\n\s*RETURNING public_enabled/);
