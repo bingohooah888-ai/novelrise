@@ -28,7 +28,7 @@ test('home community follows banner and precedes discovery', () => {
   assert.match(html, /掲示板を見る/);
 });
 
-test('one exchange destination is gated on shared headers', () => {
+test('shared headers use a single exchange destination after joint release', () => {
   const client = read('novelight-client.js');
   const matches = client.match(/href="community\.html"\$\{communityCurrent\}/g);
   assert.equal(matches?.length, 2);
@@ -36,7 +36,10 @@ test('one exchange destination is gated on shared headers', () => {
   assert.match(client, /board:\s*true/u);
   const index = read('index.html');
   assert.match(index, /href="community\.html">交流<\/a>/);
-  assert.match(read('shared/header/public-header.html'), /href="community\.html"/u);
+  assert.match(
+    read('shared/header/public-header.html'),
+    /href="community\.html"/u
+  );
 });
 
 test('near-note sharing is an explicit opt-in', () => {

@@ -30,12 +30,12 @@ test('plaza syncs its logged-in account navigation via shared client', () => {
 test(
   'navigation is a single row on desktop and switches to menu on narrow screens',
   () => {
-  const shared = read('shared/header/public-header.html');
-  assert.equal((shared.match(/href="community\.html"/gu) || []).length, 2);
-  const css = read('shared/header/public-header.css');
-  assert.match(css, /flex-wrap: nowrap !important/u);
-  assert.match(css, /max-width: 1510px/u);
-  assert.match(css, /mobile-menu/u);
+    const shared = read('shared/header/public-header.html');
+    assert.equal((shared.match(/href="community\.html"/gu) || []).length, 2);
+    const css = read('shared/header/public-header.css');
+    assert.match(css, /flex-wrap: nowrap !important/u);
+    assert.match(css, /max-width: 1510px/u);
+    assert.match(css, /mobile-menu/u);
   }
 );
 
