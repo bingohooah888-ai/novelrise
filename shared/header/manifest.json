@@ -4,6 +4,7 @@
     "index.html",
     "search.html",
     "ranking.html",
+    "community.html",
     "recommended.html",
     "new-arrivals.html",
     "light-seed.html",
@@ -164,5 +165,7 @@
     "standaloneAuthor": [
       "interaction-settings.html"
     ]
-  }
+  },
+  "defaultPublicPageTheme": "ivory",
+  "publicPageThemeExceptions": {}
 }
