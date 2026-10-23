@@ -76,14 +76,20 @@ jobs:
           MAIN_SHA: ${{ steps.admission.outputs.sha }}
         run: |
           set -euo pipefail
-          sql="SELECT
-            (SELECT count(*) FROM supabase_migrations.schema_migrations
-             WHERE version IN ('20261014052000','20261023055617'))=2 AS migrations_ok,
-            EXISTS(SELECT 1 FROM pg_class
-             WHERE oid=to_regclass('public.community_board_threads') AND relrowsecurity) AS board_rls,
-            NOT has_table_privilege('anon','public.community_board_threads','SELECT') AS anon_raw_closed,
-            NOT has_table_privilege('authenticated','public.community_board_threads','SELECT') AS member_raw_closed,
-            (SELECT public_enabled FROM public.community_runtime_control WHERE singleton=true) AS enabled"
+          if [ "$ACTION" = 'enable' ]; then
+            sql="SELECT
+              (SELECT count(*) FROM supabase_migrations.schema_migrations
+               WHERE version IN ('20261014052000','20261023055617'))=2 AS migrations_ok,
+              EXISTS(SELECT 1 FROM pg_class
+               WHERE oid=to_regclass('public.community_board_threads') AND relrowsecurity) AS board_rls,
+              NOT has_table_privilege('anon','public.community_board_threads','SELECT') AS anon_raw_closed,
+              NOT has_table_privilege('authenticated','public.community_board_threads','SELECT') AS member_raw_closed,
+              (SELECT public_enabled FROM public.community_runtime_control WHERE singleton=true) AS enabled"
+          else
+            # Emergency stop must work even if the Phase 2 board schema is damaged.
+            sql="SELECT public_enabled AS enabled
+              FROM public.community_runtime_control WHERE singleton=true"
+          fi
           jq -cn --arg query "$sql" '{query:$query,read_only:true}' > /tmp/joint-preflight-request.json
           curl --fail --silent --show-error --max-time 30 \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
@@ -91,11 +97,10 @@ jobs:
             --data-binary @/tmp/joint-preflight-request.json \
             "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" \
             > /tmp/joint-preflight.json
-          jq -e 'type=="array" and length==1 and .[0].migrations_ok==true and
-            .[0].board_rls==true and .[0].anon_raw_closed==true and
-            .[0].member_raw_closed==true' /tmp/joint-preflight.json >/dev/null
           if [ "$ACTION" = 'enable' ]; then
-            jq -e '.[0].enabled==false' /tmp/joint-preflight.json >/dev/null
+            jq -e 'type=="array" and length==1 and .[0].migrations_ok==true and
+              .[0].board_rls==true and .[0].anon_raw_closed==true and
+              .[0].member_raw_closed==true and .[0].enabled==false' /tmp/joint-preflight.json >/dev/null
             node scripts/check-production-backup-freshness.mjs
             vercel_success="$(gh api "repos/$GITHUB_REPOSITORY/commits/$MAIN_SHA/status" --jq '[.statuses[] | select(.context=="Vercel" and .state=="success")] | length')"
             test "$vercel_success" -gt 0
