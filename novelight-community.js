@@ -2,7 +2,7 @@
 (function communityPlaza() {
   'use strict';
   const flags = window.NOVELIGHT_COMMUNITY_FLAGS || {};
-  if (!flags.timeline || !window.supabase) return;
+  if (!flags.timeline || !flags.board || !window.supabase) return;
   const root = document.getElementById('communityHomeFeed') || document.getElementById('communityPageFeed');
   if (!root) return;
   const isHome = root.id === 'communityHomeFeed';

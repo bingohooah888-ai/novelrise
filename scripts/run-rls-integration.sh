@@ -35,6 +35,19 @@ CONTEST_REPLAY=(
 )
 "${CONTEST_REPLAY[@]}" -f tests/rls/november-contest-integration.sql
 echo "::endgroup::"
+# The chronological replay above installed the formal Phase 2 candidate.
+# First verify its disabled gate, then remove ONLY the empty Phase 2 schema
+# before exercising historical Phase 1 reversible migration contracts.
+echo "::group::Community Phase 2 formal migration rollback before Phase 1 replay"
+# The historical replay also exercises older author-notes rollback paths,
+# so restore Phase 1's canonical columns before restoring its RPC functions.
+"${CONTEST_REPLAY[@]}" -f supabase/migrations/20261014052000_community_plaza_phase1.sql
+"${CONTEST_REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
+"${CONTEST_REPLAY[@]}" -f supabase/checks/20261023055617_community_plaza_phase2_postcheck.sql
+"${CONTEST_REPLAY[@]}" -f supabase/rollback/20261023055617_community_plaza_phase2_board_rollback.sql
+"${CONTEST_REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
+echo "::endgroup::"
+
 # Test a real one-statement PostgreSQL DO launch plus its audit row in the
 # disposable replay database. This generator never contacts Production.
 echo "::group::Verify contest registration atomic SQL (disposable replay)"
@@ -62,6 +75,13 @@ echo "::group::Community Phase 1 reversible schema rollback/reapply on disposabl
 "${CONTEST_REPLAY[@]}" -f supabase/checks/20261014052000_community_plaza_phase1_postcheck.sql
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-security.sql
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-behavior.sql
+echo "::endgroup::"
+# The formal Phase 2 migration has been CLI-generated. The review fixtures
+# import that exact file, test role contracts, then ROLLBACK without persistence.
+# Never apply it to Production from this CI runner.
+echo "::group::Community Phase 2 rollback-only board contract (disposable replay)"
+"${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase2-review.sql
+"${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase2-rollback-review.sql
 echo "::endgroup::"
 
 rm -f "$SEARCH_CARD_COMPAT_MIGRATION"

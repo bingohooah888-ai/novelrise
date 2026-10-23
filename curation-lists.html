@@ -41,7 +41,7 @@ footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:960px;
 <script>
 const client=supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co','sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
 const api=NovelightCuration;
-const communityEnabled=window.NOVELIGHT_COMMUNITY_FLAGS?.timeline===true;
+const communityEnabled=window.NOVELIGHT_COMMUNITY_FLAGS?.timeline===true&&window.NOVELIGHT_COMMUNITY_FLAGS?.board===true;
 const listsNode=document.getElementById('lists');
 const listStatus=document.getElementById('listStatus');
 const createForm=document.getElementById('createForm');

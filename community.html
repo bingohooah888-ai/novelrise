@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="novelight-theme.css">
 <link rel="stylesheet" href="novelight-public-dark.css">
 <link rel="stylesheet" href="novelight-community.css">
+<link rel="stylesheet" href="novelight-community-board.css">
 <link rel="stylesheet" href="novelight-accessibility.css">
 </head>
 <body class="novelight-theme novelight-public-dark novelight-page-community">
@@ -17,12 +18,13 @@
  <div class="community-inner">
   <h1 id="communityPageHeading">交流広場</h1>
   <p class="community-intro">作品の更新や近況を通じて、まだ知らない物語と出会おう。</p>
-  <nav class="community-tabs" aria-label="交流広場の機能">
+  <p id="communityPending" class="community-state" role="status">交流広場はタイムラインと掲示板を準備中です。両機能が完成してから同時に公開します。</p>
+  <nav id="communityTabs" class="community-tabs" aria-label="交流広場の機能" hidden>
     <a class="community-tab" href="community.html" aria-current="page">タイムライン</a>
     <a class="community-tab" href="#board" id="communityBoardTab">掲示板</a>
   </nav>
   <section id="communityNotifications" aria-label="あなたへの交流通知" hidden></section>
-  <section id="communityTimeline" aria-label="タイムライン">
+  <section id="communityTimeline" aria-label="タイムライン" hidden>
    <div class="community-filters" aria-label="表示する投稿">
      <button type="button" data-community-filter="everyone" aria-pressed="true">みんな</button>
      <button type="button" data-community-filter="following" aria-pressed="false">フォロー中</button>
@@ -33,7 +35,43 @@
    <div class="community-pagination"><button id="communityLoadMore" class="community-refresh" type="button" hidden>さらに見る</button></div>
   </section>
   <section id="communityBoardInfo" aria-label="掲示板" hidden>
-    <p class="community-state">掲示板はタイムライン公開後、利用状況を確認してから公開します。現在は準備中です。</p>
+    <div class="board-heading">
+      <div><h2>掲示板</h2><p>物語のこと、創作のこと。作者も読者も気軽に話そう。</p></div>
+      <button type="button" id="boardComposeOpen" class="community-refresh">スレッドを作る</button>
+    </div>
+    <form id="boardComposeForm" class="board-compose" hidden>
+      <h3 id="boardComposeHeading">新しいスレッド</h3>
+      <label for="boardComposeCategory">カテゴリ</label>
+      <select id="boardComposeCategory" required><option value="stories">作品の話</option><option value="writing">創作相談</option><option value="general">雑談</option></select>
+      <label for="boardComposeTitle">タイトル（4〜80文字）</label>
+      <input id="boardComposeTitle" maxlength="80" minlength="4" required>
+      <label for="boardComposeBody">本文（最大2,000文字）</label>
+      <textarea id="boardComposeBody" rows="6" maxlength="2000" required></textarea>
+      <label class="board-safety"><input id="boardComposeSafety" type="checkbox" required> 全年齢向けの内容であることを確認しました</label>
+      <div class="board-actions"><button class="community-refresh" id="boardComposeSave" type="submit">投稿する</button><button class="board-secondary" type="button" id="boardComposeCancel">キャンセル</button></div>
+    </form>
+    <p id="boardStatus" role="status" class="community-filter-status"></p>
+    <div id="boardListPanel">
+      <label class="board-filter-label" for="boardCategoryFilter">カテゴリで探す
+        <select id="boardCategoryFilter"><option value="">すべて</option><option value="stories">作品の話</option><option value="writing">創作相談</option><option value="general">雑談</option></select>
+      </label>
+      <div id="boardThreadList" class="board-thread-list" aria-live="polite"></div>
+      <button type="button" id="boardLoadMore" class="community-refresh" hidden>さらに見る</button>
+    </div>
+    <article id="boardThreadDetail" class="board-detail" hidden>
+      <button id="boardBack" type="button" class="board-secondary">← スレッド一覧へ戻る</button>
+      <h2 id="boardDetailTitle"></h2>
+      <p id="boardDetailMeta" class="board-meta"></p>
+      <p id="boardDetailBody" class="board-detail-body"></p>
+      <div id="boardDetailActions" class="board-actions"></div>
+      <h3>返信</h3>
+      <div id="boardReplyList" class="board-replies" aria-live="polite"></div>
+      <form id="boardReplyForm" class="board-reply-form">
+        <label id="boardReplyLabel" for="boardReplyBody">返信を書く（500文字以内）</label>
+        <textarea id="boardReplyBody" rows="3" maxlength="500" required></textarea>
+        <div class="board-actions"><button type="submit" id="boardReplySend" class="community-refresh">返信する</button><button type="button" id="boardReplyCancel" class="board-secondary" hidden>返信先を解除</button></div>
+      </form>
+    </article>
   </section>
  </div>
 </section>
@@ -43,6 +81,7 @@
 <script src="novelight-community-config.js"></script>
 <script src="novelight-client.js"></script>
 <script src="novelight-community.js" defer></script>
+<script src="novelight-community-board.js" defer></script>
 <script src="novelight-community-alerts.js" defer></script>
 <script>
 (() => {
@@ -50,12 +89,16 @@
  const timeline=document.getElementById('communityTimeline');
  const board=document.getElementById('communityBoardInfo');
  const tabs=document.querySelectorAll('.community-tab');
- function setTab(showingBoard){
+ const flags=window.NOVELIGHT_COMMUNITY_FLAGS || {};
+ if (!flags.timeline || !flags.board) return;
+ document.getElementById('communityPending').hidden=true;
+ document.getElementById('communityTabs').hidden=false;
+ function setTab(showingBoard,preserveLocation=false){
    board.hidden=!showingBoard;
    timeline.hidden=showingBoard;
    tabs.forEach(tab=>tab.removeAttribute('aria-current'));
    tabs[showingBoard?1:0].setAttribute('aria-current','page');
-   history.replaceState(null,'',showingBoard?'community.html#board':'community.html');
+   if(!preserveLocation) history.replaceState(null,'',showingBoard?'community.html#board':'community.html');
  }
  boardTab.addEventListener('click',event=>{
    event.preventDefault();
@@ -65,7 +108,11 @@
    event.preventDefault();
    setTab(false);
  });
- if(location.hash==='#board') setTab(true);
+ if(location.hash.startsWith('#board-thread-')) {
+   window.NOVELIGHT_BOARD_INITIAL_THREAD=location.hash.slice('#board-thread-'.length);
+   setTab(true,true);
+ } else if(location.hash==='#board') setTab(true,true);
+ else setTab(false,true);
 })();
 </script>
 </body></html>

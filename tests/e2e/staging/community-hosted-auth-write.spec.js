@@ -1,4 +1,4 @@
-// Hosted authenticated Community Phase 1 acceptance. NEVER runs by default.
+// Hosted authenticated Community Phase 1 + 2 acceptance. NEVER runs by default.
 // Only an OWNER one-use workflow may set the approval environment and provision
 // separate synthetic accounts on a data-less isolated Supabase preview branch.
 import { URL } from 'node:url';
@@ -125,6 +125,8 @@ async function isolatedContext(browser, cfg) {
   return { context, violations };
 }
 
+// Staging-only scripted auth flow; keep the audited action order unchanged.
+// prettier-ignore
 test('real isolated author/reader/admin sessions and moderation', async ({
   browser,
   request
@@ -218,6 +220,98 @@ test('real isolated author/reader/admin sessions and moderation', async ({
     await expect(adminPage.locator('#communityHiddenRows')).not.toContainText(
       key
     );
+
+    // The same approved, isolated 3-role session must exercise Phase 2, not
+    // silently pass on Phase 1 timeline behavior alone. The author account
+    // must be older than the 10-minute anti-spam limit; never bypass it.
+    let boardId = null;
+    try {
+      await authorPage.goto('/community.html#board', {
+        waitUntil: 'domcontentloaded'
+      });
+      await expect(authorPage.locator('#communityBoardInfo')).toBeVisible();
+      await authorPage.locator('#boardComposeOpen').click();
+      await authorPage.locator('#boardComposeCategory').selectOption('writing');
+      await authorPage.locator('#boardComposeTitle').fill(
+        'Hosted board acceptance ' + cfg.env.NOVELIGHT_HOSTED_APPROVAL_ID
+      );
+      await authorPage.locator('#boardComposeBody').fill(
+        'Isolated synthetic general-audience board thread'
+      );
+      await authorPage.locator('#boardComposeSafety').check();
+      await authorPage.locator('#boardComposeSave').click();
+      await expect(authorPage.locator('#boardThreadDetail')).toBeVisible();
+      const threadMatch = new URL(authorPage.url()).hash.match(
+        /^#board-thread-([0-9a-f-]{36})$/u
+      );
+      expect(threadMatch, 'Board thread ID missing after save').not.toBeNull();
+      boardId = threadMatch[1];
+      const boardKey = 'board:' + boardId;
+
+      await readerPage.goto('/community.html#board-thread-' + boardId, {
+        waitUntil: 'domcontentloaded'
+      });
+      await expect(readerPage.locator('#boardThreadDetail')).toBeVisible();
+      await expect(readerPage.locator('#boardDetailActions')).toContainText(
+        '通報する'
+      );
+      await expect(readerPage.locator('#boardDetailActions')).not.toContainText(
+        '編集する'
+      );
+      await readerPage.locator('#boardReplyBody').fill(
+        'Hosted isolated board reply'
+      );
+      await readerPage.locator('#boardReplySend').click();
+      await expect(readerPage.locator('#boardReplyList')).toContainText(
+        'Hosted isolated board reply'
+      );
+      await readerPage.locator('#boardDetailActions').getByRole('button', {
+        name: '通報する'
+      }).click();
+      await expect(readerPage.locator('#boardStatus')).toContainText(
+        '通報を受け付けました'
+      );
+
+      await adminPage.goto('/admin-community.html', {
+        waitUntil: 'domcontentloaded'
+      });
+      const boardReportRow = adminPage
+        .locator('#communityReportRows tr')
+        .filter({ hasText: boardKey });
+      await expect(boardReportRow).toHaveCount(1);
+      await boardReportRow.getByRole('button', { name: '非表示' }).click();
+      await expect(adminPage.locator('#communityHiddenRows')).toContainText(
+        boardKey
+      );
+      await readerPage.reload({ waitUntil: 'domcontentloaded' });
+      await expect(readerPage.locator('#boardThreadDetail')).toBeHidden();
+
+      const hiddenEntry = adminPage
+        .locator('#communityHiddenRows li')
+        .filter({ hasText: boardKey });
+      await hiddenEntry.getByRole('button', { name: '復元' }).click();
+      await expect(adminPage.locator('#communityHiddenRows')).not.toContainText(
+        boardKey
+      );
+      await readerPage.reload({ waitUntil: 'domcontentloaded' });
+      await expect(readerPage.locator('#boardThreadDetail')).toBeVisible();
+    } finally {
+      // Best-effort cleanup is scoped to the approved isolated branch.
+      // The one-use hosted coordinator owns final branch destruction.
+      if (boardId) {
+        await authorPage.goto('/community.html#board-thread-' + boardId, {
+          waitUntil: 'domcontentloaded'
+        });
+        const remove = authorPage
+          .locator('#boardDetailActions')
+          .getByRole('button', { name: '削除する' });
+        if (await remove.isVisible()) {
+          authorPage.once('dialog', (dialog) => dialog.accept());
+          await remove.click();
+          await expect(authorPage.locator('#boardThreadDetail')).toBeHidden();
+        }
+      }
+    }
 
     for (const entry of [author, reader, admin]) {
       expect(entry.violations).toEqual([]);

@@ -11,7 +11,7 @@ test('strict public OFF assignment retains hosted ON', () => {
   });
   assert.deepEqual(page.NOVELIGHT_COMMUNITY_FLAGS, {
     timeline: true,
-    board: false
+    board: true
   });
   assert.ok(Object.isFrozen(page.NOVELIGHT_COMMUNITY_FLAGS));
 });
@@ -28,5 +28,5 @@ test('hosted test flags reject unauthorized mutations', () => {
     /HOSTED_COMMUNITY_BROWSER_DENIED/u
   );
   assert.equal(page.NOVELIGHT_COMMUNITY_FLAGS.timeline, true);
-  assert.equal(page.NOVELIGHT_COMMUNITY_FLAGS.board, false);
+  assert.equal(page.NOVELIGHT_COMMUNITY_FLAGS.board, true);
 });

@@ -13,7 +13,7 @@ export function installHostedCommunityFlags(target = globalThis) {
       'HOSTED_COMMUNITY_BROWSER_DENIED: flag target not pristine'
     );
   }
-  const flags = Object.freeze({ timeline: true, board: false });
+  const flags = Object.freeze({ timeline: true, board: true });
   Object.defineProperty(target, 'NOVELIGHT_COMMUNITY_FLAGS', {
     configurable: false,
     enumerable: true,
