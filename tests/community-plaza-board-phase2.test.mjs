@@ -113,3 +113,15 @@ test('board actions reuse existing comment and moderation records', () => {
     assert.ok(board.includes(name), name + ' is reused');
   }
 });
+
+test('opt-in author and reader surfaces respect the joint gate', () => {
+  for (const page of [
+    'author-notes.html',
+    'curation-lists.html',
+    'light-seed-history.html'
+  ]) {
+    const html = read(page);
+    assert.ok(html.includes('NOVELIGHT_COMMUNITY_FLAGS?.timeline===true'));
+    assert.ok(html.includes('NOVELIGHT_COMMUNITY_FLAGS?.board===true'));
+  }
+});
