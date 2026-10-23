@@ -1,5 +1,5 @@
 /* NOVELIGHT SPECIAL: simple, static, no database or admin console */
-/* Inherit NOVELIGHT's sans-serif site typography rather than legal.css's Mincho defaults. */
+/* Inherit NOVELIGHT's sans-serif site typography rather than the legal page's serif defaults. */
 html body.novelight-special-page {
   --brand-display-font: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   --brand-reading-font: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
