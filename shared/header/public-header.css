@@ -57,24 +57,24 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu > nav {
     z-index: 60;
   }
-  /* Fixed slots prevent the menu from jumping after sign-in removes signup. */
+  /* Keep a stable header action box through login and account hydration. */
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions {
-    display: grid !important;
-    grid-template-columns: 44px 132px 138px 46px !important;
-    justify-content: end !important;
+    display: flex !important;
+    position: relative !important;
+    width: 430px !important;
+    min-width: 430px !important;
+    height: 60px !important;
+    flex: 0 0 430px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
     gap: 8px !important;
   }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .header-search {
-    grid-column: 1 !important;
-  }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .login-action {
-    grid-column: 2 !important;
-  }
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .signup-action {
-    grid-column: 3 !important;
-  }
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .mobile-menu {
-    grid-column: 4 !important;
+    position: absolute !important;
+    top: 50% !important;
+    right: 0 !important;
+    transform: translateY(-50%) !important;
   }
   /* Middle widths use the mobile navigation instead of squeezing account and
      owner shortcuts into the same compact action row. Those destinations remain
