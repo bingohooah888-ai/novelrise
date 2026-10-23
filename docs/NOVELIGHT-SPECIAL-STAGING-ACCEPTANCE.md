@@ -56,28 +56,63 @@ confirmation. No action is pre-authorized merely by the presence of this file.
 1. Create exactly one explicitly named temporary Supabase branch. Record its
    returned ID and project ref *from the provider*, not by guessing.
 2. Verify it is a new nondefault branch and its project ref differs from
-   Production and the long-lived Staging branch. Verify expected base history
-   and absence of SPECIAL tables. If any check fails, stop and delete the
-   new branch only.
-3. Apply **only** the reviewed
+   Production and the long-lived Staging branch. Confirm it was created
+   without copying Production data, and that SPECIAL tables do not yet exist.
+3. Supabase initializes settings, schema migrations, and Edge Functions in
+   separate phases. **Do not equate FUNCTIONs_DEPLOYED, ACTIVE_HEALTHY or an
+   accessible SQL endpoint with complete migration history.** Compare the
+   branch's exact migration-version set with the freshly read Production
+   baseline, then poll status and versions only (read-only). A partial history
+   such as 28/190 can be *in progress*, not necessarily a failure.
+   Use `scripts/special-branch-readiness.mjs` to classify snapshots:
+   `wait` until exact parity and provider readiness, `ready` only with
+   complete version equality, or `abort` for provider-reported failure,
+   unexpected versions, identity mismatch, or a 5-minute initialization
+   deadline. A timeout is an **unconfirmed startup problem**; review provider
+   logs before calling any migration defective. Never re-create automatically.
+4. Apply **only** the reviewed
    `supabase/migrations/20261022204944_novelight_special.sql` to the new
    project ref. Never replay unrelated migrations to the existing Staging.
-4. Verify the new schema/RLS, `special-evidence` private Storage bucket,
+5. Verify the new schema/RLS, `special-evidence` private Storage bucket,
    triggers, database grants and migration history.
-5. Run `tests/sql/special-staging-acceptance.sql` (via a trusted executor;
+6. Run `tests/sql/special-staging-acceptance.sql` (via a trusted executor;
    transaction rolls test-data changes back) and verify that no test rows
    remain. Confirm any unexpected failure before rerunning.
-6. Test ADMIN allowlist, published/withdrawn states, signed evidence upload
+7. Test ADMIN allowlist, published/withdrawn states, signed evidence upload
    and deletion *only if a separate isolated identity, app credentials and
    short-lived authenticated runner exist*. If unavailable, record as
    **not tested**; never use Production authorization credentials as fallback.
-7. Capture redacted results (only branch reference/commit/test outcomes, no
+8. Capture redacted results (only branch reference/commit/test outcomes, no
    tokens, email addresses, contracts or full access logs).
-8. Immediately delete only the newly returned branch ID; check the branch list
+9. Immediately delete only the newly returned branch ID; check the branch list
    afterwards. Report any failure to delete as a cost/cleanup incident.
-9. Close the one-time operation and return to Default-Deny. Any Vercel Preview
+10. Close the one-time operation and return to Default-Deny. Any Vercel Preview
    is a separate named scope and must be tied to the same isolated ref, not to
    Production or the shared Staging environment.
+
+## 2026-10-23 first disposable-branch finding (read-only diagnosis)
+
+The approved disposable branch was created and subsequently deleted with
+successful provider deletion verification. A read-only snapshot taken shortly
+after creation showed **28 migration rows versus 190 on Production**.
+No migration or acceptance SQL was applied on that branch.
+
+**This snapshot does not prove migration failure**. Supabase's documented
+creation workflow runs database migrations asynchronously alongside settings
+and Edge Functions, with the branch becoming ready only after all complete.
+The earlier 28/190 stop was safe but potentially premature. The specific cause
+remains unconfirmed because the transient branch was deleted before detailed
+migration-run logs were captured.
+
+The next authorised attempt, if any, must wait for provider completion or
+a bounded 5-minute stop using `scripts/special-branch-readiness.mjs`.
+Where available, record redacted branch workflow logs, particularly the
+`migrate` step's `EXITED/DEAD` result, before cleanup. The 29th migration is
+`20260906204000_retire_author_gallery_feature.sql`; do not alter it based on
+sequence position alone. Do not touch Production migration history.
+
+Official reference:
+https://supabase.com/blog/how-a-new-branch-gets-its-config-migrations-and-functions
 
 ## Abort / safety conditions
 
@@ -98,5 +133,7 @@ migration or deploy Production without separate explicit `本番承認`.**
   Production in SPECIAL API/Admin/sitemap.
 - Standard CI/CodeQL/Safari — static and disposable regression proof.
 
-Status after preparation: **new billable branch approval is pending; no
-branch, Preview, Staging migration or Production write was performed**.
+Status as of the initial authorised attempt: **one temporary branch was
+created and verifiably deleted**. No SPECIAL migration, Preview deployment,
+shared Staging write, or Production write was performed. A second branch would
+require new explicit cost/scope approval.
