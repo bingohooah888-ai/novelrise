@@ -67,7 +67,7 @@ test('static public navigation does not silently lose its header', () => {
     assert.match(header, /class="header-inner public-header-inner"/u, page);
     assert.match(header, /href="index\.html"/u, page);
     assert.match(header, /href="search\.html"/u, page);
-    assert.match(header, /href="pricing\.html"/u, page);
+    assert.doesNotMatch(header, /href="pricing\.html"/u, page);
     assert.match(header, /href="ranking\.html"/u, page);
     assert.match(source, /href="novelight-header-light\.css"/u, page);
   }
