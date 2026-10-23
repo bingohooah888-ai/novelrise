@@ -142,3 +142,91 @@ body.novelight-page-community .board-reply .board-secondary { font-size: 15px; }
   body.novelight-page-community .community-card { padding: 15px; }
   body.novelight-page-community .community-card-body { font-size: 16px; }
 }
+
+/* Timeline cards retain the original navy-and-gold treatment on ivory pages.
+   The board and the page background remain ivory. */
+body.novelight-page-community .community-page .community-card {
+  background: #102035;
+  color: #f5f2ea;
+  border-color: rgba(214, 164, 71, .35);
+  box-shadow: 0 4px 18px rgba(17, 32, 53, .14);
+}
+body.novelight-page-community .community-page .community-card .community-person a,
+body.novelight-page-community .community-page .community-card .community-card-title {
+  color: #f5f2ea;
+}
+body.novelight-page-community .community-page .community-card .community-date {
+  color: #bdcadd;
+  margin-left: 0;
+}
+body.novelight-page-community .community-page .community-card .community-type {
+  color: #e2b86e;
+}
+body.novelight-page-community .community-page .community-card .community-card-body {
+  color: #dae2ec;
+}
+body.novelight-page-community .community-page .community-card .community-link {
+  background: #0b1728;
+  border-color: #253d56;
+  color: #f7e1a6;
+}
+body.novelight-page-community .community-page .community-card :is(
+  .community-expand, .community-follow-open, .community-more,
+  .community-comment-context, .community-comments-older
+) {
+  color: #f1c989;
+}
+body.novelight-page-community .community-page .community-card .community-follow-panel {
+  background: #0b192b;
+  border-color: rgba(214, 164, 71, .3);
+}
+body.novelight-page-community .community-page .community-card .community-follow-status,
+body.novelight-page-community .community-page .community-card .community-follow-choice,
+body.novelight-page-community .community-page .community-card .community-comment,
+body.novelight-page-community .community-page .community-card .community-comment-body {
+  color: #d8e1ed;
+}
+body.novelight-page-community .community-page .community-card .community-comment strong,
+body.novelight-page-community .community-page .community-card .community-reply-target {
+  color: #f0cd89;
+}
+body.novelight-page-community .community-page .community-card .community-post-meta {
+  margin-left: auto;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+body.novelight-page-community .community-page .community-card .community-post-meta > .community-action {
+  color: #e3bd7c;
+  font-size: 14px;
+  padding: 0 3px;
+  text-decoration: none;
+}
+body.novelight-page-community .community-page .community-card .community-post-meta > .community-action:hover {
+  text-decoration: underline;
+}
+/* Remove the three visible timeline controls; their stored data and linked
+   comment deep-link support remain unchanged. The report is now above. */
+body.novelight-page-community .community-page .community-card > .community-actions {
+  display: none;
+}
+body.novelight-page-community .community-page .community-card .community-report-form {
+  border-color: rgba(214, 164, 71, .3);
+}
+body.novelight-page-community .community-page .community-card .community-report-status {
+  color: #e9d5aa;
+}
+body.novelight-page-community .community-page .community-card .community-report-form textarea {
+  background: #0b1728;
+  color: #f5f2ea;
+  border-color: #715b3a;
+}
+@media (max-width: 640px) {
+  body.novelight-page-community .community-page .community-card .community-post-meta {
+    white-space: normal;
+    text-align: right;
+  }
+}

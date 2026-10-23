@@ -240,11 +240,15 @@ test('community UI interactions use mocked data', async ({ page }) => {
     '通知設定を保存しました'
   );
   const like = card.locator('[aria-label="いいね"]');
-  await like.click();
+  await expect(like).toBeHidden();
+  await like.dispatchEvent('click');
   await expect(like).toHaveAttribute('aria-pressed', 'true');
   await expect(like).toContainText('2');
 
-  await card.locator('.community-action', { hasText: 'コメント' }).click();
+  const commentToggle = card.locator('.community-actions button', { hasText: /^コメント/ });
+  await expect(commentToggle).toBeHidden();
+  await expect(card.locator('.community-share')).toBeHidden();
+  await commentToggle.dispatchEvent('click');
   await expect(card.locator('.community-comment')).toContainText(
     '既存コメント'
   );
@@ -287,9 +291,11 @@ test('community UI interactions use mocked data', async ({ page }) => {
   }));
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth + 1);
 
-  await card
-    .locator('.community-actions button', { hasText: /^通報$/ })
-    .click();
+  const report = card.locator('.community-post-meta > button');
+  await expect(card.locator('.community-post-meta .community-date')).toBeVisible();
+  await expect(report).toHaveText('通報');
+  await expect(report).toBeVisible();
+  await report.click();
   await expect(card.locator('.community-report-form')).toBeVisible();
   await card.locator('.community-report-form textarea').fill('テスト理由');
   await card.locator('.community-report-form .community-report-submit').click();
@@ -298,9 +304,8 @@ test('community UI interactions use mocked data', async ({ page }) => {
     .toBeVisible();
   await expect(card.locator('.community-report-status'))
     .toHaveText('通報を受け付けました');
-  await expect(
-    card.locator('.community-actions button', { hasText: /^通報済み$/ })
-  ).toBeDisabled();
+  await expect(report).toHaveText('通報済み');
+  await expect(report).toBeDisabled();
 
   await page.locator('[data-community-filter="following"]').click();
   await expect(page.locator('.community-card')).toHaveCount(0);

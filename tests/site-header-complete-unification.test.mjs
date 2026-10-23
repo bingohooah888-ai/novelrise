@@ -20,8 +20,8 @@ test('no root HTML page exposes the retired Features header link', () => {
   assert.doesNotMatch(client, /index\.html#features/u);
 });
 
-test('public headers use the five shared navigation links', () => {
-  const labels = ['作品を探す', 'ランキング', '交流', 'お知らせ', '料金プラン'];
+test('public headers use the four shared navigation links', () => {
+  const labels = ['作品を探す', 'ランキング', '交流', 'お知らせ'];
   let audited = 0;
   for (const page of htmlFiles) {
     if (page === 'scout-lv10-campaign.html') continue; // documented custom campaign header
@@ -34,8 +34,8 @@ test('public headers use the five shared navigation links', () => {
     for (const block of [desktop, ...mobile]) {
       const nav = block.split('</nav>')[0];
       const items = Array.from(nav.matchAll(/>([^<]+)<\/a>/gu), (m) => m[1]);
-      assert.deepEqual(items.slice(0, 5), labels, page);
-      if (block === desktop) assert.equal(items.length, 5, page);
+      assert.deepEqual(items.slice(0, 4), labels, page);
+      if (block === desktop) assert.equal(items.length, 4, page);
     }
   }
   assert.ok(audited >= 17, 'static public headers were audited');
@@ -67,7 +67,7 @@ test('static public navigation does not silently lose its header', () => {
     assert.match(header, /class="header-inner public-header-inner"/u, page);
     assert.match(header, /href="index\.html"/u, page);
     assert.match(header, /href="search\.html"/u, page);
-    assert.match(header, /href="pricing\.html"/u, page);
+    assert.doesNotMatch(header, /href="pricing\.html"/u, page);
     assert.match(header, /href="ranking\.html"/u, page);
     assert.match(source, /href="novelight-header-light\.css"/u, page);
   }

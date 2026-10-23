@@ -31,9 +31,6 @@
     "api/seo/templates/episode.html"
   ],
   "overrides": {
-    "pricing.html": {
-      "active": "pricing.html"
-    },
     "announcements.html": {
       "active": "announcements.html",
       "logoLabel": "NOVELIGHT ホーム",

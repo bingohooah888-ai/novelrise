@@ -26,7 +26,7 @@ test('community shares login state', () => {
   assert.match(runtime, /NovelightClient\?\.syncAuthHeader\(client\)/u);
 });
 
-test('five navigation links never wrap', () => {
+test('four navigation links never wrap', () => {
   const shared = read('shared/header/public-header.html');
   const css = read('shared/header/public-header.css');
   assert.equal((shared.match(/href="community\.html"/gu) || []).length, 2);
@@ -41,6 +41,8 @@ test('plaza and board use readable ivory', () => {
   assert.match(css, /background: #fffdf8/u);
   assert.match(css, /font-size: 17px/u);
   assert.match(css, /color: #302214/u);
+  assert.match(css, /background: #102035/u);
+  assert.match(css, /community-post-meta/u);
   assert.ok(css.includes('.board-thread-card'));
 });
 
