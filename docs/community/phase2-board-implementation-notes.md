@@ -18,6 +18,15 @@
 - 通知から掲示板スレッドへのリンク。
 - 類似のRank、SCOUT XP/Point、LIGHT SEED、PV、作品コメントへの接続は追加しない。
 
+## 2026-10-23 継続検証・スキーマ引継ぎ
+- 本番DBを読み取り専用で再確認：`community_runtime_control.public_enabled=false`、`activated_at=null`、`community_board_threads` テーブル未作成。本番に変更はしていない。
+- 既存のDBテストを拡張：本人のスレッド編集、作成者宛の返信通知、既存通報台帳、既存スタッフAPIのhide/restoreを、rollback-onlyの使い捨てCI PostgreSQLで検証する。
+- **データ保護用のrollback候補**：`docs/community/phase2-board-rollback-review.sql`。公開ゲートがOFF、掲示板スレッドや交流レコードが空でなければ即座に中止し、Phase 1関数を復元したうえで追加テーブル/関数のみ除去する。既存データを自動削除するSQLではない。
+- rollback候補の模擬テスト：`tests/rls/community-plaza-phase2-rollback-review.sql`。既存CIの使い捨て再生DBでのみ実行する。
+- 現行MASTER第43章の交流広場追補をOWNER最新方針「タイムライン＋掲示板同時一般公開」へ更新（本PR内・未マージ）。
+- 正式マイグレーションの生成経路は**未完了**：現実行環境にはSupabase CLIがなく、接続済みDesktop Commander端末も利用不可。レビュー用SQLをmigrationと偽装せず、CLIで`supabase migration new <name>`（正確な構文は実行時の`--help`で確認）を行ってから正式ファイルへ移す。
+- GitHub CIは一時DB・モックテストのみ。別承認が必要な外部Staging／Productionへは接続しない。
+
 ## 安全境界
 - `docs/community/phase2-board-schema-review.sql` は**レビュー用SQLでありmigrationではない**。
 - 新テーブルRLS ON + anon/authenticated直接アクセス禁止、明示的な最小RPCだけ利用する案。
@@ -27,7 +36,7 @@
 
 ## 未完了・本番前の必須残件
 1. 既存仕様とカテゴリ・スレッド編集、削除の契約を最終照合する。
-2. `supabase migration new` を使用してreview SQLから正式migrationを生成し、実行順序と差分をレビューする。環境にCLIが無いため、この段階では生成していない。
+2. Supabase CLIで正式migrationを生成し、review SQLを格納して実行順序・pre/postcheck・保全rollbackを審査する。現段階では生成していない。
 3. 非Productionの隔離SQL/RLS権限・匿名閲覧・他人の編集・Block/Mute・通報・運営表示/非表示・削除後の不可視・連投制限を検証する（ユーザー承認済みの検証方針を守る）。
 4. PC/スマホ模擬UI、Node/静的品質、既存タイムライン回帰、CodeQLを確認する。既に通過した同一検査を無駄に反復しない。
 5. PRの必要な承認ゲートを通しProduction migrationとコード導入を別々に実施。新機能は両方完成するまでOFFのまま維持。
