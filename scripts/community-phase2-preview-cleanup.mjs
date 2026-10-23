@@ -46,11 +46,25 @@ function validateDeployment(raw, grant, target) {
   }
   const observedSha = raw?.meta?.githubCommitSha || raw?.gitSource?.sha;
   const observedBranch = raw?.meta?.githubCommitRef || raw?.gitSource?.ref;
+  // Vercel's live v13 deployment response may provide nested project.id,
+  // omit ownerId, and use null for a Preview target. TeamId is explicitly
+  // bound on every authenticated request and the project ID is immutable.
+  const nestedProjectId = raw?.project?.id;
+  const projectId = nestedProjectId ?? raw?.projectId;
+  const safeAliases = Array.isArray(raw?.alias) && raw.alias.every(
+    (alias) =>
+      typeof alias === 'string' &&
+      /^[a-z0-9-]+\\.vercel\\.app$/u.test(alias) &&
+      alias !== 'novelrise.vercel.app'
+  );
   if (
     raw?.id !== target.deploymentId ||
-    raw?.projectId !== PROJECT ||
-    raw?.ownerId !== TEAM ||
-    raw?.target !== 'preview' ||
+    projectId !== PROJECT ||
+    (nestedProjectId && raw?.projectId &&
+      nestedProjectId !== raw.projectId) ||
+    (raw?.ownerId && raw.ownerId !== TEAM) ||
+    (raw?.target !== null && raw?.target !== 'preview') ||
+    !safeAliases ||
     observedSha !== grant.candidateSha ||
     observedBranch !== BRANCH ||
     parsed.protocol !== 'https:' ||

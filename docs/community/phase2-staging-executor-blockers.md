@@ -171,3 +171,23 @@ Phase 2の後片付けにおける`Promise.allSettled([fnA(), fnB()])`は、
 削除のどちらかが失敗した場合はSUCCESSとせず、失敗をCONSUMED
 記録する。Nodeの2つの同期例外テストで確認する。
 現状は契約・モックだけの修正で、実際のPreviewやbranchに触れない。
+
+
+## 実Vercel Previewレスポンスと削除先照合（2026-10-23）
+
+Vercel接続済みAPIのread-only実例では、既存PreviewのGET情報は
+`target:null`、`project:{id, name, framework}`、`ownerId`は省略、
+`alias`はvercel.app上の追加エイリアス配列だった。旧アダプタは
+`projectId`・`ownerId`・`target:'preview'`を必須にしていたため、
+正当な隔離Previewでも削除できずに費用が残る可能性があった。
+
+`community-phase2-preview-cleanup.mjs`は次の両方を受け付ける：
+providerのフラット`projectId`形式、または実観測と同じ
+`project.id`形式。ただしproject ID不一致、フラットとネスト間の矛盾、
+既知のownerId不一致は拒否。実観測の`target:null`と`preview`のみ
+許可し、Productionや別custom environmentは禁止する。
+全aliasは非Production vercel.appドメインのみ許可し、
+Production alias／独自ドメインがあれば削除を拒否する。
+元の「認証付きTeamIdクエリ＋対象Deployment ID＋Git SHA＋Ref＋
+Preview URL＋削除前のGET＋削除後404確認」をすべて維持。
+これは実際のPreviewの**情報構造**に合わせた修正で、削除操作は行わない。

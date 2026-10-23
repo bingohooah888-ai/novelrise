@@ -34,9 +34,9 @@ const target = () => ({
 });
 const meta = () => ({
   id: deploymentId,
-  projectId: project,
-  ownerId: team,
-  target: 'preview',
+  project: { id: project, name: 'novelrise' },
+  target: null,
+  alias: ['novelight-phase2-only.vercel.app'],
   url: 'novelight-phase2-only.vercel.app',
   meta: {
     githubCommitSha: sha,
@@ -89,7 +89,11 @@ test('wrong feature SHA or missing protected grant never sends a request', async
 test('Production, foreign project or mismatched ref cannot be deleted', async () => {
   for (const overwritten of [
     { target: 'production' },
-    { projectId: 'prj_not_this_project' },
+    { project: { id: 'prj_not_this_project' } },
+    { ownerId: 'team_other_owner' },
+    { target: 'staging' },
+    { alias: ['novelight-production.example.com'] },
+    { alias: ['novelrise.vercel.app'] },
     { meta: { githubCommitSha: sha, githubCommitRef: 'main' } },
     { url: 'novelrise.vercel.app' }
   ]) {
