@@ -1,0 +1,102 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  inspectPhase2StagingAdmission
+} from '../scripts/community-phase2-staging-admission-readonly.mjs';
+
+const MAIN_SHA = 'f6028c77915ffce5f01149cd374d03a3c81dca8f';
+const FEATURE_SHA = 'feb1d7728e4d8cef917df52355d873807eba5cc9';
+
+function facts() {
+  return {
+    repository: 'bingohooah888-ai/novelrise',
+    actor: 'bingohooah888-ai',
+    checkedOutSha: MAIN_SHA,
+    main: { object: { sha: MAIN_SHA } },
+    feature: {
+      number: 2457,
+      state: 'open',
+      draft: true,
+      base: { ref: 'main' },
+      head: {
+        sha: FEATURE_SHA,
+        ref: 'feat/community-plaza-board-phase2-20261023',
+        repo: { full_name: 'bingohooah888-ai/novelrise' }
+      }
+    },
+    compare: {
+      behind_by: 0,
+      ahead_by: 90,
+      base_commit: { sha: MAIN_SHA },
+      commits: [{ sha: FEATURE_SHA }]
+    },
+    previewLedger: {
+      number: 188,
+      state: 'open',
+      title: '[Staging Approval Control] Preview / Staging cost gate'
+    },
+    stagingLedger: {
+      number: 294,
+      state: 'open',
+      title: '[Staging Control] Supabase migration sync'
+    }
+  };
+}
+
+test('even green preflight never issues a billable staging grant', () => {
+  const actual = inspectPhase2StagingAdmission(facts());
+  assert.equal(actual.status, 'PHASE2_READINESS_FACTS_PASSED_NO_EXECUTION');
+  for (const key of [
+    'stagingCostApproved',
+    'ownerOneUseClaimAuthorized',
+    'mayReopenLedger',
+    'mayCreatePreview',
+    'mayCreateBranch',
+    'mayRunHostedBrowser',
+    'mayChangeProduction',
+    'publicReleaseAuthorized'
+  ]) {
+    assert.equal(actual[key], false, key);
+  }
+});
+
+test('current closed Preview ledger prevents Phase 2 staging entry', () => {
+  const input = facts();
+  input.previewLedger.state = 'closed';
+  const actual = inspectPhase2StagingAdmission(input);
+  assert.equal(actual.status, 'PHASE2_STAGING_ADMISSION_BLOCKED');
+  assert.ok(actual.reasons.includes('PREVIEW_LEDGER_CLOSED_OR_MISSING'));
+});
+
+test('old Phase 1 PR cannot masquerade as Phase 2', () => {
+  const input = facts();
+  input.feature.number = 2222;
+  const actual = inspectPhase2StagingAdmission(input);
+  assert.ok(actual.reasons.includes('WRONG_OR_MISSING_PHASE2_PR'));
+});
+
+test('stale candidate, main drift and altered compare all block entry', () => {
+  const input = facts();
+  input.compare.commits[0].sha = MAIN_SHA;
+  input.compare.behind_by = 1;
+  input.checkedOutSha = FEATURE_SHA;
+  const actual = inspectPhase2StagingAdmission(input);
+  assert.ok(actual.reasons.includes('TRUSTED_MAIN_CHECKOUT_MISMATCH'));
+  assert.ok(actual.reasons.includes('CANDIDATE_NOT_BASED_ON_CURRENT_MAIN'));
+});
+
+test('no non-owner requests and no incomplete Staging ledger', () => {
+  const input = facts();
+  input.actor = 'attacker';
+  input.stagingLedger.state = 'closed';
+  const actual = inspectPhase2StagingAdmission(input);
+  assert.ok(actual.reasons.includes('OWNER_IDENTITY_MISSING'));
+  assert.ok(actual.reasons.includes('STAGING_LEDGER_CLOSED_OR_MISSING'));
+});
+
+test('a forged candidate repository fails closed', () => {
+  const input = facts();
+  input.feature.head.repo.full_name = 'attacker/novelrise';
+  const actual = inspectPhase2StagingAdmission(input);
+  assert.ok(actual.reasons.includes('WRONG_OR_MISSING_PHASE2_PR'));
+});
