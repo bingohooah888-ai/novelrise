@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@vercel/og": "0.8.5",
-    "@supabase/supabase-js": "2.112.3",
+    "@supabase/supabase-js": "2.118.0",
     "stripe": "^20.4.0",
     "sharp": "0.35.5"
   },
