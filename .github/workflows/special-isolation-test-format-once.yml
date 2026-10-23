@@ -1,0 +1,35 @@
+name: SPECIAL safety test formatter
+on:
+  push:
+    branches:
+      - feat/novelight-special-v1-20261023
+permissions:
+  contents: write
+concurrency:
+  group: special-safety-test-format
+  cancel-in-progress: false
+jobs:
+  format:
+    if: github.repository == 'bingohooah888-ai/novelrise' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/novelight-special-v1-20261023
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - name: Format only new safety regression test
+        run: ./node_modules/.bin/prettier --write tests/special-preview-isolation.test.mjs
+      - name: Commit reviewed formatting
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tests/special-preview-isolation.test.mjs
+          if ! git diff --cached --quiet; then
+            git diff --cached --check
+            git commit -m 'style(special): format Preview DB isolation tests'
+            git push origin HEAD:refs/heads/feat/novelight-special-v1-20261023
+          fi
