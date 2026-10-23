@@ -17,7 +17,8 @@
  <div class="community-inner">
   <h1 id="communityPageHeading">交流広場</h1>
   <p class="community-intro">作品の更新や近況を通じて、まだ知らない物語と出会おう。</p>
-  <nav class="community-tabs" aria-label="交流広場の機能">
+  <p id="communityPending" class="community-state" role="status" hidden>交流広場はタイムラインと掲示板を準備中です。両機能が完成してから同時に公開します。</p>
+  <nav id="communityTabs" class="community-tabs" aria-label="交流広場の機能">
     <a class="community-tab" href="community.html" aria-current="page">タイムライン</a>
     <a class="community-tab" href="#board" id="communityBoardTab">掲示板</a>
   </nav>
@@ -33,7 +34,7 @@
    <div class="community-pagination"><button id="communityLoadMore" class="community-refresh" type="button" hidden>さらに見る</button></div>
   </section>
   <section id="communityBoardInfo" aria-label="掲示板" hidden>
-    <p class="community-state">掲示板はタイムライン公開後、利用状況を確認してから公開します。現在は準備中です。</p>
+    <p class="community-state">掲示板は現在準備中です。タイムラインとあわせて公開します。</p>
   </section>
  </div>
 </section>
@@ -50,6 +51,14 @@
  const timeline=document.getElementById('communityTimeline');
  const board=document.getElementById('communityBoardInfo');
  const tabs=document.querySelectorAll('.community-tab');
+ const flags=window.NOVELIGHT_COMMUNITY_FLAGS || {};
+ if (!flags.timeline && !flags.board) {
+   document.getElementById('communityPending').hidden=false;
+   document.getElementById('communityTabs').hidden=true;
+   timeline.hidden=true;
+   board.hidden=true;
+   return;
+ }
  function setTab(showingBoard){
    board.hidden=!showingBoard;
    timeline.hidden=showingBoard;
