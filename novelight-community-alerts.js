@@ -89,7 +89,7 @@
 
       for (const notice of data) {
         const key = String(notice.post_key || '');
-        if (!/^(?:novel:[0-9]+|note:[0-9]+|curation:[0-9]+|seed:[0-9a-f-]{36}|official:[0-9]+|ep:[0-9a-f-]{36}:[0-9]+:[0-9]+)$/i.test(key)) continue;
+        if (!/^(?:novel:[0-9]+|note:[0-9]+|curation:[0-9]+|seed:[0-9a-f-]{36}|official:[0-9]+|ep:[0-9a-f-]{36}:[0-9]+:[0-9]+|board:[0-9a-f-]{36})$/i.test(key)) continue;
         const id = Number(notice.id);
         if (!Number.isSafeInteger(id) || id <= 0) continue;
         const hasRead = Boolean(notice.read_at);
@@ -100,9 +100,11 @@
         const focusComment = (notice.kind === 'reply' || notice.kind === 'comment') &&
           /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(commentId);
         const link = item('a',focusComment ? 'コメントを見る' : '投稿を確認');
-        link.href = 'community.html' +
-          (focusComment ? '?comment=' + encodeURIComponent(commentId) : '') +
-          '#post-' + encodeURIComponent(key);
+        link.href = key.startsWith('board:')
+          ? 'community.html#board-thread-' + encodeURIComponent(key.slice(6))
+          : 'community.html' +
+            (focusComment ? '?comment=' + encodeURIComponent(commentId) : '') +
+            '#post-' + encodeURIComponent(key);
         if (!hasRead) {
           // Read acknowledgement precedes navigation, but never prevents
           // visiting the post if the network is slow or unavailable.
