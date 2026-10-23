@@ -134,3 +134,18 @@ approval発行・外部実行・課金上限設定・Staging起動を行わな�
 既存の`read-only` admission workflowはこれをimport／実行しない。
 そのため実運用への反映時には、read-only規約だけではなくPhase 2の
 専用外部書き込みアダプタとしてセキュリティ審査が必要。
+
+## Phase 2のPreview個別削除アダプタ（2026-10-23、未呼び出し）
+
+`scripts/community-phase2-preview-cleanup.mjs`は、独立OWNER
+保護Grantを要求し、対象Vercelデプロイが
+チーム／プロジェクト／PR HEAD／Git ref／`target=preview`
+／`.vercel.app`に完全一致する場合だけ、
+公式の `DELETE /v13/deployments/{id}` を実行する。
+削除前GETと削除後404の再取得を必須とし、プロジェクト全削除、
+Productionデプロイ、他人のPreview、別PR SHAには触れない。
+参照：Vercel REST API公式 `https://vercel.com/docs/rest-api`。
+
+**注意:** 今回のPRは候補の書き込み可能APIアダプタのソースと
+モックテストを含むが、Workflowから呼び出されていない。
+実際の削除・Preview生成・GitHub承認操作は行っていない。
