@@ -151,6 +151,50 @@ END
 $board_reader$;
 RESET ROLE;
 
+-- Check that a board reply produces the existing shared notification and that
+-- reporting uses the existing private report ledger (not a parallel table).
+DO $board_notification$
+DECLARE v_key text:='board:'||current_setting('novelight.test.board.thread');
+BEGIN
+ IF NOT EXISTS (
+   SELECT 1 FROM public.community_notifications n
+   WHERE n.post_key=v_key AND n.kind='comment'
+     AND n.recipient_user_id='c0b00000-0000-4000-8000-000000000001'
+     AND n.actor_user_id='c0b00000-0000-4000-8000-000000000002'
+ ) THEN RAISE EXCEPTION 'Board reply did not notify thread creator'; END IF;
+ IF NOT EXISTS (
+   SELECT 1 FROM public.community_reports cr
+   WHERE cr.post_key=v_key AND
+     cr.reporter_user_id='c0b00000-0000-4000-8000-000000000002'
+ ) THEN RAISE EXCEPTION 'Board report did not use private moderation ledger'; END IF;
+END
+$board_notification$;
+
+SET LOCAL ROLE authenticated;
+SELECT pg_catalog.set_config('request.jwt.claim.sub','c0b00000-0000-4000-8000-000000000001',true);
+DO $board_owner_edit$
+DECLARE v_id uuid:=current_setting('novelight.test.board.thread')::uuid;
+ v_data jsonb;
+BEGIN
+ IF public.novelight_community_board_save(
+  'writing','Edited Board CI title','Owner edited content',true,v_id
+ ) IS DISTINCT FROM v_id THEN
+   RAISE EXCEPTION 'Owner edit did not return original thread ID';
+ END IF;
+ v_data:=public.novelight_community_board_detail(v_id);
+ IF v_data->>'title' IS DISTINCT FROM 'Edited Board CI title'
+   OR v_data->>'category' IS DISTINCT FROM 'writing'
+   OR v_data->>'body' IS DISTINCT FROM 'Owner edited content' THEN
+   RAISE EXCEPTION 'Owner edited content not visible through board detail'; END IF;
+ IF NOT EXISTS (
+   SELECT 1 FROM jsonb_array_elements(
+     public.novelight_community_board_list('writing',15,0)) x
+   WHERE x->>'id'=v_id::text
+ ) THEN RAISE EXCEPTION 'Edited board thread not discoverable in new category'; END IF;
+END
+$board_owner_edit$;
+RESET ROLE;
+
 INSERT INTO public.user_blocks(blocker_user_id,blocked_user_id)
  VALUES ('c0b00000-0000-4000-8000-000000000001','c0b00000-0000-4000-8000-000000000002');
 
@@ -196,8 +240,16 @@ DELETE FROM public.user_mutes
  WHERE muter_user_id='c0b00000-0000-4000-8000-000000000002'
    AND muted_user_id='c0b00000-0000-4000-8000-000000000001';
 
-INSERT INTO public.community_hidden_posts(post_key,reason)
- VALUES('board:'||current_setting('novelight.test.board.thread'),'CI hidden fixture');
+-- Exercise real staff moderation RPC (the admin web handler calls this with
+-- a server-only service_role client). Do not simulate hiding only with raw SQL.
+DO $board_admin_hide$
+DECLARE v_key text:='board:'||current_setting('novelight.test.board.thread');
+BEGIN
+ IF public.novelight_admin_community_moderate(
+   'c0b00000-0000-4000-8000-000000000001'::uuid,'hide',v_key,NULL,'CI hide test'
+ ) IS DISTINCT FROM true THEN RAISE EXCEPTION 'Board hide moderation failed'; END IF;
+END
+$board_admin_hide$;
 SET LOCAL ROLE authenticated;
 SELECT pg_catalog.set_config('request.jwt.claim.sub','c0b00000-0000-4000-8000-000000000002',true);
 DO $board_hidden$
@@ -211,8 +263,16 @@ END
 $board_hidden$;
 RESET ROLE;
 
-DELETE FROM public.community_hidden_posts
-WHERE post_key='board:'||current_setting('novelight.test.board.thread');
+DO $board_admin_restore$
+DECLARE v_key text:='board:'||current_setting('novelight.test.board.thread');
+BEGIN
+ IF public.novelight_admin_community_moderate(
+   'c0b00000-0000-4000-8000-000000000001'::uuid,'restore',v_key,NULL,'CI restore test'
+ ) IS DISTINCT FROM true THEN RAISE EXCEPTION 'Board restore moderation failed'; END IF;
+ IF EXISTS(SELECT 1 FROM public.community_hidden_posts WHERE post_key=v_key)
+ THEN RAISE EXCEPTION 'Board still hidden after staff restore'; END IF;
+END
+$board_admin_restore$;
 
 SET LOCAL ROLE authenticated;
 SELECT pg_catalog.set_config('request.jwt.claim.sub','c0b00000-0000-4000-8000-000000000001',true);
