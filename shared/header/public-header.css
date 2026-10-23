@@ -58,3 +58,15 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
     z-index: 60;
   }
 }
+
+/* Canonical Home signup treatment on every ordinary public header. */
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .signup-action {
+  border: 1px solid #e0ae4c !important;
+  background: linear-gradient(135deg, #b87a17, #e2ad43) !important;
+  color: #0b1018 !important;
+  box-shadow: 0 8px 22px rgba(214, 164, 71, 0.18) !important;
+}
+html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .signup-action:hover {
+  background: linear-gradient(135deg, #c98b23, #f0c35d) !important;
+  box-shadow: 0 10px 28px rgba(214, 164, 71, 0.27) !important;
+}
