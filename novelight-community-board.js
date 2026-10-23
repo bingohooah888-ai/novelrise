@@ -220,6 +220,7 @@
           try {
             await rpc('novelight_community_board_delete',{p_thread_id:row.id});
             selection=null;detail.hidden=true;panel.hidden=false;
+            history.replaceState(null,'','community.html#board');
             await loadList(true);say('スレッドを削除しました。');
           } catch (_) {say('削除できませんでした。');}
         }));
