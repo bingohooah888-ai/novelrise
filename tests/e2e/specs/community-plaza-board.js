@@ -226,6 +226,7 @@ test('board thread deep link is shareable and content is escaped', async ({
   await expect(page.locator('#boardDetailTitle img')).toHaveCount(0);
   expect(await page.evaluate(() => globalThis.__boardTestXssExecuted)).toBe(false);
 });
+
 // Preserve browser interaction test without external Supabase I/O.
 // prettier-ignore
 test('back navigation wins over a delayed reply response', async ({ page }) => {
