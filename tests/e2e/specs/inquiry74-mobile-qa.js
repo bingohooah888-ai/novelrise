@@ -79,12 +79,12 @@ test('Home Back restores the same section offset after async shelf changes', asy
 
   await page.goto('/index.html');
   await page.evaluate(() => {
-    const pricing = document.getElementById('pricing');
-    window.scrollTo(0, pricing.offsetTop + 70);
+    const pricing = globalThis.document.getElementById('pricing');
+    globalThis.window.scrollTo(0, pricing.offsetTop + 70);
   });
   const position = () =>
     page.evaluate(() => {
-      return document.getElementById('pricing').getBoundingClientRect().top;
+      return globalThis.document.getElementById('pricing').getBoundingClientRect().top;
     });
   const before = await position();
   expect(before).toBeCloseTo(-70, 0);
