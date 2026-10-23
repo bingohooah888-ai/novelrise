@@ -32,6 +32,15 @@ test('board uses shared plaza page, timeline UI and responsive layer', () => {
   }
   assert.match(html, /novelight-community-board\.js/);
   assert.match(html, /novelight-community-board\.css/);
+  assert.match(html, /id="communityTimeline" aria-label="タイムライン" hidden/);
+  assert.match(html, /id="communityTabs"[^>]+ hidden>/);
+  assert.match(html, /id="communityPending"[^>]+role="status">/);
+  const css = read('novelight-community-board.css');
+  assert.match(css, /#communityTimeline\[hidden\]/);
+  assert.match(css, /#communityTabs\[hidden\]/);
+  const boardJs = read('novelight-community-board.js');
+  assert.ok(boardJs.includes("'community.html#board-thread-'"));
+
   assert.ok(html.includes('NOVELIGHT_BOARD_INITIAL_THREAD'));
   const notices = read('novelight-community-alerts.js');
   assert.ok(notices.includes('board-thread-'));
