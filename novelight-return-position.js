@@ -1,5 +1,6 @@
-/* Recover a reader's place on browser Back even when Home shelves or the
-   work-detail table of contents changes height after the first paint. */
+/* Keep a reader's location when returning to Home or a work detail page.
+ * Store a stable element ID and its viewport offset, never an array index.
+ * The browser retains native scroll restoration, especially for BFCache. */
 (() => {
   'use strict';
   const page = location.pathname.split('/').pop() || 'index.html';
@@ -7,83 +8,112 @@
 
   const STATE_KEY = '__novelightReturnPositionV1';
   const VIEWPOINT = 120;
-  const returning = performance.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward';
-  const selector = page === 'index.html'
-    ? 'main > section'
-    : 'main > section, main > div, main > aside';
+  const isBackForward =
+    performance.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward';
+  const anchorSelector = page === 'index.html'
+    ? 'main > section[id]'
+    : 'main > section[id], main > #novelightWorkDetailGrid';
   const tocSelector = '.nl-work-detail-toc .nl-work-toc-list, .nl-worknav-episode-list';
 
-  function visibleAnchor() {
-    const candidates = document.querySelectorAll(selector);
-    let index = -1;
-    let chosen = null;
-    for (let i = 0; i < candidates.length; i += 1) {
-      const element = candidates[i];
-      if (element.hidden) continue;
-      const rect = element.getBoundingClientRect();
-      if (rect.height <= 0 || rect.top > VIEWPOINT) continue;
-      index = i;
-      chosen = rect;
-      if (rect.bottom > VIEWPOINT) break;
+  function visible(element) {
+    return element && !element.hidden && element.getClientRects().length > 0;
+  }
+
+  function stableAnchor() {
+    let nearest = null;
+    let nearestTop = -Infinity;
+    for (const element of document.querySelectorAll(anchorSelector)) {
+      if (!element.id || !visible(element)) continue;
+      const top = element.getBoundingClientRect().top;
+      if (top <= VIEWPOINT && top > nearestTop) {
+        nearest = element;
+        nearestTop = top;
+      }
     }
-    return chosen ? { index, distance: VIEWPOINT - chosen.top } : null;
+    return nearest ? { id: nearest.id, viewportTop: nearestTop } : null;
   }
 
   function remember() {
-    const previous = history.state;
-    if (previous !== null && (typeof previous !== 'object' || Array.isArray(previous))) return;
+    const state = history.state;
+    if (state !== null && (typeof state !== 'object' || Array.isArray(state))) return;
     const toc = document.querySelector(tocSelector);
     const snapshot = {
       pathname: location.pathname,
       search: location.search,
       top: window.scrollY,
-      anchor: visibleAnchor(),
+      anchor: stableAnchor(),
       tocTop: toc ? toc.scrollTop : null
     };
     try {
-      history.replaceState({ ...previous, [STATE_KEY]: snapshot }, '');
+      history.replaceState({ ...state, [STATE_KEY]: snapshot }, '');
     } catch (error) {
-      console.warn('Page return position could not be saved', error);
+      console.warn('NOVELIGHT return position save failed', error);
     }
   }
 
+  // Save before following a normal link as well as on pagehide.
   document.addEventListener('click', (event) => {
     const link = event.target.closest?.('a[href]');
-    if (link?.href) remember();
+    if (link?.href && !event.defaultPrevented) remember();
   }, true);
   window.addEventListener('pagehide', remember);
 
-  const snapshot = history.state?.[STATE_KEY];
-  if (!returning || !snapshot || snapshot.pathname !== location.pathname
-      || snapshot.search !== location.search || !Number.isFinite(snapshot.top)) return;
+  const saved = history.state?.[STATE_KEY];
+  if (!isBackForward || !saved ||
+      saved.pathname !== location.pathname || saved.search !== location.search ||
+      !Number.isFinite(saved.top) || saved.top < 0) return;
 
-  try { history.scrollRestoration = 'manual'; } catch (_) { /* default browser behavior */ }
+  // Do not turn off native restoration; Chrome/Safari BFCache needs it.
+  let completed = false;
   let userInteracted = false;
-  for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown']) {
-    window.addEventListener(type, () => { userInteracted = true; }, { once: true, passive: true });
+  for (const name of ['wheel', 'touchstart', 'pointerdown', 'keydown']) {
+    window.addEventListener(name, () => { userInteracted = true; }, { passive: true, once: true });
   }
 
-  function restore() {
-    if (userInteracted) return;
-    let target = snapshot.top;
-    const anchor = snapshot.anchor;
-    if (anchor && Number.isInteger(anchor.index) && Number.isFinite(anchor.distance)) {
-      const element = document.querySelectorAll(selector)[anchor.index];
-      if (element && !element.hidden) {
-        const rect = element.getBoundingClientRect();
-        if (rect.height > 0) {
-          target = window.scrollY + rect.top + anchor.distance - VIEWPOINT;
-        }
+  function restore(fallback = false) {
+    if (completed || userInteracted) return;
+    const anchor = saved.anchor;
+
+    // The legacy header is replaced with a grid asynchronously. Do not
+    // restore while the old shell is still on screen.
+    if (!fallback && page === 'novel.html' &&
+        window.NovelightNovelDetailV2 && document.getElementById('novelHeader')) return;
+
+    let target = saved.top;
+    if (anchor?.id && Number.isFinite(anchor.viewportTop)) {
+      const element = document.getElementById(anchor.id);
+      if (!visible(element)) {
+        if (!fallback) return;
+      } else {
+        const documentTop = window.scrollY + element.getBoundingClientRect().top;
+        target = documentTop - anchor.viewportTop;
       }
     }
-    window.scrollTo({ top: Math.max(0, target), left: 0, behavior: 'auto' });
     const toc = document.querySelector(tocSelector);
-    if (toc && Number.isFinite(snapshot.tocTop)) toc.scrollTop = snapshot.tocTop;
+    if (!fallback && Number.isFinite(saved.tocTop) && !toc) return;
+
+    window.scrollTo({ top: Math.max(0, target), left: 0, behavior: 'auto' });
+    if (toc && Number.isFinite(saved.tocTop)) toc.scrollTop = saved.tocTop;
+    completed = true;
   }
 
-  const schedule = () => requestAnimationFrame(() => requestAnimationFrame(restore));
-  document.addEventListener('DOMContentLoaded', schedule, { once: true });
-  window.addEventListener('pageshow', schedule, { once: true });
-  window.addEventListener('load', schedule, { once: true });
-  window.addEventListener('novelight:page-content-ready', schedule);
+  function schedule(fallback = false) {
+    requestAnimationFrame(() => requestAnimationFrame(() => restore(fallback)));
+  }
+
+  // The async content-ready signal is emitted after shelf and detail assembly.
+  // Avoid an earlier DOMContentLoaded/load restoration that visibly jumps.
+  window.addEventListener('novelight:page-content-ready', () => schedule(), { once: false });
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      // A restored BFCache document already retains its exact scroll position.
+      completed = true;
+      return;
+    }
+    if (!saved.anchor) schedule();
+  }, { once: true });
+  // Safety fallback for empty/failed/very slow feeds that never emit ready.
+  window.addEventListener('load', () => {
+    window.setTimeout(() => schedule(true), 3500);
+  }, { once: true });
 })();
