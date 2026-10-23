@@ -57,6 +57,16 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
   html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu > nav {
     z-index: 60;
   }
+  /* Middle widths use the mobile navigation instead of squeezing account and
+     owner shortcuts into the same compact action row. Those destinations remain
+     available in the menu, while the logo/search/login/menu coordinates stay fixed. */
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .nl-reader-account-bar,
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .novelight-admin-shortcut-desktop {
+    display: none !important;
+  }
+  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .mobile-menu .nl-reader-mobile-items {
+    display: contents !important;
+  }
 }
 
 /* Canonical Home signup treatment on every ordinary public header. */
