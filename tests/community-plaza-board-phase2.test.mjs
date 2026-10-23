@@ -75,10 +75,8 @@ test('board schema protects private data and release gate', () => {
     'board_save',
     'board_delete'
   ]) {
-    assert.match(
-      sql,
-      new RegExp('CREATE OR REPLACE FUNCTION public\\.novelight_community_' + rpc)
-    );
+    const expected = 'CREATE OR REPLACE FUNCTION public\\.novelight_community_';
+    assert.match(sql, new RegExp(expected + rpc));
   }
   assert.match(sql, /community_runtime_control/);
   assert.match(sql, /community_user_restrictions/);
