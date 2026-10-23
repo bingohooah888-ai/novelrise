@@ -10,9 +10,11 @@ const COMMUNITY_SQL =
   'supabase/migrations/' + '20261014052000_community_plaza_phase1.sql';
 
 test('community is hidden before approval', () => {
-  const flags = read('novelight-community-config.js');
+  const flags = read('novelight-client.js');
   assert.match(flags, /timeline:\s*false/);
   assert.match(flags, /board:\s*false/);
+  const config = read('novelight-community-config.js');
+  assert.match(config, /timeline:false, board:false/);
 });
 
 test('home community follows banner and precedes discovery', () => {
@@ -58,7 +60,9 @@ test('timeline and board share one page', () => {
   assert.match(html, /id="communityTimeline"/);
   assert.match(html, /id="communityBoardInfo"/);
   assert.match(html, /location\.hash==='#board'/);
-  assert.match(html, /タイムライン公開後/);
+  assert.match(html, /タイムラインとあわせて公開/);
+  assert.match(html, /id="communityPending"/);
+  assert.match(html, /if \(!flags\.timeline && !flags\.board\)/);
 });
 
 test('ADMIN bearer protects moderator changes', () => {
