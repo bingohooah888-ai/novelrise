@@ -3,7 +3,7 @@
 
   // Single public release gate; also applies to all shared public headers.
   window.NOVELIGHT_COMMUNITY_FLAGS = Object.freeze({
-    timeline: true,
+    timeline: false,
     board: false
   });
   const VISITOR_KEY = 'novelight_visitor_token';
