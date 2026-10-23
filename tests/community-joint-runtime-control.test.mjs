@@ -36,6 +36,25 @@ test('enable checks paired flags, schemas, permissions and backup', () => {
   matches(/check-production-backup-freshness\.mjs/);
   matches(/timeline:\[\[:space:\]\]\*true/);
   matches(/board:\[\[:space:\]\]\*true/);
+  const boardLineCheck =
+    "grep -Eq '^[[:space:]]*board:[[:space:]]*true[[:space:]]*,?[[:space:]]*
+  matches(/\.\[0\]\.enabled==false/);
+  before('Read-only DB and release preflight', 'Claim approved action');
+  before('Claim approved action', 'Change only the Production runtime gate');
+});
+
+test('disable is schema-independent and fail-closed', () => {
+  matches(/Emergency stop must work even if the Phase 2 board schema/);
+  matches(/SELECT public_enabled AS enabled/);
+  matches(/singleton=true AND public_enabled=true RETURNING/);
+  matches(/Emergency fail-closed after any claimed enable failure/);
+  matches(/steps\.claim\.outcome == 'success'/);
+  matches(/WHERE singleton=true\s*\n\s*RETURNING public_enabled/);
+  matches(/NOVELIGHT_COMMUNITY_JOINT_RUNTIME_EXECUTED/);
+  absent(/\b(DROP|TRUNCATE|DELETE FROM)\b/i);
+});
+";
+  assert.ok(workflow.includes(boardLineCheck));
   matches(/\.\[0\]\.enabled==false/);
   before('Read-only DB and release preflight', 'Claim approved action');
   before('Claim approved action', 'Change only the Production runtime gate');
