@@ -58,7 +58,9 @@ test('timeline and board share one page', () => {
   assert.match(html, /id="communityTimeline"/);
   assert.match(html, /id="communityBoardInfo"/);
   assert.match(html, /location\.hash==='#board'/);
-  assert.match(html, /タイムライン公開後/);
+  assert.match(html, /タイムラインと掲示板は、セットでの公開に向けて準備中/);
+  assert.match(html, /if\(!flags.timeline\|\|!flags.board\)/);
+  assert.match(read('novelight-client.js'), /timeline: false,\s*board: false/);
 });
 
 test('ADMIN bearer protects moderator changes', () => {
