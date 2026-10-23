@@ -7,6 +7,10 @@ const SCOPE = 'community-phase2-joint-hosted-authenticated-write';
 const REPO = 'bingohooah888-ai/novelrise';
 const PROD = 'fiepaguycecrredwrcwx';
 const SHARED = 'wmlzjgvxgoyrovdhbqbg';
+const VERCEL_TEAM = 'team_2XFgtRCPJQ6pbrEa4mOLQAEx';
+const VERCEL_PROJECT = 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe';
+const FEATURE_REF = 'feat/community-plaza-board-phase2-20261023';
+const DEPLOY_ID = /^dpl_[a-zA-Z0-9]+$/u;
 const SHA = /^[a-f0-9]{40}$/u;
 const ID = /^[1-9][0-9]*$/u;
 const REF = /^[a-z0-9]{20}$/u;
@@ -24,6 +28,7 @@ export const REQUIRED_PHASE2_HOSTED_OPERATIONS = Object.freeze([
   'verifyIsolatedSyntheticAccounts',
   'enableIsolatedCommunityForProof',
   'createProtectedPreview',
+  'reconcileProtectedPreview',
   'verifyIsolatedPreviewBinding',
   'runThreeRoleHostedAcceptance',
   'disableIsolatedCommunityAfterProof',
@@ -108,7 +113,8 @@ function checkWatch(w, run, claim) {
     w.claimCommentId !== claim.claimCommentId ||
     w.signedRegistrationReadBack !== true ||
     w.branchAbsentBeforeProvisioning !== true ||
-    w.watchdogActivelyArmed !== true
+    w.watchdogActivelyArmed !== true ||
+    w.previewCleanupArmedVerified !== true
   ) stop('cleanup_watch_unverified');
 }
 function checkBranch(branch, run) {
@@ -133,6 +139,12 @@ function checkPreview(p, run, branch) {
     p.projectRef !== branch.ref ||
     p.deployedSha !== run.candidateSha ||
     p.vercelEnvironment !== 'preview' ||
+    !DEPLOY_ID.test(p.deploymentId ?? '') ||
+    p.teamId !== VERCEL_TEAM ||
+    p.projectId !== VERCEL_PROJECT ||
+    p.ref !== FEATURE_REF ||
+    p.candidateSha !== run.candidateSha ||
+    p.previewOrigin !== url.origin ||
     !url.hostname.endsWith('.vercel.app') ||
     url.protocol !== 'https:' ||
     url.username !== '' || url.password !== '' ||
@@ -140,6 +152,32 @@ function checkPreview(p, run, branch) {
     url.hostname === 'novelrise.vercel.app' ||
     url.pathname !== '/' || url.search !== '' || url.hash !== ''
   ) stop('preview_binding_not_proven');
+}
+function checkReconciledPreview(p, run, branch) {
+  // This receipt only permits cleanup of the one verified deployment.
+  // Never continue the hosted test after an ambiguous Preview creation.
+  if (
+    !sameRun(p, run) ||
+    !DEPLOY_ID.test(p?.deploymentId ?? '') ||
+    p?.candidateSha !== run.candidateSha ||
+    p?.projectRef !== branch.ref ||
+    p?.teamId !== VERCEL_TEAM ||
+    p?.projectId !== VERCEL_PROJECT ||
+    p?.ref !== FEATURE_REF
+  ) stop('preview_reconciliation_target_not_proven');
+  let origin;
+  try {
+    origin = new URL(p.previewOrigin);
+  } catch {
+    stop('preview_reconciliation_origin_invalid');
+  }
+  if (
+    origin.protocol !== 'https:' ||
+    !origin.hostname.endsWith('.vercel.app') ||
+    origin.hostname === 'novelrise.vercel.app' ||
+    origin.username || origin.password || origin.port ||
+    origin.pathname !== '/' || origin.search || origin.hash
+  ) stop('preview_reconciliation_origin_unsafe');
 }
 function checkProof(proof, run, branch, preview) {
   if (
@@ -249,7 +287,20 @@ export async function executePhase2JointHostedContract({ run, operations }) {
       active.publicEnabled !== true ||
       active.productionExcluded !== true
     ) stop('isolated_test_gate_activation_unverified');
-    preview = await operations.createProtectedPreview(run, branch, grant);
+    try {
+      preview = await operations.createProtectedPreview(run, branch, grant);
+    } catch {
+      // The POST could have allocated a billable Vercel Preview. Reconcile
+      // exactly once, retain the identity for cleanup, never redeploy.
+      const recovery = await operations.reconcileProtectedPreview(
+        run, branch, grant
+      );
+      if (recovery?.status === 'PREVIEW_FOUND_REQUIRES_CLEANUP') {
+        checkReconciledPreview(recovery.preview, run, branch);
+        preview = recovery.preview;
+      }
+      stop('ambiguous_preview_creation_cleanup_only');
+    }
     const observed = await operations.verifyIsolatedPreviewBinding(
       run, branch, preview
     );

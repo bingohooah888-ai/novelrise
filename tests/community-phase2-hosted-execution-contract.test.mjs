@@ -80,7 +80,8 @@ function harness({
       claimCommentId: '4999',
       signedRegistrationReadBack: true,
       branchAbsentBeforeProvisioning: true,
-      watchdogActivelyArmed: true
+      watchdogActivelyArmed: true,
+      previewCleanupArmedVerified: true
     }),
     createIsolatedBranch: wrap('create_branch', {
       ...fields,
@@ -151,7 +152,26 @@ function harness({
       url,
       projectRef,
       deployedSha: candidateSha,
-      vercelEnvironment: 'preview'
+      vercelEnvironment: 'preview',
+      deploymentId: 'dpl_123ABC456DEF',
+      teamId: 'team_2XFgtRCPJQ6pbrEa4mOLQAEx',
+      projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
+      ref: 'feat/community-plaza-board-phase2-20261023',
+      candidateSha,
+      previewOrigin: url
+    }),
+    reconcileProtectedPreview: wrap('reconcile_preview', {
+      status: 'PREVIEW_FOUND_REQUIRES_CLEANUP',
+      preview: {
+        ...fields,
+        deploymentId: 'dpl_123ABC456DEF',
+        teamId: 'team_2XFgtRCPJQ6pbrEa4mOLQAEx',
+        projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
+        ref: 'feat/community-plaza-board-phase2-20261023',
+        projectRef,
+        previewOrigin: url,
+        candidateSha
+      }
     }),
     verifyIsolatedPreviewBinding: wrap('verify_preview', {
       ...fields,
@@ -159,7 +179,13 @@ function harness({
       url,
       projectRef,
       deployedSha: candidateSha,
-      vercelEnvironment: 'preview'
+      vercelEnvironment: 'preview',
+      deploymentId: 'dpl_123ABC456DEF',
+      teamId: 'team_2XFgtRCPJQ6pbrEa4mOLQAEx',
+      projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
+      ref: 'feat/community-plaza-board-phase2-20261023',
+      candidateSha,
+      previewOrigin: url
     }),
     runThreeRoleHostedAcceptance: wrap('browser', {
       ...fields,
@@ -363,4 +389,17 @@ test('a fixture read failure never activates the isolated DB gate', async () => 
     /execution_or_cleanup_incomplete/);
   assert.ok(!h.names.includes('enable_isolated_gate'));
   assert.ok(h.names.includes('disable_isolated_gate'));
+});
+
+// prettier-ignore
+test('ambiguous Preview POST reconciles exact deployment, cleans it and never browses', async () => {
+  const h = harness({ failStep: 'deploy_preview' });
+  await assert.rejects(lifecycle.executePhase2JointHostedContract(h),
+    /execution_or_cleanup_incomplete/);
+  assert.equal(h.names.filter((name) => name === 'deploy_preview').length, 1);
+  assert.ok(h.names.indexOf('deploy_preview') < h.names.indexOf('reconcile_preview'));
+  assert.ok(!h.names.includes('verify_preview'));
+  assert.ok(!h.names.includes('browser'));
+  assert.ok(h.names.includes('remove_preview'));
+  assert.equal(h.names.at(-1), 'consume');
 });

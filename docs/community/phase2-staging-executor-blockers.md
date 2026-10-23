@@ -154,3 +154,8 @@ Productionデプロイ、他人のPreview、別PR SHAには触れない。
 ## Branch作成の曖昧成功からの回復（2026-10-23修正）
 
 Supabaseブランチ生成POSTがtimeout／応答不正の場合、GETで同名ブランチを一度照合する。見つかったブランチの返却値は `{status:'BRANCH_FOUND_REQUIRES_CLEANUP',created:{...}}` なので、Phase 2実行コーディネータは `created` を安全な削除用入力として取り出す。**曖昧な作成結果からDB migration・Preview生成へ続行することは禁止**し、cleanupとONE-USE CONSUMEDを実施する。見つからなくてもPOSTを再試行しない。独立Watchdogは未消去の同名ブランチを監視する必要がある。これらはmock検証のみ、実際のbranchを作成・削除していない。
+
+
+## Ambiguous Preview作成の費用残留防止（2026-10-23）
+
+Vercel Preview POSTがtimeout／不正応答になった場合、実際のデプロイが作成済みかもしれない。Phase 2独立runnerの契約に`reconcileProtectedPreview`を必須化し、作成と同じRUN/HEAD/Branch/Project/Teamへ厳密に束縛したGET結果が見つかった場合に限り、そのdeployed IDを後片付けへ渡す。曖昧POSTの後に二度目のPreviewを作成したり、ユーザーブラウザの試験を続行したりしない。独立WatchdogにはSupabaseだけでなくVercel Preview回収可否の準備証跡も要求する。正常にPreview作成した場合も`deploymentId`等の削除証跡を後片付けまで保持する。実際のadapter/runnerは別途実装・審査が必要。
