@@ -81,22 +81,23 @@ test('no dedicated SPECIAL database, migration, or ADMIN page is introduced', ()
   assert.doesNotMatch(dataset, /supabase\.from|createClient|service_role/);
 });
 
-
 test('both SPECIAL pages participate in the canonical shared-header sync', () => {
   const manifest = JSON.parse(read('shared/header/manifest.json'));
   const canonical = read('shared/header/public-header.html').trim();
   for (const page of ['special.html', 'special-detail.html']) {
-    assert.ok(manifest.managed.includes(page), `${page} must be managed`);
+    assert.ok(manifest.managed.includes(page), page + ' must be managed');
     const html = read(page);
-    const header = html.match(/<header class="site-header">[\\s\\S]*?<\\/header>/)?.[0];
-    assert.equal(header, canonical, `${page} header must match the shared header`);
-    assert.match(html, /shared\\/header\\/public-header\\.css/);
+    const header = html.match(
+      /<header class="site-header">[\s\S]*?<\/header>/
+    )?.[0];
+    assert.equal(header, canonical, page + ' header must match the shared header');
+    assert.match(html, /shared\/header\/public-header\.css/);
   }
 });
 
 test('SPECIAL page typography follows NOVELIGHT sans-serif, not Mincho', () => {
   const css = read('novelight-special.css');
-  assert.match(css, /body\\.novelight-special-page/);
+  assert.match(css, /body\.novelight-special-page/);
   assert.match(css, /--brand-display-font:[^;]*sans-serif/);
   assert.match(css, /--brand-reading-font:[^;]*sans-serif/);
   assert.doesNotMatch(css, /Mincho|(?<!-)serif\s*;/i);
