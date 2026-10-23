@@ -81,6 +81,7 @@ jobs:
           ' /tmp/old-jobs-final.json >/dev/null
           gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$CLAIMED_RUN_ID/cancel" >/dev/null
           for attempt in $(seq 1 50); do
+            echo "Cancellation verification attempt $attempt"
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CLAIMED_RUN_ID" > /tmp/old-run-after.json
             if jq -e '.status == "completed" and .conclusion == "cancelled"' /tmp/old-run-after.json >/dev/null; then
               echo "Safely cancelled setup-stalled Production run $CLAIMED_RUN_ID before DB mutation."
