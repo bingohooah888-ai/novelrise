@@ -1,8 +1,42 @@
 /* ADMIN-only client. All operations are independently authorized server-side. */
-const sb = supabase.createClient(
-  'https://fiepaguycecrredwrcwx.supabase.co',
-  'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
-);
+const PROD_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
+const PROD_BROWSER_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
+const STAGING_URL = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
+let sb = null;
+
+function requiresStagingTarget() {
+  const hostname = String(window.location.hostname || '').toLowerCase();
+  const publicHosts = new Set([
+    'novelight.jp',
+    'www.novelight.jp',
+    'novelrise.vercel.app'
+  ]);
+  return hostname.endsWith('.vercel.app') && !publicHosts.has(hostname);
+}
+
+async function initializeAdminClient() {
+  if (!requiresStagingTarget()) {
+    // Official Production origins only; unknown hosts must never fall back
+    // to Production credentials.
+    const host = String(window.location.hostname || '').toLowerCase();
+    if (!['novelight.jp', 'www.novelight.jp', 'novelrise.vercel.app', 'localhost', '127.0.0.1'].includes(host))
+      throw new Error('CONFIG_DRIFT: 管理画面の接続元を確認できません');
+    sb = supabase.createClient(PROD_URL, PROD_BROWSER_KEY);
+    return;
+  }
+  const result = await fetch('/api/staging-browser-config', {
+    credentials: 'same-origin',
+    cache: 'no-store'
+  });
+  if (!result.ok) throw new Error('CONFIG_DRIFT: Staging認証設定を取得できません');
+  const config = await result.json();
+  if (config?.supabaseUrl !== STAGING_URL ||
+      typeof config.supabasePublishableKey !== 'string' ||
+      !config.supabasePublishableKey.startsWith('sb_publishable_')) {
+    throw new Error('CONFIG_DRIFT: 本番接続を防ぐためStaging認証を停止しました');
+  }
+  sb = supabase.createClient(config.supabaseUrl, config.supabasePublishableKey);
+}
 let chosen = null,
   contentChosen = null,
   projects = [],
@@ -370,7 +404,8 @@ for (const button of document.querySelectorAll('[data-status]'))
       await open(chosen);
       message('公開状態を更新しました');
     });
-load()
+initializeAdminClient()
+  .then(() => load())
   .then(() => {
     $('app').classList.remove('hidden');
     message('管理者認証で操作を開始できます');
