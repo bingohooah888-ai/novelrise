@@ -1,0 +1,58 @@
+name: SPECIAL disposable acceptance validation
+on:
+  push:
+    branches:
+      - feat/novelight-special-v1-20261023
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: special_acceptance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d special_acceptance"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: disposable-ci-only
+      PGDATABASE: special_acceptance
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create disposable Supabase-compatible stubs
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon;
+          create role authenticated;
+          create role service_role;
+          create schema storage;
+          create table storage.buckets (
+            id text primary key,
+            name text not null,
+            public boolean not null,
+            file_size_limit bigint,
+            allowed_mime_types text[]
+          );
+          SQL
+      - name: Apply reviewed SPECIAL migration in disposable PostgreSQL only
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261022204944_novelight_special.sql
+      - name: Run transactional rollback acceptance cases
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/special-staging-acceptance.sql
+      - name: Verify all acceptance rows were rolled back
+        run: |
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select count(*) from public.special_projects" | grep -qx '0'
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select count(*) from public.special_change_log" | grep -qx '0'
