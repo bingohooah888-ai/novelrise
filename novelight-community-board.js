@@ -151,6 +151,7 @@
   byId('boardBack').addEventListener('click', () => {
     ++threadRevision; ++replyRevision;
     selection = null; detail.hidden = true; panel.hidden = false;
+    say('');
     history.replaceState(null,'','community.html#board');
   });
   function resetReplyTarget() {
@@ -251,16 +252,21 @@
     event.preventDefault();
     if(busy || !selection || !await login())return;
     const body=byId('boardReplyBody').value.trim();
+    const selectedKey = selection.post_key;
     if (!body || body.length>500) {say('返信は1〜500文字で入力してください。');return;}
     busy=true;byId('boardReplySend').disabled=true;
     try {
       await rpc('novelight_community_post_comment',{
-        p_post_key:selection.post_key,p_body:body,p_parent_comment_id:replyTo
+        p_post_key:selectedKey,p_body:body,p_parent_comment_id:replyTo
       });
+      if (selection?.post_key !== selectedKey) return;
       byId('boardReplyBody').value='';resetReplyTarget();
-      await loadReplies(selection.post_key);
-      say('返信を投稿しました。');
-    } catch (_) {say('返信できませんでした。時間をおいてお試しください。');}
+      await loadReplies(selectedKey);
+      if (selection?.post_key === selectedKey) say('返信を投稿しました。');
+    } catch (_) {
+      if (selection?.post_key === selectedKey)
+        say('返信できませんでした。時間をおいてお試しください。');
+    }
     finally {busy=false;byId('boardReplySend').disabled=false;}
   });
   let firstBoardOpen = false;
