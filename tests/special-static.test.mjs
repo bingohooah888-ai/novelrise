@@ -99,5 +99,5 @@ test('SPECIAL page typography follows NOVELIGHT sans-serif, not Mincho', () => {
   assert.match(css, /body\\.novelight-special-page/);
   assert.match(css, /--brand-display-font:[^;]*sans-serif/);
   assert.match(css, /--brand-reading-font:[^;]*sans-serif/);
-  assert.doesNotMatch(css, /Mincho|serif;/i);
+  assert.doesNotMatch(css, /Mincho|(?<!-)serif\s*;/i);
 });
