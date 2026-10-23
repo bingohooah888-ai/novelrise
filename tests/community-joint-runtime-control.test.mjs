@@ -6,8 +6,8 @@ import { URL } from 'node:url';
 const filename = 'production-community-joint-runtime-control.yml';
 const file = `../.github/workflows/${filename}`;
 const workflow = readFileSync(new URL(file, import.meta.url), 'utf8');
-const matches = pattern => assert.match(workflow, pattern);
-const absent = pattern => assert.doesNotMatch(workflow, pattern);
+const matches = (pattern) => assert.match(workflow, pattern);
+const absent = (pattern) => assert.doesNotMatch(workflow, pattern);
 const before = (first, second) =>
   assert.ok(workflow.indexOf(first) < workflow.indexOf(second));
 
