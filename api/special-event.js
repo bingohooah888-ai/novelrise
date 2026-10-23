@@ -1,3 +1,4 @@
+import { specialDatabaseTargetAllowed } from './_lib/special-environment.js';
 import { createHmac } from 'node:crypto';
 import { URL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
@@ -29,6 +30,8 @@ function validTarget(type, target) {
 export function createSpecialEventHandler({ db, env = process.env } = {}) {
   return async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store, max-age=0');
+    if (!specialDatabaseTargetAllowed(env))
+      return res.status(503).json({ error: 'SPECIAL_DB_TARGET_MISMATCH' });
     if (req.method !== 'POST')
       return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
     const origin = String(req.headers.origin || '');

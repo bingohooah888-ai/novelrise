@@ -1,3 +1,4 @@
+import { specialDatabaseTargetAllowed } from './_lib/special-environment.js';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from './_lib/admin-auth.js';
 import {
@@ -148,6 +149,8 @@ export function createAdminSpecialHandler({
   adminGuard = requireAdmin
 } = {}) {
   return async function handler(req, res) {
+    if (!specialDatabaseTargetAllowed(env))
+      return res.status(503).json({ error: 'SPECIAL_DB_TARGET_MISMATCH' });
     const supabase = db || database();
     const admin = await adminGuard({ req, res, supabase, env });
     if (!admin) return;

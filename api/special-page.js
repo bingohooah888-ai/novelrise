@@ -1,3 +1,4 @@
+import { specialDatabaseTargetAllowed } from './_lib/special-environment.js';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
@@ -297,6 +298,8 @@ export function createSpecialPageHandler(
   clock = () => new Date()
 ) {
   return async function handler(req, res) {
+    if (!specialDatabaseTargetAllowed(process.env))
+      return reply(req, res, 503, 'Unavailable', false);
     if (!['GET', 'HEAD'].includes(req.method)) {
       res.setHeader('Allow', 'GET, HEAD');
       return res.status(405).end();
