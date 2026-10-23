@@ -1,0 +1,44 @@
+name: Community Hosted Read-only Preapproval Audit
+
+# Manual, non-provisioning GitHub facts inspection.
+# This workflow cannot open the cost issue, CLAIM an approval, deploy,
+# create a Supabase branch, or issue a spend authorization.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: community-hosted-preapproval-readonly
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Inspect independent protected environments and watchdog
+        env:
+          COMMUNITY_GITHUB_READ_TOKEN: ${{ secrets.COMMUNITY_PROTECTION_READ_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/community-hosted-preapproval-audit.mjs inspect
