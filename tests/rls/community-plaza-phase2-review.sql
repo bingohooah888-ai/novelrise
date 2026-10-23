@@ -2,7 +2,7 @@
 -- CI-only, disposable migration-replay database. Always roll back Phase 2 review DDL
 -- and test users; never connect this fixture to any hosted Supabase instance.
 BEGIN;
-\ir ../../docs/community/phase2-board-schema-review.sql
+\ir ../../supabase/migrations/20261023055617_community_plaza_phase2_board.sql
 
 DO $board_schema$
 DECLARE v_role text;
