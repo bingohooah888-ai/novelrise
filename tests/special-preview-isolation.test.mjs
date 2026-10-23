@@ -5,6 +5,7 @@ import test from 'node:test';
 import { specialDatabaseTargetAllowed } from '../api/_lib/special-environment.js';
 import { createAdminSpecialHandler } from '../api/admin-special.js';
 import { createSpecialEvidenceHandler } from '../api/admin-special-evidence.js';
+import specialSitemapHandler from '../api/sitemap.js';
 
 const prod = 'https://fiepaguycecrredwrcwx.supabase.co';
 const staging = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
@@ -121,4 +122,31 @@ test('SPECIAL ADMIN browser never invokes Production auth before Preview target 
     /initializeAdminClient\(\)[\s\S]*\.then\(\(\) => load\(\)\)/
   );
   assert.doesNotMatch(src, /const sb\s*=\s*supabase\.createClient\(/);
+});
+
+test('SPECIAL sitemap rejects a Preview accidentally configured for Production', () => {
+  const previousEnv = process.env.VERCEL_ENV;
+  const previousUrl = process.env.SUPABASE_URL;
+  try {
+    process.env.VERCEL_ENV = 'preview';
+    process.env.SUPABASE_URL = prod;
+    const res = {
+      status(code) {
+        this.code = code;
+        return this;
+      },
+      send(body) {
+        this.body = body;
+        return this;
+      }
+    };
+    specialSitemapHandler({ method: 'GET', query: { type: 'special' } }, res);
+    assert.equal(res.code, 503);
+    assert.equal(res.body, 'Sitemap temporarily unavailable');
+  } finally {
+    if (previousEnv === undefined) delete process.env.VERCEL_ENV;
+    else process.env.VERCEL_ENV = previousEnv;
+    if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = previousUrl;
+  }
 });
