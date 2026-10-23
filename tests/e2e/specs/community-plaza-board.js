@@ -180,6 +180,7 @@ test('board create, reply, owner edit and soft delete use isolated RPCs', async 
   }).click();
   await expect(page.locator('#boardThreadDetail')).toBeHidden();
   await expect(page.locator('#boardThreadList .board-thread-card')).toHaveCount(0);
+  await expect(page).toHaveURL(/community\.html#board$/);
 
   const calls = await page.evaluate(() => globalThis.__boardCalls);
   for (const operation of [
