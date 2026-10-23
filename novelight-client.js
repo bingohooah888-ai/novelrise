@@ -6,6 +6,13 @@
     timeline: true,
     board: true
   });
+  // Keep static public navigation behind the existing joint release gate.
+  // This runs before first paint so an inactive plaza never flashes a link.
+  document.documentElement.classList.toggle(
+    'novelight-community-released',
+    window.NOVELIGHT_COMMUNITY_FLAGS.timeline &&
+      window.NOVELIGHT_COMMUNITY_FLAGS.board
+  );
   const VISITOR_KEY = 'novelight_visitor_token';
   const TRAFFIC_KEY = 'novelight_first_touch';
   const TOUCH_SESSION_KEY = 'novelight_touch_recorded';

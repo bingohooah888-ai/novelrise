@@ -31,6 +31,11 @@ html body.novelight-theme.novelight-public-header-page:not(.novelight-public-dar
   height: auto !important;
 }
 
+/* Fail closed if either plaza release flag is OFF or the shared client failed to load. */
+html:not(.novelight-community-released) header.site-header a[href="community.html"] {
+  display: none !important;
+}
+
 /* Five-link navigation cannot wrap; a menu replaces it before desktop collision. */
 html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .desktop-nav {
   flex-wrap: nowrap !important;
