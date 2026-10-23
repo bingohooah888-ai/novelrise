@@ -98,6 +98,13 @@ BEGIN
  IF (SELECT public.novelight_community_board_detail(v_id)->>'title') IS DISTINCT FROM 'Board CI title' THEN
   RAISE EXCEPTION 'Board detail mismatched';
  END IF;
+ BEGIN
+  PERFORM public.novelight_community_board_save('stories','Excess thread','Second thread',true,NULL);
+  RAISE EXCEPTION 'Board rate limiting bypassed';
+ EXCEPTION WHEN raise_exception THEN
+  -- Reject the expected SQLSTATE P0001; never swallow the assertion itself.
+  IF SQLERRM = 'Board rate limiting bypassed' THEN RAISE; END IF;
+ END;
 END
 $board_author$;
 RESET ROLE;
@@ -170,6 +177,25 @@ RESET ROLE;
 DELETE FROM public.user_blocks
 WHERE blocker_user_id='c0b00000-0000-4000-8000-000000000001'
  AND blocked_user_id='c0b00000-0000-4000-8000-000000000002';
+
+INSERT INTO public.user_mutes(muter_user_id,muted_user_id)
+ VALUES ('c0b00000-0000-4000-8000-000000000002',
+         'c0b00000-0000-4000-8000-000000000001');
+SET LOCAL ROLE authenticated;
+SELECT pg_catalog.set_config('request.jwt.claim.sub','c0b00000-0000-4000-8000-000000000002',true);
+DO $board_muted$
+DECLARE v_id uuid:=current_setting('novelight.test.board.thread')::uuid;
+BEGIN
+ IF public.novelight_community_board_detail(v_id) IS NOT NULL
+  OR jsonb_array_length(public.novelight_community_board_list(NULL,15,0))<>0 THEN
+  RAISE EXCEPTION 'Muted author still visible through board RPCs';
+ END IF;
+END
+$board_muted$;
+RESET ROLE;
+DELETE FROM public.user_mutes
+ WHERE muter_user_id='c0b00000-0000-4000-8000-000000000002'
+   AND muted_user_id='c0b00000-0000-4000-8000-000000000001';
 
 INSERT INTO public.community_hidden_posts(post_key,reason)
  VALUES('board:'||current_setting('novelight.test.board.thread'),'CI hidden fixture');
