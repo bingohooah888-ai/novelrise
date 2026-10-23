@@ -7,6 +7,7 @@ const candidateSha = 'feb1d7728e4d8cef917df52355d873807eba5cc9';
 const projectRef = 'abcdefghijklmnopqrst';
 const url = 'https://community-phase2-preview.vercel.app/';
 
+// prettier-ignore
 function harness({
   failStep = '',
   failCleanup = false,
