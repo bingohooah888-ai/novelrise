@@ -91,9 +91,8 @@ BEGIN
  v_id:=public.novelight_community_board_save('stories','Board CI title','Safe test body',true,NULL);
  PERFORM pg_catalog.set_config('novelight.test.board.thread',v_id::text,true);
  v_key:='board:'||v_id::text;
- IF NOT public.novelight_community_post_visible(v_key)
-  OR NOT public.novelight_community_interaction_allowed(v_key) THEN
-  RAISE EXCEPTION 'Own thread not accessible through shared safety functions';
+ IF public.novelight_community_board_detail(v_id) IS NULL THEN
+  RAISE EXCEPTION 'Author cannot access board through public RPC';
  END IF;
  IF (SELECT public.novelight_community_board_detail(v_id)->>'title') IS DISTINCT FROM 'Board CI title' THEN
   RAISE EXCEPTION 'Board detail mismatched';
@@ -224,8 +223,9 @@ BEGIN
   RAISE EXCEPTION 'Owner unable to soft-delete thread';
  END IF;
  IF public.novelight_community_board_detail(v_id) IS NOT NULL
-  OR public.novelight_community_post_visible('board:'||v_id::text) THEN
-  RAISE EXCEPTION 'Deleted thread remains exposed by direct RPC';
+  OR jsonb_array_length(public.novelight_community_board_list(NULL,15,0))<>0
+  OR jsonb_array_length(public.novelight_community_comments('board:'||v_id::text,20))<>0 THEN
+  RAISE EXCEPTION 'Deleted thread remains exposed by public RPC';
  END IF;
 END
 $board_deleted$;
