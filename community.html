@@ -90,7 +90,7 @@
  const board=document.getElementById('communityBoardInfo');
  const tabs=document.querySelectorAll('.community-tab');
  const flags=window.NOVELIGHT_COMMUNITY_FLAGS || {};
- if (!flags.timeline && !flags.board) {
+ if (!flags.timeline || !flags.board) {
    document.getElementById('communityPending').hidden=false;
    document.getElementById('communityTabs').hidden=true;
    timeline.hidden=true;
