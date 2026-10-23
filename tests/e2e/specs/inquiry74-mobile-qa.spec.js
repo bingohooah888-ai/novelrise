@@ -43,7 +43,7 @@ test('Creator mobile menu keeps navy and gold after tapping, hover and focus', a
   await toggle.focus();
   await expect(toggle).toHaveCSS('background-color', background);
   await expect(toggle).toHaveCSS('color', 'rgb(255, 224, 130)');
-  await page.locator('#navScrim').tap();
+  await page.touchscreen.tap(375, 700);
   await expect(toggle).toHaveText('☰');
   await expect(toggle).toHaveCSS('background-color', background);
   await context.close();
@@ -65,7 +65,7 @@ test('Home Back restores the same section offset after async shelf changes', asy
         '</head><body><main>',
         '<section id="discover">おすすめ</section>',
         '<section id="new-arrivals">新着</section>',
-        '<section id="pricing" style="height:600px">',
+        '<section id="pricing" style="height:1400px">',
         '<div style="padding-top:170px"><a id="to-other" href="/pricing.html">料金へ</a></div>',
         '</section></main><script>',
         "if(performance.getEntriesByType('navigation')[0]?.type==='back_forward'){",
@@ -89,6 +89,7 @@ test('Home Back restores the same section offset after async shelf changes', asy
   await page.locator('#to-other').click();
   await page.goBack({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#pricing')).toBeAttached();
+  await page.waitForTimeout(250);
   await expect
     .poll(() =>
       page.locator('#pricing').evaluate((el) => el.getBoundingClientRect().top)
