@@ -1,0 +1,220 @@
+name: NOVELIGHT Community Joint Runtime Control
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: novelight-community-joint-runtime
+  cancel-in-progress: false
+
+jobs:
+  control:
+    if: >-
+      github.event.issue.number == 2457 &&
+      github.event.issue.pull_request != null &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_COMMUNITY_JOINT_RUNTIME_APPROVE ')
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: fiepaguycecrredwrcwx
+
+    steps:
+      - name: Checkout trusted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Verify exact one-use OWNER request and immutable main
+        id: admission
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          request="${COMMENT_BODY#NOVELIGHT_COMMUNITY_JOINT_RUNTIME_APPROVE }"
+          test "$request" != "$COMMENT_BODY"
+          printf '%s' "$request" | jq -e '
+            type=="object" and .operation=="community-joint-runtime" and
+            (.action=="enable" or .action=="disable") and
+            (.mainSha|type=="string" and test("^[0-9a-f]{40}$")) and
+            (.challenge|type=="string" and test("^[A-F0-9]{8}$")) and
+            ((keys|sort)==(["operation","action","mainSha","challenge"]|sort))
+          ' >/dev/null
+          action="$(jq -r '.action' <<< "$request")"
+          sha="$(jq -r '.mainSha' <<< "$request")"
+          challenge="$(jq -r '.challenge' <<< "$request")"
+          test "$(git rev-parse HEAD)" = "$sha"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$sha"
+          gh api "repos/$GITHUB_REPOSITORY/issues/2457/comments?per_page=100" > /tmp/community-joint-ledger.json
+          jq -e --arg action "$action" --arg sha "$sha" --arg challenge "$challenge" '
+            length < 95 and
+            ([.[] | .body | select(startswith("NOVELIGHT_COMMUNITY_JOINT_RUNTIME_CLAIMED ") or startswith("NOVELIGHT_COMMUNITY_JOINT_RUNTIME_EXECUTED "))
+              | sub("^[^ ]+ "; "") | fromjson?
+              | select(.action==$action and .mainSha==$sha and .challenge==$challenge)] | length)==0
+          ' /tmp/community-joint-ledger.json >/dev/null
+          {
+            echo "action=$action"
+            echo "sha=$sha"
+            echo "challenge=$challenge"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Read-only DB and release preflight
+        shell: bash
+        env:
+          ACTION: ${{ steps.admission.outputs.action }}
+          MAIN_SHA: ${{ steps.admission.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$ACTION" = 'enable' ]; then
+            sql="SELECT
+              (SELECT count(*) FROM supabase_migrations.schema_migrations
+               WHERE version IN ('20261014052000','20261023055617'))=2 AS migrations_ok,
+              EXISTS(SELECT 1 FROM pg_class
+               WHERE oid=to_regclass('public.community_board_threads') AND relrowsecurity) AS board_rls,
+              NOT has_table_privilege('anon','public.community_board_threads','SELECT') AS anon_raw_closed,
+              NOT has_table_privilege('authenticated','public.community_board_threads','SELECT') AS member_raw_closed,
+              (SELECT public_enabled FROM public.community_runtime_control WHERE singleton=true) AS enabled"
+          else
+            # Emergency stop must work even if the Phase 2 board schema is damaged.
+            sql="SELECT public_enabled AS enabled
+              FROM public.community_runtime_control WHERE singleton=true"
+          fi
+          jq -cn --arg query "$sql" '{query:$query,read_only:true}' > /tmp/joint-preflight-request.json
+          curl --fail --silent --show-error --max-time 30 \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/joint-preflight-request.json \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" \
+            > /tmp/joint-preflight.json
+          if [ "$ACTION" = 'enable' ]; then
+            jq -e 'type=="array" and length==1 and .[0].migrations_ok==true and
+              .[0].board_rls==true and .[0].anon_raw_closed==true and
+              .[0].member_raw_closed==true and .[0].enabled==false' /tmp/joint-preflight.json >/dev/null
+            node scripts/check-production-backup-freshness.mjs
+            vercel_success="$(gh api "repos/$GITHUB_REPOSITORY/commits/$MAIN_SHA/status" --jq '[.statuses[] | select(.context=="Vercel" and .state=="success")] | length')"
+            test "$vercel_success" -gt 0
+            curl --fail --silent --show-error --max-time 25 \
+              -H 'Cache-Control: no-cache' \
+              "https://novelight.jp/novelight-client.js?community_joint=$MAIN_SHA" \
+              > /tmp/live-joint-client.js
+            grep -Eq 'timeline:[[:space:]]*true[[:space:]]*,' /tmp/live-joint-client.js
+            grep -Eq 'board:[[:space:]]*true[[:space:]]*[,}]' /tmp/live-joint-client.js
+            curl --fail --silent --show-error --max-time 25 \
+              -H 'Cache-Control: no-cache' \
+              "https://novelight.jp/community.html?community_joint=$MAIN_SHA" \
+              > /tmp/live-community.html
+            grep -Fq 'id="communityBoardInfo"' /tmp/live-community.html
+            grep -Fq 'novelight-community-board.js' /tmp/live-community.html
+          else
+            jq -e '.[0].enabled==true' /tmp/joint-preflight.json >/dev/null
+          fi
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN_SHA"
+
+      - name: Claim approved action before mutation
+        id: claim
+        shell: bash
+        env:
+          ACTION: ${{ steps.admission.outputs.action }}
+          MAIN_SHA: ${{ steps.admission.outputs.sha }}
+          CHALLENGE: ${{ steps.admission.outputs.challenge }}
+        run: |
+          set -euo pipefail
+          claim="$(jq -cn --arg action "$ACTION" --arg mainSha "$MAIN_SHA" \
+            --arg challenge "$CHALLENGE" --arg runId "$GITHUB_RUN_ID" \
+            '{operation:"community-joint-runtime",action:$action,mainSha:$mainSha,
+              challenge:$challenge,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/2457/comments" \
+            -f body="NOVELIGHT_COMMUNITY_JOINT_RUNTIME_CLAIMED $claim" >/dev/null
+
+      - name: Change only the Production runtime gate
+        id: mutate
+        shell: bash
+        env:
+          ACTION: ${{ steps.admission.outputs.action }}
+          MAIN_SHA: ${{ steps.admission.outputs.sha }}
+          CHALLENGE: ${{ steps.admission.outputs.challenge }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/issues/2457/comments?per_page=100" > /tmp/joint-claimed.json
+          jq -e --arg action "$ACTION" --arg sha "$MAIN_SHA" --arg challenge "$CHALLENGE" --arg runId "$GITHUB_RUN_ID" '
+            ([.[] | .body | select(startswith("NOVELIGHT_COMMUNITY_JOINT_RUNTIME_CLAIMED "))
+             | sub("^[^ ]+ "; "") | fromjson?
+             | select(.action==$action and .mainSha==$sha and .challenge==$challenge and .runId==$runId)] | length)==1
+          ' /tmp/joint-claimed.json >/dev/null
+          if [ "$ACTION" = 'enable' ]; then
+            sql="UPDATE public.community_runtime_control SET public_enabled=true,
+              activated_at=now(),activated_by=null
+              WHERE singleton=true AND public_enabled=false RETURNING public_enabled"
+            expected=true
+          else
+            sql="UPDATE public.community_runtime_control SET public_enabled=false,
+              activated_at=null,activated_by=null
+              WHERE singleton=true AND public_enabled=true RETURNING public_enabled"
+            expected=false
+          fi
+          jq -cn --arg query "$sql" '{query:$query}' > /tmp/joint-mutation-request.json
+          curl --fail --silent --show-error --max-time 30 \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/joint-mutation-request.json \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" \
+            > /tmp/joint-mutation.json
+          jq -e --argjson expected "$expected" 'type=="array" and length==1 and
+            .[0].public_enabled==$expected' /tmp/joint-mutation.json >/dev/null
+
+      - name: Read-only final gate verification and receipt
+        shell: bash
+        env:
+          ACTION: ${{ steps.admission.outputs.action }}
+          MAIN_SHA: ${{ steps.admission.outputs.sha }}
+          CHALLENGE: ${{ steps.admission.outputs.challenge }}
+        run: |
+          set -euo pipefail
+          sql="SELECT public_enabled,activated_at FROM public.community_runtime_control WHERE singleton=true"
+          jq -cn --arg query "$sql" '{query:$query,read_only:true}' > /tmp/joint-postcheck-request.json
+          curl --fail --silent --show-error --max-time 30 \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/joint-postcheck-request.json \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" \
+            > /tmp/joint-postcheck.json
+          if [ "$ACTION" = 'enable' ]; then
+            jq -e 'type=="array" and length==1 and .[0].public_enabled==true and .[0].activated_at!=null' /tmp/joint-postcheck.json >/dev/null
+          else
+            jq -e 'type=="array" and length==1 and .[0].public_enabled==false and .[0].activated_at==null' /tmp/joint-postcheck.json >/dev/null
+          fi
+          receipt="$(jq -cn --arg action "$ACTION" --arg mainSha "$MAIN_SHA" \
+            --arg challenge "$CHALLENGE" --arg runId "$GITHUB_RUN_ID" \
+            '{operation:"community-joint-runtime",action:$action,mainSha:$mainSha,
+              challenge:$challenge,runId:$runId,result:"success"}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/2457/comments" \
+            -f body="NOVELIGHT_COMMUNITY_JOINT_RUNTIME_EXECUTED $receipt" >/dev/null
+
+      - name: Emergency fail-closed after any claimed enable failure
+        if: failure() && steps.claim.outcome == 'success' && steps.admission.outputs.action == 'enable'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sql="UPDATE public.community_runtime_control SET public_enabled=false,
+            activated_at=null,activated_by=null WHERE singleton=true
+            RETURNING public_enabled"
+          jq -cn --arg query "$sql" '{query:$query}' > /tmp/joint-fail-closed-request.json
+          curl --fail --silent --show-error --max-time 30 \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/joint-fail-closed-request.json \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" \
+            > /tmp/joint-fail-closed.json
+          jq -e 'type=="array" and length==1 and .[0].public_enabled==false' /tmp/joint-fail-closed.json >/dev/null
