@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ja" class="novelight-page-community">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交流広場 | NOVELIGHT</title>
+<meta name="description" content="NOVELIGHTで公開された作品や作者の近況をチェック。物語の発見につながる交流広場です。">
+<link rel="stylesheet" href="novelight-theme.css">
+<link rel="stylesheet" href="novelight-public-dark.css">
+<link rel="stylesheet" href="novelight-community.css">
+<link rel="stylesheet" href="novelight-accessibility.css">
+</head>
+<body class="novelight-theme novelight-public-dark novelight-page-community">
+<a class="skip-link" href="#main-content">本文へスキップ</a>
+<header class="site-header"><div class="header-inner"><a class="logo" href="index.html">NOVELIGHT</a></div></header>
+<main id="main-content" tabindex="-1">
+<section id="communityPage" class="community-page" aria-labelledby="communityPageHeading">
+ <div class="community-inner">
+  <h1 id="communityPageHeading">交流広場</h1>
+  <p class="community-intro">作品の更新や近況を通じて、まだ知らない物語と出会おう。</p>
+  <nav class="community-tabs" aria-label="交流広場の機能">
+    <a class="community-tab" href="community.html" aria-current="page">タイムライン</a>
+    <a class="community-tab" href="#board" id="communityBoardTab">掲示板</a>
+  </nav>
+  <section id="communityNotifications" aria-label="あなたへの交流通知" hidden></section>
+  <section id="communityTimeline" aria-label="タイムライン">
+   <div class="community-filters" aria-label="表示する投稿">
+     <button type="button" data-community-filter="everyone" aria-pressed="true">みんな</button>
+     <button type="button" data-community-filter="following" aria-pressed="false">フォロー中</button>
+     <button type="button" id="communityRefresh" class="community-refresh">最新の投稿を更新</button>
+   </div>
+   <p id="communityFilterStatus" class="community-filter-status" role="status" hidden></p>
+   <div id="communityPageFeed" class="community-feed" aria-live="polite"><p class="community-state">タイムラインを準備しています。</p></div>
+   <div class="community-pagination"><button id="communityLoadMore" class="community-refresh" type="button" hidden>さらに見る</button></div>
+  </section>
+  <section id="communityBoardInfo" aria-label="掲示板" hidden>
+    <p class="community-state">掲示板はタイムライン公開後、利用状況を確認してから公開します。現在は準備中です。</p>
+  </section>
+ </div>
+</section>
+</main>
+<footer class="site-footer"><div class="footer-inner"><span>© 2026 NOVELIGHT</span><div class="footer-links"><a href="index.html">ホーム</a><a href="terms.html">利用規約</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="contact.html">お問い合わせ</a></div></div></footer>
+<script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+<script src="novelight-community-config.js"></script>
+<script src="novelight-client.js"></script>
+<script src="novelight-community.js" defer></script>
+<script src="novelight-community-alerts.js" defer></script>
+<script>
+(() => {
+ const boardTab=document.getElementById('communityBoardTab');
+ const timeline=document.getElementById('communityTimeline');
+ const board=document.getElementById('communityBoardInfo');
+ const tabs=document.querySelectorAll('.community-tab');
+ function setTab(showingBoard){
+   board.hidden=!showingBoard;
+   timeline.hidden=showingBoard;
+   tabs.forEach(tab=>tab.removeAttribute('aria-current'));
+   tabs[showingBoard?1:0].setAttribute('aria-current','page');
+   history.replaceState(null,'',showingBoard?'community.html#board':'community.html');
+ }
+ boardTab.addEventListener('click',event=>{
+   event.preventDefault();
+   setTab(board.hidden);
+ });
+ tabs[0].addEventListener('click',event=>{
+   event.preventDefault();
+   setTab(false);
+ });
+ if(location.hash==='#board') setTab(true);
+})();
+</script>
+</body></html>

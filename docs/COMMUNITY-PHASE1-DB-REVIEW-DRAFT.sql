@@ -1,0 +1,4 @@
+-- HISTORICAL REVIEW DRAFT RETIRED: NOT EXECUTABLE.
+-- The Phase 1 canonical candidate is now
+-- supabase/migrations/20261014052000_community_plaza_phase1.sql
+-- Only use the versioned migration above for schema review, tests and approvals.
