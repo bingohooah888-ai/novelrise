@@ -232,15 +232,15 @@ test('LIGHT ANALYTICS mobile title does not inherit the desktop 700px height', a
   await page.goto('/analytics.html');
 
   const layout = await page.evaluate(() => {
-    const title = document.querySelector('.analytics-title-wrap');
-    const period = document.querySelector('#period');
+    const title = globalThis.document.querySelector('.analytics-title-wrap');
+    const period = globalThis.document.querySelector('#period');
     const heading = title.getBoundingClientRect();
     const controls = period.getBoundingClientRect();
     return {
       height: heading.height,
       gap: controls.top - heading.bottom,
-      flexBasis: getComputedStyle(title).flexBasis,
-      overflow: document.documentElement.scrollWidth - innerWidth
+      flexBasis: globalThis.getComputedStyle(title).flexBasis,
+      overflow: globalThis.document.documentElement.scrollWidth - globalThis.innerWidth
     };
   });
   expect(layout.height).toBeGreaterThan(0);
