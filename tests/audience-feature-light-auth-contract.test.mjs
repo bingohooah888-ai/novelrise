@@ -31,7 +31,9 @@ test('author and reader guides match the announcements light shell', () => {
     assert.match(html, /class="site-footer-inner"/u, name);
     assert.match(html, /src="assets\/novelight-header-logo\.webp"/u, name);
     assert.match(html, /href="announcements\.html">お知らせ/u, name);
-    assert.match(html, /href="pricing\.html">料金プラン/u, name);
+    const headerHtml = html.split('<header class="site-header">')[1] || '';
+    const headerNav = headerHtml.split('</header>')[0];
+    assert.ok(!headerNav.includes('href="pricing.html">料金プラン'), name);
   }
   assert.match(
     supportPage,

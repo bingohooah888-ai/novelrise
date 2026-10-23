@@ -352,6 +352,40 @@ main.legal-container {
   overflow-wrap: anywhere;
 }
 
+main.legal-container .contest-terms-nav {
+  display: flex;
+  justify-content: center;
+  margin: 24px 0 32px;
+}
+
+main.legal-container .contest-terms-nav a {
+  display: inline-flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  border: 1px solid #bf9845;
+  border-radius: 12px;
+  background: #102744;
+  box-shadow: 0 5px 16px rgba(16, 39, 68, 0.18);
+  color: #fff9eb;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  text-decoration: none;
+}
+
+main.legal-container .contest-terms-nav a:hover {
+  background: #18365b;
+  color: #ffffff;
+}
+
+main.legal-container .contest-terms-nav a:focus-visible {
+  outline: 3px solid #d6a447;
+  outline-offset: 3px;
+}
+
 main.legal-container h1,
 main.legal-container h2 {
   color: #1b2430;
@@ -412,6 +446,11 @@ main.legal-container th {
   main.legal-container h1 {
     margin-bottom: 20px;
     font-size: 29px;
+  }
+
+  main.legal-container .contest-terms-nav a {
+    width: 100%;
+    font-size: 16px;
   }
 
   main.legal-container h2 {

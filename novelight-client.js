@@ -310,7 +310,6 @@
     if (!header) return false;
 
     const discoverCurrent = publicHeaderCurrent(slug, 'discover');
-    const pricingCurrent = publicHeaderCurrent(slug, 'pricing');
     const announcementsCurrent = publicHeaderCurrent(slug, 'announcements');
     const rankingCurrent = publicHeaderCurrent(slug, 'ranking');
     const communityCurrent = publicHeaderCurrent(slug, 'community');
@@ -334,8 +333,7 @@
         ['search.html', discoverCurrent],
         ['ranking.html', rankingCurrent],
         ['community.html', communityCurrent],
-        ['announcements.html', announcementsCurrent],
-        ['pricing.html', pricingCurrent]
+        ['announcements.html', announcementsCurrent]
       ];
       header.querySelectorAll('.site-nav a, .mobile-menu nav a').forEach((link) => {
         const current = currentLinks.find(([href]) => link.getAttribute('href') === href);
@@ -365,7 +363,6 @@
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
       `<a href="community.html"${communityCurrent}>交流</a>` +
       `<a href="announcements.html"${announcementsCurrent}>お知らせ</a>` +
-      `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       '</nav>' +
       '<div class="header-actions">' +
       '<a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>' +
@@ -376,7 +373,6 @@
       `<a href="ranking.html"${rankingCurrent}>ランキング</a>` +
       `<a href="community.html"${communityCurrent}>交流</a>` +
       `<a href="announcements.html"${announcementsCurrent}>お知らせ</a>` +
-      `<a href="pricing.html"${pricingCurrent}>料金プラン</a>` +
       `<a class="mobile-login-action" href="login.html"${loginCurrent}>ログイン</a>` +
       `<a class="mobile-signup-action" href="signup.html"${signupCurrent}>会員登録</a>` +
       '</nav></details>' +
