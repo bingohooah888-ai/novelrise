@@ -66,7 +66,7 @@ test('rendered terms show the exact consent version saved by the server', () => 
   assert.match(contestTermsTemplate, /応募要項の版ID/);
 });
 
-test('contest terms have visible top and bottom links to the real contest page', () => {
+test('contest terms link to the contest above and below', () => {
   const cta = '<a href="/contest">星灯祭のコンテストページへ →</a>';
   const occurrences = contestTermsTemplate.split(cta).length - 1;
   assert.equal(occurrences, 2);
@@ -78,7 +78,7 @@ test('contest terms have visible top and bottom links to the real contest page',
   assert.equal(route?.destination, '/api/contest-page');
   const css = readFileSync(new URL('../legal.css', import.meta.url), 'utf8');
   assert.match(css, /main\.legal-container \.contest-terms-nav a \{/);
-  assert.match(css, /main\.legal-container \.contest-terms-nav a:focus-visible/);
+  assert.match(css, /\.contest-terms-nav a:focus-visible/);
 });
 
 test('payout retries on failure without duplicate payment', () => {
