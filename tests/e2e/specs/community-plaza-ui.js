@@ -137,8 +137,8 @@ async function installIsolatedMock(page, enabled, options = {}) {
     await page.route('**/novelight-client.js', async (route) => {
       const response = await route.fetch();
       const original = await response.text();
-      const marker = 'timeline: false,';
-      if (!original.includes(marker)) {
+      const marker = /timeline: (?:false|true),/;
+      if (!marker.test(original)) {
         throw new Error(
           'Preview-only fixture could not find the exact release flag'
         );
