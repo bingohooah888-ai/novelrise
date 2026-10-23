@@ -159,3 +159,15 @@ Supabaseブランチ生成POSTがtimeout／応答不正の場合、GETで同名�
 ## Ambiguous Preview作成の費用残留防止（2026-10-23）
 
 Vercel Preview POSTがtimeout／不正応答になった場合、実際のデプロイが作成済みかもしれない。Phase 2独立runnerの契約に`reconcileProtectedPreview`を必須化し、作成と同じRUN/HEAD/Branch/Project/Teamへ厳密に束縛したGET結果が見つかった場合に限り、そのdeployed IDを後片付けへ渡す。曖昧POSTの後に二度目のPreviewを作成したり、ユーザーブラウザの試験を続行したりしない。独立WatchdogにはSupabaseだけでなくVercel Preview回収可否の準備証跡も要求する。正常にPreview作成した場合も`deploymentId`等の削除証跡を後片付けまで保持する。実際のadapter/runnerは別途実装・審査が必要。
+
+
+## 同期例外でも独立した削除を全件試みる（2026-10-23）
+
+Phase 2の後片付けにおける`Promise.allSettled([fnA(), fnB()])`は、
+引数の評価時に`fnA()`が**同期例外**を投げると
+`fnB()`を一度も呼び出さず、最終的なCLAIM消費記録まで飛ばす。
+現在の実装はそれぞれを`Promise.resolve().then(() => fn())`
+で包み、片側の同期例外でももう一方の資源削除とread-backを試す。
+削除のどちらかが失敗した場合はSUCCESSとせず、失敗をCONSUMED
+記録する。Nodeの2つの同期例外テストで確認する。
+現状は契約・モックだけの修正で、実際のPreviewやbranchに触れない。

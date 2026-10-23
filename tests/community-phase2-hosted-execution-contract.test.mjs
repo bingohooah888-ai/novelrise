@@ -404,3 +404,64 @@ test('ambiguous Preview POST reconciles exact deployment, cleans it and never br
   assert.ok(h.names.includes('remove_preview'));
   assert.equal(h.names.at(-1), 'consume');
 });
+
+
+// prettier-ignore
+test('sync Preview deletion failure still attempts DB cleanup and records failure', async () => {
+  const h = harness();
+  const seen = [];
+  h.operations.disposeProtectedPreview = () => {
+    h.names.push('sync_throw_preview');
+    throw new Error('synchronous Preview adapter error');
+  };
+  h.operations.recordTerminalConsumption = async (run, claim, outcome) => {
+    h.names.push('consume');
+    seen.push(outcome);
+    return {
+      runId: run.runId,
+      requestCommentId: run.requestCommentId,
+      mainSha: run.mainSha,
+      candidateSha: run.candidateSha,
+      claimCommentId: claim.claimCommentId,
+      status: 'ONE_USE_CONSUMPTION_RECORDED',
+      consumptionCommentId: '5123',
+      outcome
+    };
+  };
+  await assert.rejects(lifecycle.executePhase2JointHostedContract(h),
+    /execution_or_cleanup_incomplete/);
+  assert.ok(h.names.includes('remove_branch'));
+  assert.ok(h.names.includes('check_cleanup'));
+  assert.equal(h.names.at(-1), 'consume');
+  assert.deepEqual(seen, ['failure']);
+});
+
+// prettier-ignore
+test('sync branch deletion failure still attempts Preview cleanup and records failure', async () => {
+  const h = harness();
+  const seen = [];
+  h.operations.destroyIsolatedBranch = () => {
+    h.names.push('sync_throw_branch');
+    throw new Error('synchronous Supabase adapter error');
+  };
+  h.operations.recordTerminalConsumption = async (run, claim, outcome) => {
+    h.names.push('consume');
+    seen.push(outcome);
+    return {
+      runId: run.runId,
+      requestCommentId: run.requestCommentId,
+      mainSha: run.mainSha,
+      candidateSha: run.candidateSha,
+      claimCommentId: claim.claimCommentId,
+      status: 'ONE_USE_CONSUMPTION_RECORDED',
+      consumptionCommentId: '5123',
+      outcome
+    };
+  };
+  await assert.rejects(lifecycle.executePhase2JointHostedContract(h),
+    /execution_or_cleanup_incomplete/);
+  assert.ok(h.names.includes('remove_preview'));
+  assert.ok(h.names.includes('check_cleanup'));
+  assert.equal(h.names.at(-1), 'consume');
+  assert.deepEqual(seen, ['failure']);
+});

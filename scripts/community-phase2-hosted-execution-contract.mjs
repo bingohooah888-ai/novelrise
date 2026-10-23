@@ -325,9 +325,16 @@ export async function executePhase2JointHostedContract({ run, operations }) {
     } catch {
       disabled = null;
     }
+    // Wrap each adapter call in its own promise. Calling them while building
+    // the array can throw synchronously and prevent the other deletion and
+    // one-use terminal consumption from running at all.
     const removals = await Promise.allSettled([
-      operations.disposeProtectedPreview(run, preview),
-      operations.destroyIsolatedBranch(run, branch)
+      Promise.resolve().then(() =>
+        operations.disposeProtectedPreview(run, preview)
+      ),
+      Promise.resolve().then(() =>
+        operations.destroyIsolatedBranch(run, branch)
+      )
     ]);
     let verification;
     try {
