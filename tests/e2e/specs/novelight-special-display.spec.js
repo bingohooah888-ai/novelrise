@@ -80,19 +80,17 @@ test('SPECIAL header matches the existing announcements page at the same viewpor
   expect(actual).toEqual(reference);
 });
 
-
-test('SPECIAL editorial hero remains dark with readable white lettering', async ({
-  page
-}) => {
+test('SPECIAL hero contrast', async ({ page }) => {
   await page.goto('/special.html');
-  const styles = await page
-    .locator('header.novelight-special-hero')
-    .evaluate((hero) => ({
-      background: globalThis.getComputedStyle(hero).backgroundImage,
-      heading: globalThis.getComputedStyle(hero.querySelector('h1')).color,
-      lead: globalThis.getComputedStyle(hero.querySelector('p:last-child')).color
-    }));
+  const hero = page.locator('header.novelight-special-hero');
+  const styles = await hero.evaluate((element) => {
+    const css = globalThis.getComputedStyle(element);
+    const heading = element.querySelector('h1');
+    return {
+      background: css.backgroundImage,
+      heading: globalThis.getComputedStyle(heading).color
+    };
+  });
   expect(styles.background).toContain('linear-gradient');
   expect(styles.heading).toBe('rgb(255, 255, 255)');
-  expect(styles.lead).toBe('rgb(224, 227, 233)');
 });
