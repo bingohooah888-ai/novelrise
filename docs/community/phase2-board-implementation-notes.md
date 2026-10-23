@@ -21,14 +21,14 @@
 ## 2026-10-23 継続検証・スキーマ引継ぎ
 - 本番DBを読み取り専用で再確認：`community_runtime_control.public_enabled=false`、`activated_at=null`、`community_board_threads` テーブル未作成。本番に変更はしていない。
 - 既存のDBテストを拡張：本人のスレッド編集、作成者宛の返信通知、既存通報台帳、既存スタッフAPIのhide/restoreを、rollback-onlyの使い捨てCI PostgreSQLで検証する。
-- **データ保護用のrollback候補**：`docs/community/phase2-board-rollback-review.sql`。公開ゲートがOFF、掲示板スレッドや交流レコードが空でなければ即座に中止し、Phase 1関数を復元したうえで追加テーブル/関数のみ除去する。既存データを自動削除するSQLではない。
+- **データ保護用のrollback候補**：`supabase/rollback/20261023055617_community_plaza_phase2_board_rollback.sql`（レビュー原本：`docs/community/phase2-board-rollback-review.sql`）。公開ゲートがOFF、掲示板スレッドや交流レコードが空でなければ即座に中止し、Phase 1関数を復元したうえで追加テーブル/関数のみ除去する。既存データを自動削除するSQLではない。
 - rollback候補の模擬テスト：`tests/rls/community-plaza-phase2-rollback-review.sql`。既存CIの使い捨て再生DBでのみ実行する。
 - 現行MASTER第43章の交流広場追補をOWNER最新方針「タイムライン＋掲示板同時一般公開」へ更新（本PR内・未マージ）。
-- 正式マイグレーションの生成経路は**未完了**：現実行環境にはSupabase CLIがなく、接続済みDesktop Commander端末も利用不可。レビュー用SQLをmigrationと偽装せず、CLIで`supabase migration new <name>`（正確な構文は実行時の`--help`で確認）を行ってから正式ファイルへ移す。
+- GitHub Actions上のSupabase CLI v2.81.3で`migration new`を実行し、`supabase/migrations/20261023055617_community_plaza_phase2_board.sql`を生成済み。CLIログでレビューSQLとの完全一致を確認（Actions #39908507519）。本番には未適用。一時生成workflowは削除済み。
 - GitHub CIは一時DB・モックテストのみ。別承認が必要な外部Staging／Productionへは接続しない。
 
 ## 安全境界
-- `docs/community/phase2-board-schema-review.sql` は**レビュー用SQLでありmigrationではない**。
+- `docs/community/phase2-board-schema-review.sql`はレビュー原本。CLI生成の正式migration候補は`supabase/migrations/20261023055617_community_plaza_phase2_board.sql`。両者は同一内容だが、Production適用・承認済みではない。
 - 新テーブルRLS ON + anon/authenticated直接アクセス禁止、明示的な最小RPCだけ利用する案。
 - SQLの原型は既存Phase 1の関数定義を元に、board keyだけ追補したもの。
 - R15/R18の本文投稿を認める意図はない。全年齢宣言はユーザー自己申告なので、通報と運営審査が必要。
@@ -36,8 +36,8 @@
 
 ## 未完了・本番前の必須残件
 1. 既存仕様とカテゴリ・スレッド編集、削除の契約を最終照合する。
-2. Supabase CLIで正式migrationを生成し、review SQLを格納して実行順序・pre/postcheck・保全rollbackを審査する。現段階では生成していない。
-3. 非Productionの隔離SQL/RLS権限・匿名閲覧・他人の編集・Block/Mute・通報・運営表示/非表示・削除後の不可視・連投制限を検証する（ユーザー承認済みの検証方針を守る）。
+2. CLI生成migrationとread-only pre/postcheck、保全rollbackを使い捨てPostgreSQLで検証済み。Productionのpending setは適用承認直前に再確認する。
+3. 非Productionの隔離SQL/RLS権限・匿名閲覧・他人の編集・Block/Mute・通報・運営表示/非表示・削除後の不可視・連投制限は使い捨てCIで確認。ホスト環境の実ユーザー動作確認は未実施。
 4. PC/スマホ模擬UI、Node/静的品質、既存タイムライン回帰、CodeQLを確認する。既に通過した同一検査を無駄に反復しない。
 5. PRの必要な承認ゲートを通しProduction migrationとコード導入を別々に実施。新機能は両方完成するまでOFFのまま維持。
 6. 最終本番承認後に両サイトフラグとDBの公開制御を同時に確認し公開する。OFF経路を残す。
