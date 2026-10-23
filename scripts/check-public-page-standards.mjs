@@ -27,6 +27,7 @@ for (const page of added) {
     'novelight-public-header-page',
     'novelight-public-ivory',
     '/shared/page/public-ivory.css',
+    'novelight-header-light.css',
     'novelight-client.js',
     'data-novelight-shared-header="true"'
   ]) {

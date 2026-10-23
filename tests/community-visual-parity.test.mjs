@@ -19,6 +19,7 @@ test('community shares the Home header', () => {
   assert.doesNotMatch(page, /novelight-public-dark/u);
   assert.match(page, /novelight-community-ivory\.css/u);
   assert.match(page, /shared\/page\/public-ivory\.css/u);
+  assert.match(page, /novelight-header-light\.css/u);
 });
 
 test('community shares login state', () => {
@@ -42,6 +43,7 @@ test('plaza and board use readable ivory', () => {
   assert.match(css, /font-size: 17px/u);
   assert.match(css, /color: #302214/u);
   assert.match(css, /background: #102035/u);
+  assert.doesNotMatch(css, /:is\(\.community-card, #communityNotifications/u);
   assert.match(css, /community-post-meta/u);
   assert.ok(css.includes('.board-thread-card'));
 });
@@ -51,5 +53,6 @@ test('new public pages have an enforced theme', () => {
   const gate = read('scripts/check-public-page-standards.mjs');
   assert.match(pkg.scripts['header:check'], /check-public-page-standards/u);
   assert.ok(gate.includes('novelight-public-ivory'));
+  assert.ok(gate.includes('novelight-header-light.css'));
   assert.ok(gate.includes('publicPageThemeExceptions'));
 });
