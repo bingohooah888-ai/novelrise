@@ -63,6 +63,12 @@ echo "::group::Community Phase 1 reversible schema rollback/reapply on disposabl
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-security.sql
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase1-behavior.sql
 echo "::endgroup::"
+# Never apply the Phase 2 draft to Production or persist it in the replay DB.
+# psql BEGIN/ROLLBACK in this fixture validates the SQL, role constraints and
+# private table permissions against the fully replayed Phase 1 schema.
+echo "::group::Community Phase 2 rollback-only board contract (disposable replay)"
+"${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase2-review.sql
+echo "::endgroup::"
 
 rm -f "$SEARCH_CARD_COMPAT_MIGRATION"
 trap - EXIT
