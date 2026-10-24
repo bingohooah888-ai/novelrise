@@ -252,12 +252,27 @@ test('community UI interactions use mocked data', async ({ page }) => {
     return {
       background: style(element).backgroundColor,
       title: style(element.querySelector('.community-card-title')).color,
-      body: style(element.querySelector('.community-card-body')).color
+      body: style(element.querySelector('.community-card-body')).color,
+      fontSizes: {
+        author: parseFloat(style(element.querySelector('.community-person')).fontSize),
+        date: parseFloat(style(element.querySelector('.community-date')).fontSize),
+        title: parseFloat(style(element.querySelector('.community-card-title')).fontSize),
+        body: parseFloat(style(element.querySelector('.community-card-body')).fontSize),
+        report: parseFloat(style(element.querySelector('.community-post-meta > .community-action')).fontSize)
+      },
+      mobile: globalThis.matchMedia('(max-width: 640px)').matches
     };
   });
   expect(appearance.background).toBe('rgb(16, 32, 53)');
   expect(appearance.title).toBe('rgb(245, 242, 234)');
   expect(appearance.body).toBe('rgb(218, 226, 236)');
+  expect(appearance.fontSizes).toEqual({
+    author: 19,
+    date: 17,
+    title: 22,
+    body: appearance.mobile ? 19 : 20,
+    report: 17
+  });
   await card.locator('.community-expand').click();
   await expect(card.locator('.community-expand')).toHaveAttribute(
     'aria-expanded',
