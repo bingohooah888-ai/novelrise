@@ -493,24 +493,24 @@ test('R15 badge remains fully visible and Home cover links align', async ({
   await expect(page.locator('#communityHomeFeed .community-card').first()).toBeVisible();
 
   const layout = await page.evaluate(() => {
-    const feed = document.getElementById('communityHomeFeed');
+    const feed = globalThis.document.getElementById('communityHomeFeed');
     const novelLink = (title, rated) => {
-      const a = document.createElement('a');
+      const a = globalThis.document.createElement('a');
       a.className = 'community-link';
       a.href = 'novel.html?id=not-a-number';
       if (rated) {
-        const badge = document.createElement('span');
+        const badge = globalThis.document.createElement('span');
         badge.className = 'nl-r15-badge';
         badge.textContent = 'R15';
         a.append(badge);
       }
-      const cover = document.createElement('img');
+      const cover = globalThis.document.createElement('img');
       cover.alt = '';
       cover.src =
         'data:image/svg+xml,' +
         encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="34" height="48"/>');
       a.append(cover);
-      const text = document.createElement('span');
+      const text = globalThis.document.createElement('span');
       text.textContent = title;
       a.append(text);
       return a;
@@ -521,15 +521,15 @@ test('R15 badge remains fully visible and Home cover links align', async ({
       '長い紹介文が折り返されるケースを確認します'.repeat(8),
       '普通の紹介文'.repeat(3)
     ].entries()) {
-      const card = document.createElement('article');
+      const card = globalThis.document.createElement('article');
       card.className = 'community-card';
-      const person = document.createElement('div');
+      const person = globalThis.document.createElement('div');
       person.className = 'community-person';
       person.textContent = 'テスト作者';
-      const type = document.createElement('span');
+      const type = globalThis.document.createElement('span');
       type.className = 'community-type';
       type.textContent = '新作公開';
-      const heading = document.createElement('h3');
+      const heading = globalThis.document.createElement('h3');
       heading.className = 'community-card-title';
       heading.textContent = title;
       card.append(
@@ -550,7 +550,7 @@ test('R15 badge remains fully visible and Home cover links align', async ({
       badgeRight: badge.getBoundingClientRect().right,
       titleLeft: title.getBoundingClientRect().left,
       linkBottoms: links.map((link) => link.getBoundingClientRect().bottom),
-      isDesktop: matchMedia('(min-width: 901px)').matches
+      isDesktop: globalThis.matchMedia('(min-width: 901px)').matches
     };
   });
   expect(layout.badgeText).toBe('R15');
