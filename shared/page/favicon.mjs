@@ -8,6 +8,17 @@ export function ensureFaviconHtml(html) {
     return html;
   }
 
+  // A materialized page must be a no-op on every subsequent sync.
+  const currentIcons = [...html.matchAll(/<link\b[^>]*>/giu)]
+    .map(([tag]) => tag)
+    .filter((tag) => {
+      const rel = tag.match(/\brel\s*=\s*(["'])([^"']+)\1/iu)?.[2];
+      return rel?.toLowerCase().trim().split(/\s+/u).includes('icon');
+    });
+  if (currentIcons.length === 1 && currentIcons[0] === SITE_FAVICON_LINK) {
+    return html;
+  }
+
   const withoutOldIcons = html.replace(/<link\b[^>]*>/giu, (tag) => {
     const rel = tag.match(/\brel\s*=\s*(["'])([^"']+)\1/iu)?.[2];
     if (!rel) return tag;
