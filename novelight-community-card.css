@@ -49,6 +49,33 @@
   font-size: 19px;
 }
 
+/* The R15 marker shares a row with the cover and the ellipsized novel title.
+   Only the title may shrink; the three-character rating must stay legible. */
+:is(.community-home, .community-page) .community-card .community-link > .nl-r15-badge {
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: max-content;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  margin: 0;
+}
+:is(.community-home, .community-page) .community-card .community-link > span:not(.nl-r15-badge) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Equal-height Home cards share a bottom baseline for their cover links.
+   The full-size single-column plaza keeps its existing natural flow. */
+.community-home .community-feed > .community-card {
+  display: flex;
+  flex-direction: column;
+}
+.community-home .community-card > .community-link {
+  margin-top: auto;
+}
+
 :is(.community-home, .community-page) .community-card :is(
   .community-expand, .community-action, .community-more,
   .community-follow-open, .community-comments-older, .community-comments-refresh
