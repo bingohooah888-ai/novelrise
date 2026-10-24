@@ -23,13 +23,17 @@ test('mypage author guide bounds initial author-data rows', () => {
   );
 });
 
-test('home starts independent discovery shelves together', () => {
+test('home loads visible shelves in parallel and defers hidden shelves', () => {
   const source = read('index.html');
   assert.ok(
     source.includes(
-      'Promise.all([loadDiscovery(),loadNewArrivals(),loadSeedShelf(),loadRankDiscoveryShelves()])'
+      'Promise.all([loadDiscovery(),loadNewArrivals(),deferHomeSecondaryShelves()])'
     )
   );
+  assert.ok(
+    source.includes('Promise.all([loadSeedShelf(),loadRankDiscoveryShelves()])')
+  );
+  assert.ok(source.includes("type === 'back_forward'"));
 });
 
 test('bookshelf bounds initial fetch and retains an explicit all-items path', () => {

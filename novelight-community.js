@@ -926,7 +926,8 @@
     return /^post-(?:novel:[0-9]+|note:[0-9]+|curation:[0-9]+|seed:[a-f0-9-]{36}|official:[0-9]+|ep:[a-f0-9-]{36}:[0-9]+:[0-9]+)$/i.test(id)
       ? id : null;
   }
-  void (async () => {
+  function startFeed() {
+    void (async () => {
     await load();
     const target = linkedPostId();
     if (!target) return;
@@ -957,4 +958,18 @@
       root.prepend(notice);
     }
   })();
+  }
+  // On Home, defer the feed request until the section approaches the viewport.
+  // Browser back/forward restoration keeps the original eager behavior.
+  const returningHome = performance.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward';
+  if (isHome && !returningHome && 'IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      observer.disconnect();
+      startFeed();
+    }, { rootMargin: '300px 0px' });
+    observer.observe(panel);
+  } else {
+    startFeed();
+  }
 })();
