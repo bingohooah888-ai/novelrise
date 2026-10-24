@@ -33,6 +33,8 @@ test('four navigation links never wrap', () => {
   assert.equal((shared.match(/href="community\.html"/gu) || []).length, 2);
   assert.match(css, /flex-wrap: nowrap !important/u);
   assert.match(css, /max-width: 1510px/u);
+  assert.match(css, /max-height: 47px !important/u);
+  assert.match(css, /box-sizing: border-box !important/u);
   assert.match(css, /novelight-community-released/u);
   assert.match(read('novelight-client.js'), /novelight-community-released/u);
 });
