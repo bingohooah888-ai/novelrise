@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { ensureFaviconHtml } from '../../shared/page/favicon.mjs';
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -135,7 +136,8 @@ export function sendHtml(
   if (!indexable) {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   }
-  return res.status(200).send(req.method === 'HEAD' ? '' : html);
+  const body = req.method === 'HEAD' ? '' : ensureFaviconHtml(html);
+  return res.status(200).send(body);
 }
 
 export function methodAllowed(req, res) {
