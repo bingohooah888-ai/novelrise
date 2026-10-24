@@ -42,7 +42,7 @@ test('homepage uses approved OGP image', () => {
   }
 });
 
-test('new share URL has its own X card and canonical metadata', () => {
+test('legacy welcome URL keeps its original X card and canonical metadata', () => {
   const tags = [
     'href="https://novelight.jp/welcome.html"',
     'property="og:url" content="https://novelight.jp/welcome.html"',
@@ -58,4 +58,31 @@ test('new share URL has its own X card and canonical metadata', () => {
     freshImage.equals(image),
     'Versioned sharing image must be exact approved PNG'
   );
+});
+
+test('new marketing entrypoints keep the homepage URL instead of legacy welcome', () => {
+  const homepage = 'https://novelight.jp/';
+  assert.match(home, /<link rel="canonical" href="https:\/\/novelight\.jp\/">/);
+  assert.match(home, /<meta property="og:url" content="https:\/\/novelight\.jp\/">/);
+  const sourceFiles = [
+    '../index.html',
+    '../novelight-public-share.js',
+    '../novelight-x-image-share.js',
+    '../novelight-share-attribution-lite.js'
+  ];
+  for (const file of sourceFiles) {
+    const code = readFileSync(new URL(file, import.meta.url), 'utf8');
+    assert.doesNotMatch(
+      code,
+      /(?:https:\/\/novelight\.jp)?\/welcome(?:\.html)?(?:["'?#]|$)/u,
+      `New outward-facing share flows should not link to welcome: ${file}`
+    );
+  }
+  const policy = readFileSync(
+    new URL('../docs/MARKETING-LINK-DESTINATIONS.md', import.meta.url),
+    'utf8'
+  );
+  assert.ok(policy.includes(homepage));
+  assert.match(policy, /既存のX投稿・DM/);
+  assert.match(policy, /welcome\.html.*維持/);
 });
