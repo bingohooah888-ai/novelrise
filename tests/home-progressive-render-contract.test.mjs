@@ -57,7 +57,10 @@ test('home prefetches festival gate before app scripts', () => {
   assert.match(home, /DOMContentLoaded', resolve/);
   assert.match(home, /cache: 'no-store'/);
   assert.match(home, /rest\/v1\/rpc\/novelight_public_contest_hero_gate_v1/);
-  assert.match(home, /earlyGate \|\| await client\.rpc\('novelight_public_contest_catalog'/);
+  assert.match(
+    home,
+    /earlyGate \|\| await client\.rpc\('novelight_public_contest_catalog'/
+  );
   assert.match(
     home,
     /rel="preload" as="image" href="assets\/home\/06_starfestival_hero_1600x900\.webp"/
