@@ -83,7 +83,7 @@ CIは同期待ちの差分を検出してPRを止め、未承認の自動デプ�
 ## 新規公開ページの品質ゲート（2026-10-24）
 
 通常公開ページは `shared/header/manifest.json` の `managed` に登録し、
-`/shared/page/public-ivory.css` を読み込み、`body` に
+`/shared/page/public-ivory.css` と `novelight-header-light.css` を読み込み、`body` に
 `novelight-theme novelight-public-header-page novelight-public-ivory` を設定します。
 標準は **アイボリー背景・読みやすい大きさ・濃色文字** です。
 ページ固有のCSSはこの基準に重ね、ヘッダーは独自に再作成しないでください。
@@ -94,3 +94,26 @@ CIは同期待ちの差分を検出してPRを止め、未承認の自動デプ�
 既存独立画面は `shared/page/preexisting-root-html.json` で固定し、
 新しい例外デザインが必要な場合は `publicPageThemeExceptions` にページ名と理由を明記します。
 これは作者創作室／管理画面などの意図的に異なる既存デザインを壊さないための境界です。
+
+### 共通ヘッダーの見た目検証（2026-10-24）
+
+共通HTML原本の同期だけではヘッダーの高さ・文字・ログイン後の「創作室」ボタンは統一できません。
+通常の明色公開ページは `novelight-header-light.css` と `/shared/header/public-header.css` の双方を読み込むこと。
+`novelight-public-dark` のホーム・料金等は既存の暗色ヘッダー基準を維持します。
+新しい通常公開ページでは `scripts/check-public-page-standards.mjs` が前者の欠落を検出します。
+見た目の退行検出には `tests/e2e/specs/community-plaza-ui.js` の computed-style 検証を使います。
+CSS の `:is()` で ID セレクターとクラスセレクターを混在させると特異性が上がり、後続の色指定を上書きできないため、カードと通知・掲示板の色は分離してください。
+
+
+## サイト共通ファビコン（自動同期）
+
+原本は `shared/page/favicon.mjs` の `SITE_FAVICON_LINK` です。
+ルートの全HTML、作品・エピソードのSEOテンプレートに対して
+`npm run header:sync` が自動的に同じファビコンを設定します。
+通常の共通ヘッダーを持たない創作室・管理画面・特別ページにも適用します。
+今後ルートにHTMLファイルを追加しても、manifestへのファビコン個別登録は不要です。
+
+`npm run header:check` とCIは、新規ページで同期待ちのファビコンがあれば失敗します。
+動的に配信するページは共通 `sendHtml` がレスポンス時に同じタグを付けます。
+Google所有権確認のようなHTML文書でない検証ファイルは対象外です。
+インラインJSによる事後挿入やVercel Middlewareの追加は行いません。

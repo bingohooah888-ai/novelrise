@@ -104,3 +104,34 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
   background: linear-gradient(135deg, #c98b23, #f0c35d) !important;
   box-shadow: 0 10px 28px rgba(214, 164, 71, 0.27) !important;
 }
+
+/* Shared login / signed-in Studio dimensions. A light page previously rendered its
+   53px height in content-box, then added 20+px padding/borders and reached 75px.
+   Home's actual control is about 47px. Use border-box and the SAME control
+   dimensions before and after authentication on all public headers. */
+@media (min-width: 641px) {
+  html body.novelight-public-dark header.site-header .header-actions > .login-action,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .login-action {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 47px !important;
+    min-height: 47px !important;
+    max-height: 47px !important;
+    padding: 8px !important;
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+  }
+}
+@media (min-width: 641px) and (max-width: 1180px) {
+  html body.novelight-public-dark header.site-header .header-actions > .login-action,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .login-action {
+    font-size: 14px !important;
+  }
+}
+@media (max-width: 640px) {
+  html body.novelight-public-dark header.site-header .header-actions > .login-action,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .login-action {
+    font-size: 16px !important;
+  }
+}

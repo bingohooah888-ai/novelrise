@@ -209,6 +209,80 @@ test('community gate OFF prevents RPC calls', async ({ page }) => {
   ).toEqual([]);
 });
 
+// Browser-level parity: static markup equality alone cannot enforce button
+// dimensions when a light page accidentally skips its header stylesheet.
+// prettier-ignore
+test('signed-in Studio button has Home-scale dimensions on the plaza', async ({ page }) => {
+  await installIsolatedMock(page, true);
+  const studioMetrics = async () => {
+    const link = page.locator('header.site-header .login-action');
+    await expect(link).toHaveText('創作室');
+    return link.evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      const computed = globalThis.getComputedStyle(el);
+      return { height: box.height, font: parseFloat(computed.fontSize) };
+    });
+  };
+  await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+  const home = await studioMetrics();
+  await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
+  const plaza = await studioMetrics();
+  expect(plaza.height).toBeLessThanOrEqual(home.height + 2);
+  expect(plaza.font).toBeLessThanOrEqual(home.font + 1);
+});
+
+// The same mock post must have identical computed styles and controls in both views.
+// prettier-ignore
+test('Home and plaza share exact timeline card appearance and actions', async ({ page }) => {
+  await installIsolatedMock(page, true);
+  async function appearance(path, selector) {
+    await page.goto(path, { waitUntil: 'domcontentloaded' });
+    const card = page.locator(selector).first();
+    await expect(card).toBeVisible();
+    return card.evaluate((element) => {
+      const style = globalThis.getComputedStyle;
+      const get = (selector) => element.querySelector(selector);
+      const report = get('.community-post-meta > button');
+      const actionRow = get('.community-actions');
+      return {
+        stylesheetCount: globalThis.document.querySelectorAll('link[data-novelight-community-card="shared"]').length,
+        background: style(element).backgroundColor,
+        titleColor: style(get('.community-card-title')).color,
+        bodyColor: style(get('.community-card-body')).color,
+        authorSize: parseFloat(style(get('.community-person')).fontSize),
+        titleSize: parseFloat(style(get('.community-card-title')).fontSize),
+        bodySize: parseFloat(style(get('.community-card-body')).fontSize),
+        dateSize: parseFloat(style(get('.community-date')).fontSize),
+        reportSize: parseFloat(style(report).fontSize),
+        actionRowDisplay: style(actionRow).display,
+        reportParent: report.parentElement.className,
+        reportLabel: report.textContent,
+        metaContainsDate: Boolean(get('.community-post-meta .community-date'))
+      };
+    });
+  }
+  const home = await appearance('/index.html', '#communityHomeFeed .community-card');
+  const plaza = await appearance('/community.html', '#communityPageFeed .community-card');
+  expect(home).toEqual(plaza);
+  expect(home).toMatchObject({
+    stylesheetCount: 1,
+    background: 'rgb(16, 32, 53)',
+    titleColor: 'rgb(245, 242, 234)',
+    bodyColor: 'rgb(218, 226, 236)',
+    authorSize: 19,
+    titleSize: 22,
+    dateSize: 17,
+    reportSize: 17,
+    actionRowDisplay: 'none',
+    reportParent: 'community-post-meta',
+    reportLabel: '通報',
+    metaContainsDate: true
+  });
+  expect(home.bodySize).toBe(
+    await page.evaluate(() => globalThis.matchMedia('(max-width: 640px)').matches) ? 19 : 20
+  );
+});
+
 // prettier-ignore
 test('community UI interactions use mocked data', async ({ page }) => {
   await installIsolatedMock(page, true);
@@ -223,6 +297,34 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await expect(card.locator('.community-card-body')).toContainText(
     '安全な画面表示'
   );
+  // Check the browser's computed style, not only the presence of a CSS token.
+  // The previous ivory :is(#id, .card) rule outranked the navy override.
+  const appearance = await card.evaluate((element) => {
+    const style = globalThis.getComputedStyle;
+    return {
+      background: style(element).backgroundColor,
+      title: style(element.querySelector('.community-card-title')).color,
+      body: style(element.querySelector('.community-card-body')).color,
+      fontSizes: {
+        author: parseFloat(style(element.querySelector('.community-person')).fontSize),
+        date: parseFloat(style(element.querySelector('.community-date')).fontSize),
+        title: parseFloat(style(element.querySelector('.community-card-title')).fontSize),
+        body: parseFloat(style(element.querySelector('.community-card-body')).fontSize),
+        report: parseFloat(style(element.querySelector('.community-post-meta > .community-action')).fontSize)
+      },
+      mobile: globalThis.matchMedia('(max-width: 640px)').matches
+    };
+  });
+  expect(appearance.background).toBe('rgb(16, 32, 53)');
+  expect(appearance.title).toBe('rgb(245, 242, 234)');
+  expect(appearance.body).toBe('rgb(218, 226, 236)');
+  expect(appearance.fontSizes).toEqual({
+    author: 19,
+    date: 17,
+    title: 22,
+    body: appearance.mobile ? 19 : 20,
+    report: 17
+  });
   await card.locator('.community-expand').click();
   await expect(card.locator('.community-expand')).toHaveAttribute(
     'aria-expanded',

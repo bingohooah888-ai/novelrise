@@ -5,20 +5,25 @@ import { URL } from 'node:url';
 
 const source = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const page = source('../index.html');
-const css = source('../novelight-contest-home-promo.css');
+const css = source('../novelight-home-promo.css');
 const script = source('../novelight-contest-home-promo.js');
 
-test('responsive star festival banner uses live updated copy rather than stale dated WebP', () => {
-  assert.match(page, /id="novelightContestHomePromo"[^>]* hidden>/);
+test('responsive Star Festival hero uses the approved current artwork and event dates', () => {
+  assert.match(page, /id="novelightContestHeroSlide"[^>]* hidden>/);
   assert.match(page, /href="contest\.html#enter"/);
-  assert.match(page, /2026年11月30日（月）23:59/);
-  assert.match(page, /12月1日（火）〜31日（木）/);
-  assert.doesNotMatch(page, /starfestival-entry-(desktop|mobile)\.webp/);
-  assert.match(css, /\.starfestival-banner-title/);
-  assert.match(css, /@media\(max-width:680px\)/);
+  assert.match(page, /エントリー締切は2026年11月30日23時59分/);
+  assert.match(page, /コンテスト開催は12月1日から31日/);
+  assert.match(page, /06_starfestival_hero_1600x900\.webp/);
+  assert.match(css, /\.home-promo-slide\[hidden\]/);
+  assert.match(css, /@media \(max-width: 767px\)/);
 });
 
-test('home promo remains registration-only and checks the deadline', () => {
+test('home hero remains registration-only and checks the deadline', () => {
+  assert.match(page, /client\.rpc\('novelight_public_contest_catalog'/);
+  assert.match(page, /data\.contest_status === 'registration'/);
+  assert.match(page, /Date\.now\(\) <= deadline/);
+  assert.match(page, /contestSlide\.hidden = false/);
+  assert.match(page, /contestSlide\.remove\(\)/);
   assert.doesNotMatch(script, /link\.textContent\s*=/);
   assert.match(script, /data\.contest_status === 'registration'/);
   assert.match(script, /11月30日23:59/);

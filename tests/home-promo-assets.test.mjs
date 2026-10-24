@@ -97,10 +97,10 @@ test('Home lead visual uses the manually approved official SCOUT campaign state'
   assert.doesNotMatch(homeHtml, /const currentLeadVisual = 'teaser';/u);
 });
 
-test('Home promotional visual order is teaser, hero, author, reader', () => {
+test('Home promotional visual order is Star Festival, SCOUT campaign, author, reader', () => {
   const positions = [
-    'aria-label="NOVELIGHT イベント告知"',
-    'data-src="assets/home/01_hero_pc_2560x1280.png"',
+    'id="novelightContestHeroSlide"',
+    'id="homeLeadVisual"',
     'data-src="assets/home/03_author_features_1600x900.png"',
     'data-src="assets/home/04_reader_promo_1600x900.png"'
   ].map((value) => homeHtml.indexOf(value));
