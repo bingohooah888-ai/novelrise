@@ -30,7 +30,7 @@ test('new works stay global, episodes require follow or favorite', () => {
     'public.author_follows f',
     'public.favorites fav',
     'fav.novel_id=n.id',
-    'f.author_user_id=e.author_user_id',
+    'f.author_user_id=e.author_user_id'
   ];
   for (const term of terms) {
     assert.ok(migration.includes(term), term);
@@ -45,7 +45,7 @@ test('legacy keys are preserved and new episodes use event IDs', () => {
     '1000000000000::bigint + e.id',
     'e.id <=',
     'e.id >',
-    '/10800',
+    '/10800'
   ];
   for (const term of terms) {
     assert.ok(migration.includes(term), term);
@@ -68,7 +68,7 @@ test('direct access is restricted and moderation remains', () => {
     'novelight_community_board_visible',
     'official_profile.avatar_path',
     'ENABLE ROW LEVEL SECURITY',
-    'REVOKE ALL ON TABLE public.community_episode_key_cutover',
+    'REVOKE ALL ON TABLE public.community_episode_key_cutover'
   ];
   for (const term of terms) {
     assert.ok(migration.includes(term), term);
