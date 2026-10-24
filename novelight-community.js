@@ -63,9 +63,13 @@
     const avatar = el('span', 'community-avatar', String(row.author_name || '作').slice(0, 1));
     avatar.setAttribute('aria-hidden', 'true');
     const authorId = typeof row.author_user_id === 'string' && /^[0-9a-f-]{36}$/i.test(row.author_user_id) ? row.author_user_id : null;
-    // Same shared renderer used by the public author profile; no extra feed queries.
-    if (row.kind !== 'official' && authorId) {
-      window.NovelightPublicAvatar?.paint(avatar, row.author_avatar_path, authorId, row.author_name, client);
+    // Official notices keep their brand label and public visibility semantics.
+    // Image owner is read server-side from the original ADMIN creation audit.
+    const avatarOwnerId = row.kind === 'official'
+      ? (typeof row.author_avatar_user_id === 'string' && /^[0-9a-f-]{36}$/i.test(row.author_avatar_user_id) ? row.author_avatar_user_id : null)
+      : authorId;
+    if (avatarOwnerId) {
+      window.NovelightPublicAvatar?.paint(avatar, row.author_avatar_path, avatarOwnerId, row.author_name, client);
     }
     const name = authorId ? el('a', '', row.author_name || '作者') : el('span', '', row.author_name || 'NOVELIGHT公式');
     if (authorId) name.href = 'author.html?id=' + encodeURIComponent(authorId);
