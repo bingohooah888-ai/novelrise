@@ -110,7 +110,8 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
    Home's actual control is about 47px. Use border-box and the SAME control
    dimensions before and after authentication on all public headers. */
 @media (min-width: 641px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .login-action {
+  html body.novelight-public-dark header.site-header .header-actions > .login-action,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .login-action {
     box-sizing: border-box !important;
     width: 100% !important;
     height: 47px !important;
@@ -123,12 +124,14 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
   }
 }
 @media (min-width: 641px) and (max-width: 1180px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .login-action {
+  html body.novelight-public-dark header.site-header .header-actions > .login-action,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .login-action {
     font-size: 14px !important;
   }
 }
 @media (max-width: 640px) {
-  html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-header .header-actions > .login-action {
+  html body.novelight-public-dark header.site-header .header-actions > .login-action,
+  html body.novelight-public-header-page:not(.novelight-public-dark) header.site-header .header-actions > .login-action {
     font-size: 16px !important;
   }
 }
