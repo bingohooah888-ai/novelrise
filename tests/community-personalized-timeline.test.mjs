@@ -36,10 +36,7 @@ test('global new works and personalized episode eligibility', () => {
 });
 
 test('historical post keys remain intact, new episodes use event keys', () => {
-  assert.match(
-    migration,
-    /CREATE TABLE public\.community_episode_key_cutover/,
-  );
+  assert.match(migration, /CREATE TABLE public\.community_episode_key_cutover/);
   assert.match(
     migration,
     /COALESCE\(MAX\(id\),0\)::bigint FROM public\.author_follow_events/,
