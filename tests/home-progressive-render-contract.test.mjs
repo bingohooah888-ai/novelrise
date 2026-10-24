@@ -51,6 +51,7 @@ test('home prefetches festival gate before app scripts', () => {
   const sdk = home.indexOf('src="/assets/vendor/supabase-js-2.112.3.js"');
   const carouselStart = home.indexOf('// Carousel markup already exists here.');
   assert.ok(early >= 0 && early < css && css < sdk);
+  assert.doesNotMatch(home.slice(early, css), /Authorization:/);
   assert.ok(carouselStart > css && carouselStart < sdk);
   assert.match(home, /earlyGate \|\| await client\.rpc/);
   assert.match(home, /DOMContentLoaded', resolve/);
