@@ -482,7 +482,6 @@ test('a shared older comment link opens a permitted single-comment preview', asy
   expect(calls).toContain('novelight_community_comment_detail');
 });
 
-
 // Layout regression: the shared badge must not inherit the truncation
 // intended only for the work title, and Home links share one baseline.
 // prettier-ignore
