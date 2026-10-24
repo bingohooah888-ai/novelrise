@@ -79,7 +79,7 @@ test('new marketing links bypass the retired welcome share page', () => {
     new URL('../docs/marketing/LINK-DESTINATIONS.md', import.meta.url),
     'utf8'
   );
-  assert.ok(note.includes(homeUrl));
+  assert.match(note, /新しく発行するリンクの既定/);
   assert.match(note, /既存のX投稿・DM/);
   assert.match(note, /welcome\.html.*維持/);
 });
