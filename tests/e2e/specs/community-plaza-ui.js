@@ -9,7 +9,8 @@ const FIXTURE = {
   body: '交流広場の安全な画面表示をテストしています。'.repeat(9),
   author_name: 'テスト作者',
   author_user_id: 'c0a00000-0000-4000-8000-000000000001',
-  author_avatar_path: 'c0a00000-0000-4000-8000-000000000001/c0a00000-0000-4000-8000-000000000099.webp',
+  author_avatar_path:
+    'c0a00000-0000-4000-8000-000000000001/c0a00000-0000-4000-8000-000000000099.webp',
   occurred_at: '2026-10-14T09:00:00Z',
   like_count: 1,
   comment_count: 1,

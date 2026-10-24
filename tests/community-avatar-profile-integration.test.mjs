@@ -10,7 +10,10 @@ const migrationPath =
 
 test('community exposes only profile paths for already visible feed rows', () => {
   const sql = read(migrationPath);
-  assert.match(sql, /'author_avatar_path', CASE WHEN p\.kind='official' THEN NULL/u);
+  assert.match(
+    sql,
+    /'author_avatar_path', CASE WHEN p\.kind='official' THEN NULL/u
+  );
   assert.match(sql, /p\.avatar_path AS author_avatar_path/u);
   for (const gate of [
     'community_runtime_control',
@@ -23,7 +26,10 @@ test('community exposes only profile paths for already visible feed rows', () =>
   ]) {
     assert.ok(sql.includes(gate), gate);
   }
-  assert.doesNotMatch(sql, /GRANT SELECT ON (?:TABLE )?public\.profiles/u);
+  assert.doesNotMatch(
+    sql,
+    /GRANT SELECT ON (?:TABLE )?public\.profiles/u
+  );
 });
 
 test('public author avatar RPC never opens private profiles', () => {
@@ -32,11 +38,17 @@ test('public author avatar RPC never opens private profiles', () => {
   assert.match(sql, /p\.id = \(SELECT auth\.uid\(\)\)/u);
   assert.match(sql, /n\.status = 'published'/u);
   assert.match(sql, /n\.content_rating IN \('general','sensitive_15'\)/u);
-  assert.match(sql, /REVOKE ALL ON FUNCTION public\.novelight_public_author_avatar/u);
-  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.novelight_public_author_avatar/u);
+  assert.match(
+    sql,
+    /REVOKE ALL ON FUNCTION public\.novelight_public_author_avatar/u
+  );
+  assert.match(
+    sql,
+    /GRANT EXECUTE ON FUNCTION public\.novelight_public_author_avatar/u
+  );
 });
 
-test('Home, plaza and public author pages load the same public avatar painter', () => {
+test('all public author surfaces load the shared avatar painter', () => {
   for (const path of ['index.html', 'community.html', 'author.html']) {
     assert.match(read(path), /novelight-public-avatar\.js/u, path);
   }
@@ -47,7 +59,10 @@ test('Home, plaza and public author pages load the same public avatar painter', 
   assert.match(script, /image\.onerror/u);
   assert.match(read('novelight-community.js'), /row\.author_avatar_path/u);
   assert.match(read('author.html'), /novelight_public_author_avatar/u);
-  assert.doesNotMatch(read('novelight-community.js'), /\.from\(['"]profiles['"]\)/u);
+  assert.doesNotMatch(
+    read('novelight-community.js'),
+    /\.from\(['"]profiles['"]\)/u
+  );
 });
 
 test('image fallback and existing profile upload contract stay untouched', () => {
