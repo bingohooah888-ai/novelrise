@@ -60,6 +60,26 @@ test('legacy welcome URL keeps its original X card and canonical metadata', () =
   );
 });
 
+test('welcome URL serves its X card while browsers go directly to the homepage', () => {
+  const redirect = "window.location.replace('/');";
+  assert.ok(welcome.includes(redirect), 'The browser must skip the welcome screen');
+  assert.ok(
+    welcome.indexOf('name="twitter:image"') < welcome.indexOf(redirect),
+    'X card metadata must precede any browser redirect'
+  );
+  assert.doesNotMatch(welcome, /<meta\\s+http-equiv=["']refresh/i);
+
+  const config = JSON.parse(
+    readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')
+  );
+  assert.ok(
+    !config.redirects.some(({ source }) =>
+      ['/welcome', '/welcome.html'].includes(source)
+    ),
+    'HTTP redirects would prevent X from reading the welcome OGP metadata'
+  );
+});
+
 test('new marketing links bypass the retired welcome share page', () => {
   const homeUrl = 'https://novelight.jp/';
   assert.ok(home.includes(`href="${homeUrl}"`));
