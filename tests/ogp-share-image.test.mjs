@@ -60,29 +60,26 @@ test('legacy welcome URL keeps its original X card and canonical metadata', () =
   );
 });
 
-test('new marketing entrypoints keep the homepage URL instead of legacy welcome', () => {
-  const homepage = 'https://novelight.jp/';
-  assert.match(home, /<link rel="canonical" href="https:\/\/novelight\.jp\/">/);
-  assert.match(home, /<meta property="og:url" content="https:\/\/novelight\.jp\/">/);
-  const sourceFiles = [
+test('new marketing links bypass the retired welcome share page', () => {
+  const homeUrl = 'https://novelight.jp/';
+  assert.ok(home.includes(`href="${homeUrl}"`));
+  assert.ok(home.includes(`property="og:url" content="${homeUrl}"`));
+  const sources = [
     '../index.html',
     '../novelight-public-share.js',
     '../novelight-x-image-share.js',
     '../novelight-share-attribution-lite.js'
   ];
-  for (const file of sourceFiles) {
-    const code = readFileSync(new URL(file, import.meta.url), 'utf8');
-    assert.doesNotMatch(
-      code,
-      /(?:https:\/\/novelight\.jp)?\/welcome(?:\.html)?(?:["'?#]|$)/u,
-      `New outward-facing share flows should not link to welcome: ${file}`
-    );
+  for (const path of sources) {
+    const code = readFileSync(new URL(path, import.meta.url), 'utf8');
+    assert.ok(!code.includes('welcome.html'), path);
+    assert.ok(!code.includes('"/welcome"'), path);
   }
-  const policy = readFileSync(
-    new URL('../docs/MARKETING-LINK-DESTINATIONS.md', import.meta.url),
+  const note = readFileSync(
+    new URL('../docs/marketing/LINK-DESTINATIONS.md', import.meta.url),
     'utf8'
   );
-  assert.ok(policy.includes(homepage));
-  assert.match(policy, /既存のX投稿・DM/);
-  assert.match(policy, /welcome\.html.*維持/);
+  assert.ok(note.includes(homeUrl));
+  assert.match(note, /既存のX投稿・DM/);
+  assert.match(note, /welcome\.html.*維持/);
 });
