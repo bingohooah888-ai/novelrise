@@ -10,17 +10,10 @@
   if (!panel) return;
   panel.hidden = false;
   const refreshButton = document.getElementById('communityRefresh');
-  const filterStatus = document.getElementById('communityFilterStatus');
-  function filterMessage(value) {
-    if (!filterStatus) return;
-    filterStatus.textContent = value;
-    filterStatus.hidden = !value;
-  }
   const client = supabase.createClient('https://fiepaguycecrredwrcwx.supabase.co', 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE');
   // Community does not call acquisition tracking; reuse the shared account navigation sync.
   if (!isHome) void window.NovelightClient?.syncAuthHeader(client);
   let page = 0;
-  let following = false;
   let loading = false;
   let filterRevision = 0;
   let pendingReset = false;
@@ -862,7 +855,6 @@
     loading=true;
     if (refreshButton) refreshButton.disabled = true;
     const revision=filterRevision;
-    const requestedFollowing=following;
     if(reset){
       page=0;
       message('交流を読み込んでいます...');
@@ -877,7 +869,7 @@
         if (more) more.hidden = true;
         return;
       }
-      const data=await rpc('novelight_community_feed',{p_limit:limit,p_offset:page*limit,p_following:requestedFollowing});
+      const data=await rpc('novelight_community_feed',{p_limit:limit,p_offset:page*limit});
       // A stale response must never overwrite the selected filter.
       if (revision !== filterRevision) return;
       const list=Array.isArray(data)?data:[];
@@ -921,28 +913,8 @@
   }
   document.getElementById('communityLoadMore')?.addEventListener('click',()=>{void load(false);});
   refreshButton?.addEventListener('click',()=>{
-    filterMessage('');
     filterRevision += 1;
     void load(true);
-  });
-  document.querySelectorAll('[data-community-filter]').forEach(button=>{
-    button.addEventListener('click',async()=>{
-      const requested = button.dataset.communityFilter==='following';
-      try {
-        if(requested && !(await authed()))return requireLogin();
-      } catch(error) {
-        console.warn('community following filter unavailable',error);
-        filterMessage('フォロー中の投稿を確認できませんでした。再度お試しください。');
-        return;
-      }
-      filterMessage('');
-      following=requested;
-      filterRevision += 1;
-      document.querySelectorAll('[data-community-filter]').forEach(item=>{
-        item.setAttribute('aria-pressed',String(item===button));
-      });
-      void load(true);
-    });
   });
   // Notification links may reference a post older than the first 15 rows.
   // Only a direct #post-* visit performs this bounded lookup; ordinary pages
