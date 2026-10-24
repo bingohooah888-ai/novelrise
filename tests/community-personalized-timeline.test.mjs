@@ -51,7 +51,8 @@ test('legacy keys are preserved and new episodes use event IDs', () => {
     assert.ok(migration.includes(term), term);
   }
   assert.equal(migration.includes('UPDATE public.community_reactions'), false);
-  assert.equal(migration.includes('DELETE FROM public.community_comments'), false);
+  const commentsDeletion = 'DELETE FROM public.community_comments';
+  assert.equal(migration.includes(commentsDeletion), false);
 });
 
 test('direct access is restricted and moderation remains', () => {
@@ -72,5 +73,6 @@ test('direct access is restricted and moderation remains', () => {
   for (const term of terms) {
     assert.ok(migration.includes(term), term);
   }
-  assert.equal(migration.includes('GRANT SELECT ON TABLE public.favorites'), false);
+  const unsafeGrant = 'GRANT SELECT ON TABLE public.favorites';
+  assert.equal(migration.includes(unsafeGrant), false);
 });
