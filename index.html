@@ -7,6 +7,24 @@
   <meta name="description" content="NOVELIGHT（ノベライト）は、無料で小説を読める投稿サイト。埋もれた物語と読者の出会いをつくり、作者が作品を届ける機会を広げます。">
   <link rel="canonical" href="https://novelight.jp/">
   <link rel="preconnect" href="https://fiepaguycecrredwrcwx.supabase.co" crossorigin>
+  <script>
+    // Start the public registration-state check while CSS and other scripts load.
+    // It is not an authorization decision: the response is still validated below.
+    window.novelightContestGatePrefetch = fetch(
+      'https://fiepaguycecrredwrcwx.supabase.co/rest/v1/rpc/novelight_public_contest_catalog',
+      {
+        method: 'POST',
+        headers: {
+          apikey: 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ p_limit: 1, p_offset: 0 }),
+        cache: 'no-store'
+      }
+    ).then(async response =>
+      response.ok ? { data: await response.json(), error: null } : null
+    ).catch(() => null);
+  </script>
   
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="NOVELIGHT">
@@ -105,7 +123,8 @@
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', async () => {
+    // Carousel markup already exists here. Do not wait for every footer script.
+    (async () => {
       // Browser-native responsive image delivery keeps the original approved PNG as fallback.
       const optimizedPromoSrcset = source => {
         if (!/^assets\/home\/[a-z0-9_-]+\.png$/i.test(source)) return '';
@@ -164,7 +183,16 @@
       const contestSlide = document.getElementById('novelightContestHeroSlide');
       let registrationOpen = false;
       try {
-        const { data, error } = await client.rpc('novelight_public_contest_catalog', {
+        // Reuse the early anonymous lookup when available; use the existing
+        // Supabase RPC if an early request failed or was blocked.
+        const earlyGate = await window.novelightContestGatePrefetch;
+        if (!earlyGate && document.readyState === 'loading') {
+          // Fallback requires the shared SDK and client initialized in the footer.
+          await new Promise(resolve =>
+            document.addEventListener('DOMContentLoaded', resolve, { once: true })
+          );
+        }
+        const { data, error } = earlyGate || await client.rpc('novelight_public_contest_catalog', {
           p_limit: 1,
           p_offset: 0
         });
@@ -344,7 +372,7 @@
         carousel.removeAttribute('data-initializing');
         startAutoplay();
       });
-    });
+    })();
   </script>
 </section>
 
