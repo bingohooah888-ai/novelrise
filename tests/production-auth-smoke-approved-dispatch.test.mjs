@@ -15,10 +15,10 @@ const request = await readFile(
   'utf8'
 );
 
-test('bridge requires the Issue 2139 OWNER command', () => {
+test('bridge requires the Issue 2498 OWNER command', () => {
   assert.match(bridge, /issue_comment:/);
   assert.doesNotMatch(bridge, /workflow_dispatch:/);
-  assert.match(bridge, /issue\.number == 2139/);
+  assert.match(bridge, /issue\.number == 2498/);
   assert.match(bridge, /issue\.pull_request == null/);
   assert.match(bridge, /comment\.user\.login == 'bingohooah888-ai'/);
   assert.match(bridge, /author_association == 'OWNER'/);
