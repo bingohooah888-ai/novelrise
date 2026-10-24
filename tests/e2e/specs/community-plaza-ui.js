@@ -9,6 +9,7 @@ const FIXTURE = {
   body: '交流広場の安全な画面表示をテストしています。'.repeat(9),
   author_name: 'テスト作者',
   author_user_id: 'c0a00000-0000-4000-8000-000000000001',
+  author_avatar_path: 'c0a00000-0000-4000-8000-000000000001/c0a00000-0000-4000-8000-000000000099.webp',
   occurred_at: '2026-10-14T09:00:00Z',
   like_count: 1,
   comment_count: 1,
@@ -17,6 +18,7 @@ const FIXTURE = {
 
 function initializeCommunityMock(options) {
   globalThis.__communityTestCalls = [];
+  globalThis.__communityWithoutAvatar = options.withoutAvatar === true;
   globalThis.__communityTestFeedFilters = [];
   globalThis.__communityDelayFirstFeed = options.delayFeed;
   globalThis.__communityTestReadAttempts = 0;
@@ -40,11 +42,13 @@ function initializeCommunityMock(options) {
 // prettier-ignore
 async function installIsolatedMock(page, enabled, options = {}) {
   const delayFirstFeed = options.delayFirstFeed === true;
+  const tinyAvatar = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><circle cx="15" cy="15" r="15" fill="gold"/></svg>');
   // Fulfill the vendor library locally so the hard-coded Production URL
   // is never sent to the network; record any unexpected RPC names.
   await page.addInitScript(initializeCommunityMock, {
     delayFeed: delayFirstFeed,
-    notifications: options.notifications === true
+    notifications: options.notifications === true,
+    withoutAvatar: options.withoutAvatar === true
   });
   await page.route('**/*.supabase.co/**', (route) =>
     route.abort('blockedbyclient')
@@ -55,7 +59,9 @@ async function installIsolatedMock(page, enabled, options = {}) {
       contentType: 'application/javascript',
       body: `
         (() => {
-              const feed = ${JSON.stringify(FIXTURE)};
+              const originalFeed = ${JSON.stringify(FIXTURE)};
+              const feed = globalThis.__communityWithoutAvatar
+                ? {...originalFeed, author_avatar_path:null} : originalFeed;
           const client = {
             auth: {
               getSession: async () => ({
@@ -65,6 +71,9 @@ async function installIsolatedMock(page, enabled, options = {}) {
               getUser: async () => ({data: {user: {id: 'c0a00000-0000-4000-8000-000000000002'}}, error: null}),
               onAuthStateChange: () => ({data: {subscription: {unsubscribe() {}}}})
             },
+            storage: {from: (bucket) => ({
+              getPublicUrl: () => ({data: {publicUrl: bucket === 'author-avatars' ? ${JSON.stringify(tinyAvatar)} : null}})
+            })},
             rpc: async (name, payload = {}) => {
               globalThis.__communityTestCalls.push(name);
               if (name === 'novelight_community_feed') {
@@ -79,6 +88,8 @@ async function installIsolatedMock(page, enabled, options = {}) {
                 }
                 return {data: payload.p_following ? [] : [feed], error:null};
               }
+              if (name === 'novelight_public_profile') return {data: {display_name: 'テスト作者', bio: ''}, error: null};
+              if (name === 'novelight_public_author_avatar') return {data: globalThis.__communityWithoutAvatar ? null : originalFeed.author_avatar_path, error: null};
               if (name === 'novelight_author_follow_state') {
                 return {data: {following: false, notify_new_works: true, notify_updates: true}, error:null};
               }
@@ -153,6 +164,28 @@ async function installIsolatedMock(page, enabled, options = {}) {
     });
   });
 }
+
+// The same uploaded public icon is shown on both community surfaces and author profiles.
+// prettier-ignore
+test('profile icon appears in Home, plaza and public author page', async ({ page }) => {
+  await installIsolatedMock(page, true);
+  for (const path of ['/index.html', '/community.html']) {
+    await page.goto(path, {waitUntil:'domcontentloaded'});
+    const card = page.locator('.community-card').first();
+    await expect(card.locator('.community-avatar img')).toBeVisible();
+  }
+  await page.goto('/author.html?id=c0a00000-0000-4000-8000-000000000001', {waitUntil:'domcontentloaded'});
+  await expect(page.locator('.profile .public-author-avatar img')).toBeVisible();
+});
+
+// prettier-ignore
+test('avatarless profile falls back to name initials', async ({ page }) => {
+  await installIsolatedMock(page, true, {withoutAvatar:true});
+  await page.goto('/community.html', {waitUntil:'domcontentloaded'});
+  const avatar = page.locator('.community-card .community-avatar').first();
+  await expect(avatar).toHaveText('テ');
+  await expect(avatar.locator('img')).toHaveCount(0);
+});
 
 // prettier-ignore
 test('latest filter wins during pending feed request', async ({ page }) => {
