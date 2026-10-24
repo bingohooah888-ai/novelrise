@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { ensureFaviconHtml, SITE_FAVICON_LINK } from '../shared/page/favicon.mjs';
+import {
+  ensureFaviconHtml,
+  SITE_FAVICON_LINK
+} from '../shared/page/favicon.mjs';
 import { sendHtml } from '../api/seo/public-page.js';
 import test from 'node:test';
 import { URL } from 'node:url';
