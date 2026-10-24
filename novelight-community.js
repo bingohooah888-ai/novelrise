@@ -832,18 +832,15 @@
     // Keep the live feedback outside the form so it remains visible to
     // readers and assistive technology after closeReport() hides the form.
     reportForm.append(reason, reportButtons);
-    if (isHome) {
-      actions.append(report);
+    // Both Home and the plaza use one card UI contract: the report action
+    // sits under the timestamp, and the shared card CSS hides the old action row.
+    const date = article.querySelector('.community-date');
+    if (date) {
+      const meta = el('div', 'community-post-meta');
+      date.replaceWith(meta);
+      meta.append(date, report);
     } else {
-      // Plaza: move the unchanged report control beneath the post timestamp.
-      const date = article.querySelector('.community-date');
-      if (date) {
-        const meta = el('div', 'community-post-meta');
-        date.replaceWith(meta);
-        meta.append(date, report);
-      } else {
-        actions.append(report);
-      }
+      actions.append(report);
     }
     article.append(actions, commentArea, reportForm, reportStatus);
     return article;

@@ -1,0 +1,152 @@
+/* NOVELIGHT shared timeline card contract.
+   Home and the ivory plaza both load THIS file last: update this one place.
+   Only page layout differs (three columns on Home, one in the plaza).
+   Do not add card-specific appearance or typography to page theme CSS. */
+
+:is(.community-home, .community-page) .community-card {
+  --community-card-ink: #f5f2ea;
+  --community-card-muted: #dae2ec;
+  --community-card-gold: #f1c989;
+  background: #102035;
+  color: var(--community-card-ink);
+  border: 1px solid rgba(214, 164, 71, 0.35);
+  box-shadow: 0 4px 18px rgba(17, 32, 53, 0.14);
+  padding: 20px;
+}
+
+:is(.community-home, .community-page) .community-card .community-person {
+  font-size: 19px;
+}
+:is(.community-home, .community-page) .community-card .community-person a,
+:is(.community-home, .community-page) .community-card .community-card-title {
+  color: var(--community-card-ink);
+}
+:is(.community-home, .community-page) .community-card .community-avatar {
+  background: #e4c389;
+  color: #281907;
+}
+:is(.community-home, .community-page) .community-card .community-date {
+  color: #bdcadd;
+  font-size: 17px;
+  margin-left: 0;
+}
+:is(.community-home, .community-page) .community-card .community-type {
+  color: #e2b86e;
+  font-size: 18px;
+}
+:is(.community-home, .community-page) .community-card .community-card-title {
+  font-size: 22px;
+}
+:is(.community-home, .community-page) .community-card .community-card-body {
+  color: var(--community-card-muted);
+  font-size: 20px;
+  line-height: 1.75;
+}
+:is(.community-home, .community-page) .community-card .community-link {
+  background: #0b1728;
+  border: 1px solid #253d56;
+  color: #f7e1a6;
+  font-size: 19px;
+}
+
+:is(.community-home, .community-page) .community-card :is(
+  .community-expand, .community-action, .community-more,
+  .community-follow-open, .community-comments-older, .community-comments-refresh
+) {
+  color: var(--community-card-gold);
+  font-size: 18px;
+}
+:is(.community-home, .community-page) .community-card :is(
+  .community-comment, .community-comment-body, .community-comment-feedback,
+  .community-comment-tip, .community-follow-status, .community-share-status,
+  .community-comment-share-status
+) {
+  color: #d8e1ed;
+  font-size: 19px;
+}
+:is(.community-home, .community-page) .community-card :is(
+  .community-comment-time, .community-comment-edited,
+  .community-comment-context-missing, .community-comment-counter
+) {
+  color: #bdcadd;
+  font-size: 17px;
+}
+:is(.community-home, .community-page) .community-card :is(
+  .community-follow-choice, .community-follow-toggle, .community-reply-target,
+  .community-report-status
+) {
+  font-size: 18px;
+}
+:is(.community-home, .community-page) .community-card :is(
+  .community-comment strong, .community-reply-target
+) {
+  color: #f0cd89;
+}
+:is(.community-home, .community-page) .community-card :is(
+  .community-expand, .community-more, .community-follow-open,
+  .community-comments-older, .community-comment-context
+) {
+  color: var(--community-card-gold);
+}
+:is(.community-home, .community-page) .community-card .community-follow-panel {
+  background: #0b192b;
+  border-color: rgba(214, 164, 71, 0.3);
+}
+:is(.community-home, .community-page) .community-card .community-post-meta {
+  margin-left: auto;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+:is(.community-home, .community-page) .community-card .community-post-meta > .community-action {
+  color: #e3bd7c;
+  font-size: 17px;
+  padding: 0 3px;
+  text-decoration: none;
+}
+:is(.community-home, .community-page) .community-card .community-post-meta > .community-action:hover {
+  text-decoration: underline;
+}
+/* The same controls are hidden in both contexts; existing state/RPCs and
+   linked-comment functionality are retained for deep links. */
+:is(.community-home, .community-page) .community-card > .community-actions {
+  display: none;
+}
+:is(.community-home, .community-page) .community-card .community-report-form {
+  border-color: rgba(214, 164, 71, 0.3);
+}
+:is(.community-home, .community-page) .community-card .community-report-status {
+  color: #e9d5aa;
+}
+:is(.community-home, .community-page) .community-card :is(
+  .community-comment-form input, .community-comment-form textarea,
+  .community-comment-edit textarea, .community-report-form textarea
+) {
+  background: #0b1728;
+  color: var(--community-card-ink);
+  border-color: #715b3a;
+  font-size: 20px;
+}
+:is(.community-home, .community-page) .community-card .community-comment-form button,
+:is(.community-home, .community-page) .community-card .community-report-submit {
+  background: #c99945;
+  border: 1px solid #a87521;
+  color: #261904;
+  font-size: 16px;
+}
+
+@media (max-width: 640px) {
+  :is(.community-home, .community-page) .community-card {
+    padding: 15px;
+  }
+  :is(.community-home, .community-page) .community-card .community-card-body {
+    font-size: 19px;
+  }
+  :is(.community-home, .community-page) .community-card .community-post-meta {
+    white-space: normal;
+    text-align: right;
+  }
+}
