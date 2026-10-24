@@ -276,7 +276,7 @@ AS $function$
       public.novelight_community_board_visible(substring(p_key FROM 7)::uuid)
     ELSE false
   END AND NOT EXISTS (SELECT 1 FROM public.community_hidden_posts h WHERE h.post_key=p_key)
-$function$
+$function$;
 
 REVOKE ALL ON FUNCTION public.novelight_community_post_visible(text) FROM PUBLIC,anon,authenticated;
 
@@ -322,7 +322,7 @@ BEGIN
   END IF;
   RETURN true;
 END
-$function$
+$function$;
 
 REVOKE ALL ON FUNCTION public.novelight_community_interaction_allowed(text) FROM PUBLIC,anon,authenticated;
 
@@ -350,7 +350,7 @@ AS $function$
   UNION ALL
   SELECT t.author_user_id,'board:'||t.id::text FROM public.community_board_threads t
  ) x WHERE x.k=p_key LIMIT 1
-$function$
+$function$;
 
 REVOKE ALL ON FUNCTION public.novelight_community_post_author(text) FROM PUBLIC,anon,authenticated;
 COMMIT;
