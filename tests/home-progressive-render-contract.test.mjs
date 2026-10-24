@@ -49,8 +49,11 @@ test('home prefetches festival gate before app scripts', () => {
   const early = home.indexOf('novelightContestGatePrefetch = fetch(');
   const css = home.indexOf('href="novelight-theme.css"');
   const sdk = home.indexOf('src="/assets/vendor/supabase-js-2.112.3.js"');
+  const carouselStart = home.indexOf('// Carousel markup already exists here.');
   assert.ok(early >= 0 && early < css && css < sdk);
+  assert.ok(carouselStart > css && carouselStart < sdk);
   assert.match(home, /earlyGate \|\| await client\.rpc/);
+  assert.match(home, /DOMContentLoaded', resolve/);
   assert.match(home, /cache: 'no-store'/);
   assert.match(home, /response\.ok \?/);
   assert.match(home, /data\.contest_status === 'registration'/);
