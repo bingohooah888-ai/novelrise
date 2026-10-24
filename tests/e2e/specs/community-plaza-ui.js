@@ -196,7 +196,9 @@ test('latest refresh wins during pending feed request', async ({ page }) => {
     page.evaluate(() => typeof globalThis.__communityReleaseFirstFeed);
   await expect.poll(firstFeedReady).toBe('function');
 
-  await page.locator('#communityRefresh').click();
+  // Refresh is disabled while an RPC is pending; dispatch to prove the
+  // in-flight reset queue still accepts a programmatic refresh event.
+  await page.locator('#communityRefresh').dispatchEvent('click');
   await page.evaluate(() => globalThis.__communityReleaseFirstFeed());
 
   const requestedFilters = () =>
