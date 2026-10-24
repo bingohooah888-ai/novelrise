@@ -6,6 +6,8 @@ body.novelight-page-index.novelight-public-dark .home-promo-carousel {
   padding: 0;
   overflow: hidden;
   background: #02070d;
+  /* Reserve the 16:9 slide area while the authoritative contest gate loads. */
+  min-height: min(56.25vw, 675px);
 }
 
 body.novelight-page-index.novelight-public-dark .home-promo-track {

@@ -6,6 +6,25 @@
   <title>NOVELIGHT（ノベライト）｜無料で読める小説投稿サイト</title>
   <meta name="description" content="NOVELIGHT（ノベライト）は、無料で小説を読める投稿サイト。埋もれた物語と読者の出会いをつくり、作者が作品を届ける機会を広げます。">
   <link rel="canonical" href="https://novelight.jp/">
+  <link rel="preconnect" href="https://fiepaguycecrredwrcwx.supabase.co" crossorigin>
+  <script>
+    // Start the public registration-state check while CSS and other scripts load.
+    // It is not an authorization decision: the response is still validated below.
+    window.novelightContestGatePrefetch = fetch(
+      'https://fiepaguycecrredwrcwx.supabase.co/rest/v1/rpc/novelight_public_contest_catalog',
+      {
+        method: 'POST',
+        headers: {
+          apikey: 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ p_limit: 1, p_offset: 0 }),
+        cache: 'no-store'
+      }
+    ).then(async response =>
+      response.ok ? { data: await response.json(), error: null } : null
+    ).catch(() => null);
+  </script>
   
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="NOVELIGHT">
@@ -104,7 +123,29 @@
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', async () => {
+    // Carousel markup already exists here. Do not wait for every footer script.
+    (async () => {
+      // Browser-native responsive image delivery keeps the original approved PNG as fallback.
+      const optimizedPromoSrcset = source => {
+        if (!/^assets\/home\/[a-z0-9_-]+\.png$/i.test(source)) return '';
+        const url = encodeURIComponent('/' + source);
+        return [640, 1080, 1600]
+          .map(width => `/_vercel/image?url=${url}&w=${width}&q=80 ${width}w`)
+          .join(', ');
+      };
+      const useOptimizedPromo = (image, source) => {
+        const srcset = optimizedPromoSrcset(source);
+        if (!srcset) return;
+        image.srcset = srcset;
+        image.sizes = '(min-width: 1200px) 1200px, 100vw';
+        image.addEventListener('error', () => {
+          // If the image optimizer is unavailable, retain the existing art.
+          if (!image.srcset) return;
+          image.removeAttribute('srcset');
+          image.removeAttribute('sizes');
+          image.src = source;
+        }, { once: true });
+      };
       const homeLeadVisuals = Object.freeze({
         teaser: {
           src: 'assets/home/05_event_teaser_1600x900.png',
@@ -123,6 +164,7 @@
       const leadLink = document.getElementById('homeLeadLink');
       const leadVisual = homeLeadVisuals[currentLeadVisual];
       // Prepare the campaign card while the festival registration gate is checked.
+      useOptimizedPromo(lead, leadVisual.src);
       lead.src = leadVisual.src;
       lead.alt = leadVisual.alt;
       if (leadVisual.href) {
@@ -141,7 +183,16 @@
       const contestSlide = document.getElementById('novelightContestHeroSlide');
       let registrationOpen = false;
       try {
-        const { data, error } = await client.rpc('novelight_public_contest_catalog', {
+        // Reuse the early anonymous lookup when available; use the existing
+        // Supabase RPC if an early request failed or was blocked.
+        const earlyGate = await window.novelightContestGatePrefetch;
+        if (!earlyGate && document.readyState === 'loading') {
+          // Fallback requires the shared SDK and client initialized in the footer.
+          await new Promise(resolve =>
+            document.addEventListener('DOMContentLoaded', resolve, { once: true })
+          );
+        }
+        const { data, error } = earlyGate || await client.rpc('novelight_public_contest_catalog', {
           p_limit: 1,
           p_offset: 0
         });
@@ -183,6 +234,8 @@
           if (source) {
             image.dataset.src = source;
             image.removeAttribute('src');
+            image.removeAttribute('srcset');
+            image.removeAttribute('sizes');
           }
           image.loading = 'lazy';
           image.fetchPriority = 'low';
@@ -196,6 +249,7 @@
         const slide = physicalSlides[index];
         if (!slide) return;
         slide.querySelectorAll('img[data-src]').forEach(image => {
+          useOptimizedPromo(image, image.dataset.src);
           image.src = image.dataset.src;
           image.removeAttribute('data-src');
         });
@@ -318,7 +372,7 @@
         carousel.removeAttribute('data-initializing');
         startAutoplay();
       });
-    });
+    })();
   </script>
 </section>
 
@@ -436,5 +490,19 @@ async function loadRankShelf(sectionId,gridId,group){const section=document.getE
 async function loadRankDiscoveryShelves(){await Promise.all([loadRankShelf('unseenShelfSection','unseenGrid','unseen'),loadRankShelf('gatheringShelfSection','gatheringGrid','gathering')])}
 async function loadSeedShelf(){const section=document.getElementById('seedShelfSection'),grid=document.getElementById('seedGrid'),limit=discoveryVisibleLimit();try{const result=await lightSeedFeed(limit,0);if(result.error)throw result.error;let seeded=(Array.isArray(result.data)?result.data:[]).filter(row=>row.status==='published'&&Number(row.light_seed_count||0)>0).slice(0,limit);seeded=await NovelightUserSafety.filterNovelRows(client,seeded);section.hidden=!seeded.length;grid.innerHTML=seeded.length?seeded.map(seedCard).join(''):'';if(seeded.length)void issueAndRecord('home_seed',seeded)}catch(e){console.error('LIGHT SEED feed failed',e);section.hidden=true;grid.innerHTML=''}}
 async function loadNewArrivals(){const grid=document.getElementById('newGrid'),limit=discoveryVisibleLimit();try{const r=await neutralNew(10);if(r.error)throw r.error;const rows=Array.isArray(r.data)?r.data:[],hydrated=await withOfficialThumbnails(rows);let visible=hydrated.slice(0,limit);visible=await NovelightUserSafety.filterNovelRows(client,visible);visible=await NovelightR15.filterRows(visible,client);grid.innerHTML=visible.length?visible.map(card).join(''):'<div class="state">まだ新着作品がありません。</div>';if(visible.length)void issueAndRecord('home_new',visible)}catch(e){console.error(e);grid.innerHTML='<div class="state">新着作品を読み込めませんでした。時間をおいて再度お試しください。</div>'}}
-(async()=>{await NovelightClient.captureAcquisition(client);await NovelightClient.recordVisit(client);void NovelightClient.claimAcquisition(client);try{await Promise.all([loadDiscovery(),loadNewArrivals(),loadSeedShelf(),loadRankDiscoveryShelves()])}finally{window.dispatchEvent(new Event("novelight:page-content-ready"))}})();
-</script><script src="novelight-community-config.js"></script><script src="novelight-public-avatar.js"></script><script src="novelight-community.js"></script><script src="novelight-bookshelf.js"></script><script src="novelight-reader-account.js"></script><script src="novelight-today-book-guard.js"></script><script src="novelight-today-book.js"></script></body></html>
+// Prioritize the visible page. Hidden discovery shelves are fetched near the viewport.
+function deferHomeSecondaryShelves(){
+  const load = () => Promise.all([loadSeedShelf(),loadRankDiscoveryShelves()]);
+  const returning = performance.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward';
+  const nearShelves = document.getElementById('new-arrivals');
+  if (returning || !('IntersectionObserver' in window) || !nearShelves) return load();
+  const observer = new IntersectionObserver(entries => {
+    if (!entries.some(entry => entry.isIntersecting)) return;
+    observer.disconnect();
+    void load();
+  }, { rootMargin: '600px 0px' });
+  observer.observe(nearShelves);
+  return Promise.resolve();
+}
+(async()=>{await NovelightClient.captureAcquisition(client);await NovelightClient.recordVisit(client);void NovelightClient.claimAcquisition(client);try{await Promise.all([loadDiscovery(),loadNewArrivals(),deferHomeSecondaryShelves()])}finally{window.dispatchEvent(new Event("novelight:page-content-ready"))}})();
+</script><script src="novelight-community-config.js"></script><script src="novelight-public-avatar.js"></script><script src="novelight-community.js"></script><script src="novelight-reader-account.js"></script><script src="novelight-today-book-guard.js"></script><script src="novelight-today-book.js"></script></body></html>
