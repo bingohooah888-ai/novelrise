@@ -103,3 +103,17 @@ CIは同期待ちの差分を検出してPRを止め、未承認の自動デプ�
 新しい通常公開ページでは `scripts/check-public-page-standards.mjs` が前者の欠落を検出します。
 見た目の退行検出には `tests/e2e/specs/community-plaza-ui.js` の computed-style 検証を使います。
 CSS の `:is()` で ID セレクターとクラスセレクターを混在させると特異性が上がり、後続の色指定を上書きできないため、カードと通知・掲示板の色は分離してください。
+
+
+## サイト共通ファビコン（自動同期）
+
+原本は `shared/page/favicon.mjs` の `SITE_FAVICON_LINK` です。
+ルートの全HTML、作品・エピソードのSEOテンプレートに対して
+`npm run header:sync` が自動的に同じファビコンを設定します。
+通常の共通ヘッダーを持たない創作室・管理画面・特別ページにも適用します。
+今後ルートにHTMLファイルを追加しても、manifestへのファビコン個別登録は不要です。
+
+`npm run header:check` とCIは、新規ページで同期待ちのファビコンがあれば失敗します。
+動的に配信するページは共通 `sendHtml` がレスポンス時に同じタグを付けます。
+Google所有権確認のようなHTML文書でない検証ファイルは対象外です。
+インラインJSによる事後挿入やVercel Middlewareの追加は行いません。

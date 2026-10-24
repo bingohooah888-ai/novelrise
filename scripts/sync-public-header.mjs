@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /* NOVELIGHT canonical public-header materializer.
  * Keep final markup in initial HTML to prevent post-load layout shifts. */
-import { readFileSync, writeFileSync, existsSync, watch } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, watch } from 'node:fs';
+import { ensureFaviconHtml } from '../shared/page/favicon.mjs';
 import { spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -206,6 +207,31 @@ const authorShellAfter = authorShellBefore.replace(
 if (authorShellBefore !== authorShellAfter) {
   drift.push('novelight-author-studio-shell.js');
   if (write) writeFileSync(authorShellPath, authorShellAfter);
+}
+
+// Keep the favicon consistent across every served static page, including
+// standalone/author/admin pages that intentionally have different headers.
+// New root HTML documents are discovered automatically rather than manually
+// registered; Vercel's SEO templates are covered too.
+const faviconPages = [
+  ...readdirSync(root).filter((name) => name.endsWith('.html')),
+  'api/seo/templates/novel.html',
+  'api/seo/templates/episode.html'
+];
+for (const page of faviconPages) {
+  const path = join(root, page);
+  const before = readFileSync(path, 'utf8');
+  if (!/<head(?:\s[^>]*)?>/iu.test(before)) {
+    // Google's ownership token is intentionally not a full HTML document.
+    if (/^google[a-z0-9]+\.html$/iu.test(page) &&
+        before.trim() === 'google-site-verification: ' + page) continue;
+    throw new Error(page + ': missing <head> for favicon synchronization');
+  }
+  const after = ensureFaviconHtml(before);
+  if (before !== after) {
+    drift.push(page);
+    if (write) writeFileSync(path, after);
+  }
 }
 
 if (!write && drift.length) {

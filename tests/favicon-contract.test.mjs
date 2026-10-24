@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { ensureFaviconHtml, SITE_FAVICON_LINK } from '../shared/page/favicon.mjs';
+import { sendHtml } from '../api/seo/public-page.js';
 import test from 'node:test';
 import { URL } from 'node:url';
 
@@ -28,4 +30,70 @@ test('homepage uses versioned favicon path', () => {
   const page = readFileSync(path, 'utf8');
   assert.ok(page.includes('rel="icon"'));
   assert.ok(page.includes('href="/favicon.ico?v=20261022"'));
+});
+
+
+test('every shipped root page and SEO HTML template has exactly one canonical favicon', () => {
+  const root = new URL('../', import.meta.url);
+  const names = [
+    ...readdirSync(root).filter((name) => name.endsWith('.html')),
+    'api/seo/templates/novel.html',
+    'api/seo/templates/episode.html'
+  ];
+  for (const name of names) {
+    const html = readFileSync(new URL(name, root), 'utf8');
+    if (name.startsWith('google') && html.trim() === 'google-site-verification: ' + name) {
+      continue;
+    }
+    assert.match(html, /<head(?:\s[^>]*)?>/iu, name);
+    assert.ok(html.includes(SITE_FAVICON_LINK), name);
+    assert.equal(
+      [...html.matchAll(/<link\b[^>]*>/giu)].filter(([tag]) => {
+        const rel = tag.match(/\brel\s*=\s*(["'])([^"']+)\1/iu)?.[2];
+        return rel?.toLowerCase().split(/\s+/u).includes('icon');
+      }).length,
+      1,
+      name
+    );
+  }
+});
+
+test('future pages get canonical icon automatically and duplicates are removed', () => {
+  const plain = '<!doctype html><html><head><title>NEW</title></head><body></body></html>';
+  const once = ensureFaviconHtml(plain);
+  assert.match(once, /href="\/favicon\.ico\?v=20261022"/u);
+  assert.equal(ensureFaviconHtml(once), once);
+  const old = '<html><head><link rel="shortcut icon" href="/old.ico"><link rel="icon" href="/other.ico"><title>X</title></head></html>';
+  const normalized = ensureFaviconHtml(old);
+  assert.equal(normalized.match(/rel="icon"/gu)?.length, 1);
+  assert.ok(!normalized.includes('/old.ico'));
+  assert.ok(!normalized.includes('/other.ico'));
+  assert.ok(normalized.includes('<title>X</title>'));
+});
+
+test('favicon sync does not alter non-HTML verification tokens', () => {
+  const token = 'google-site-verification: google123.html\n';
+  assert.equal(ensureFaviconHtml(token), token);
+});
+
+test('dynamic HTML routes receive the same favicon without requiring template edits', () => {
+  let body;
+  const headers = new Map();
+  const req = { method: 'GET' };
+  const res = {
+    setHeader(name, value) {
+      headers.set(name, value);
+    },
+    status(code) {
+      assert.equal(code, 200);
+      return this;
+    },
+    send(payload) {
+      body = payload;
+      return this;
+    }
+  };
+  sendHtml(req, res, '<html><head><title>Contest</title></head><body></body></html>');
+  assert.ok(body.includes(SITE_FAVICON_LINK));
+  assert.equal(headers.get('Content-Type'), 'text/html; charset=utf-8');
 });
