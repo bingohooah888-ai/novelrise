@@ -42,7 +42,7 @@ test('homepage uses approved OGP image', () => {
   }
 });
 
-test('new share URL has its own X card and canonical metadata', () => {
+test('legacy welcome URL keeps its original X card and canonical metadata', () => {
   const tags = [
     'href="https://novelight.jp/welcome.html"',
     'property="og:url" content="https://novelight.jp/welcome.html"',
@@ -58,4 +58,28 @@ test('new share URL has its own X card and canonical metadata', () => {
     freshImage.equals(image),
     'Versioned sharing image must be exact approved PNG'
   );
+});
+
+test('new marketing links bypass the retired welcome share page', () => {
+  const homeUrl = 'https://novelight.jp/';
+  assert.ok(home.includes(`href="${homeUrl}"`));
+  assert.ok(home.includes(`property="og:url" content="${homeUrl}"`));
+  const sources = [
+    '../index.html',
+    '../novelight-public-share.js',
+    '../novelight-x-image-share.js',
+    '../novelight-share-attribution-lite.js'
+  ];
+  for (const path of sources) {
+    const code = readFileSync(new URL(path, import.meta.url), 'utf8');
+    assert.ok(!code.includes('welcome.html'), path);
+    assert.ok(!code.includes('"/welcome"'), path);
+  }
+  const note = readFileSync(
+    new URL('../docs/marketing/LINK-DESTINATIONS.md', import.meta.url),
+    'utf8'
+  );
+  assert.match(note, /新しく発行するリンクの既定/);
+  assert.match(note, /既存のX投稿・DM/);
+  assert.match(note, /welcome\.html.*維持/);
 });
