@@ -44,3 +44,15 @@ test('home omits bookshelf code and preserves account tools', () => {
   assert.match(home, /<script src="novelight-today-book\.js"><\/script>/);
   assert.match(home, /record_trusted_allocation_receipts_v2/);
 });
+
+test('home prefetches festival gate before blocking stylesheets and app scripts', () => {
+  const early = home.indexOf('window.novelightContestGatePrefetch = fetch(');
+  const css = home.indexOf('<link rel="stylesheet" href="novelight-theme.css"');
+  const sdk = home.indexOf('<script src="/assets/vendor/supabase-js-2.112.3.js"');
+  assert.ok(early >= 0 && early < css && css < sdk);
+  assert.match(home, /novelightContestGatePrefetch;\s*const \{ data, error \} = earlyGate \|\| await client\.rpc/);
+  assert.match(home, /cache: 'no-store'/);
+  assert.match(home, /response\.ok \? \{ data: await response\.json\(\), error: null \} : null/);
+  assert.match(home, /data\.contest_status === 'registration'/);
+  assert.match(home, /Date\.now\(\) <= deadline/);
+});
