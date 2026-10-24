@@ -164,8 +164,8 @@ REVOKE ALL ON FUNCTION public.novelight_community_feed(integer,integer,boolean) 
 GRANT EXECUTE ON FUNCTION public.novelight_community_feed(integer,integer,boolean) TO anon,authenticated;
 
 -- Returns only the chosen public profile icon path, not private profile fields.
--- Authenticated owners may inspect their own path; anonymous lookups require
--- a genuinely published, publicly listed general/R15 novel by that author.
+-- Mirror novelight_public_profile(uuid) exactly: the owner or an account with
+-- an existing published novel can have a public author profile and avatar.
 CREATE OR REPLACE FUNCTION public.novelight_public_author_avatar(p_user_id uuid)
 RETURNS text
 LANGUAGE sql STABLE SECURITY DEFINER
@@ -180,8 +180,6 @@ AS $avatar$
         SELECT 1 FROM public.novels n
         WHERE n.user_id = p.id
           AND n.status = 'published'
-          AND n.content_rating IN ('general','sensitive_15')
-          AND COALESCE(n.first_published_at,n.created_at) <= now()
       )
     )
   LIMIT 1
