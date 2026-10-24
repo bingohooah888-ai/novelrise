@@ -1,6 +1,6 @@
 {
-  "activeIssue": 2139,
-  "legacyIssues": [165, 460, 657, 737, 1433],
+  "activeIssue": 2498,
+  "legacyIssues": [165, 460, 657, 737, 1433, 2139],
   "maxComments": 100,
   "activeSharedRoutes": [
     ".github/workflows/production-migration-approved-dispatch.yml",

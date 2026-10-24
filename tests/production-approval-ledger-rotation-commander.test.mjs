@@ -7,8 +7,9 @@ const config = JSON.parse(
 );
 
 test('NLO Production bridges target the active ledger and current control issue', async () => {
-  assert.equal(config.activeIssue, 2139);
+  assert.equal(config.activeIssue, 2498);
   assert.ok(config.legacyIssues.includes(1433));
+  assert.ok(config.legacyIssues.includes(2139));
   assert.equal(config.maxComments, 100);
 
   for (const path of [
@@ -22,6 +23,6 @@ test('NLO Production bridges target the active ledger and current control issue'
       new RegExp(`const LEDGER_ISSUE = ${config.activeIssue};`)
     );
     assert.doesNotMatch(source, /const CONTROL_ISSUE = 797;/);
-    assert.doesNotMatch(source, /const LEDGER_ISSUE = (737|1433);/);
+    assert.doesNotMatch(source, /const LEDGER_ISSUE = (737|1433|2139);/);
   }
 });

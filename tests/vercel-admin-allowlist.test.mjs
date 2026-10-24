@@ -327,8 +327,8 @@ test('workflow keeps raw admin IDs and Vercel token in secrets and requires OWNE
   );
   assert.match(workflow, /NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CLAIMED/);
   assert.match(workflow, /NOVELIGHT_VERCEL_ADMIN_ALLOWLIST_CONSUMED/);
-  assert.match(workflow, /github\.event\.issue\.number == 2139/);
-  assert.match(workflow, /LEDGER_ISSUE: '2139'/);
+  assert.match(workflow, /github\.event\.issue\.number == 2498/);
+  assert.match(workflow, /LEDGER_ISSUE: '2498'/);
   assert.doesNotMatch(workflow, /CONTROL_ISSUE/);
   assert.doesNotMatch(workflow, /LEDGER_ISSUE: '165'/);
   assert.match(workflow, /production-approval-ledger\.json/);
