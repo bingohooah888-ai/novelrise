@@ -34,7 +34,7 @@
     .home-heading-a11y { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     body.novelight-page-index.novelight-public-dark .home-hero-actions[hidden] { display: none !important; }
     /* Wait for the contest registration gate and initial scroll position before painting slides. */
-    .home-promo-carousel.is-initializing { visibility: hidden; }
+    .home-promo-carousel[data-initializing] { visibility: hidden; }
   </style>
   <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
   <link rel="stylesheet" href="novelight-public-dark.css">
@@ -63,7 +63,7 @@
   </div>
 </header>
 <main id="main-content" tabindex="-1">
-<section class="home-promo-carousel is-initializing" aria-label="NOVELIGHT プロモーション">
+<section class="home-promo-carousel" aria-label="NOVELIGHT プロモーション" data-initializing>
   <div class="home-promo-track">
     <article id="novelightContestHeroSlide" class="home-promo-slide" aria-label="第1回 星灯祭" hidden>
       <a class="home-promo-link" href="contest.html#enter" aria-label="第1回 星灯祭へエントリーする">
@@ -167,7 +167,7 @@
       });
       const originals = [...track.querySelectorAll('.home-promo-slide')];
       if (originals.length < 2) {
-        carousel.classList.remove('is-initializing');
+        carousel.removeAttribute('data-initializing');
         return;
       }
 
@@ -315,7 +315,7 @@
       window.requestAnimationFrame(() => {
         hydrateSlide(1);
         goTo(1, 'auto');
-        carousel.classList.remove('is-initializing');
+        carousel.removeAttribute('data-initializing');
         startAutoplay();
       });
     });
