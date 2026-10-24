@@ -66,10 +66,10 @@ function simulate(
   });
 }
 
-test('home banner is present but hidden before launch', async () => {
-  assert.match(home, /id="novelightContestHomePromo"[^>]*hidden/);
-  assert.match(home, /src="novelight-contest-home-promo\.js"/);
-  assert.match(home, /href="novelight-contest-home-promo\.css"/);
+test('home festival slide stays hidden before registration is confirmed', async () => {
+  assert.match(home, /id="novelightContestHeroSlide"[^>]*hidden/);
+  assert.match(home, /client\.rpc\('novelight_public_contest_catalog'/);
+  assert.match(home, /contestSlide\.remove\(\)/);
   assert.match(css, /\.novelight-contest-home-promo\[hidden\]/);
   assert.equal((await simulate('draft')).area.hidden, true);
   assert.equal((await simulate('review')).area.hidden, true);
