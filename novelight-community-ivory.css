@@ -233,3 +233,64 @@ body.novelight-page-community .community-page .community-card .community-report-
     text-align: right;
   }
 }
+
+/* Plaza timeline card typography: +3px per size level. Do not affect the page,
+   board, notifications, Home teaser, card colors or header. */
+body.novelight-page-community .community-page .community-card .community-person {
+  font-size: 19px;
+}
+body.novelight-page-community .community-page .community-card .community-date {
+  font-size: 17px;
+}
+body.novelight-page-community .community-page .community-card .community-type {
+  font-size: 18px;
+}
+body.novelight-page-community .community-page .community-card .community-card-title {
+  font-size: 22px;
+}
+body.novelight-page-community .community-page .community-card .community-card-body {
+  font-size: 20px;
+}
+body.novelight-page-community .community-page .community-card .community-link {
+  font-size: 19px;
+}
+body.novelight-page-community .community-page .community-card :is(
+  .community-expand, .community-action, .community-more,
+  .community-follow-open, .community-comments-older, .community-comments-refresh
+) {
+  font-size: 18px;
+}
+body.novelight-page-community .community-page .community-card .community-post-meta > .community-action {
+  font-size: 17px;
+}
+body.novelight-page-community .community-page .community-card :is(
+  .community-comment, .community-comment-body, .community-comment-feedback,
+  .community-comment-tip, .community-follow-status, .community-share-status,
+  .community-comment-share-status
+) {
+  font-size: 19px;
+}
+body.novelight-page-community .community-page .community-card :is(
+  .community-comment-time, .community-comment-edited,
+  .community-comment-context-missing, .community-comment-counter
+) {
+  font-size: 17px;
+}
+body.novelight-page-community .community-page .community-card :is(
+  .community-follow-choice, .community-follow-toggle, .community-reply-target,
+  .community-report-status
+) {
+  font-size: 18px;
+}
+body.novelight-page-community .community-page .community-card :is(
+  .community-comment-form input, .community-comment-form textarea,
+  .community-comment-edit textarea, .community-report-form textarea
+) {
+  font-size: 20px;
+}
+@media (max-width: 640px) {
+  /* The existing mobile body starts at 16px, rather than 17px on desktop. */
+  body.novelight-page-community .community-page .community-card .community-card-body {
+    font-size: 19px;
+  }
+}
