@@ -6,19 +6,21 @@
   <title>NOVELIGHT（ノベライト）｜無料で読める小説投稿サイト</title>
   <meta name="description" content="NOVELIGHT（ノベライト）は、無料で小説を読める投稿サイト。埋もれた物語と読者の出会いをつくり、作者が作品を届ける機会を広げます。">
   <link rel="canonical" href="https://novelight.jp/">
+  <!-- Same approved hero asset: start transfer before CSS parsing and RPC result. -->
+  <link rel="preload" as="image" href="assets/home/06_starfestival_hero_1600x900.webp" fetchpriority="high">
   <link rel="preconnect" href="https://fiepaguycecrredwrcwx.supabase.co" crossorigin>
   <script>
     // Start the public registration-state check while CSS and other scripts load.
     // It is not an authorization decision: the response is still validated below.
     window.novelightContestGatePrefetch = fetch(
-      'https://fiepaguycecrredwrcwx.supabase.co/rest/v1/rpc/novelight_public_contest_catalog',
+      'https://fiepaguycecrredwrcwx.supabase.co/rest/v1/rpc/novelight_public_contest_hero_gate_v1',
       {
         method: 'POST',
         headers: {
           apikey: 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ p_limit: 1, p_offset: 0 }),
+        body: '{}',
         cache: 'no-store'
       }
     ).then(async response =>
@@ -55,7 +57,7 @@
     /* Wait for the contest registration gate and initial scroll position before painting slides. */
     .home-promo-carousel[data-initializing] { visibility: hidden; }
   </style>
-  <link rel="stylesheet" href="novelight-theme.css" data-novelight-theme="sitewide">
+  <link rel="stylesheet" href="novelight-home-theme-bundle.css" data-novelight-theme="sitewide">
   <link rel="stylesheet" href="novelight-public-dark.css">
   <link rel="stylesheet" href="novelight-brand-refinement.css">
   <link rel="stylesheet" href="novelight-home-thumbnails.css">

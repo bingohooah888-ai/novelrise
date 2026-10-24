@@ -1,0 +1,2800 @@
+/* GENERATED: node scripts/build-home-theme-bundle.mjs --write */
+/* bundled: novelight-theme-base.css */
+:root {
+  --novelight-night: #081426;
+  --novelight-navy: #0e1d35;
+  --novelight-navy-hover: #172a48;
+  --novelight-gold: #d6a447;
+  --novelight-gold-light: #eac46a;
+  --novelight-ivory: #f7f4ed;
+  --novelight-paper: #fffdf8;
+  --novelight-border: #ded8cb;
+  --novelight-ink: #1b2430;
+  --novelight-muted: #69717d;
+  --novelight-success: #2f7a55;
+  --novelight-danger: #b42318;
+  --primary: #0e1d35;
+  --primary-dark: #081426;
+  --ink: #1b2430;
+  --muted: #69717d;
+  --line: #ded8cb;
+  --soft: #f7f4ed;
+  --premium: #8a620a;
+  --premium-bg: #fff6d8;
+  --plan: #345d8c;
+  --plan-bg: #eef4f8;
+}
+
+html {
+  background: var(--novelight-ivory);
+  color: var(--novelight-ink);
+}
+
+body.novelight-theme {
+  min-height: 100vh;
+  background: var(--novelight-ivory);
+  color: var(--novelight-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI",
+    "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  line-height: 1.65;
+  text-rendering: optimizeLegibility;
+}
+
+body.novelight-theme h1,
+body.novelight-theme h2,
+body.novelight-theme .section-head h2,
+body.novelight-theme .hero h1 {
+  color: var(--novelight-ink);
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  letter-spacing: 0.01em;
+}
+
+body.novelight-theme a {
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+body.novelight-theme header,
+body.novelight-theme .site-header {
+  border-bottom: 1px solid rgba(214, 164, 71, 0.2);
+  background: rgba(255, 253, 248, 0.96);
+  box-shadow: 0 8px 28px rgba(8, 20, 38, 0.045);
+  backdrop-filter: blur(12px);
+}
+
+body.novelight-theme .header-inner,
+body.novelight-theme .site-header-inner {
+  min-height: 72px;
+}
+
+body.novelight-theme .logo,
+body.novelight-theme .site-logo {
+  color: var(--novelight-gold);
+}
+
+body.novelight-theme .novelight-brand-logo-image {
+  height: 42px;
+  max-width: 42vw;
+}
+
+body.novelight-theme nav a,
+body.novelight-theme .back,
+body.novelight-theme .site-back,
+body.novelight-theme .right > a {
+  color: #4d5662;
+}
+
+body.novelight-theme nav a:hover,
+body.novelight-theme .back:hover,
+body.novelight-theme .site-back:hover,
+body.novelight-theme .right > a:hover {
+  color: var(--novelight-gold);
+}
+
+body.novelight-theme footer,
+body.novelight-theme .site-footer {
+  border-color: rgba(234, 196, 106, 0.16);
+  background: var(--novelight-night);
+  color: #aeb7c4;
+}
+
+body.novelight-theme footer a,
+body.novelight-theme .site-footer a {
+  color: #c9d0d9;
+}
+
+body.novelight-theme footer a:hover,
+body.novelight-theme .site-footer a:hover {
+  color: var(--novelight-gold-light);
+}
+
+body.novelight-theme input,
+body.novelight-theme select,
+body.novelight-theme textarea {
+  border: 1px solid var(--novelight-border);
+  border-radius: 9px;
+  background: var(--novelight-paper);
+  color: var(--novelight-ink);
+  outline: none;
+}
+
+body.novelight-theme input:focus,
+body.novelight-theme select:focus,
+body.novelight-theme textarea:focus {
+  border-color: var(--novelight-gold);
+  box-shadow: 0 0 0 3px rgba(214, 164, 71, 0.14);
+}
+
+body.novelight-theme .btn,
+body.novelight-theme .save,
+body.novelight-theme .more,
+body.novelight-theme .plan-cta,
+body.novelight-theme .action a,
+body.novelight-theme .action button {
+  border-radius: 9px;
+}
+
+body.novelight-theme .btn-primary,
+body.novelight-theme .save,
+body.novelight-theme .action a,
+body.novelight-theme .action button:not(.logout),
+body.novelight-theme .plan.recommended .plan-cta {
+  border-color: var(--novelight-navy);
+  background: var(--novelight-navy);
+  color: #fff;
+}
+
+body.novelight-theme .btn-primary:hover,
+body.novelight-theme .save:hover:not(:disabled),
+body.novelight-theme .action a:hover,
+body.novelight-theme .action button:hover:not(:disabled),
+body.novelight-theme .plan.recommended .plan-cta:hover {
+  border-color: var(--novelight-navy-hover);
+  background: var(--novelight-navy-hover);
+  box-shadow: 0 6px 18px rgba(8, 20, 38, 0.16);
+  transform: translateY(-1px);
+}
+
+body.novelight-theme .btn-outline,
+body.novelight-theme .logout,
+body.novelight-theme .more,
+body.novelight-theme .plan-cta {
+  border-color: #b9ad95;
+  background: var(--novelight-paper);
+  color: var(--novelight-navy);
+}
+
+body.novelight-theme .btn-outline:hover,
+body.novelight-theme .logout:hover,
+body.novelight-theme .more:hover:not(:disabled),
+body.novelight-theme .plan-cta:hover {
+  border-color: var(--novelight-gold);
+  color: #7a590f;
+}
+
+body.novelight-theme .novel-card,
+body.novelight-theme .feature,
+body.novelight-theme .plan,
+body.novelight-theme .action,
+body.novelight-theme .metric,
+body.novelight-theme .panel,
+body.novelight-theme .legal-card {
+  border-color: var(--novelight-border);
+  background: var(--novelight-paper);
+  box-shadow: 0 4px 16px rgba(8, 20, 38, 0.055);
+}
+
+body.novelight-theme .novel-card:hover,
+body.novelight-theme .feature:hover,
+body.novelight-theme .plan:hover,
+body.novelight-theme .action:hover {
+  border-color: rgba(214, 164, 71, 0.62);
+  box-shadow: 0 10px 26px rgba(8, 20, 38, 0.09);
+  transform: translateY(-2px);
+}
+
+body.novelight-theme .genre,
+body.novelight-theme .badge,
+body.novelight-theme .founding {
+  border: 1px solid rgba(214, 164, 71, 0.28);
+  background: #fff5d8;
+  color: #7c5b12;
+}
+
+body.novelight-theme .ai {
+  background: #eef4f8;
+  color: #345d8c;
+}
+
+body.novelight-theme .mature {
+  background: #fff0e1;
+  color: #8a4f00;
+}
+
+body.novelight-theme .state,
+body.novelight-theme .empty {
+  border-color: #cfc6b4;
+  background: rgba(255, 253, 248, 0.78);
+  color: var(--novelight-muted);
+}
+
+body.novelight-theme table {
+  border-color: var(--novelight-border);
+  background: var(--novelight-paper);
+}
+
+body.novelight-theme th {
+  color: #47515e;
+}
+
+body.novelight-theme tr:hover td {
+  background: rgba(214, 164, 71, 0.045);
+}
+
+body.novelight-theme .error {
+  color: var(--novelight-danger);
+}
+
+/* Homepage: a quiet night-study atmosphere without sacrificing readability. */
+body.novelight-page-index .hero {
+  position: relative;
+  min-height: 560px;
+  overflow: hidden;
+  padding: 94px 22px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 72% 28%, rgba(234, 196, 106, 0.22), transparent 16%),
+    radial-gradient(circle at 82% 72%, rgba(63, 101, 154, 0.2), transparent 22%),
+    linear-gradient(135deg, #061120 0%, #0b1a31 52%, #11284a 100%);
+}
+
+body.novelight-page-index .hero::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  opacity: 0.8;
+  background-image:
+    radial-gradient(circle at 8% 22%, rgba(234, 196, 106, 0.95) 0 1px, transparent 2px),
+    radial-gradient(circle at 20% 66%, rgba(255, 255, 255, 0.75) 0 1px, transparent 2px),
+    radial-gradient(circle at 34% 18%, rgba(234, 196, 106, 0.75) 0 1px, transparent 2px),
+    radial-gradient(circle at 58% 30%, rgba(255, 255, 255, 0.8) 0 1px, transparent 2px),
+    radial-gradient(circle at 68% 12%, rgba(234, 196, 106, 0.85) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 88% 34%, rgba(255, 255, 255, 0.75) 0 1px, transparent 2px),
+    radial-gradient(circle at 94% 74%, rgba(234, 196, 106, 0.8) 0 1px, transparent 2px);
+}
+
+body.novelight-page-index .hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1240px;
+  gap: 64px;
+}
+
+body.novelight-page-index .hero h1 {
+  max-width: 680px;
+  color: #fff;
+  font-size: clamp(42px, 5vw, 62px);
+  line-height: 1.18;
+}
+
+body.novelight-page-index .hero h1 span {
+  color: var(--novelight-gold-light);
+  text-shadow: 0 0 24px rgba(234, 196, 106, 0.24);
+}
+
+body.novelight-page-index .hero p {
+  color: rgba(245, 247, 250, 0.88);
+  font-size: 17px;
+}
+
+body.novelight-page-index .eyebrow {
+  border-color: rgba(234, 196, 106, 0.4);
+  background: rgba(214, 164, 71, 0.1);
+  color: #f4d888;
+}
+
+body.novelight-page-index .hero-primary {
+  background: var(--novelight-gold);
+  color: var(--novelight-night);
+  box-shadow: 0 8px 24px rgba(214, 164, 71, 0.18);
+}
+
+body.novelight-page-index .hero-primary:hover {
+  background: var(--novelight-gold-light);
+  transform: translateY(-2px);
+}
+
+body.novelight-page-index .hero-secondary {
+  border-color: rgba(234, 196, 106, 0.44);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+body.novelight-page-index .hero-note {
+  border: 1px solid rgba(234, 196, 106, 0.28);
+  background: rgba(7, 19, 36, 0.72);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+  color: #fff;
+  backdrop-filter: blur(14px);
+}
+
+body.novelight-page-index .hero-note strong {
+  color: var(--novelight-gold-light);
+}
+
+body.novelight-page-index .hero-note p {
+  color: #d7dde5;
+}
+
+body.novelight-page-index section {
+  padding-top: 78px;
+  padding-bottom: 78px;
+}
+
+body.novelight-page-index #discover {
+  background: var(--novelight-ivory);
+}
+
+body.novelight-page-index #discover .section-head::before {
+  display: block;
+  margin-bottom: 6px;
+  color: #8a6518;
+  content: "TODAY'S LIGHT";
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+body.novelight-page-index .section-head h2 {
+  color: var(--novelight-ink);
+}
+
+body.novelight-page-index .discovery-note {
+  border: 1px solid #ead6a7;
+  background: #fff7df;
+  color: #795914;
+}
+
+body.novelight-page-index .discovery-grid {
+  gap: 20px;
+}
+
+body.novelight-page-index .features {
+  gap: 20px;
+}
+
+body.novelight-page-index #features {
+  background: #f2eee5;
+}
+
+body.novelight-page-index .feature-icon {
+  display: inline-grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgba(214, 164, 71, 0.3);
+  border-radius: 12px;
+  background: #fff6df;
+}
+
+body.novelight-page-index .pricing {
+  background: var(--novelight-paper);
+}
+
+body.novelight-page-index .plan.recommended {
+  position: relative;
+  border: 2px solid var(--novelight-gold);
+  box-shadow: 0 12px 34px rgba(108, 78, 15, 0.1);
+}
+
+body.novelight-page-index .plan.recommended::before {
+  position: absolute;
+  top: 0;
+  right: 24px;
+  left: 24px;
+  height: 3px;
+  border-radius: 0 0 999px 999px;
+  background: linear-gradient(90deg, transparent, var(--novelight-gold-light), transparent);
+  content: "";
+}
+
+body.novelight-page-index .plan li::before {
+  color: var(--novelight-gold);
+}
+
+body.novelight-page-index .cta {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(214, 164, 71, 0.15), transparent 32%),
+    var(--novelight-night);
+}
+
+body.novelight-page-index .cta h2 {
+  color: #fff;
+}
+
+/* Search: desktop filter rail + card grid, compact again on mobile. */
+body.novelight-page-search main {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  grid-template-areas:
+    "title title"
+    "subtitle subtitle"
+    "filters count"
+    "filters list"
+    "policy list"
+    ". more";
+  column-gap: 28px;
+  row-gap: 14px;
+  max-width: 1240px;
+  padding-top: 48px;
+}
+
+body.novelight-page-search main > h1 {
+  grid-area: title;
+  margin-bottom: 0;
+  font-size: 36px;
+}
+
+body.novelight-page-search .subtitle {
+  grid-area: subtitle;
+  margin-bottom: 14px;
+}
+
+body.novelight-page-search .search-area {
+  grid-area: filters;
+  align-self: start;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 0;
+  padding: 20px;
+  border-color: var(--novelight-border);
+  border-radius: 16px;
+  background: var(--novelight-paper);
+  box-shadow: 0 4px 18px rgba(8, 20, 38, 0.05);
+}
+
+body.novelight-page-search .search-area::before {
+  color: var(--novelight-navy);
+  content: "検索・絞り込み";
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+body.novelight-page-search .policy-note {
+  grid-area: policy;
+  margin: 0;
+  border: 1px solid #ead8a9;
+  background: #fff8e6;
+  color: #6f571f;
+  line-height: 1.7;
+}
+
+body.novelight-page-search .result-count {
+  grid-area: count;
+  align-self: end;
+  margin: 0;
+  padding: 3px 0 8px;
+  color: var(--novelight-muted);
+  font-weight: 700;
+}
+
+body.novelight-page-search .novel-list {
+  grid-area: list;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-content: start;
+}
+
+body.novelight-page-search .novel-card {
+  min-height: 190px;
+  padding: 20px;
+  border-radius: 14px;
+}
+
+body.novelight-page-search .novel-card .description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+body.novelight-page-search .more-wrap {
+  grid-area: more;
+  margin-top: 6px;
+}
+
+body.novelight-page-search .more {
+  min-width: 160px;
+}
+
+/* Author dashboard: the reference image translated into a practical product shell. */
+body.novelight-page-mypage main.novelight-author-shell {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 28px;
+  max-width: 1320px;
+  padding-top: 28px;
+}
+
+body.novelight-page-mypage .novelight-author-sidebar {
+  position: sticky;
+  top: 92px;
+  align-self: start;
+  min-height: 620px;
+  padding: 20px 14px;
+  border: 1px solid rgba(234, 196, 106, 0.14);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(214, 164, 71, 0.13), transparent 28%),
+    var(--novelight-night);
+  box-shadow: 0 14px 36px rgba(8, 20, 38, 0.16);
+  color: #fff;
+}
+
+body.novelight-page-mypage .novelight-author-sidebar-title {
+  display: block;
+  padding: 4px 12px 18px;
+  color: var(--novelight-gold-light);
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+body.novelight-page-mypage .novelight-author-nav {
+  display: grid;
+  gap: 6px;
+}
+
+body.novelight-page-mypage .novelight-author-nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 9px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+body.novelight-page-mypage .novelight-author-nav a:hover,
+body.novelight-page-mypage .novelight-author-nav a[aria-current="page"] {
+  background: var(--novelight-navy-hover);
+  color: var(--novelight-gold-light);
+}
+
+body.novelight-page-mypage .novelight-author-nav-icon {
+  width: 20px;
+  color: var(--novelight-gold);
+  text-align: center;
+}
+
+body.novelight-page-mypage .novelight-author-content {
+  min-width: 0;
+}
+
+body.novelight-page-mypage .hero {
+  position: relative;
+  overflow: hidden;
+  padding: 30px;
+  border: 1px solid rgba(214, 164, 71, 0.2);
+  background:
+    radial-gradient(circle at 82% 18%, rgba(234, 196, 106, 0.22), transparent 22%),
+    linear-gradient(135deg, #0a182c, #132b4b);
+  box-shadow: 0 12px 32px rgba(8, 20, 38, 0.12);
+}
+
+body.novelight-page-mypage .hero h1 {
+  color: #fff;
+  font-size: 31px;
+}
+
+body.novelight-page-mypage .hero p {
+  color: #d9e0e8;
+}
+
+body.novelight-page-mypage .founding {
+  background: rgba(234, 196, 106, 0.14);
+  color: var(--novelight-gold-light);
+}
+
+body.novelight-page-mypage .actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+body.novelight-page-mypage .action {
+  min-height: 178px;
+  padding: 20px;
+}
+
+body.novelight-page-mypage .action h2 {
+  color: var(--novelight-navy);
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI",
+    sans-serif;
+}
+
+body.novelight-page-mypage .action p {
+  min-height: 42px;
+  color: var(--novelight-muted);
+}
+
+body.novelight-page-mypage .section > h2,
+body.novelight-page-mypage .panel > h2 {
+  position: relative;
+  padding-left: 13px;
+}
+
+body.novelight-page-mypage .section > h2::before,
+body.novelight-page-mypage .panel > h2::before {
+  position: absolute;
+  top: 0.2em;
+  bottom: 0.2em;
+  left: 0;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--novelight-gold);
+  content: "";
+}
+
+body.novelight-page-mypage .metrics {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+body.novelight-page-mypage .metric {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+}
+
+body.novelight-page-mypage .metric::after {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  width: 44px;
+  height: 18px;
+  border-bottom: 2px solid rgba(52, 93, 140, 0.38);
+  border-radius: 50%;
+  content: "";
+  transform: rotate(-8deg);
+}
+
+body.novelight-page-mypage .value {
+  color: var(--novelight-navy);
+}
+
+body.novelight-page-mypage .panel {
+  padding: 24px;
+}
+
+/* Legal and policy surfaces stay calm and paper-like. */
+body.novelight-theme .legal-main {
+  color: var(--novelight-ink);
+}
+
+body.novelight-theme .legal-kicker {
+  color: #8a6518;
+}
+
+body.novelight-theme .legal-note {
+  border-color: #ead8a9;
+  background: #fff8e6;
+  color: #69531e;
+}
+
+body.novelight-theme .legal-links a {
+  border-color: var(--novelight-border);
+  background: var(--novelight-paper);
+  color: var(--novelight-navy);
+}
+
+/* Reading surfaces deliberately reduce decoration. */
+body.novelight-page-episode,
+body.novelight-page-novel {
+  background: #faf8f2;
+}
+
+body.novelight-page-episode main {
+  color: #272727;
+}
+
+@media (max-width: 980px) {
+  body.novelight-page-mypage main.novelight-author-shell {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  body.novelight-page-mypage .novelight-author-sidebar {
+    position: static;
+    min-height: 0;
+    overflow-x: auto;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  body.novelight-page-mypage .novelight-author-sidebar-title {
+    display: none;
+  }
+
+  body.novelight-page-mypage .novelight-author-nav {
+    display: flex;
+    min-width: max-content;
+    gap: 4px;
+  }
+
+  body.novelight-page-mypage .novelight-author-nav a {
+    white-space: nowrap;
+  }
+
+  body.novelight-page-mypage .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.novelight-page-mypage .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  body.novelight-page-index .hero {
+    min-height: 0;
+    padding: 62px 20px;
+  }
+
+  body.novelight-page-index .hero h1 {
+    font-size: clamp(36px, 10vw, 48px);
+  }
+
+  body.novelight-page-search main {
+    display: block;
+    padding-top: 32px;
+  }
+
+  body.novelight-page-search .search-area,
+  body.novelight-page-search .policy-note,
+  body.novelight-page-search .result-count,
+  body.novelight-page-search .novel-list,
+  body.novelight-page-search .more-wrap {
+    margin-bottom: 18px;
+  }
+
+  body.novelight-page-search .novel-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  body.novelight-theme .header-inner,
+  body.novelight-theme .site-header-inner {
+    min-height: 64px;
+  }
+
+  body.novelight-theme .novelight-brand-logo-image {
+    height: 34px;
+    max-width: 55vw;
+  }
+
+  body.novelight-page-index section {
+    padding-top: 58px;
+    padding-bottom: 58px;
+  }
+
+  body.novelight-page-mypage main.novelight-author-shell {
+    padding: 18px 16px 60px;
+  }
+
+  body.novelight-page-mypage .actions,
+  body.novelight-page-mypage .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  body.novelight-page-mypage .action {
+    min-height: 0;
+  }
+
+  body.novelight-page-mypage .hero {
+    padding: 24px 20px;
+  }
+}
+
+/* Legacy app headers: match the refreshed public/legal action reading floor. */
+html body.novelight-theme:not(.novelight-public-dark) header .back,
+html body.novelight-theme:not(.novelight-public-dark) header .site-back,
+html body.novelight-theme:not(.novelight-public-dark) header .right > a {
+  font-size: 19px !important;
+  font-weight: 700;
+}
+
+html body.novelight-theme:not(.novelight-public-dark) header .logout {
+  min-height: 52px;
+  padding: 12px 20px;
+  font-size: 19px !important;
+  font-weight: 700;
+}
+
+@media (min-width: 641px) and (max-width: 1180px) {
+  html body.novelight-theme:not(.novelight-public-dark) header .back,
+  html body.novelight-theme:not(.novelight-public-dark) header .site-back,
+  html body.novelight-theme:not(.novelight-public-dark) header .right > a {
+    font-size: 17px !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark) header .logout {
+    min-height: 48px;
+    padding: 10px 16px;
+    font-size: 17px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body.novelight-theme:not(.novelight-public-dark) header .back,
+  html body.novelight-theme:not(.novelight-public-dark) header .site-back,
+  html body.novelight-theme:not(.novelight-public-dark) header .right > a {
+    font-size: 16px !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark) header .logout {
+    min-height: 46px;
+    padding: 10px 14px;
+    font-size: 16px !important;
+  }
+}
+
+/* bundled: novelight-legacy-surfaces.css */
+/*
+ * NOVELIGHT legacy surface refinement layer.
+ *
+ * This file intentionally targets the older creator/reader screens that still
+ * ship page-local prototype CSS. The polished public-dark discovery, pricing,
+ * login, and creator-room surfaces keep their dedicated stylesheets unchanged.
+ */
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author
+  ) {
+  background: var(--novelight-ivory);
+  color: var(--novelight-ink);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) header {
+  border-bottom-color: var(--novelight-border);
+  background: var(--novelight-paper);
+  box-shadow: 0 6px 20px rgba(8, 20, 38, 0.04);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) .logo {
+  color: var(--novelight-navy);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) .back {
+  color: var(--novelight-muted);
+  font-weight: 700;
+}
+
+/* Paper cards replace the remaining generic white prototype boxes. */
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(.card, .work, .state, .profile, .empty, .notice, .modal-card, .warning, .policy) {
+  border-color: var(--novelight-border);
+  background: var(--novelight-paper);
+  color: var(--novelight-ink);
+  box-shadow: 0 12px 30px rgba(8, 20, 38, 0.055);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author
+  ) :is(.card, .work, .state, .profile, .empty, .notice, .policy) {
+  border-radius: 16px;
+}
+
+/* Brand typography inside forms and content cards. */
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(h1, h2, h3, .title, .name, .novel-title) {
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  letter-spacing: 0.015em;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) label {
+  color: var(--novelight-navy);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) :is(input, select, textarea) {
+  min-height: 46px;
+  border-color: #d5cdbd;
+  border-radius: 10px;
+  background: #fffefb;
+  color: var(--novelight-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", sans-serif;
+  font-size: 15px;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) textarea {
+  min-height: 140px;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) :is(input, select, textarea):focus {
+  border-color: var(--novelight-gold);
+  box-shadow: 0 0 0 3px rgba(214, 164, 71, 0.16);
+}
+
+/* Neutral button baseline, then explicit NOVELIGHT primary actions below. */
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) button:where(:not(.mobile-menu, .nav-scrim)) {
+  min-height: 44px;
+  border: 1px solid var(--novelight-border);
+  border-radius: 9px;
+  background: var(--novelight-paper);
+  color: var(--novelight-navy);
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", sans-serif;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease,
+    transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) button:where(:not(.mobile-menu, .nav-scrim)):hover:not(:disabled) {
+  border-color: var(--novelight-gold);
+  background: #fff9eb;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(button, a):focus-visible {
+  outline: 3px solid rgba(214, 164, 71, 0.45);
+  outline-offset: 3px;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(
+    .submit,
+    .new,
+    .continue,
+    .seed-button,
+    .link,
+    .period .active,
+    .modal-actions .send,
+    a.action:not(.delete):not(.report),
+    button.action:not(.delete):not(.report)
+  ) {
+  border-color: var(--novelight-navy);
+  background: var(--novelight-navy);
+  color: #fff;
+  box-shadow: 0 7px 16px rgba(8, 20, 38, 0.14);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(
+    .submit,
+    .new,
+    .continue,
+    .seed-button,
+    .link,
+    .period .active,
+    .modal-actions .send,
+    a.action:not(.delete):not(.report),
+    button.action:not(.delete):not(.report)
+  ):hover:not(:disabled) {
+  border-color: var(--novelight-gold);
+  background: var(--novelight-navy-hover);
+  color: var(--novelight-gold-light);
+  transform: translateY(-1px);
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(.submit, .new, .link, .continue, .seed-button) {
+  border-radius: 9px;
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI", sans-serif;
+  font-weight: 900;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(.cancel, .report, .modal-actions button:not(.send)) {
+  border-color: var(--novelight-border);
+  background: var(--novelight-paper);
+  color: var(--novelight-muted);
+  box-shadow: none;
+}
+
+body:is(.novelight-page-novel, .novelight-page-episode) :is(.delete, .danger) {
+  border-color: #d68a82;
+  background: #fff9f8;
+  color: var(--novelight-danger);
+  box-shadow: none;
+}
+
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
+}
+
+/* Purple prototype pills become quiet gold/ink metadata. */
+body:is(
+    .novelight-page-my-novels,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel
+  ) :is(.badge, .genre, .tag, .status):not(.error):not(.off):not(.ai):not(.mature) {
+  border: 1px solid rgba(214, 164, 71, 0.34);
+  background: #fff6dc;
+  color: #79580f;
+}
+
+body.novelight-page-author .founding {
+  border: 1px solid rgba(214, 164, 71, 0.36);
+  background: #fff4cf;
+  color: #705000;
+}
+
+body.novelight-page-author .badge.ai,
+body.novelight-page-novel .badge.ai {
+  border-color: #c8d9ee;
+  background: #eef6ff;
+  color: #245fa9;
+}
+
+body.novelight-page-author .badge.mature,
+body.novelight-page-novel .badge.mature {
+  border-color: #eed6a8;
+  background: #fff1db;
+  color: #8b5b00;
+}
+
+/* Creator form guidance and thumbnail selection use warm paper/gold states. */
+body.novelight-page-post .policy,
+body.novelight-page-novel-edit .policy {
+  border-color: #ead8a9;
+  background: #fff8e6;
+  color: #69531e;
+}
+
+body.novelight-page-post .policy strong,
+body.novelight-page-novel-edit .policy strong,
+body.novelight-page-post .policy a,
+body.novelight-page-novel-edit .policy a {
+  color: #7a590f !important;
+}
+
+body.novelight-page-post .thumbnail-option input:checked + .thumbnail-visual,
+body.novelight-page-novel-edit .thumbnail-option input:checked + .thumbnail-visual {
+  border-color: var(--novelight-gold);
+  box-shadow: 0 0 0 3px rgba(214, 164, 71, 0.18);
+}
+
+body.novelight-page-post .thumbnail-option input:focus-visible + .thumbnail-visual,
+body.novelight-page-novel-edit .thumbnail-option input:focus-visible + .thumbnail-visual {
+  outline: 3px solid rgba(214, 164, 71, 0.45);
+  outline-offset: 3px;
+}
+
+/* Analytics adopts the creator-room navy/gold hierarchy. */
+body.novelight-page-analytics .metric,
+body.novelight-page-analytics .work,
+body.novelight-page-analytics .notice {
+  border-color: var(--novelight-border);
+  background: var(--novelight-paper);
+}
+
+body.novelight-page-analytics .value {
+  color: var(--novelight-navy);
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+}
+
+body.novelight-page-analytics .step {
+  border: 1px solid #ead8a9;
+  background: #fff9eb;
+}
+
+body.novelight-page-analytics .step strong {
+  color: #79580f;
+}
+
+/* SCOUT RECORD keeps its identity without the prototype violet gradient. */
+body.novelight-page-scout-record .hero {
+  border: 1px solid rgba(214, 164, 71, 0.26);
+  background:
+    radial-gradient(circle at 84% 18%, rgba(234, 196, 106, 0.24), transparent 24%),
+    linear-gradient(135deg, var(--novelight-night), #183554);
+  color: #fff;
+  box-shadow: 0 16px 36px rgba(8, 20, 38, 0.14);
+}
+
+body.novelight-page-scout-record .hero h1 {
+  color: #fff;
+}
+
+body.novelight-page-scout-record .hero p {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+/* Reader detail and episode surfaces stay restrained and literary. */
+body.novelight-page-novel .panel,
+body.novelight-page-episode .card {
+  border-color: #ddd5c6;
+  background: #fffefb;
+  box-shadow: 0 10px 28px rgba(8, 20, 38, 0.045);
+}
+
+body.novelight-page-episode .content {
+  color: #292820;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif;
+}
+
+body.novelight-page-episode .novel-title,
+body.novelight-page-novel .author a {
+  color: #7a590f;
+}
+
+body.novelight-page-novel .light-seed {
+  border-color: #ead8a9;
+  background: #fff9eb;
+}
+
+body:is(.novelight-page-novel, .novelight-page-episode) .modal-card {
+  border: 1px solid var(--novelight-border);
+  background: var(--novelight-paper);
+  box-shadow: 0 24px 70px rgba(8, 20, 38, 0.24);
+}
+
+body:is(.novelight-page-novel, .novelight-page-episode) .modal-card :is(select, textarea) {
+  border-color: #d5cdbd;
+  background: #fffefb;
+}
+
+body:is(.novelight-page-novel, .novelight-page-episode) .modal-card :is(select, textarea):focus {
+  border-color: var(--novelight-gold);
+  box-shadow: 0 0 0 3px rgba(214, 164, 71, 0.16);
+}
+
+/* Secondary text no longer carries the cool-gray prototype cast. */
+body:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit,
+    .novelight-page-my-novels,
+    .novelight-page-analytics,
+    .novelight-page-scout-record,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-novel,
+    .novelight-page-episode
+  ) :is(.lead, .help, .note, .desc, .meta, .number, .status) {
+  color: var(--novelight-muted);
+}
+
+body:is(.novelight-page-my-novels, .novelight-page-favorites, .novelight-page-author) .card:hover {
+  border-color: rgba(214, 164, 71, 0.6);
+  box-shadow: 0 15px 34px rgba(8, 20, 38, 0.09);
+  transform: translateY(-1px);
+}
+
+body:is(.novelight-page-my-novels, .novelight-page-favorites, .novelight-page-author) .card {
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+@media (max-width: 640px) {
+  body:is(
+      .novelight-page-post,
+      .novelight-page-novel-edit,
+      .novelight-page-episode-post,
+      .novelight-page-episode-edit
+    ) :is(.card, .policy) {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  body:is(
+      .novelight-page-post,
+      .novelight-page-novel-edit,
+      .novelight-page-episode-post,
+      .novelight-page-episode-edit
+    ) :is(.submit, .cancel) {
+    min-height: 48px;
+  }
+
+  body.novelight-page-my-novels .new,
+  body.novelight-page-scout-record .link {
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* bundled: novelight-font-unification.css */
+/*
+ * NOVELIGHT sitewide typography lock.
+ *
+ * The homepage is the canonical typography reference. Keep every NOVELIGHT
+ * surface on the same Mincho-family brand stack, including legacy controls
+ * whose page-local CSS still carries older system-sans declarations.
+ */
+:root {
+  --novelight-brand-display-font: "Yu Mincho", "Hiragino Mincho ProN",
+    "Hiragino Mincho Pro", "Noto Serif JP", "Noto Serif CJK JP", Georgia,
+    "Times New Roman", serif;
+  --novelight-brand-reading-font: "Yu Mincho", "Hiragino Mincho ProN",
+    "Hiragino Mincho Pro", "Noto Serif JP", "Noto Serif CJK JP", Georgia,
+    serif;
+  --brand-display-font: var(--novelight-brand-display-font);
+  --brand-reading-font: var(--novelight-brand-reading-font);
+}
+
+html body.novelight-theme {
+  font-family: var(--novelight-brand-reading-font) !important;
+}
+
+html body.novelight-theme :is(
+    button,
+    input,
+    select,
+    textarea,
+    optgroup,
+    option,
+    summary,
+    label,
+    legend,
+    table,
+    th,
+    td
+  ) {
+  font-family: var(--novelight-brand-reading-font) !important;
+}
+
+html body.novelight-theme :is(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    .site-nav a,
+    .back,
+    .site-back,
+    .btn,
+    .save,
+    .submit,
+    .cancel,
+    .new,
+    .link,
+    .continue,
+    .seed-button,
+    .card-cta,
+    .logout,
+    .period button,
+    .title,
+    .name,
+    .novel-title,
+    .work-title,
+    .plan-name,
+    .price
+  ) {
+  font-family: var(--novelight-brand-display-font) !important;
+}
+
+/*
+ * The legacy creator-form layer gives every input min-height: 46px. That is
+ * correct for text fields but makes native checkboxes 46px tall, so the glyph
+ * is painted well below its label. Reset only checkbox geometry and keep the
+ * two-column warning layout intact.
+ */
+html body:is(.novelight-page-post, .novelight-page-novel-edit) .check {
+  align-items: flex-start;
+}
+
+html body:is(.novelight-page-post, .novelight-page-novel-edit)
+  .check
+  input[type="checkbox"] {
+  width: 16px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  min-height: 0 !important;
+  flex: 0 0 16px;
+  margin: 3px 0 0 !important;
+  padding: 0 !important;
+  accent-color: #d6a447;
+}
+
+/*
+ * Desktop readability floor.
+ * Keep heading/value hierarchy intact, but remove the common combination of
+ * tiny text + light weight + low-contrast gray across legacy page surfaces.
+ * Reader prose remains owned by the reading settings and is intentionally not
+ * overridden here.
+ */
+@media (min-width: 701px) {
+  html body.novelight-theme :is(
+      small,
+      .help,
+      .hint,
+      .caption,
+      .desc,
+      .sub,
+      .note,
+      .policy,
+      .meta,
+      .thumbnail-state,
+      .avatar-note,
+      .footer-links
+    ) {
+    font-weight: 500 !important;
+    line-height: 1.7 !important;
+  }
+
+  html body.novelight-theme :is(small, .hint, .caption) {
+    font-size: max(14px, 0.875rem) !important;
+  }
+
+  /* Dark Author Studio surfaces must never inherit the light-surface muted ink. */
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-author-studio-shell):not(.novelight-page-mypage):not([data-reading-theme="dark"])
+    :is(.help, .hint, .caption, .desc, .sub, .note, .policy, .meta, .thumbnail-state, .avatar-note) {
+    color: #4f5967 !important;
+  }
+
+  html body.novelight-theme.novelight-public-dark
+    :is(.desc, .sub, .note, .meta, .caption, .hint) {
+    font-weight: 550 !important;
+  }
+
+  html body.novelight-theme.novelight-page-mypage .metric .sub {
+    color: #eef1f5 !important;
+    font-weight: 600 !important;
+  }
+
+  html body.novelight-theme.novelight-page-episode .modal-card :is(p, label) {
+    color: #414b59 !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    line-height: 1.75 !important;
+  }
+
+  html body.novelight-theme.novelight-page-episode .content {
+    font-weight: 400;
+  }
+}
+
+/* bundled: novelight-readability.css */
+/*
+ * NOVELIGHT sitewide readability uplift.
+ *
+ * Raise only small UI/supporting text by roughly two pixels. Existing large
+ * headings, reading text, analytics values, and other already-prominent type
+ * remain owned by their page styles.
+ */
+
+/* Creator forms: post / edit / episode authoring. */
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) .page-title p,
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) .lead {
+  font-size: 18px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) :is(label, .legend) {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) .required {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  font-size: 17px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) :is(.help, .thumbnail-state, .policy) {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-post, .novelight-page-novel-edit)
+  .thumbnail-name {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-post, .novelight-page-novel-edit)
+  .check {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-post,
+    .novelight-page-novel-edit,
+    .novelight-page-episode-post,
+    .novelight-page-episode-edit
+  ) .status {
+  font-size: 15px !important;
+}
+
+/* Creator room: lift only the previously compact secondary/UI labels. */
+html body.novelight-theme.novelight-page-mypage .studio-label {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .sidebar-quote strong {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .founding,
+html body.novelight-theme.novelight-page-mypage .status,
+html body.novelight-theme.novelight-page-mypage .section-link {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .action-card p,
+html body.novelight-theme.novelight-page-mypage .sub,
+html body.novelight-theme.novelight-page-mypage .activity-empty p,
+html body.novelight-theme.novelight-page-mypage .activity-copy strong,
+html body.novelight-theme.novelight-page-mypage .profile-meta dd,
+html body.novelight-theme.novelight-page-mypage details.profile-editor summary,
+html body.novelight-theme.novelight-page-mypage .form :is(input, textarea) {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage :is(
+    .card-cta,
+    .action-card > button,
+    .profile-summary p,
+    .form label,
+    .save
+  ) {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .activity-copy time,
+html body.novelight-theme.novelight-page-mypage .avatar-label,
+html body.novelight-theme.novelight-page-mypage .avatar-note {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .profile-meta dt,
+html body.novelight-theme.novelight-page-mypage .footer-links {
+  font-size: 14px !important;
+}
+
+/* Author utility/list pages. */
+html body.novelight-theme:is(
+    .novelight-page-my-novels,
+    .novelight-page-favorites,
+    .novelight-page-author
+  ) :is(.desc, .profile .bio) {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-my-novels,
+    .novelight-page-favorites,
+    .novelight-page-author
+  ) .meta {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-my-novels .new {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-my-novels :is(.badge, .state),
+html body.novelight-theme.novelight-page-favorites .genre,
+html body.novelight-theme.novelight-page-author :is(.badge, .founding) {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-my-novels,
+    .novelight-page-favorites,
+    .novelight-page-author,
+    .novelight-page-scout-record,
+    .novelight-page-analytics
+  ) .footer-links {
+  font-size: 14px !important;
+}
+
+/* LIGHT ANALYTICS. Values and section headings are intentionally untouched. */
+html body.novelight-theme.novelight-page-analytics .label {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-analytics .sub,
+html body.novelight-theme.novelight-page-analytics .step span {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-analytics .paid {
+  font-size: 14px !important;
+}
+
+/* SCOUT RECORD. */
+html body.novelight-theme.novelight-page-scout-record .hero > div:first-child {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record :is(.note, .meta) {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .status {
+  font-size: 12px !important;
+}
+
+html body.novelight-theme.novelight-page-scout-record .link {
+  font-size: 14px !important;
+}
+
+/* Reader-facing author / novel / episode details. */
+html body.novelight-theme.novelight-page-novel .tag,
+html body.novelight-theme.novelight-page-author .badge {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-novel .author {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-novel .meta {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-novel :is(.seed-stats, .episode-number, .report-status) {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-novel :is(.action, .modal-card p) {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-novel #seedMessage {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-episode :is(.novel-title, .number) {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-episode .meta {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-episode .status {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-episode .modal-card p {
+  font-size: 15px !important;
+}
+
+/* Auth pages that still carry compact prototype copy. Login is already >=16px. */
+html body.novelight-theme:is(
+    .novelight-page-signup,
+    .novelight-page-forgot-password,
+    .novelight-page-reset-password
+  ) .lead {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-signup,
+    .novelight-page-forgot-password,
+    .novelight-page-reset-password
+  ) :is(label:not(.consent), .login) {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-signup,
+    .novelight-page-forgot-password,
+    .novelight-page-reset-password
+  ) :is(.author-box, .status) {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-signup,
+    .novelight-page-forgot-password,
+    .novelight-page-reset-password
+  ) .consent {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-signup,
+    .novelight-page-forgot-password,
+    .novelight-page-reset-password
+  ) .legal-links {
+  font-size: 13px !important;
+}
+
+/* Home: only the compact support/card typography is lifted. */
+html body.novelight-theme.novelight-page-index.novelight-public-dark :is(
+    .eyebrow,
+    .section-kicker
+  ) {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .hero p {
+  font-size: 17px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark :is(
+    .hero-primary,
+    .hero-secondary,
+    .gold-button
+  ) {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark :is(
+    .shelf-head p,
+    .section-head p
+  ) {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .shelf-more {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .cover-genre,
+html body.novelight-theme.novelight-page-index.novelight-public-dark .novel-author {
+  font-size: 12px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .genre,
+html body.novelight-theme.novelight-page-index.novelight-public-dark .meta {
+  font-size: 11px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .novel-title {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .seed-count,
+html body.novelight-theme.novelight-page-index.novelight-public-dark .recommend-ribbon {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .feature p {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark :is(
+    .beta-price,
+    .beta-label
+  ) {
+  font-size: 12px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark :is(
+    .old-price,
+    .original-price,
+    .price small,
+    .plan-note
+  ) {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .plan ul {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .plan-cta {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark .footer-inner {
+  font-size: 13px !important;
+}
+
+/* Pricing: typography only. Amounts and billing behavior remain unchanged. */
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .pricing-sub {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .desc {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .renewal {
+  font-size: 12px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .limit,
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .features li,
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark button,
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .status {
+  font-size: 14px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .billing {
+  font-size: 13px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .billing strong {
+  font-size: 16px !important;
+}
+
+html body.novelight-theme.novelight-page-pricing.novelight-public-dark .footer-inner {
+  font-size: 13px !important;
+}
+
+@media (max-width: 640px) {
+  html body.novelight-theme.novelight-page-index.novelight-public-dark .hero p {
+    font-size: 16px !important;
+  }
+}
+
+/* ADMIN residual readability cleanup. Keep specialized tools legible inside the shared theme. */
+html body.novelight-theme.novelight-page-admin-thumbnails .quad-field strong {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-admin-thumbnails .quad-controls > label > span {
+  color: #e8e0d2 !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+html body.novelight-theme.novelight-page-admin-thumbnails :is(.quad-meta, .validation) {
+  font-size: 14px !important;
+  line-height: 1.72 !important;
+}
+
+html body.novelight-theme.novelight-page-admin-scout .row strong {
+  font-size: 15px !important;
+}
+
+html body.novelight-theme.novelight-page-admin-thumbnails .brand > span {
+  color: #f3d98e !important;
+}
+
+/* bundled: novelight-discovery-spacing.css */
+/* bundled: novelight-info-readability.css */
+/* Sitewide information-icon readability.
+   Preserve each control surface; only force information glyphs/text to black. */
+
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [title*="情報"],
+    [title*="information" i],
+    [title*="info" i]
+  ),
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"]) {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  text-shadow: none !important;
+}
+
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [title*="情報"],
+    [title*="information" i],
+    [title*="info" i]
+  )::before,
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [title*="情報"],
+    [title*="information" i],
+    [title*="info" i]
+  )::after,
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"])::before,
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"])::after {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  text-shadow: none !important;
+}
+
+:is(button, a, [role="button"]):is(
+    [class*="info" i],
+    [class*="tooltip" i],
+    [data-info],
+    [data-tooltip],
+    [aria-label*="情報"],
+    [aria-label*="information" i],
+    [aria-label*="info" i],
+    [title*="情報"],
+    [title*="information" i],
+    [title*="info" i]
+  ) :is(span, i, b, strong, svg),
+.novelight-page-scout-record .scout-stat :is(button, a, [role="button"]) :is(span, i, b, strong, svg) {
+  color: #000 !important;
+  -webkit-text-fill-color: #000 !important;
+  fill: #000 !important;
+  stroke: #000 !important;
+  text-shadow: none !important;
+}
+
+
+/* Shared spacing for Home discovery shelves and reader discovery/list pages. */
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark {
+  --home-discovery-shelf-gap: 24px;
+  --home-discovery-zone-edge: 36px;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section {
+  padding: 0 !important;
+  background: #050d18 !important;
+}
+
+/* The parchment panels carry their own vertical padding. Keep that padding small
+   enough that the visible content-to-content shelf gap stays near the shared
+   shelf token instead of adding another large empty band between sections. */
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section
+  > .container {
+  padding-top: calc((var(--home-discovery-shelf-gap) - 4px) / 2) !important;
+  padding-bottom: calc((var(--home-discovery-shelf-gap) - 4px) / 2) !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section
+  > .container::before {
+  inset: 5px 10px !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section#discover {
+  padding-top: var(--home-discovery-zone-edge) !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section#seedShelfSection {
+  padding-bottom: var(--home-discovery-zone-edge) !important;
+}
+
+html body.novelight-theme.novelight-page-index.novelight-public-dark
+  section.discovery-section
+  + section.discovery-section {
+  border-top-color: rgba(214, 164, 71, 0.1) !important;
+}
+
+html body.novelight-theme:is(
+    .novelight-page-discovery-list,
+    .novelight-page-search,
+    .novelight-page-ranking
+  ) {
+  --discovery-page-space-top: 34px;
+  --discovery-page-space-bottom: 46px;
+}
+
+html body.novelight-theme.novelight-page-discovery-list main.discovery-list-main {
+  min-height: 0 !important;
+  padding: var(--discovery-page-space-top) 0 var(--discovery-page-space-bottom) !important;
+}
+
+html body.novelight-theme:is(.novelight-page-search, .novelight-page-ranking) main {
+  min-height: 0 !important;
+  margin-top: var(--discovery-page-space-top) !important;
+  margin-bottom: var(--discovery-page-space-bottom) !important;
+}
+
+@media (max-width: 700px) {
+  html body.novelight-theme.novelight-page-index.novelight-public-dark {
+    --home-discovery-shelf-gap: 18px;
+    --home-discovery-zone-edge: 28px;
+  }
+
+  html body.novelight-theme.novelight-page-index.novelight-public-dark
+    section.discovery-section
+    > .container::before {
+    inset: 3px 7px !important;
+  }
+
+  html body.novelight-theme:is(
+      .novelight-page-discovery-list,
+      .novelight-page-search,
+      .novelight-page-ranking
+    ) {
+    --discovery-page-space-top: 20px;
+    --discovery-page-space-bottom: 34px;
+  }
+}
+
+
+/* Keep stable regression anchors in the entry stylesheet while the base theme is imported. */
+body.novelight-page-index #discover {
+  background: var(--novelight-ivory);
+}
+
+body.novelight-page-index #features {
+  background: #f2eee5;
+}
+
+/* Match creator/utility header links to the 22px Home navigation scale. */
+html body.novelight-theme:not(.novelight-public-dark) header .back,
+html body.novelight-theme:not(.novelight-public-dark) header .site-back,
+html body.novelight-theme:not(.novelight-public-dark) header .right > a {
+  font-size: 22px !important;
+  font-weight: 700;
+}
+
+html body.novelight-theme:not(.novelight-public-dark) header .logout {
+  min-height: 52px;
+  padding: 12px 20px;
+  font-size: 19px !important;
+  font-weight: 700;
+}
+
+@media (min-width: 641px) and (max-width: 1180px) {
+  html body.novelight-theme:not(.novelight-public-dark) header .back,
+  html body.novelight-theme:not(.novelight-public-dark) header .site-back,
+  html body.novelight-theme:not(.novelight-public-dark) header .right > a {
+    font-size: 20px !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark) header .logout {
+    min-height: 48px;
+    padding: 10px 16px;
+    font-size: 17px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body.novelight-theme:not(.novelight-public-dark) header .back,
+  html body.novelight-theme:not(.novelight-public-dark) header .site-back,
+  html body.novelight-theme:not(.novelight-public-dark) header .right > a {
+    font-size: 20px !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark) header .logout {
+    min-height: 46px;
+    padding: 10px 14px;
+    font-size: 16px !important;
+  }
+}
+
+/* Creator room branding: use the owner-supplied gold NOVELIGHT mark without a surrounding plate. */
+html body.novelight-theme.novelight-page-mypage .studio-brand {
+  min-height: 0 !important;
+  padding: 0 0 8px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .studio-brand img {
+  display: none !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .studio-brand::before {
+  content: "";
+  display: block;
+  width: 190px;
+  max-width: 100%;
+  aspect-ratio: 3 / 1;
+  background: url("assets/author-room/novelight-author-room-logo.webp") center / contain no-repeat;
+  filter: drop-shadow(0 0 12px rgba(244, 197, 72, 0.2));
+}
+
+/* The English eyebrow above the creator-room welcome title follows the room naming. */
+html body.novelight-theme.novelight-page-mypage .hero-kicker {
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .hero-kicker::after {
+  content: "AUTHOR'S ROOM";
+  color: #eacb71;
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: 0.25em;
+}
+
+/* Give the shorter plan card copy enough visual weight to balance the other four actions. */
+html body.novelight-theme.novelight-page-mypage .action-card.cyan h2 {
+  font-size: 20px !important;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+}
+
+html body.novelight-theme.novelight-page-mypage .action-card.cyan p {
+  margin-top: 9px !important;
+  color: #eef5fb !important;
+  font-size: 16px !important;
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+html body.novelight-theme.novelight-page-mypage .action-card.cyan .plan {
+  color: #dff4ff !important;
+  -webkit-text-fill-color: #dff4ff !important;
+  font-size: 17px !important;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+html body.novelight-theme.novelight-page-mypage .action-card.cyan .card-cta {
+  min-height: 38px !important;
+  padding: 8px 12px !important;
+  font-size: 15px !important;
+  letter-spacing: 0.02em;
+}
+
+/* The empty billing status slot used to reserve 24px below the plan CTA, making it sit higher than the other four buttons. */
+html body.novelight-theme.novelight-page-mypage .action-card.cyan .status {
+  min-height: 0 !important;
+  margin-top: 0 !important;
+}
+
+html body.novelight-theme.novelight-page-mypage .action-card.cyan .status:not(:empty) {
+  min-height: 17px !important;
+  margin-top: 7px !important;
+}
+
+/* --------------------------------------------------------------------------
+   NOVELIGHT ADMIN
+   A single shared night-and-gold operations theme for every private admin page.
+   The admin must feel like NOVELIGHT without trading away scanability or contrast.
+   -------------------------------------------------------------------------- */
+html[data-novelight-page="admin"],
+html[data-novelight-page^="admin-"] {
+  background: #06111f;
+  color-scheme: dark;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% -8%, rgba(234, 196, 106, 0.14), transparent 31rem),
+    radial-gradient(circle at 88% 12%, rgba(54, 92, 139, 0.12), transparent 27rem),
+    linear-gradient(180deg, #071321 0%, #081426 52%, #06101d 100%) !important;
+  color: #f7f2e7 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans JP", "Segoe UI",
+    "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.68;
+  text-rendering: optimizeLegibility;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) header {
+  border-bottom: 1px solid rgba(214, 164, 71, 0.42) !important;
+  background: rgba(5, 14, 27, 0.96) !important;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(16px);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .header-inner {
+  min-height: 82px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .brand,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .logo {
+  color: #f0c969 !important;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.055em;
+  text-shadow: 0 0 22px rgba(234, 196, 106, 0.16);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .logo {
+  font-size: 26px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .badge,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .admin-badge,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .brand > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-left: 8px;
+  padding: 4px 9px;
+  border: 1px solid rgba(234, 196, 106, 0.58) !important;
+  border-radius: 999px !important;
+  background: rgba(214, 164, 71, 0.1) !important;
+  color: #f3d98e !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) main {
+  color: #f7f2e7;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h1,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h2,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h3,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .hero h1,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .section-title,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .section-head h2 {
+  color: #fff8e9 !important;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", serif !important;
+  letter-spacing: 0.025em;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h1,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .hero h1 {
+  font-size: clamp(31px, 3vw, 40px) !important;
+  line-height: 1.3;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .section-title,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h2,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .section-head h2 {
+  font-size: 23px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h3,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .panel h2 {
+  font-size: 18px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .hero p,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .lead {
+  color: #d9d3c7 !important;
+  font-size: 16px !important;
+  line-height: 1.8 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .ghost,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .back,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .open,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .close {
+  min-height: 44px;
+  border: 1px solid rgba(214, 164, 71, 0.36) !important;
+  border-radius: 10px !important;
+  background: #0d1d33 !important;
+  color: #f7f2e7 !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .ghost:hover,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .back:hover,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .open:hover,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .close:hover {
+  border-color: #eac46a !important;
+  background: #142a48 !important;
+  color: #fff4d2 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .primary {
+  min-height: 44px;
+  border: 1px solid #e3b957 !important;
+  border-radius: 10px !important;
+  background: linear-gradient(180deg, #eac46a 0%, #cf9b35 100%) !important;
+  color: #071321 !important;
+  font-size: 15px !important;
+  font-weight: 900 !important;
+  box-shadow: 0 6px 18px rgba(214, 164, 71, 0.16);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .danger {
+  min-height: 44px;
+  border-color: #9f4b52 !important;
+  background: #3a1c24 !important;
+  color: #ffd9dc !important;
+  font-size: 15px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .period {
+  border-color: rgba(214, 164, 71, 0.35) !important;
+  background: #0b192c !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .period button {
+  color: #d8d1c3 !important;
+  font-size: 15px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .period button.active {
+  background: #d6a447 !important;
+  color: #071321 !important;
+  box-shadow: 0 4px 12px rgba(214, 164, 71, 0.18);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(
+  .metric,
+  .panel,
+  .operation,
+  .funnel-step,
+  .user,
+  .item,
+  .asset,
+  .gate,
+  .controls,
+  .table-wrap,
+  .modal-card,
+  .quad-field,
+  .quad-meta,
+  .validation,
+  .kv
+) {
+  border-color: rgba(214, 164, 71, 0.24) !important;
+  background: rgba(13, 29, 51, 0.94) !important;
+  color: #f7f2e7 !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.13);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .operation:hover,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .item:hover,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .asset:hover {
+  border-color: rgba(234, 196, 106, 0.74) !important;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(234, 196, 106, 0.08);
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .metric .value,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .operation .value,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .funnel-step strong,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .num,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .metric-value {
+  color: #f1c96b !important;
+  font-size: 30px !important;
+  font-weight: 900 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .work .num {
+  color: #f1c96b !important;
+  font-size: 15px !important;
+  line-height: 1.35;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .row strong {
+  color: #fff8e9 !important;
+  font-size: 15px !important;
+  line-height: 1.4;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .operation:not(.announcements) .value {
+  color: #ff9ea6 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(
+  .metric .label,
+  .metric-label,
+  .operation .label,
+  .funnel-step span,
+  .row span,
+  .subject,
+  .title,
+  .item-title,
+  .asset-title,
+  .user-name
+) {
+  color: #f5efe3 !important;
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(
+  .metric .sub,
+  .operation .sub,
+  .meta,
+  .hint,
+  .privacy,
+  .privacy-note,
+  .help,
+  .note,
+  .asset-meta,
+  .quad-note,
+  .section-head span,
+  .page-info,
+  .gate p,
+  footer
+) {
+  color: #cfc8bb !important;
+  font-size: 14px !important;
+  line-height: 1.72 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .status {
+  border: 1px solid rgba(214, 164, 71, 0.28) !important;
+  background: #0d1d33 !important;
+  color: #e4ddd0 !important;
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .status.ok {
+  border-color: #397a61 !important;
+  background: #0e2a22 !important;
+  color: #b8f0d7 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .status.error {
+  border-color: #9d4a54 !important;
+  background: #391b22 !important;
+  color: #ffd5d9 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .status.warn,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .legacy-note {
+  border-color: #8f7131 !important;
+  background: #302713 !important;
+  color: #f3dea3 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(input, select, textarea) {
+  border-color: #5d533f !important;
+  background: #09182b !important;
+  color: #fff8e9 !important;
+  font-size: 15px !important;
+  line-height: 1.55;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(input, select, textarea)::placeholder {
+  color: #9f998e !important;
+  opacity: 1;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(input, select, textarea):focus {
+  border-color: #e2b85a !important;
+  box-shadow: 0 0 0 3px rgba(234, 196, 106, 0.16) !important;
+  outline: none;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(.field label, .control label, .quad-axis label, .edit label) {
+  color: #e8e0d2 !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) table {
+  border-color: rgba(214, 164, 71, 0.2) !important;
+  background: #0d1d33 !important;
+  color: #f6f0e5 !important;
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) th {
+  border-color: rgba(214, 164, 71, 0.2) !important;
+  background: #09182b !important;
+  color: #eee5d6 !important;
+  font-size: 14px !important;
+  font-weight: 850 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) td {
+  border-color: rgba(214, 164, 71, 0.14) !important;
+  color: #eee8dd !important;
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) tr:hover td {
+  background: rgba(214, 164, 71, 0.055) !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(.chip, .source-chip, .tag) {
+  border: 1px solid rgba(214, 164, 71, 0.28) !important;
+  background: rgba(214, 164, 71, 0.11) !important;
+  color: #f0d997 !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .tag.active {
+  border-color: #397a61 !important;
+  background: #123226 !important;
+  color: #b9efd7 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .tag.retired {
+  border-color: #887034 !important;
+  background: #302713 !important;
+  color: #f2dfa8 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .tag.emergency_disabled {
+  border-color: #93434b !important;
+  background: #3a1c24 !important;
+  color: #ffd3d7 !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) :is(.empty, .user-kv, .quad-preview) {
+  border-color: rgba(214, 164, 71, 0.2) !important;
+  background: #09182b !important;
+  color: #cfc8bb !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .user-kv span,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .kv span {
+  color: #c7c0b3 !important;
+  font-size: 13px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .user-kv strong,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .kv strong,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .kv p {
+  color: #fff8e9 !important;
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .user-id {
+  color: #b7b0a5 !important;
+  font-size: 13px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .link {
+  color: #f1cf7d !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .bar-track {
+  background: #07111f !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .bar {
+  background: linear-gradient(90deg, #b98428, #eac46a) !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .bar-label,
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .bar-count {
+  color: #d8d1c3 !important;
+  font-size: 14px !important;
+}
+
+html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) footer {
+  border-top: 1px solid rgba(214, 164, 71, 0.12);
+  background: transparent !important;
+  color: #a9a295 !important;
+}
+
+@media (max-width: 680px) {
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) {
+    font-size: 15px !important;
+  }
+
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .header-inner {
+    min-height: 72px !important;
+  }
+
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) h1,
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .hero h1 {
+    font-size: 30px !important;
+  }
+
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .metric .value,
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .operation .value,
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .funnel-step strong,
+  html body.novelight-theme:is(.novelight-page-admin, [class*="novelight-page-admin-"]) .metric-value {
+    font-size: 27px !important;
+  }
+}
+
+/* Author/reader utility pages use the same header scale as the public shell.
+   Keep admin operations headers and author-studio page-heading blocks distinct. */
+html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner {
+  min-height: 120px !important;
+  width: min(1500px, calc(100% - 64px)) !important;
+  max-width: 1500px !important;
+  margin-inline: auto !important;
+}
+
+html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .logo img {
+  width: auto !important;
+  height: 104.4px !important;
+  max-width: 290px !important;
+  object-fit: contain !important;
+}
+
+html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .back {
+  font-size: 22px !important;
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .logo img {
+    height: 90px !important;
+    max-width: 245px !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .back {
+    font-size: 20px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner {
+    min-height: 96px !important;
+    width: calc(100% - 32px) !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .logo img {
+    height: 82.8px !important;
+    max-width: 55vw !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .back {
+    font-size: 20px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner {
+    min-height: 84px !important;
+    width: calc(100% - 24px) !important;
+  }
+
+  html body.novelight-theme:not(.novelight-public-dark):not(.novelight-public-header-page):not(.novelight-page-mypage):not(.novelight-page-admin):not([class*="novelight-page-admin-"]) > header > .header-inner .logo img {
+    height: 72px !important;
+    max-width: 56vw !important;
+  }
+}
+
+/* Compact the existing work-detail layout on phones without moving its controls. */
+@media (max-width: 640px) {
+  body.novelight-page-novel main {
+    padding: 22px 14px 52px;
+  }
+  body.novelight-page-novel #novelHeader {
+    padding: 20px 17px;
+    margin-bottom: 14px;
+  }
+  body.novelight-page-novel #novelHeader .tags {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  body.novelight-page-novel #novelHeader .title {
+    font-size: clamp(23px, 6vw, 28px);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+  body.novelight-page-novel #novelHeader .author {
+    margin-bottom: 13px;
+    overflow-wrap: anywhere;
+  }
+  body.novelight-page-novel #novelHeader .description {
+    margin-bottom: 12px;
+    line-height: 1.85;
+    overflow-wrap: anywhere;
+  }
+  body.novelight-page-novel #novelHeader .meta {
+    gap: 8px 12px;
+    min-width: 0;
+  }
+  body.novelight-page-novel #ownerActionsTop .owner-core,
+  body.novelight-page-novel #ownerActions .owner-core {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+  body.novelight-page-novel .owner-core > .action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    padding: 10px 7px;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  body.novelight-page-novel #episodesPanel {
+    padding: 20px 17px;
+  }
+}

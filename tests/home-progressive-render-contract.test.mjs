@@ -47,7 +47,7 @@ test('home omits bookshelf code and preserves account tools', () => {
 
 test('home prefetches festival gate before app scripts', () => {
   const early = home.indexOf('novelightContestGatePrefetch = fetch(');
-  const css = home.indexOf('href="novelight-theme.css"');
+  const css = home.indexOf('href="novelight-home-theme-bundle.css"');
   const sdk = home.indexOf('src="/assets/vendor/supabase-js-2.112.3.js"');
   const carouselStart = home.indexOf('// Carousel markup already exists here.');
   assert.ok(early >= 0 && early < css && css < sdk);
@@ -56,6 +56,15 @@ test('home prefetches festival gate before app scripts', () => {
   assert.match(home, /earlyGate \|\| await client\.rpc/);
   assert.match(home, /DOMContentLoaded', resolve/);
   assert.match(home, /cache: 'no-store'/);
+  assert.match(home, /rest\/v1\/rpc\/novelight_public_contest_hero_gate_v1/);
+  assert.match(
+    home,
+    /earlyGate \|\| await client\.rpc\('novelight_public_contest_catalog'/
+  );
+  assert.match(
+    home,
+    /rel="preload" as="image" href="assets\/home\/06_starfestival_hero_1600x900\.webp"/
+  );
   assert.match(home, /response\.ok \?/);
   assert.match(home, /data\.contest_status === 'registration'/);
   assert.match(home, /Date\.now\(\) <= deadline/);
