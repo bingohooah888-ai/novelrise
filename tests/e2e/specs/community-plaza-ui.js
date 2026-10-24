@@ -231,6 +231,58 @@ test('signed-in Studio button has Home-scale dimensions on the plaza', async ({ 
   expect(plaza.font).toBeLessThanOrEqual(home.font + 1);
 });
 
+// The same mock post must have identical computed styles and controls in both views.
+// prettier-ignore
+test('Home and plaza share exact timeline card appearance and actions', async ({ page }) => {
+  await installIsolatedMock(page, true);
+  async function appearance(path, selector) {
+    await page.goto(path, { waitUntil: 'domcontentloaded' });
+    const card = page.locator(selector).first();
+    await expect(card).toBeVisible();
+    return card.evaluate((element) => {
+      const style = globalThis.getComputedStyle;
+      const get = (selector) => element.querySelector(selector);
+      const report = get('.community-post-meta > button');
+      const actionRow = get('.community-actions');
+      return {
+        stylesheetCount: globalThis.document.querySelectorAll('link[data-novelight-community-card="shared"]').length,
+        background: style(element).backgroundColor,
+        titleColor: style(get('.community-card-title')).color,
+        bodyColor: style(get('.community-card-body')).color,
+        authorSize: parseFloat(style(get('.community-person')).fontSize),
+        titleSize: parseFloat(style(get('.community-card-title')).fontSize),
+        bodySize: parseFloat(style(get('.community-card-body')).fontSize),
+        dateSize: parseFloat(style(get('.community-date')).fontSize),
+        reportSize: parseFloat(style(report).fontSize),
+        actionRowDisplay: style(actionRow).display,
+        reportParent: report.parentElement.className,
+        reportLabel: report.textContent,
+        metaContainsDate: Boolean(get('.community-post-meta .community-date'))
+      };
+    });
+  }
+  const home = await appearance('/index.html', '#communityHomeFeed .community-card');
+  const plaza = await appearance('/community.html', '#communityPageFeed .community-card');
+  expect(home).toEqual(plaza);
+  expect(home).toMatchObject({
+    stylesheetCount: 1,
+    background: 'rgb(16, 32, 53)',
+    titleColor: 'rgb(245, 242, 234)',
+    bodyColor: 'rgb(218, 226, 236)',
+    authorSize: 19,
+    titleSize: 22,
+    dateSize: 17,
+    reportSize: 17,
+    actionRowDisplay: 'none',
+    reportParent: 'community-post-meta',
+    reportLabel: '通報',
+    metaContainsDate: true
+  });
+  expect(home.bodySize).toBe(
+    await page.evaluate(() => globalThis.matchMedia('(max-width: 640px)').matches) ? 19 : 20
+  );
+});
+
 // prettier-ignore
 test('community UI interactions use mocked data', async ({ page }) => {
   await installIsolatedMock(page, true);
