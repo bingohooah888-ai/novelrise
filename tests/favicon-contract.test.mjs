@@ -32,8 +32,7 @@ test('homepage uses versioned favicon path', () => {
   assert.ok(page.includes('href="/favicon.ico?v=20261022"'));
 });
 
-
-test('every shipped root page and SEO HTML template has exactly one canonical favicon', () => {
+test('all static HTML documents use the canonical favicon', () => {
   const root = new URL('../', import.meta.url);
   const names = [
     ...readdirSync(root).filter((name) => name.endsWith('.html')),
@@ -42,9 +41,7 @@ test('every shipped root page and SEO HTML template has exactly one canonical fa
   ];
   for (const name of names) {
     const html = readFileSync(new URL(name, root), 'utf8');
-    if (name.startsWith('google') && html.trim() === 'google-site-verification: ' + name) {
-      continue;
-    }
+    if (html.trim() === `google-site-verification: ${name}`) continue;
     assert.match(html, /<head(?:\s[^>]*)?>/iu, name);
     assert.ok(html.includes(SITE_FAVICON_LINK), name);
     assert.equal(
@@ -58,12 +55,14 @@ test('every shipped root page and SEO HTML template has exactly one canonical fa
   }
 });
 
-test('future pages get canonical icon automatically and duplicates are removed', () => {
-  const plain = '<!doctype html><html><head><title>NEW</title></head><body></body></html>';
+test('new pages receive one canonical favicon', () => {
+  const plain =
+    '<!doctype html><html><head><title>NEW</title></head><body></body></html>';
   const once = ensureFaviconHtml(plain);
   assert.match(once, /href="\/favicon\.ico\?v=20261022"/u);
   assert.equal(ensureFaviconHtml(once), once);
-  const old = '<html><head><link rel="shortcut icon" href="/old.ico"><link rel="icon" href="/other.ico"><title>X</title></head></html>';
+  const old =
+    '<html><head><link rel="shortcut icon" href="/old.ico"><link rel="icon" href="/other.ico"><title>X</title></head></html>';
   const normalized = ensureFaviconHtml(old);
   assert.equal(normalized.match(/rel="icon"/gu)?.length, 1);
   assert.ok(!normalized.includes('/old.ico'));
@@ -76,7 +75,7 @@ test('favicon sync does not alter non-HTML verification tokens', () => {
   assert.equal(ensureFaviconHtml(token), token);
 });
 
-test('dynamic HTML routes receive the same favicon without requiring template edits', () => {
+test('dynamic HTML responses receive canonical favicon', () => {
   let body;
   const headers = new Map();
   const req = { method: 'GET' };
@@ -93,7 +92,11 @@ test('dynamic HTML routes receive the same favicon without requiring template ed
       return this;
     }
   };
-  sendHtml(req, res, '<html><head><title>Contest</title></head><body></body></html>');
+  sendHtml(
+    req,
+    res,
+    '<html><head><title>Contest</title></head><body></body></html>'
+  );
   assert.ok(body.includes(SITE_FAVICON_LINK));
   assert.equal(headers.get('Content-Type'), 'text/html; charset=utf-8');
 });

@@ -136,7 +136,8 @@ export function sendHtml(
   if (!indexable) {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   }
-  return res.status(200).send(req.method === 'HEAD' ? '' : ensureFaviconHtml(html));
+  const body = req.method === 'HEAD' ? '' : ensureFaviconHtml(html);
+  return res.status(200).send(body);
 }
 
 export function methodAllowed(req, res) {
