@@ -87,7 +87,7 @@ async function installIsolatedMock(page, enabled, options = {}) {
                     };
                   });
                 }
-                return {data: payload.p_following ? [] : [feed], error:null};
+                return {data: [feed], error:null};
               }
               if (name === 'novelight_public_profile') return {data: {display_name: 'テスト作者', bio: ''}, error: null};
               if (name === 'novelight_public_author_avatar') return {data: globalThis.__communityWithoutAvatar ? null : originalFeed.author_avatar_path, error: null};
@@ -189,24 +189,22 @@ test('avatarless profile falls back to name initials', async ({ page }) => {
 });
 
 // prettier-ignore
-test('latest filter wins during pending feed request', async ({ page }) => {
+test('latest refresh wins during pending feed request', async ({ page }) => {
   await installIsolatedMock(page, true, { delayFirstFeed: true });
   await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
   const firstFeedReady = () =>
     page.evaluate(() => typeof globalThis.__communityReleaseFirstFeed);
   await expect.poll(firstFeedReady).toBe('function');
 
-  const followingTab = page.locator('[data-community-filter="following"]');
-  await followingTab.click();
-  await expect(followingTab).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#communityRefresh').click();
   await page.evaluate(() => globalThis.__communityReleaseFirstFeed());
 
   const requestedFilters = () =>
     page.evaluate(() => globalThis.__communityTestFeedFilters);
-  await expect.poll(requestedFilters).toEqual([false, true]);
-  await expect(page.locator('.community-card')).toHaveCount(0);
-  await expect(page.locator('#communityPageFeed .community-state')).toContainText(
-    'まだ公開中の交流はありません'
+  await expect.poll(requestedFilters).toEqual([false, false]);
+  await expect(page.locator('.community-card')).toHaveCount(1);
+  await expect(page.locator('.community-card-title')).toContainText(
+    'テスト用の近況'
   );
 });
 
@@ -443,11 +441,8 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await expect(report).toHaveText('通報済み');
   await expect(report).toBeDisabled();
 
-  await page.locator('[data-community-filter="following"]').click();
-  await expect(page.locator('.community-card')).toHaveCount(0);
-  await expect(
-    page.locator('#communityPageFeed .community-state')
-  ).toContainText('まだ公開中の交流はありません');
+  await page.locator('#communityRefresh').click();
+  await expect(page.locator('.community-card')).toHaveCount(1);
 
   await page.locator('#communityBoardTab').click();
   await expect(page.locator('#communityBoardInfo')).toBeVisible();
