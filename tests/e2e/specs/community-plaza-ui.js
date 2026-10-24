@@ -481,3 +481,84 @@ test('a shared older comment link opens a permitted single-comment preview', asy
   const calls = await page.evaluate(() => globalThis.__communityTestCalls);
   expect(calls).toContain('novelight_community_comment_detail');
 });
+
+ 
+// Layout regression: the shared badge must not inherit the truncation
+// intended only for the work title, and Home links share one baseline.
+test('R15 badge remains fully visible and Home cover links align', async ({
+  page
+}) => {
+  await installIsolatedMock(page, true);
+  await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#communityHomeFeed .community-card').first()).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const feed = document.getElementById('communityHomeFeed');
+    const novelLink = (title, rated) => {
+      const a = document.createElement('a');
+      a.className = 'community-link';
+      a.href = 'novel.html?id=not-a-number';
+      if (rated) {
+        const badge = document.createElement('span');
+        badge.className = 'nl-r15-badge';
+        badge.textContent = 'R15';
+        a.append(badge);
+      }
+      const cover = document.createElement('img');
+      cover.alt = '';
+      cover.src =
+        'data:image/svg+xml,' +
+        encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="34" height="48"/>');
+      a.append(cover);
+      const text = document.createElement('span');
+      text.textContent = title;
+      a.append(text);
+      return a;
+    };
+    feed.replaceChildren();
+    for (const [index, title] of [
+      '短い紹介文',
+      '長い紹介文が折り返されるケースを確認します'.repeat(8),
+      '普通の紹介文'.repeat(3)
+    ].entries()) {
+      const card = document.createElement('article');
+      card.className = 'community-card';
+      const person = document.createElement('div');
+      person.className = 'community-person';
+      person.textContent = 'テスト作者';
+      const type = document.createElement('span');
+      type.className = 'community-type';
+      type.textContent = '新作公開';
+      const heading = document.createElement('h3');
+      heading.className = 'community-card-title';
+      heading.textContent = title;
+      card.append(
+        person,
+        type,
+        heading,
+        novelLink('とても長い作品タイトル'.repeat(6), index === 0)
+      );
+      feed.append(card);
+    }
+    const links = [...feed.querySelectorAll('.community-card > .community-link')];
+    const badge = links[0].querySelector('.nl-r15-badge');
+    const title = links[0].querySelector('span:not(.nl-r15-badge)');
+    return {
+      badgeText: badge.textContent,
+      badgeWidth: badge.getBoundingClientRect().width,
+      badgeScrollWidth: badge.scrollWidth,
+      badgeRight: badge.getBoundingClientRect().right,
+      titleLeft: title.getBoundingClientRect().left,
+      linkBottoms: links.map((link) => link.getBoundingClientRect().bottom),
+      isDesktop: matchMedia('(min-width: 901px)').matches
+    };
+  });
+  expect(layout.badgeText).toBe('R15');
+  expect(layout.badgeWidth).toBeGreaterThanOrEqual(30);
+  expect(layout.badgeWidth + 1).toBeGreaterThanOrEqual(layout.badgeScrollWidth);
+  expect(layout.badgeRight).toBeLessThanOrEqual(layout.titleLeft + 1);
+  if (layout.isDesktop) {
+    const bottoms = layout.linkBottoms;
+    expect(Math.max(...bottoms) - Math.min(...bottoms)).toBeLessThanOrEqual(2);
+  }
+});
