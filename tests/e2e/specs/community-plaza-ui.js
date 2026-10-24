@@ -209,6 +209,28 @@ test('community gate OFF prevents RPC calls', async ({ page }) => {
   ).toEqual([]);
 });
 
+// Browser-level parity: static markup equality alone cannot enforce button
+// dimensions when a light page accidentally skips its header stylesheet.
+// prettier-ignore
+test('signed-in Studio button has Home-scale dimensions on the plaza', async ({ page }) => {
+  await installIsolatedMock(page, true);
+  const studioMetrics = async () => {
+    const link = page.locator('header.site-header .login-action');
+    await expect(link).toHaveText('創作室');
+    return link.evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      const computed = globalThis.getComputedStyle(el);
+      return { height: box.height, font: parseFloat(computed.fontSize) };
+    });
+  };
+  await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+  const home = await studioMetrics();
+  await page.goto('/community.html', { waitUntil: 'domcontentloaded' });
+  const plaza = await studioMetrics();
+  expect(plaza.height).toBeLessThanOrEqual(home.height + 2);
+  expect(plaza.font).toBeLessThanOrEqual(home.font + 1);
+});
+
 // prettier-ignore
 test('community UI interactions use mocked data', async ({ page }) => {
   await installIsolatedMock(page, true);
@@ -223,6 +245,19 @@ test('community UI interactions use mocked data', async ({ page }) => {
   await expect(card.locator('.community-card-body')).toContainText(
     '安全な画面表示'
   );
+  // Check the browser's computed style, not only the presence of a CSS token.
+  // The previous ivory :is(#id, .card) rule outranked the navy override.
+  const appearance = await card.evaluate((element) => {
+    const style = globalThis.getComputedStyle;
+    return {
+      background: style(element).backgroundColor,
+      title: style(element.querySelector('.community-card-title')).color,
+      body: style(element.querySelector('.community-card-body')).color
+    };
+  });
+  expect(appearance.background).toBe('rgb(16, 32, 53)');
+  expect(appearance.title).toBe('rgb(245, 242, 234)');
+  expect(appearance.body).toBe('rgb(218, 226, 236)');
   await card.locator('.community-expand').click();
   await expect(card.locator('.community-expand')).toHaveAttribute(
     'aria-expanded',

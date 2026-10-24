@@ -45,7 +45,10 @@ body.novelight-page-community .community-filters button {
   font-size: 16px;
 }
 body.novelight-page-community .community-filters button[aria-pressed=true] { background: #ead2a5; }
-body.novelight-page-community :is(.community-card, #communityNotifications, .board-compose, .board-detail, .board-thread-card, .board-reply) {
+/* Only ivory notification/board surfaces belong in this group. A card in
+   :is() with an ID selector inherits ID specificity and defeats later
+   .community-card navy rules, even when declared after this block. */
+body.novelight-page-community :is(#communityNotifications, .board-compose, .board-detail, .board-thread-card, .board-reply) {
   background: #fffdf8;
   color: #352719;
   border: 1px solid #d8c4a1;
