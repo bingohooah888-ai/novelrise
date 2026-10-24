@@ -17,7 +17,7 @@ test('official icon uses original admin creator and live profile', () => {
     'ORDER BY audit.id ASC',
     'official_profile.avatar_path',
     'official_profile.id',
-    "'author_avatar_user_id',p.author_avatar_user_id",
+    "'author_avatar_user_id',p.author_avatar_user_id"
   ];
   for (const term of terms) {
     assert.ok(migration.includes(term), term);
@@ -37,15 +37,15 @@ test('official brand, visibility gates, and RPC grants remain intact', () => {
     "a.status='published'",
     "CASE WHEN p.kind='official' THEN 'NOVELIGHT公式'",
     'REVOKE ALL ON FUNCTION public.novelight_community_feed',
-    'GRANT EXECUTE ON FUNCTION public.novelight_community_feed',
+    'GRANT EXECUTE ON FUNCTION public.novelight_community_feed'
   ];
   for (const term of terms) {
     assert.ok(migration.includes(term), term);
   }
   assert.ok(
     migration.includes(
-      "SELECT 'official', 'official:' || a.id::text,\n           NULL::uuid",
-    ),
+      "SELECT 'official', 'official:' || a.id::text,\n           NULL::uuid"
+    )
   );
 });
 
@@ -56,7 +56,7 @@ test('UI paints official owner icon with the original N fallback', () => {
     'row.author_avatar_user_id',
     'paint(avatar, row.author_avatar_path, avatarOwnerId',
     "el('span', '', row.author_name || 'NOVELIGHT公式')",
-    "String(row.author_name || '作').slice(0, 1)",
+    "String(row.author_name || '作').slice(0, 1)"
   ];
   for (const term of terms) {
     assert.ok(ui.includes(term), term);
