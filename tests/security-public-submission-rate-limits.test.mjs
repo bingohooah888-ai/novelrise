@@ -12,9 +12,8 @@ const migration = readFileSync(
 );
 
 function definition(name) {
-  const start = migration.indexOf(
-    `CREATE OR REPLACE FUNCTION public.${name}(`
-  );
+  const declaration = `CREATE OR REPLACE FUNCTION public.${name}(`;
+  const start = migration.indexOf(declaration);
   assert.ok(start >= 0, `${name} definition must exist`);
   const end = migration.indexOf('$function$;', start);
   assert.ok(end > start, `${name} definition must be complete`);
