@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const migrationFile = new URL(
   '../supabase/migrations/20261025013000_revoke_anon_trusted_receipt_rpc.sql',
