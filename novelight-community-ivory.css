@@ -111,3 +111,76 @@ body.novelight-page-community .board-reply .board-secondary { font-size: 15px; }
   body.novelight-page-community .community-page h1 { font-size: 30px; }
   body.novelight-page-community .community-page .community-intro { font-size: 16px; }
 }
+
+/* Timeline information panel: the board and Home teaser remain unchanged. */
+body.novelight-page-community #communityTimeline .community-info {
+  margin: 0 0 26px;
+  border: 1px solid #d8c4a1;
+  border-radius: 12px;
+  background: #fffdf8;
+  color: #382b1d;
+  box-shadow: 0 4px 16px rgba(65,46,22,.05);
+}
+body.novelight-page-community #communityTimeline .community-info > summary {
+  padding: 14px 18px;
+  cursor: pointer;
+  color: #604015;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+body.novelight-page-community #communityTimeline .community-info > summary::marker {
+  color: #a57532;
+}
+body.novelight-page-community #communityTimeline .community-info > summary:focus-visible {
+  outline: 3px solid #b17a26;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+body.novelight-page-community #communityTimeline .community-info-content {
+  padding: 16px 20px 20px;
+  border-top: 1px solid #eadcc4;
+  font-size: 15px;
+  line-height: 1.7;
+}
+body.novelight-page-community #communityTimeline .community-info-content > p {
+  margin: 0 0 12px;
+}
+body.novelight-page-community #communityTimeline .community-info-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 22px;
+  margin: 0 0 20px;
+  padding: 0;
+}
+body.novelight-page-community #communityTimeline .community-info-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+body.novelight-page-community #communityTimeline .community-info-list strong {
+  color: #714914;
+}
+body.novelight-page-community #communityTimeline .community-info-content h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #573817;
+}
+body.novelight-page-community #communityTimeline .community-info-rules {
+  margin: 0;
+  padding-left: 1.4em;
+}
+body.novelight-page-community #communityTimeline .community-info-rules li {
+  margin: 4px 0;
+}
+@media (max-width: 680px) {
+  body.novelight-page-community #communityTimeline .community-info-list {
+    grid-template-columns: 1fr;
+  }
+  body.novelight-page-community #communityTimeline .community-info-content {
+    padding: 14px 16px 18px;
+  }
+}
