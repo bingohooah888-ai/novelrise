@@ -132,6 +132,156 @@ revoke all on function public.novelight_publish_episode_draft_atomic(bigint) fro
 revoke all on function public.novelight_publish_episode_draft_atomic(bigint) from anon;
 grant execute on function public.novelight_publish_episode_draft_atomic(bigint) to authenticated;
 
+
+-- Publication-embargo rollback compatibility:
+-- The newer reader SELECT policy and read RPCs reference scheduled_publish_at.
+-- Remove only that reference before dropping the old scheduling column.
+-- Retain first-publication embargo and every owner-access exception.
+-- The guard keeps this historical rollback usable on earlier schemas too.
+do $embargo_rollback$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'episodes'
+      and column_name = 'scheduled_publish_at'
+  ) and exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'episodes'
+      and column_name = 'first_published_at'
+  ) then
+    if exists (
+      select 1 from pg_policies
+      where schemaname = 'public'
+        and tablename = 'episodes'
+        and policyname = 'novelrise_episodes_select_published_or_novel_owner'
+    ) then
+      execute $restore_policy$
+        alter policy novelrise_episodes_select_published_or_novel_owner
+          on public.episodes
+          using (
+            (
+              status = 'published'
+              and (first_published_at is null or first_published_at <= now())
+              and exists (
+                select 1 from public.novels n
+                where n.id = episodes.novel_id
+                  and n.status = 'published'
+                  and (n.first_published_at is null or n.first_published_at <= now())
+              )
+            )
+            or (
+              (select auth.uid()) is not null
+              and exists (
+                select 1 from public.novels n
+                where n.id = episodes.novel_id
+                  and n.user_id = (select auth.uid())
+              )
+            )
+          );
+      $restore_policy$;
+    end if;
+    if to_regprocedure('public.novelight_reader_episode_index(text[])') is not null then
+      execute $restore_reader$
+CREATE OR REPLACE FUNCTION public.novelight_reader_episode_index(p_novel_ids text[])
+ RETURNS TABLE(novel_id text, episode_id text, episode_number bigint, episode_title text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  if p_novel_ids is null
+     or cardinality(p_novel_ids) < 1
+     or cardinality(p_novel_ids) > 50
+     or cardinality(p_novel_ids) <>
+       cardinality(array(select distinct x from unnest(p_novel_ids) as x)) then
+    raise exception using errcode = '22023',
+      message = 'Reader episode index requires 1 to 50 unique works';
+  end if;
+
+  return query
+  select
+    n.id::text as novel_id,
+    e.id::text as episode_id,
+    e.episode_number::bigint,
+    e.title as episode_title
+  from (select unnest(p_novel_ids) as novel_id) requested
+  join public.novels n
+    on n.id::text = requested.novel_id
+   and n.status = 'published'
+  join public.episodes e
+    on e.novel_id = n.id
+   and e.status = 'published'
+   and (e.first_published_at is null or e.first_published_at <= now())
+  order by n.id::text, e.episode_number, e.id;
+end
+$function$;
+      $restore_reader$;
+    end if;
+    if to_regprocedure('public.novelight_novel_outline(bigint)') is not null then
+      execute $restore_outline$
+CREATE OR REPLACE FUNCTION public.novelight_novel_outline(p_novel_id bigint)
+ RETURNS TABLE(episode_id bigint, episode_title text, episode_number bigint, episode_status text, chapter_id bigint, chapter_title text, chapter_position bigint)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_user_id uuid := auth.uid();
+  v_owner_id uuid;
+  v_novel_status text;
+  v_is_owner boolean := false;
+begin
+  if p_novel_id is null then
+    return;
+  end if;
+
+  select n.user_id, n.status
+    into v_owner_id, v_novel_status
+    from public.novels n
+   where n.id = p_novel_id;
+
+  if not found then
+    return;
+  end if;
+
+  v_is_owner := v_user_id is not null and v_user_id = v_owner_id;
+  if not v_is_owner and v_novel_status <> 'published' then
+    return;
+  end if;
+
+  return query
+  select
+    e.id,
+    e.title,
+    e.episode_number,
+    e.status,
+    c.id,
+    c.title,
+    c.position
+  from public.episodes e
+  left join public.novel_chapters c
+    on c.id = e.chapter_id
+   and c.novel_id = e.novel_id
+  where e.novel_id = p_novel_id
+    and (
+      v_is_owner
+      or (
+        v_novel_status = 'published'
+        and e.status = 'published'
+        and (e.first_published_at is null or e.first_published_at <= now())
+      )
+    )
+  order by e.episode_number, e.id;
+end
+$function$;
+      $restore_outline$;
+    end if;
+  end if;
+end
+$embargo_rollback$;
+
 drop index if exists public.episodes_scheduled_publish_due_idx;
 alter table public.episodes drop constraint if exists episodes_scheduled_publish_requires_draft;
 alter table public.episodes drop column if exists scheduled_publish_at;
