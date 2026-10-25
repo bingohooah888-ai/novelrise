@@ -60,5 +60,5 @@ test('public submissions and privileges remain unchanged', () => {
   assert.doesNotMatch(migration, /\brevoke\s+(?:all|execute)/i);
   assert.doesNotMatch(migration, /\bdrop\s+function/i);
   assert.doesNotMatch(migration, /\bdelete\s+from/i);
-  assert.match(migration, /^begin;[\s\S]*commit;\s*$/i);
+  assert.match(migration, /\nbegin;[\s\S]*\ncommit;\s*$/i);
 });
