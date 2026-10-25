@@ -15,7 +15,10 @@ test('anonymous plan-extra RPC rejects oversized exclusion arrays', () => {
   const guard = migration.indexOf('cardinality(p_exclude_novel_ids)');
   const query = migration.indexOf('return query');
   assert.ok(guard > 0 && query > guard);
-  assert.match(migration, /coalesce\(cardinality\(p_exclude_novel_ids\), 0\) > 128/i);
+  assert.match(
+    migration,
+    /coalesce\(cardinality\(p_exclude_novel_ids\), 0\) > 128/i
+  );
   assert.match(migration, /errcode = '22023'/i);
   assert.match(migration, /Too many excluded novel IDs/i);
 });
