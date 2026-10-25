@@ -6,6 +6,11 @@ begin;
 revoke execute on function public.record_trusted_allocation_receipts(uuid[])
   from anon, public;
 
+-- An isolated migration replay may not have the Production ACL snapshot.
+-- Make the two intentional grants explicit rather than inheriting from PUBLIC.
+grant execute on function public.record_trusted_allocation_receipts(uuid[])
+  to authenticated, service_role;
+
 do $verify$
 begin
   if has_function_privilege(
