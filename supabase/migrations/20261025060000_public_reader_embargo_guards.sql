@@ -138,4 +138,43 @@ begin
 end
 $function$;
 
+-- The same future-date guard must also protect direct table reads.
+-- Preserve all existing SELECT roles and the author's edit/read exception.
+alter policy novelrise_novels_select_published_or_owner
+  on public.novels
+  using (
+    (
+      status = 'published'
+      and (first_published_at is null or first_published_at <= now())
+    )
+    or (
+      (select auth.uid()) is not null
+      and user_id = (select auth.uid())
+    )
+  );
+
+alter policy novelrise_episodes_select_published_or_novel_owner
+  on public.episodes
+  using (
+    (
+      status = 'published'
+      and (scheduled_publish_at is null or scheduled_publish_at <= now())
+      and (first_published_at is null or first_published_at <= now())
+      and exists (
+        select 1 from public.novels n
+        where n.id = episodes.novel_id
+          and n.status = 'published'
+          and (n.first_published_at is null or n.first_published_at <= now())
+      )
+    )
+    or (
+      (select auth.uid()) is not null
+      and exists (
+        select 1 from public.novels n
+        where n.id = episodes.novel_id
+          and n.user_id = (select auth.uid())
+      )
+    )
+  );
+
 commit;
