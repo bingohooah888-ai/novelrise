@@ -44,29 +44,6 @@
   </nav>
   <section id="communityNotifications" aria-label="あなたへの交流通知" hidden></section>
   <section id="communityTimeline" aria-label="タイムライン" hidden>
-   <details id="communityTimelineInfo" class="community-info">
-     <summary>インフォメーション｜タイムラインに表示される内容</summary>
-     <div class="community-info-content">
-       <p>タイムラインでは、作品の更新情報や作者・読者の活動などを確認できます。</p>
-       <ul class="community-info-list">
-         <li><strong>新しい作品の公開</strong><span>作者が新しい小説を公開すると表示されます。</span></li>
-         <li><strong>作品の最新話公開</strong><span>フォローしている作者や、お気に入り登録した作品の第2話以降の更新が表示されます。</span></li>
-         <li><strong>作者の近況ノート</strong><span>作者がタイムラインへの共有を選択した近況ノートが表示されます。</span></li>
-         <li><strong>おすすめリストの共有</strong><span>読者が共有したおすすめ作品リストが表示されます。</span></li>
-         <li><strong>LIGHT SEEDの共有</strong><span>読者が共有したLIGHT SEEDの活動が表示されます。</span></li>
-         <li><strong>NOVELIGHT公式のお知らせ</strong><span>新機能やキャンペーンなど、運営からのお知らせが表示されます。</span></li>
-       </ul>
-       <h2>表示について</h2>
-       <ul class="community-info-rules">
-         <li>投稿は新しい順に表示されます。</li>
-         <li>第2話以降の更新は、作者のフォローまたは作品のお気に入り登録が表示条件です。</li>
-         <li>近況ノート・おすすめリスト・LIGHT SEEDは、タイムラインに共有されたものが対象です。</li>
-         <li>全年齢・R15作品が対象です。R18作品は表示されません。</li>
-         <li>いいね・コメント・フォローだけでは新しい投稿は作成されません。</li>
-         <li>掲示板のスレッドはタイムラインとは別に表示されます。</li>
-       </ul>
-     </div>
-   </details>
    <div class="community-filters" aria-label="表示する投稿">
      <button type="button" id="communityRefresh" class="community-refresh">最新の投稿を更新</button>
    </div>
@@ -124,6 +101,7 @@
 <script src="novelight-community.js" defer></script>
 <script src="novelight-community-board.js" defer></script>
 <script src="novelight-community-alerts.js" defer></script>
+<script src="novelight-help.js" defer></script>
 <script>
 (() => {
  const boardTab=document.getElementById('communityBoardTab');
