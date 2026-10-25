@@ -11,6 +11,14 @@ const migration = readFileSync(
   'utf8'
 );
 
+const scheduleRollback = readFileSync(
+  new URL(
+    '../supabase/rollback/20260916100000_episode_scheduled_publication_rollback.sql',
+    import.meta.url
+  ),
+  'utf8'
+);
+
 function definition(name) {
   const header = `CREATE OR REPLACE FUNCTION public.${name}(`;
   const start = migration.indexOf(header);
@@ -63,6 +71,21 @@ test('direct episode SELECT checks embargo and owner access', () => {
   assert.match(body, /first_published_at <= now\(\)/i);
   assert.match(body, /n.first_published_at <= now\(\)/i);
   assert.match(body, /n.user_id = \(select auth.uid\(\)\)/i);
+});
+
+test('schedule rollback restores read guards before deleting column', () => {
+  const start = scheduleRollback.indexOf(
+    'Publication-embargo rollback compatibility'
+  );
+  const removeColumn = scheduleRollback.indexOf(
+    'alter table public.episodes drop column if exists scheduled_publish_at'
+  );
+  assert.ok(start > 0 && removeColumn > start);
+  const cleanup = scheduleRollback.slice(start, removeColumn);
+  assert.match(cleanup, /alter policy novelrise_episodes_select/i);
+  assert.match(cleanup, /novelight_reader_episode_index/i);
+  assert.match(cleanup, /novelight_novel_outline/i);
+  assert.match(cleanup, /first_published_at <= now\(\)/i);
 });
 
 test('migration preserves signatures and grants', () => {
