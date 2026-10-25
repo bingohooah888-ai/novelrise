@@ -311,7 +311,16 @@
     decorate(document.querySelector('.scout-page-head h1'), 'scout-record');
     decorate(document.getElementById('seedInventoryTitle'), 'light-seed');
   }
-  function installCommunity() { decorate(document.getElementById('communityPageHeading'), 'community-timeline'); }
+  function installCommunity() {
+    const boardTab = document.getElementById('communityBoardTab');
+    if (!boardTab) return;
+    const heading = document.getElementById('communityPageHeading');
+    heading?.querySelector('[data-nl-help-topic="community-timeline"]')?.remove();
+    heading?.classList.remove('nl-help-decorated');
+    if (boardTab.parentElement?.querySelector('[data-nl-help-topic="community-timeline"]')) return;
+    const button = infoButton('community-timeline', 'ⓘ', 'community-help-inline');
+    if (button) boardTab.insertAdjacentElement('afterend', button);
+  }
   function installRanking() { addTextHelp(document.querySelector('main h1'), 'ranking', 'ランキングについて'); }
   function installPricing() { addTextHelp(document.querySelector('main h1'), 'plans', '各プランの違い'); }
   function installMypage() { addTextHelp(document.querySelector('.author-hero h1'), 'author-guide', '作者向け機能ガイド'); decorate(document.querySelector('.action-plan h2'), 'plans'); }
