@@ -43,6 +43,28 @@ test('public author notes exclude future publication timestamps', () => {
   assert.match(body, /least\(greatest\(coalesce\(p_limit, 5\), 1\), 20\)/i);
 });
 
+test('direct novel SELECT obeys publication time but keeps owner access', () => {
+  const policy = migration.split(
+    'alter policy novelrise_novels_select_published_or_owner'
+  )[1];
+  assert.ok(policy);
+  const body = policy.split(';')[0];
+  assert.match(body, /first_published_at <= now\(\)/i);
+  assert.match(body, /user_id = \(select auth.uid\(\)\)/i);
+});
+
+test('direct episode SELECT checks embargo and owner access', () => {
+  const policy = migration.split(
+    'alter policy novelrise_episodes_select_published_or_novel_owner'
+  )[1];
+  assert.ok(policy);
+  const body = policy.split(';')[0];
+  assert.match(body, /scheduled_publish_at <= now\(\)/i);
+  assert.match(body, /first_published_at <= now\(\)/i);
+  assert.match(body, /n.first_published_at <= now\(\)/i);
+  assert.match(body, /n.user_id = \(select auth.uid\(\)\)/i);
+});
+
 test('migration preserves signatures and grants', () => {
   assert.doesNotMatch(migration, /\brevoke\s+(all|execute)/i);
   assert.doesNotMatch(migration, /\bdrop\s+function/i);
