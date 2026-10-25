@@ -4,7 +4,10 @@ import test from 'node:test';
 import { URL } from 'node:url';
 
 const migration = readFileSync(
-  new URL('../supabase/migrations/20261025073000_public_episode_metadata_embargo.sql', import.meta.url),
+  new URL(
+    '../supabase/migrations/20261025073000_public_episode_metadata_embargo.sql',
+    import.meta.url
+  ),
   'utf8'
 );
 const rollback = readFileSync(
