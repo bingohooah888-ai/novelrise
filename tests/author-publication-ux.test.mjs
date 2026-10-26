@@ -33,7 +33,8 @@ test('all publishing screens parse and confirm the reader-visible episode', () =
     'episode-schedule.html'
   ];
   for (const path of paths) {
-    for (const match of read(path).matchAll(/<script>([\s\S]*?)<\/script>/giu)) {
+    const inlineScriptTags = /<script>([\s\S]*?)<\/script>/giu;
+    for (const match of read(path).matchAll(inlineScriptTags)) {
       assert.doesNotThrow(() => new Script(match[1], { filename: path }));
     }
   }
