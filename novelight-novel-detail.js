@@ -78,6 +78,9 @@
       .nl-work-detail-toc h2{font-size:19px;margin:0}.nl-work-detail-toc-count{color:#667284;font-size:12px}
       .nl-work-toc-list{display:grid;gap:5px;grid-auto-rows:max-content;align-content:start;flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:4px;scrollbar-width:thin;scrollbar-color:#aeb7c3 transparent}.nl-work-toc-list::-webkit-scrollbar{width:7px}.nl-work-toc-list::-webkit-scrollbar-track{background:transparent}.nl-work-toc-list::-webkit-scrollbar-thumb{background:#aeb7c3;border-radius:999px}.nl-work-toc-group{border:1px solid #e4dccf;border-radius:9px;overflow:hidden;margin:7px 0}.nl-work-toc-chapter{display:block;margin:0;padding:10px 12px;border-left:3px solid #b28a4a;background:#f4f6f8;color:#26364b;font-size:13px;font-weight:900;line-height:1.5;cursor:pointer;list-style:none}.nl-work-toc-chapter::-webkit-details-marker{display:none}.nl-work-toc-chapter::after{content:'＋';float:right}.nl-work-toc-group[open]>.nl-work-toc-chapter::after{content:'－'}.nl-work-toc-chapter:focus-visible{outline:2px solid #7351d8;outline-offset:-2px}.nl-work-toc-chapter-episodes{padding:5px 8px}
       .nl-work-toc-link{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;padding:9px 10px;border-radius:8px;color:#26364b!important;text-decoration:none!important;font-size:15px;line-height:1.5}
+      .nl-work-toc-link.is-draft{grid-template-columns:auto minmax(0,1fr) auto;background:#fff0f5!important;border:1px solid #e8b8ca;color:#78334e!important;box-shadow:inset 3px 0 0 #d98baa}
+      .nl-work-toc-link.is-draft:hover{background:#ffe5ef!important}
+      .nl-work-toc-draft-badge{grid-column:3;grid-row:1;justify-self:start;padding:2px 9px;border-radius:999px;background:#f5c5d7;color:#813951;font-size:11px;font-weight:800}
       .nl-work-toc-link:hover{background:#f2f5f8}.nl-work-toc-link.is-read{color:#5b6675!important}.nl-work-toc-link.is-current{background:#edf1f6;color:#15243a!important;font-weight:900;box-shadow:inset 3px 0 0 #b28a4a}.nl-work-toc-num{white-space:nowrap;color:#5f6b7a;font-size:12px;padding-top:2px}
       body.nl-work-detail-v2 #episodesPanel{display:none!important}
       .nl-work-character-section{padding:24px;background:#fffdfa;border:1px solid #e5ddd1;border-radius:16px;box-shadow:0 10px 32px rgba(55,43,31,.04)}
@@ -101,7 +104,7 @@
       const match = numberText.match(/第\s*(\d+)\s*話/u);
       if (!link || !match) return null;
       const url = new URL(link.href, window.location.href);
-      return { id: url.searchParams.get('id'), number: Number(match[1]), title: link.textContent.trim(), href: link.href, element: episode };
+      return { id: url.searchParams.get('id'), number: Number(match[1]), title: link.textContent.trim(), href: link.href, element: episode, status: episode.dataset.episodeStatus === 'draft' || numberText.includes('下書き') ? 'draft' : 'published' };
     }).filter(Boolean);
   }
 
@@ -168,12 +171,14 @@
       }
       const row = item.row;
       const link = node('a', 'nl-work-toc-link');
-      link.href = row.href;
+      link.href = row.status === 'draft' && isOwner ? 'episode-edit.html?id=' + encodeURIComponent(row.id) : row.href;
+      if (row.status === 'draft' && isOwner) link.classList.add('is-draft');
       if (currentNumber && row.number <= currentNumber) link.classList.add('is-read');
       if (currentId && String(row.id) === currentId) link.classList.add('is-current');
       link.appendChild(node('span', 'nl-work-toc-num', `第${row.number}話`));
       const displayTitle = tocDisplayTitle(row.title, row.number);
       if (displayTitle) link.appendChild(node('span', '', displayTitle));
+      if (row.status === 'draft' && isOwner) link.appendChild(node('span', 'nl-work-toc-draft-badge', '下書き'));
       chapterBody.appendChild(link);
     }
     return wrap;
@@ -514,14 +519,21 @@
     if (!header || !favorite || !title || !tags || !author || !description || !meta) return;
     const rows = episodeRows();
     if (!rows.length) return;
+    const viewerOwnsNovel = typeof isOwner === 'function' && isOwner();
+    const workIsPublic = typeof novel !== 'undefined' && novel?.status === 'published';
+    const publishedRows = rows.filter(row => row.status === 'published');
+    const draftRows = viewerOwnsNovel ? rows.filter(row => row.status === 'draft') : [];
+    const countLabel = viewerOwnsNovel && draftRows.length
+      ? '公開' + publishedRows.length + '話・下書き' + draftRows.length + '話'
+      : publishedRows.length + '話';
+    const displayedCount = viewerOwnsNovel && !workIsPublic ? countLabel + '（作品非公開）' : countLabel;
     installStyles();
     document.body.classList.add('nl-work-detail-v2');
     stripReaderPv(meta);
     collapseTags(tags);
     const items = outlineItems(rows);
     await syncProgress(id);
-    const viewerOwnsNovel = typeof isOwner === 'function' && isOwner();
-    const target = viewerOwnsNovel ? null : continueTarget(rows, readProgress(id));
+    const target = viewerOwnsNovel ? null : continueTarget(publishedRows, readProgress(id));
     const grid = node('div', 'nl-work-detail-grid');
     grid.id = 'novelightWorkDetailGrid';
     header.insertAdjacentElement('beforebegin', grid);
@@ -531,8 +543,8 @@
     left.append(cover, tags);
     const metaBox = node('div', 'nl-work-detail-bookmeta');
     metaBox.append(
-      node('strong', '', rows.length ? '公開中' : '作品情報'),
-      node('span', '', `${rows.length}話`),
+      node('strong', '', workIsPublic ? (publishedRows.length ? '公開中' : '下書き管理中') : '作品非公開'),
+      node('span', '', displayedCount),
       node('span', '', '作品情報・目次・読書状態を一冊にまとめて表示')
     );
     left.appendChild(metaBox);
@@ -568,7 +580,7 @@
     const toc = node('aside', 'nl-work-detail-toc');
     toc.setAttribute('aria-label', '目次');
     const tocHead = node('div', 'nl-work-detail-toc-head');
-    tocHead.append(node('h2', '', '目次'), node('span', 'nl-work-detail-toc-count', `${rows.length}話`));
+    tocHead.append(node('h2', '', '目次'), node('span', 'nl-work-detail-toc-count', displayedCount));
     toc.append(tocHead, buildToc(items, id, { isOwner: viewerOwnsNovel }));
     grid.append(left, center, toc);
     header.remove();
