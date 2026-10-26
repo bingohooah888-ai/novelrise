@@ -1,7 +1,6 @@
 import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
-const synopsis =
-  '主人公が魔術学園で新たな仲間と出会い、自分なりの勝ち方を取り戻す。'.repeat(12);
+const synopsis = '主人公が魔術学園で新たな仲間と出会い、自分なりの勝ち方を取り戻す。'.repeat(12);
 
 async function stubNovel(page) {
   await page.addInitScript((description) => {
