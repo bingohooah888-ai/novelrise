@@ -83,40 +83,27 @@ test('welcome URL serves its X card while browsers go directly to the homepage',
   );
 });
 
-test('sitewide X marketing uses dedicated large-card entry without changing work share URLs', () => {
+test('X marketing share URL stays separate from work links', () => {
   const homeUrl = 'https://novelight.jp/';
-  const sitewideXUrl = 'https://novelight.jp/welcome.html';
-
-  // Homepage canonical/OGP must remain the real homepage, not the workaround.
   assert.ok(home.includes(`href="${homeUrl}"`));
   assert.ok(home.includes(`property="og:url" content="${homeUrl}"`));
-  assert.ok(
-    welcome.includes(`property="og:url" content="${sitewideXUrl}"`)
-  );
+
+  const sources = [
+    '../novelight-public-share.js',
+    '../novelight-x-image-share.js',
+    '../novelight-share-attribution-lite.js'
+  ];
+  for (const path of sources) {
+    const code = readFileSync(new URL(path, import.meta.url), 'utf8');
+    assert.ok(!code.includes('welcome.html'), path);
+  }
 
   const note = readFileSync(
     new URL('../docs/marketing/LINK-DESTINATIONS.md', import.meta.url),
     'utf8'
   );
-  const xRule = note.split('\n').find(
-    (line) => line.includes('一般向けX投稿（NOVELIGHT全体の紹介）')
-  );
-  assert.ok(xRule, 'Sitewide X share rule must be documented');
-  assert.ok(
-    xRule.includes(`\`${sitewideXUrl}\``),
-    'Sitewide X posts must use the known working card entry'
-  );
+  const rule = note.split('\n').find((line) => line.includes('一般向けX投稿'));
+  assert.ok(rule?.includes('https://novelight.jp/welcome.html'));
   assert.match(note, /X投稿以外のリンク・個別ページ/u);
-  assert.match(note, /通常URL.*大型カード/u);
-
-  // Novel and episode shares must continue linking to their own content.
-  const workShareSources = [
-    '../novelight-public-share.js',
-    '../novelight-x-image-share.js',
-    '../novelight-share-attribution-lite.js'
-  ];
-  for (const path of workShareSources) {
-    const code = readFileSync(new URL(path, import.meta.url), 'utf8');
-    assert.ok(!code.includes('welcome.html'), path);
-  }
+  assert.match(note, /既存のX投稿・DMの保護/u);
 });
