@@ -57,8 +57,8 @@
       .nl-work-detail-bookmeta strong{color:#3d3126}
       .nl-work-detail-center{min-width:0;display:grid;gap:18px}
       .nl-work-detail-main{padding:30px;background:#fffdfa;border:1px solid #e5ddd1;border-radius:16px;box-shadow:0 10px 32px rgba(55,43,31,.04)}
-      .nl-work-detail-main .title{font-size:clamp(25px,2vw,34px);line-height:1.14;margin-bottom:12px;letter-spacing:.005em;text-wrap:pretty}
-      .nl-work-detail-main .author{margin-bottom:17px;color:#746b62}
+      .nl-work-detail-main .title{display:block;visibility:visible;font-size:clamp(25px,2vw,34px);line-height:1.14;margin-bottom:12px;letter-spacing:.005em;text-wrap:pretty}
+      .nl-work-detail-main .author{display:flex;visibility:visible;margin-bottom:17px;color:#746b62}
       .nl-work-detail-main .meta{width:100%;margin:0 0 18px;padding:12px 0;border-top:1px solid #eee7dc;border-bottom:1px solid #eee7dc;color:#7d746a}
       .nl-work-detail-synopsis{margin:4px 0 22px;padding-top:2px}
       .nl-work-detail-kicker{margin-bottom:8px;color:#9a7b4e;font-size:11px;font-weight:900;letter-spacing:.14em}
