@@ -520,11 +520,13 @@
     const rows = episodeRows();
     if (!rows.length) return;
     const viewerOwnsNovel = typeof isOwner === 'function' && isOwner();
+    const workIsPublic = typeof novel !== 'undefined' && novel?.status === 'published';
     const publishedRows = rows.filter(row => row.status === 'published');
     const draftRows = viewerOwnsNovel ? rows.filter(row => row.status === 'draft') : [];
     const countLabel = viewerOwnsNovel && draftRows.length
       ? '公開' + publishedRows.length + '話・下書き' + draftRows.length + '話'
       : publishedRows.length + '話';
+    const displayedCount = viewerOwnsNovel && !workIsPublic ? countLabel + '（作品非公開）' : countLabel;
     installStyles();
     document.body.classList.add('nl-work-detail-v2');
     stripReaderPv(meta);
@@ -541,8 +543,8 @@
     left.append(cover, tags);
     const metaBox = node('div', 'nl-work-detail-bookmeta');
     metaBox.append(
-      node('strong', '', publishedRows.length ? '公開中' : '下書き管理中'),
-      node('span', '', countLabel),
+      node('strong', '', workIsPublic ? (publishedRows.length ? '公開中' : '下書き管理中') : '作品非公開'),
+      node('span', '', displayedCount),
       node('span', '', '作品情報・目次・読書状態を一冊にまとめて表示')
     );
     left.appendChild(metaBox);
@@ -578,7 +580,7 @@
     const toc = node('aside', 'nl-work-detail-toc');
     toc.setAttribute('aria-label', '目次');
     const tocHead = node('div', 'nl-work-detail-toc-head');
-    tocHead.append(node('h2', '', '目次'), node('span', 'nl-work-detail-toc-count', countLabel));
+    tocHead.append(node('h2', '', '目次'), node('span', 'nl-work-detail-toc-count', displayedCount));
     toc.append(tocHead, buildToc(items, id, { isOwner: viewerOwnsNovel }));
     grid.append(left, center, toc);
     header.remove();
