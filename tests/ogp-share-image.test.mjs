@@ -7,7 +7,8 @@ import { URL } from 'node:url';
 const imageFile = '../assets/ogp/novelight-ogp-1200x630.png';
 const image = readFileSync(new URL(imageFile, import.meta.url));
 const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const imageUrl = 'https://novelight.jp/assets/ogp/novelight-card-20261022.png';
+const imageUrl =
+  'https://novelight.jp/assets/ogp/novelight-card-20261022.png?home_card=20261026';
 const welcome = readFileSync(
   new URL('../welcome.html', import.meta.url),
   'utf8'
@@ -40,6 +41,33 @@ test('homepage uses approved OGP image', () => {
   for (const tag of tags) {
     assert.ok(home.includes(tag), `Missing OGP tag: ${tag}`);
   }
+});
+
+test('Twitterbot homepage uses an internal large-card HTML rewrite', () => {
+  const config = JSON.parse(
+    readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')
+  );
+  const rewrite = config.rewrites[0];
+  assert.equal(rewrite.source, '/');
+  assert.deepEqual(rewrite.has, [
+    { type: 'header', key: 'user-agent', value: '.*Twitterbot.*' }
+  ]);
+  assert.equal(rewrite.destination, '/welcome.html');
+  const welcomeRedirect = config.redirects.find(
+    (route) => route.source === '/welcome.html'
+  );
+  assert.equal(welcomeRedirect, undefined);
+});
+
+test('homepage social metadata precedes startup scripts', () => {
+  const twitterCard = home.indexOf('name="twitter:card"');
+  const startup = home.indexOf('novelightContestGatePrefetch');
+  assert.ok(twitterCard > 0 && twitterCard < startup);
+  assert.equal(home.match(/name="twitter:card"/gu)?.length, 1);
+  const canonical = 'property="og:url" content="https://novelight.jp/"';
+  assert.ok(home.includes(canonical));
+  const imageTag = `name="twitter:image" content="${imageUrl}"`;
+  assert.ok(home.includes(imageTag));
 });
 
 test('legacy welcome URL keeps its original X card and canonical metadata', () => {
