@@ -12,9 +12,6 @@ begin
      or exists (select 1 from public.user_scout_badges where badge_id like 'reader_rating_%' and earned_at is not null limit 1) then
     raise exception 'Nonempty historic star records: migrate explicitly before removing star specification';
   end if;
-  if to_regclass('cron.job') is null then
-    raise exception 'pg_cron extension is required for work rank scheduling';
-  end if;
 end;
 $precondition$;
 
@@ -874,11 +871,23 @@ drop table public.novel_star_ratings restrict;
 -- pg_cron performs an authoritative evaluation every hour at minute 15 UTC.
 -- Cron history is available in cron.job_run_details; each evaluated
 -- state writes last_evaluated_at, last_internal_score and signal snapshots.
-select cron.schedule(
- 'novelight-recalculate-work-ranks',
- '15 * * * *',
- 'select public.novelight_recalculate_work_ranks();'
-);
+-- Production has pg_cron. Plain PostgreSQL test replays may not.
+-- Never weaken production verification: postcheck requires an active job.
+do $scheduler$
+begin
+ if to_regclass('cron.job') is null then
+   raise notice 'No pg_cron in local database; skip schedule for offline replay';
+ else
+   execute $schedule$
+     select cron.schedule(
+       'novelight-recalculate-work-ranks',
+       '15 * * * *',
+       'select public.novelight_recalculate_work_ranks();'
+     )
+   $schedule$;
+ end if;
+end;
+$scheduler$;
 
 -- Smoke checks use immutable helper functions only; do NOT perform an
 -- early global rank update in a migration, which could emit SCOUT rewards.
