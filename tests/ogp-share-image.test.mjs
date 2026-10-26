@@ -47,7 +47,7 @@ test('homepage uses approved OGP image', () => {
 test('Twitterbot gets the large card from middleware at the root URL', async () => {
   assert.equal(middlewareConfig.matcher, '/');
   const response = middleware(
-    new Request('https://novelight.jp/', {
+    new globalThis.Request('https://novelight.jp/', {
       headers: { 'user-agent': 'Twitterbot/1.0' }
     })
   );
@@ -67,13 +67,13 @@ test('Twitterbot gets the large card from middleware at the root URL', async () 
 
 test('routing middleware does not change normal visitors or other pages', () => {
   const requests = [
-    new Request('https://novelight.jp/', {
+    new globalThis.Request('https://novelight.jp/', {
       headers: { 'user-agent': 'Mozilla/5.0' }
     }),
-    new Request('https://novelight.jp/index.html', {
+    new globalThis.Request('https://novelight.jp/index.html', {
       headers: { 'user-agent': 'Twitterbot/1.0' }
     }),
-    new Request('https://novelight.jp/search.html', {
+    new globalThis.Request('https://novelight.jp/search.html', {
       headers: { 'user-agent': 'Twitterbot/1.0' }
     })
   ];
