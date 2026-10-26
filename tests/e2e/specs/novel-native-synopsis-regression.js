@@ -5,7 +5,7 @@ const synopsis =
 
 async function stubNovel(page) {
   await page.addInitScript((description) => {
-    window.__NOVEL_DETAIL_SYNOPSIS__ = description;
+    globalThis.__NOVEL_DETAIL_SYNOPSIS__ = description;
   }, synopsis);
 
   await page.route('**/assets/vendor/supabase-js-2.112.3.js', async (route) => {
