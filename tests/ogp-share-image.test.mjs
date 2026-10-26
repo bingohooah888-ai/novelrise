@@ -83,12 +83,12 @@ test('welcome URL serves its X card while browsers go directly to the homepage',
   );
 });
 
-test('new marketing links bypass the retired welcome share page', () => {
+test('X marketing share URL stays separate from work links', () => {
   const homeUrl = 'https://novelight.jp/';
   assert.ok(home.includes(`href="${homeUrl}"`));
   assert.ok(home.includes(`property="og:url" content="${homeUrl}"`));
+
   const sources = [
-    '../index.html',
     '../novelight-public-share.js',
     '../novelight-x-image-share.js',
     '../novelight-share-attribution-lite.js'
@@ -96,13 +96,14 @@ test('new marketing links bypass the retired welcome share page', () => {
   for (const path of sources) {
     const code = readFileSync(new URL(path, import.meta.url), 'utf8');
     assert.ok(!code.includes('welcome.html'), path);
-    assert.ok(!code.includes('"/welcome"'), path);
   }
+
   const note = readFileSync(
     new URL('../docs/marketing/LINK-DESTINATIONS.md', import.meta.url),
     'utf8'
   );
-  assert.match(note, /新しく発行するリンクの既定/);
-  assert.match(note, /既存のX投稿・DM/);
-  assert.match(note, /welcome\.html.*維持/);
+  const rule = note.split('\n').find((line) => line.includes('一般向けX投稿'));
+  assert.ok(rule?.includes('https://novelight.jp/welcome.html'));
+  assert.match(note, /X投稿以外のリンク・個別ページ/u);
+  assert.match(note, /既存のX投稿・DMの保護/u);
 });
