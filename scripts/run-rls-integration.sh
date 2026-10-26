@@ -84,6 +84,32 @@ echo "::group::Community Phase 2 rollback-only board contract (disposable replay
 "${CONTEST_REPLAY[@]}" -f tests/rls/community-plaza-phase2-rollback-review.sql
 echo "::endgroup::"
 
+# Exercise the final starless Rank cutover only AFTER the historical
+# lifecycle replay and rollback tests that intentionally use the old
+# star-rating schema. This runs in a disposable PostgreSQL database.
+echo "::group::Verify final starless Rank retirement and evaluator"
+"${CONTEST_REPLAY[@]}" -f supabase/migrations/20261027090000_remove_star_ratings_and_schedule_work_ranks.sql
+"${CONTEST_REPLAY[@]}" <<'SQL'
+do $starless$
+begin
+  if to_regclass('public.novel_star_ratings') is not null then
+    raise exception 'Star-rating schema retirement did not complete';
+  end if;
+  if to_regprocedure('public.set_novel_star_rating(text,integer)') is not null then
+    raise exception 'Retired star rating API still exists';
+  end if;
+  if public.novelight_rank_absolute_ceiling_v3(50,2) <> 2
+     or public.novelight_rank_absolute_ceiling_v3(200,8) <> 3 then
+    raise exception 'Reader/favorite absolute floors were changed';
+  end if;
+  if abs(public.novelight_rank_internal_score_v3(100,100) - 100.0) > 0.00001 then
+    raise exception 'Normalized starless Rank score was not installed';
+  end if;
+end;
+$starless$;
+SQL
+echo "::endgroup::"
+
 rm -f "$SEARCH_CARD_COMPAT_MIGRATION"
 trap - EXIT
 
