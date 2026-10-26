@@ -901,74 +901,36 @@ ChatGPTは非効率を発見した場合、ユーザーから質問されるま�
 
 目的は作業することではない。NOVELIGHTを完成・成長させることである。
 
-### ツール利用優先順位 / NLO First Policy
+### ツール選択最適化方針 / Tool Optimization Policy
 
-NOVELIGHTに関する作業では、原則として、NOVELIGHT運営・開発用に構築した専用ツール「NLO」を最優先の実行手段として扱う。
+NOVELIGHTの開発・運営では、NLOを必須・最優先とせず、作業の性質、実行可能性、速度、従量課金、信頼性、安全性に応じて最適な手段を選択する。NLOの稼働確認をすべての作業の開始条件にしない。NLOが不要な作業は、NLOを経由せず直接実施してよい。
 
-NLOは、従来「NOVELIGHT Commander」と呼んでいたNOVELIGHT専用ツールの正式名称とする。
+- コード・PR・リポジトリ確認：GitHub連携、Codex等
+- 実装・修正・検証：Codexその他の適切な開発手段
+- デプロイ・構成確認：Vercel連携等
+- DB・認証・RLS：Supabase連携等
+- Web調査・作品本文取得：利用可能な適切なWeb閲覧手段
+- Windowsローカル操作、専用自動化：必要に応じてNLOまたはRemote Desktop Commander等
 
-NLOは一般のRemote Desktop Commanderとは別物であり、両者を混同しない。
+NLOはNOVELIGHT専用ツールであり、一般のRemote Desktop Commander（DC）とは別物である。DCのonline/offlineをNLOの稼働状態と混同しない。NLOが必要な場合に限り、直接NLO MCPまたは既存のNLO GitHub Bridge（GitHub Control Issue #797）等、実際に利用可能な経路を確認する。NLOが使用不能でも、独立して実行できる作業は別ツールで継続し、不要な接続確認・再試行で開発を停止しない。
 
-対象は開発作業に限らず、以下を含む。
+#### NLO停止時の手動PowerShell起動・復旧
 
-- NOVELIGHTの開発・修正・監査
-- リポジトリ、ドキュメント、関連ファイルの確認
-- Web小説の本文取得・読了確認
-- 作品感想、作者向けDMの作成
-- 競合サイト調査
-- スクリプト実行
-- NOVELIGHTの運営補助
-- その他、NLOで実行可能な作業
+NLOが必要なのに停止・未接続で、自動復旧も成功しない場合は、ユーザーがWindowsのPowerShellに起動・復旧コマンドを**手動でコピー＆ペーストして実行する**運用を認める。これを正式なフォールバック手順とする。
 
-#### 基本手順
+1. まずNLO固有の稼働状況を確認し、DCの状態だけで判断しない。
+2. NLOが必要な作業であることを確認し、他の利用可能な手段で代替できるならそちらを使う。
+3. 手動起動が必要な場合、現在のリポジトリまたはローカル環境で確認できた正式な起動手順・スクリプト・Scheduled Task名を特定する。未確認のコマンド、パス、タスク名を推測で提示しない。
+4. ChatGPTは、確認済みのPowerShellコマンドを**一括コピー可能なコードブロック**で提示し、ユーザーにPowerShellへ貼り付けて実行してもらう。必要な操作はできる限り1回の貼り付けにまとめる。
+5. 起動後はNLOの実際の応答またはhealth確認で復旧を判定する。失敗した場合はエラー・ログに基づき原因を切り分け、同じコマンドの無限再実行を求めない。
+6. CONTROL_PLANE_API_KEY、APIトークンその他の秘密情報をチャット、Git、平文のPowerShell履歴、コマンド引数へ貼り付けさせない。既存のWindows DPAPI等の保護された資格情報管理を利用する。
+7. NLOが復旧しても、それ以降の全作業をNLO経由に切り替える義務はない。作業ごとに最適なツールを選択する。
 
-1. NOVELIGHT関連作業を開始するときは、まずNLOで実行可能か確認する。
-2. NLOの可用性は経路ごとに判定する。第一に直接NLO MCPが利用可能か確認し、直接NLO MCPがツール一覧へ露出していない、または応答しない場合は、GitHub Control Issue #797 のNLO GitHub Bridgeを確認する。Bridgeでは原則として `nlo_health` を使用し、旧版Bridgeで未対応の場合は `repo_snapshot` 等の安全な固定actionの成功応答を可用性証拠として扱う。
-3. Remote Desktop CommanderはNLOとは別物である。Remote Desktop Commanderのdeviceが `offline` であっても、それだけを理由にNLOを `offline`、未接続、使用不能と判定してはならない。逆にRemote Desktop CommanderがonlineでもNLOの稼働証拠にはしない。
-4. 直接NLO MCPまたはNLO GitHub Bridgeのいずれかが正常応答する場合、その利用可能な経路で実行できるNOVELIGHT作業についてNLOは利用可能と扱い、原則としてNLOを使用する。
-5. 直接NLO MCPとNLO GitHub Bridgeの双方について、その作業に必要な機能が使えないことを確認した場合に限り、NLOがその作業では使用不能と判定して他の利用可能なツール・アプリへ切り替える。
-6. 代替手段は、その作業に最も適したものを選択する。
+NLO TunnelのWindowsログオン時自動起動、障害時の再接続、bounded backoff、ログ・Scheduled Taskの確認、OS保護ストレージによる秘密情報保護は引き続き推奨する。ただし、常時オンラインを全作業の必須条件とはしない。
 
-例：
+#### 維持する安全境界
 
-- Webページ読取・作品本文取得 → TinyFish等
-- GitHub固有操作 → GitHub連携
-- 一般Web調査 → Web検索系ツール
-- PC・ローカル環境操作 → Remote Desktop Commander等
-- その他 → 利用可能な最適な専用ツール
-
-7. NLOが使用不能であることが明確な場合、同一作業中に無意味な再接続・再試行を繰り返さない。
-8. NLOが再び利用可能になった後の新しいNOVELIGHT作業では、再度NLOを第一候補とする。
-
-#### NLO可用性・自動復旧
-
-NLOのOpenAI Secure MCP Tunnelは、通常運用でユーザーが毎回手動起動する前提にしない。
-
-Windows環境では、以下を標準運用とする。
-
-- Windowsログオン時にNLO Tunnelを自動起動する。
-- Tunnelプロセスが回線瞬断、スリープ復帰、外部サービス一時障害等で終了した場合、自動再接続する。
-- 短時間に連続失敗する場合はbounded backoffを入れ、無限高速再試行を避ける。
-- CONTROL_PLANE_API_KEYは平文でTask引数・Git・チャットへ保存せず、Windows DPAPI等のOS保護ストレージを利用する。
-- NLOがofflineになった場合は、単に再起動を繰り返すのではなく、Tunnelログ・Scheduled Task状態・最終接続時刻を確認して原因を切り分ける。
-- 自動復旧機構が失敗している場合のみ、Remote Desktop Commanderその他の代替手段へ切り替える。
-
-NLOの常時利用性は、NLO First Policyを実運用で成立させるための基盤とみなす。
-
-#### 重要原則
-
-「別ツールの方が使い慣れている」
-「別ツールならすぐ実行できる」
-
-という理由だけでNLOを飛ばしてはならない。
-
-まずNLOの利用可否を確認し、利用できない場合にのみ代替手段へ移行する。
-
-ただし、NLOでは実行できないことが仕様上明白な操作、または特定サービス専用API・専用連携でのみ安全に実行可能な操作については、最初からその専用ツールを利用してよい。
-
-目的はNLOそのものを使うことではない。
-
-NOVELIGHTの開発・運営作業を一貫した優先順位で、安全かつ効率的に完了させることである。
+この方針変更は**ツール選択と復旧手段のみ**を変更する。最新main・MASTER・AGENTS等の確認、GitHub Repository Rules、権限、監査、秘密情報保護、Preview / Stagingの費用承認、本番承認、Production mutationの制御を緩和しない。後続の文書・Fast Pathにある「NLOを第一候補」「NLO確認を必須」と読める記述は、本方針に従い、NLOを実際に使う場合にのみ適用する。
 
 
 作業時間の可視化
