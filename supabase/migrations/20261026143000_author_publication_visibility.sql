@@ -12,6 +12,7 @@ declare
   v_status text;
   v_published_count integer;
   v_draft_count integer;
+  v_target_status text;
 begin
   if v_uid is null or p_novel_id is null or p_publish is null then
     raise exception 'Authentication and explicit target state required' using errcode='42501';
@@ -42,8 +43,9 @@ begin
       and e.status='draft' and e.scheduled_publish_at is not null;
   end if;
 
-  if v_status is distinct from case when p_publish then 'published' else 'draft' end then
-    update public.novels set status=case when p_publish then 'published' else 'draft' end
+  v_target_status := case when p_publish then 'published' else 'draft' end;
+  if v_status is distinct from v_target_status then
+    update public.novels set status=v_target_status
     where id=p_novel_id and user_id=v_uid;
   end if;
 
