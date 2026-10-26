@@ -57,13 +57,22 @@
       .nl-work-detail-bookmeta strong{color:#3d3126}
       .nl-work-detail-center{min-width:0;display:grid;gap:18px}
       .nl-work-detail-main{padding:30px;background:#fffdfa;border:1px solid #e5ddd1;border-radius:16px;box-shadow:0 10px 32px rgba(55,43,31,.04)}
-      .nl-work-detail-main .title{font-size:clamp(25px,2vw,34px);line-height:1.14;margin-bottom:12px;letter-spacing:.005em;text-wrap:pretty}
-      .nl-work-detail-main .author{margin-bottom:17px;color:#746b62}
+      .nl-work-detail-main .title{display:block;visibility:visible;font-size:clamp(25px,2vw,34px);line-height:1.14;margin-bottom:12px;letter-spacing:.005em;text-wrap:pretty}
+      .nl-work-detail-main .author{display:flex;visibility:visible;margin-bottom:17px;color:#746b62}
       .nl-work-detail-main .meta{width:100%;margin:0 0 18px;padding:12px 0;border-top:1px solid #eee7dc;border-bottom:1px solid #eee7dc;color:#7d746a}
       .nl-work-detail-synopsis{margin:4px 0 22px;padding-top:2px}
       .nl-work-detail-kicker{margin-bottom:8px;color:#9a7b4e;font-size:11px;font-weight:900;letter-spacing:.14em}
       .nl-work-detail-synopsis h2,.nl-work-character-section h2{font-size:20px;margin:0 0 11px}
       .nl-work-detail-synopsis .description{margin:0;color:#4f4942;line-height:1.9;white-space:pre-wrap}
+      .nl-work-detail-synopsis .novelight-native-synopsis{margin-bottom:0}
+      .nl-work-detail-synopsis .novelight-native-synopsis>summary{display:block;list-style:none;cursor:pointer}
+      .nl-work-detail-synopsis .novelight-native-synopsis>summary::-webkit-details-marker{display:none}
+      .nl-work-detail-synopsis .novelight-native-synopsis-preview{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;color:#4f4942;line-height:1.9}
+      .nl-work-detail-synopsis .novelight-native-synopsis-label{display:inline-block;margin-top:6px;color:#76500d;font-size:13px;font-weight:800;text-decoration:underline;text-underline-offset:3px}
+      .nl-work-detail-synopsis .novelight-native-synopsis[open] .novelight-native-synopsis-preview,
+      .nl-work-detail-synopsis .novelight-native-synopsis[open] .novelight-native-synopsis-more,
+      .nl-work-detail-synopsis .novelight-native-synopsis:not([open]) .novelight-native-synopsis-less{display:none}
+      .nl-work-detail-synopsis .novelight-native-synopsis>.description{display:block!important;overflow:visible!important;max-height:none!important;-webkit-line-clamp:unset!important;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.9;margin:12px 0 0}
       .nl-work-detail-actions{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin-top:0;padding-top:18px;border-top:1px solid #eee7dc}
       .nl-work-detail-actions .favorite,.nl-work-detail-actions .nl-book-control-button,.nl-work-detail-actions .novelight-curation-add-button,.nl-work-toc-mobile-button,.nl-work-more-actions>summary{min-height:42px;padding:9px 12px;border:1px solid #d7ccbd;border-radius:10px;background:#fff;color:#4b3b2c;font:inherit;font-size:12px;font-weight:900;cursor:pointer}
       .nl-work-detail-actions .nl-book-control{display:contents!important}
@@ -513,7 +522,10 @@
     const title = header?.querySelector('.title');
     const tags = header?.querySelector('.tags');
     const author = header?.querySelector('.author');
-    const description = header?.querySelector('.description');
+    // Move the native <details> disclosure as a unit. Extracting only its
+    // .description child detaches the preview/expander from its content.
+    const description = header?.querySelector('.novelight-native-synopsis')
+      || header?.querySelector('.description');
     const meta = header?.querySelector('.meta');
     const advisory = header?.querySelector('#contentAdvisory');
     if (!header || !favorite || !title || !tags || !author || !description || !meta) return;
