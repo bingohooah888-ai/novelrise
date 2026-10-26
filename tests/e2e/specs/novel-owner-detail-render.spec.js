@@ -1,9 +1,7 @@
 import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
 const SAMPLE_SYNOPSIS =
-  'かつて天才だった少年が新しい勝ち方を見つけていく。'.repeat(
-    24
-  );
+  'かつて天才だった少年が新しい勝ち方を見つけていく。'.repeat(24);
 
 test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', async ({
   page
