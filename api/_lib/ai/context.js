@@ -59,7 +59,9 @@ export function projectAiWorkContext({
     .filter((episode) => {
       if (!episode || !episode.id) return false;
       if (audience === 'author') return true;
-      return isAvailableEpisode(episode, nowMs) && completed.has(String(episode.id));
+      return (
+        isAvailableEpisode(episode, nowMs) && completed.has(String(episode.id))
+      );
     })
     .sort((a, b) => Number(a.order_index || 0) - Number(b.order_index || 0))
     .slice(-MAX_EPISODES);
