@@ -97,7 +97,11 @@ export function createAiRouter({
       if (allowed !== true) throw new AiRouterError('AI_ACCESS_DENIED');
 
       const candidates = routes[featureKey] || routes[feature.costTier];
-      if (!Array.isArray(candidates) || !candidates.length || candidates.length > 2) {
+      if (
+        !Array.isArray(candidates) ||
+        !candidates.length ||
+        candidates.length > 2
+      ) {
         throw new AiRouterError('AI_ROUTE_NOT_CONFIGURED');
       }
       candidates.forEach((route) => validateRoute(route, providers));
@@ -159,9 +163,16 @@ export function createAiRouter({
               system,
               user,
               maxOutputTokens: route.maxOutputTokens,
-              timeoutMs: Math.min(Math.max(route.timeoutMs || 15000, 1000), 30000)
+              timeoutMs: Math.min(
+                Math.max(route.timeoutMs || 15000, 1000),
+                30000
+              )
             });
-            if (!result || typeof result.text !== 'string' || !result.text.trim()) {
+            if (
+              !result ||
+              typeof result.text !== 'string' ||
+              !result.text.trim()
+            ) {
               throw new AiRouterError('AI_EMPTY_RESPONSE');
             }
             const inputTokens = Number(result.usage?.inputTokens);
