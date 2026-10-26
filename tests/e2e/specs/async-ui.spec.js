@@ -11,3 +11,4 @@ import './community-admin-ui.js';
 import './inquiry71-author-profile.js';
 import './inquiry74-mobile-qa.js';
 import './analytics-visual-trends.spec.js';
+import './novel-owner-detail-render.spec.js';
