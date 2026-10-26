@@ -928,6 +928,20 @@ NLOが必要なのに停止・未接続で、自動復旧も成功しない場�
 
 NLO TunnelのWindowsログオン時自動起動、障害時の再接続、bounded backoff、ログ・Scheduled Taskの確認、OS保護ストレージによる秘密情報保護は引き続き推奨する。ただし、常時オンラインを全作業の必須条件とはしない。
 
+#### GitHub PR / CI停滞時の診断・復旧手順（2026-10-26確定）
+
+GitHubのcommit・PR・CI・mergeが止まった場合は、同じ待機状態を繰り返し報告するだけで作業を終えず、原因の切り分け、既存の保護ルール内での復旧、最終反映確認まで一連の作業として扱う。実行手段はGitHub連携等の利用可能な経路から選択し、NLOを必須としない。失敗した理由と、未確認の仮説を区別する。
+
+1. **事実の確認**：PR番号、base / head SHA、変更ファイル、mergeable state、workflow run ID、run attempt、各jobのstatus / conclusion、required check、GitHub APIの具体的なエラーを読み取り専用で確認する。runが `queued` / `pending` でも「GitHub全体が障害」と即断せず、同リポジトリの直近の別runと比較する。取得経路に差がある場合はrun全体のjobsと `/actions/runs/{run_id}/attempts/{attempt}/jobs` の両方を確認し、未実行・再実行待ち・実行済み失敗を区別する。
+2. **失敗と待機を分離**：失敗ジョブのログで原因を確認する。高リスクPR承認不足、最新main未包含（PRが `behind`）、必須status check未報告、CodeQL待機、API timeoutは別々の事象として扱う。`Required status check "check" is expected` は、その時点でGitHubが有効なrequired checkを確認できていないことを意味し、テストコードの失敗と同一視しない。
+3. **高リスク承認の取り扱い**：`scripts/check-merge-readiness.mjs` および `scripts/high-risk-approval-lib.mjs` の現行仕様に従い、OWNER本人として認証済みのGitHub経路から対象PR番号・正確なhead SHA・計算済みchallengeに一致する承認証跡を登録する。SHA変更時には必ず再生成する。チャットの既存「本番承認」の対象範囲に収まる純粋な同期・再実行であれば、機械的な再承認だけを更新する。変更内容が承認範囲を超える場合は新しい本番承認が必要。ゲート緩和やbotのOWNER偽装はしない。
+4. **失敗した再実行の復旧**：一度受理されたrerunが長時間 `queued` / `pending` のままなら、無制限の再試行・同じ状態確認を避け、まず他のrunの正常性を確認する。特定runのみ停滞している場合には、同一変更を保った新しいcommitまたは復旧用PRによって新規CI起動を検討する。GitHub内部スケジューラーの原因は外部ログで裏付けがなければ断定しない。復旧用PRを作った場合、不要になった元PRは重複マージしないよう整理する。
+5. **main先行更新への対処**：作業中にmainが進んだ場合、直近base SHAとPRのmergeable stateを再取得し、リポジトリ全体の変更を壊さない方法で最新mainへ追従する。追従後はhead SHA、GitHubの高リスク承認challenge、CI / CodeQLを再確認する。古いheadの合格結果を新しいheadへ流用しない。
+6. **GitHub API timeout / 5xxへの対処**：更新要求がタイムアウト・不明な失敗となった場合は、直ちに同一writeを連打せず、PR・ref・コメント・mergeのread-only再取得により成功済みかを判定する。結果が未反映なら差分・期待SHAを確認して安全に再試行する。処理が成功したと未確認のまま宣言しない。
+7. **完了条件**：required checks（`check`、CodeQL等）と現行の保護ルールをすべて満たしたうえでmergeし、PRの `merged=true` と最新main上の対象ファイル・内容を読み取り確認して初めて「MASTER更新完了」と報告する。Preview / Staging費用ゲート、本番承認、Production mutationの安全境界は変更しない。
+
+**2026-10-26の実例**：PR #2534では最初の`Merge readiness preflight`がOWNER承認証跡不足で失敗。承認コメント登録後、当該rerunが `queued` に停滞したが、別PRのGitHub Actions実行は正常だった。復旧用PR #2537で新しいCIが起動し、途中で進んだmainへ同期してhead SHAと承認を更新した結果、required checksが通過し、merge commit `5328f95e0998ad01f75ac1cd4cd033cf1d52f1ee` でmainに反映された。これは**有効だった復旧経路の記録**であり、旧runの内部停滞原因がGitHub側で確定したという意味ではない。
+
 #### 維持する安全境界
 
 この方針変更は**ツール選択と復旧手段のみ**を変更する。最新main・MASTER・AGENTS等の確認、GitHub Repository Rules、権限、監査、秘密情報保護、Preview / Stagingの費用承認、本番承認、Production mutationの制御を緩和しない。後続の文書・Fast Pathにある「NLOを第一候補」「NLO確認を必須」と読める記述は、本方針に従い、NLOを実際に使う場合にのみ適用する。
