@@ -4,9 +4,8 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 test('NLO MASTER preparation preserves UTF-8 content across chunks', () => {
-  const filename = fileURLToPath(
-    new URL('../tools/novelight-commander/checks/master-sync.mjs', import.meta.url),
-  );
+  const relative = '../tools/novelight-commander/checks/master-sync.mjs';
+  const filename = fileURLToPath(new URL(relative, import.meta.url));
   const result = spawnSync(process.execPath, ['--test', filename], {
     encoding: 'utf8',
   });
