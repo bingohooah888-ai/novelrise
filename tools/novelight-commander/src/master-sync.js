@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { StringDecoder } from 'node:string_decoder';
 
 export const MASTER_SYNC_CONFIRMATION = 'SYNC_CHATGPT_PROJECT_MASTER';
 export const MASTER_SOURCE_PATH = 'docs/NOVELIGHT-MASTER.md';
@@ -26,6 +27,8 @@ function run(executable, args, options = {}) {
     });
     let stdout = '';
     let stderr = '';
+    const stdoutDecoder = new StringDecoder('utf8');
+    const stderrDecoder = new StringDecoder('utf8');
     let settled = false;
     const timer = setTimeout(() => {
       child.kill();
@@ -34,11 +37,15 @@ function run(executable, args, options = {}) {
         reject(new Error(`Command timed out after ${timeoutMs}ms.`));
       }
     }, timeoutMs);
+    // Decode UTF-8 across chunk boundaries; chunk.toString() corrupts Japanese
+    // characters when Git sends a multibyte sequence in separate chunks.
+    // Never redact or truncate successful git show output: the MASTER SHA-256
+    // and uploaded Project bytes must match the canonical Git blob.
     child.stdout?.on('data', chunk => {
-      stdout = bounded(stdout + chunk.toString(), 1000000);
+      stdout += stdoutDecoder.write(chunk);
     });
     child.stderr?.on('data', chunk => {
-      stderr = bounded(stderr + chunk.toString(), 200000);
+      stderr += stderrDecoder.write(chunk);
     });
     child.on('error', error => {
       clearTimeout(timer);
@@ -51,7 +58,11 @@ function run(executable, args, options = {}) {
       clearTimeout(timer);
       if (!settled) {
         settled = true;
-        resolve({ code, stdout, stderr });
+        resolve({
+          code,
+          stdout: stdout + stdoutDecoder.end(),
+          stderr: stderr + stderrDecoder.end()
+        });
       }
     });
   });
