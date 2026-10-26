@@ -22,7 +22,7 @@ async function postJson(url, apiKey, headers, body, fetchImpl, timeoutMs) {
         ...headers
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeoutMs)
+      signal: globalThis.AbortSignal.timeout(timeoutMs)
     });
   } catch {
     // Timeout can have billed already: router reserves the full attempt.
@@ -45,7 +45,7 @@ async function postJson(url, apiKey, headers, body, fetchImpl, timeoutMs) {
   }
 }
 
-export function createOpenAiTextProvider({ apiKey, fetchImpl = fetch }) {
+export function createOpenAiTextProvider({ apiKey, fetchImpl = globalThis.fetch }) {
   return {
     async generate({ model, system, user, maxOutputTokens, timeoutMs }) {
       const data = await postJson(
@@ -81,7 +81,7 @@ export function createOpenAiTextProvider({ apiKey, fetchImpl = fetch }) {
   };
 }
 
-export function createGeminiTextProvider({ apiKey, fetchImpl = fetch }) {
+export function createGeminiTextProvider({ apiKey, fetchImpl = globalThis.fetch }) {
   return {
     async generate({ model, system, user, maxOutputTokens, timeoutMs }) {
       if (!/^[a-z0-9._-]+$/i.test(model)) {
