@@ -143,4 +143,22 @@ revoke all on function public.novelight_set_novel_publication(bigint,boolean) fr
 revoke all on function public.novelight_set_episode_publication(bigint,boolean) from public,anon,authenticated;
 grant execute on function public.novelight_set_novel_publication(bigint,boolean) to authenticated;
 grant execute on function public.novelight_set_episode_publication(bigint,boolean) to authenticated;
+-- Status counts are owner-scoped by both explicit ownership and invoker RLS.
+create or replace function public.novelight_author_novel_episode_counts()
+returns table(novel_id bigint, published_count bigint, draft_count bigint, scheduled_count bigint)
+language sql stable security invoker set search_path=''
+as $counts$
+  select e.novel_id,
+         count(*) filter (where e.status='published')::bigint,
+         count(*) filter (where e.status='draft')::bigint,
+         count(*) filter (where e.status='draft' and e.scheduled_publish_at is not null)::bigint
+  from public.episodes e
+  join public.novels n on n.id=e.novel_id
+  where n.user_id=(select auth.uid()) and e.user_id=(select auth.uid())
+  group by e.novel_id;
+$counts$;
+
+revoke all on function public.novelight_author_novel_episode_counts() from public,anon,authenticated;
+grant execute on function public.novelight_author_novel_episode_counts() to authenticated;
+
 commit;
