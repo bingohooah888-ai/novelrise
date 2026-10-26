@@ -901,74 +901,56 @@ ChatGPTは非効率を発見した場合、ユーザーから質問されるま�
 
 目的は作業することではない。NOVELIGHTを完成・成長させることである。
 
-### ツール利用優先順位 / NLO First Policy
+### ツール選択最適化方針 / Tool Optimization Policy
 
-NOVELIGHTに関する作業では、原則として、NOVELIGHT運営・開発用に構築した専用ツール「NLO」を最優先の実行手段として扱う。
+NOVELIGHTの開発・運営では、NLOを必須・最優先とせず、作業の性質、実行可能性、速度、従量課金、信頼性、安全性に応じて最適な手段を選択する。NLOの稼働確認をすべての作業の開始条件にしない。NLOが不要な作業は、NLOを経由せず直接実施してよい。
 
-NLOは、従来「NOVELIGHT Commander」と呼んでいたNOVELIGHT専用ツールの正式名称とする。
+- コード・PR・リポジトリ確認：GitHub連携、Codex等
+- 実装・修正・検証：Codexその他の適切な開発手段
+- デプロイ・構成確認：Vercel連携等
+- DB・認証・RLS：Supabase連携等
+- Web調査・作品本文取得：利用可能な適切なWeb閲覧手段
+- Windowsローカル操作、専用自動化：必要に応じてNLOまたはRemote Desktop Commander等
 
-NLOは一般のRemote Desktop Commanderとは別物であり、両者を混同しない。
+#### NLO / DC 絶対分離ルール
 
-対象は開発作業に限らず、以下を含む。
+- **NLO = NOVELIGHT Commander**：NOVELIGHT専用の開発・運営支援ツール。
+- **DC = Remote Desktop Commander / Desktop Commander**：NLOとは別物であり、相互の稼働状況を混同しない。
+- **DCのオンライン / オフライン**を根拠としてNLOの稼働状態を判定しない。DCの `online/offline` はNLOの `online/offline` を示さない。
+- NLOが必要な場合に限り、直接NLO MCPまたはNLO専用GitHub Bridge（**現行Control Issue #1837**、旧#797は履歴専用）等、利用可能な経路でNLO固有のhealthを確認する。NLOが使用不能でも、独立して実行可能な作業は他ツールで継続し、接続確認の反復で開発を止めない。
+- この分離ルールはツール選択の優先順位を規定しない。直前の「Tool Optimization Policy」に従い、NLOは必須・最優先ではなく、作業に適したツールを利用する。
 
-- NOVELIGHTの開発・修正・監査
-- リポジトリ、ドキュメント、関連ファイルの確認
-- Web小説の本文取得・読了確認
-- 作品感想、作者向けDMの作成
-- 競合サイト調査
-- スクリプト実行
-- NOVELIGHTの運営補助
-- その他、NLOで実行可能な作業
+#### NLO停止時の手動PowerShell起動・復旧
 
-#### 基本手順
+NLOが必要なのに停止・未接続で、自動復旧も成功しない場合は、ユーザーがWindowsのPowerShellに起動・復旧コマンドを**手動でコピー＆ペーストして実行する**運用を認める。これを正式なフォールバック手順とする。
 
-1. NOVELIGHT関連作業を開始するときは、まずNLOで実行可能か確認する。
-2. NLOの可用性は経路ごとに判定する。第一に直接NLO MCPが利用可能か確認し、直接NLO MCPがツール一覧へ露出していない、または応答しない場合は、GitHub Control Issue #797 のNLO GitHub Bridgeを確認する。Bridgeでは原則として `nlo_health` を使用し、旧版Bridgeで未対応の場合は `repo_snapshot` 等の安全な固定actionの成功応答を可用性証拠として扱う。
-3. Remote Desktop CommanderはNLOとは別物である。Remote Desktop Commanderのdeviceが `offline` であっても、それだけを理由にNLOを `offline`、未接続、使用不能と判定してはならない。逆にRemote Desktop CommanderがonlineでもNLOの稼働証拠にはしない。
-4. 直接NLO MCPまたはNLO GitHub Bridgeのいずれかが正常応答する場合、その利用可能な経路で実行できるNOVELIGHT作業についてNLOは利用可能と扱い、原則としてNLOを使用する。
-5. 直接NLO MCPとNLO GitHub Bridgeの双方について、その作業に必要な機能が使えないことを確認した場合に限り、NLOがその作業では使用不能と判定して他の利用可能なツール・アプリへ切り替える。
-6. 代替手段は、その作業に最も適したものを選択する。
+1. まずNLO固有の稼働状況を確認し、DCの状態だけで判断しない。
+2. NLOが必要な作業であることを確認し、他の利用可能な手段で代替できるならそちらを使う。
+3. 手動起動が必要な場合、現在のリポジトリまたはローカル環境で確認できた正式な起動手順・スクリプト・Scheduled Task名を特定する。未確認のコマンド、パス、タスク名を推測で提示しない。
+4. ChatGPTは、確認済みのPowerShellコマンドを**一括コピー可能なコードブロック**で提示し、ユーザーにPowerShellへ貼り付けて実行してもらう。必要な操作はできる限り1回の貼り付けにまとめる。
+5. 起動後はNLOの実際の応答またはhealth確認で復旧を判定する。失敗した場合はエラー・ログに基づき原因を切り分け、同じコマンドの無限再実行を求めない。
+6. CONTROL_PLANE_API_KEY、APIトークンその他の秘密情報をチャット、Git、平文のPowerShell履歴、コマンド引数へ貼り付けさせない。既存のWindows DPAPI等の保護された資格情報管理を利用する。
+7. NLOが復旧しても、それ以降の全作業をNLO経由に切り替える義務はない。作業ごとに最適なツールを選択する。
 
-例：
+NLO TunnelのWindowsログオン時自動起動、障害時の再接続、bounded backoff、ログ・Scheduled Taskの確認、OS保護ストレージによる秘密情報保護は引き続き推奨する。ただし、常時オンラインを全作業の必須条件とはしない。
 
-- Webページ読取・作品本文取得 → TinyFish等
-- GitHub固有操作 → GitHub連携
-- 一般Web調査 → Web検索系ツール
-- PC・ローカル環境操作 → Remote Desktop Commander等
-- その他 → 利用可能な最適な専用ツール
+#### GitHub PR / CI停滞時の診断・復旧手順（2026-10-26確定）
 
-7. NLOが使用不能であることが明確な場合、同一作業中に無意味な再接続・再試行を繰り返さない。
-8. NLOが再び利用可能になった後の新しいNOVELIGHT作業では、再度NLOを第一候補とする。
+GitHubのcommit・PR・CI・mergeが止まった場合は、同じ待機状態を繰り返し報告するだけで作業を終えず、原因の切り分け、既存の保護ルール内での復旧、最終反映確認まで一連の作業として扱う。実行手段はGitHub連携等の利用可能な経路から選択し、NLOを必須としない。失敗した理由と、未確認の仮説を区別する。
 
-#### NLO可用性・自動復旧
+1. **事実の確認**：PR番号、base / head SHA、変更ファイル、mergeable state、workflow run ID、run attempt、各jobのstatus / conclusion、required check、GitHub APIの具体的なエラーを読み取り専用で確認する。runが `queued` / `pending` でも「GitHub全体が障害」と即断せず、同リポジトリの直近の別runと比較する。取得経路に差がある場合はrun全体のjobsと `/actions/runs/{run_id}/attempts/{attempt}/jobs` の両方を確認し、未実行・再実行待ち・実行済み失敗を区別する。
+2. **失敗と待機を分離**：失敗ジョブのログで原因を確認する。高リスクPR承認不足、最新main未包含（PRが `behind`）、必須status check未報告、CodeQL待機、API timeoutは別々の事象として扱う。`Required status check "check" is expected` は、その時点でGitHubが有効なrequired checkを確認できていないことを意味し、テストコードの失敗と同一視しない。
+3. **高リスク承認の取り扱い**：`scripts/check-merge-readiness.mjs` および `scripts/high-risk-approval-lib.mjs` の現行仕様に従い、OWNER本人として認証済みのGitHub経路から対象PR番号・正確なhead SHA・計算済みchallengeに一致する承認証跡を登録する。SHA変更時には必ず再生成する。チャットの既存「本番承認」の対象範囲に収まる純粋な同期・再実行であれば、機械的な再承認だけを更新する。変更内容が承認範囲を超える場合は新しい本番承認が必要。ゲート緩和やbotのOWNER偽装はしない。
+4. **失敗した再実行の復旧**：一度受理されたrerunが長時間 `queued` / `pending` のままなら、無制限の再試行・同じ状態確認を避け、まず他のrunの正常性を確認する。特定runのみ停滞している場合には、同一変更を保った新しいcommitまたは復旧用PRによって新規CI起動を検討する。GitHub内部スケジューラーの原因は外部ログで裏付けがなければ断定しない。復旧用PRを作った場合、不要になった元PRは重複マージしないよう整理する。
+5. **main先行更新への対処**：作業中にmainが進んだ場合、直近base SHAとPRのmergeable stateを再取得し、リポジトリ全体の変更を壊さない方法で最新mainへ追従する。追従後はhead SHA、GitHubの高リスク承認challenge、CI / CodeQLを再確認する。古いheadの合格結果を新しいheadへ流用しない。
+6. **GitHub API timeout / 5xxへの対処**：更新要求がタイムアウト・不明な失敗となった場合は、直ちに同一writeを連打せず、PR・ref・コメント・mergeのread-only再取得により成功済みかを判定する。結果が未反映なら差分・期待SHAを確認して安全に再試行する。処理が成功したと未確認のまま宣言しない。
+7. **完了条件**：required checks（`check`、CodeQL等）と現行の保護ルールをすべて満たしたうえでmergeし、PRの `merged=true` と最新main上の対象ファイル・内容を読み取り確認して初めて「MASTER更新完了」と報告する。Preview / Staging費用ゲート、本番承認、Production mutationの安全境界は変更しない。
 
-NLOのOpenAI Secure MCP Tunnelは、通常運用でユーザーが毎回手動起動する前提にしない。
+**2026-10-26の実例**：PR #2534では最初の`Merge readiness preflight`がOWNER承認証跡不足で失敗。承認コメント登録後、当該rerunが `queued` に停滞したが、別PRのGitHub Actions実行は正常だった。復旧用PR #2537で新しいCIが起動し、途中で進んだmainへ同期してhead SHAと承認を更新した結果、required checksが通過し、merge commit `5328f95e0998ad01f75ac1cd4cd033cf1d52f1ee` でmainに反映された。これは**有効だった復旧経路の記録**であり、旧runの内部停滞原因がGitHub側で確定したという意味ではない。
 
-Windows環境では、以下を標準運用とする。
+#### 維持する安全境界
 
-- Windowsログオン時にNLO Tunnelを自動起動する。
-- Tunnelプロセスが回線瞬断、スリープ復帰、外部サービス一時障害等で終了した場合、自動再接続する。
-- 短時間に連続失敗する場合はbounded backoffを入れ、無限高速再試行を避ける。
-- CONTROL_PLANE_API_KEYは平文でTask引数・Git・チャットへ保存せず、Windows DPAPI等のOS保護ストレージを利用する。
-- NLOがofflineになった場合は、単に再起動を繰り返すのではなく、Tunnelログ・Scheduled Task状態・最終接続時刻を確認して原因を切り分ける。
-- 自動復旧機構が失敗している場合のみ、Remote Desktop Commanderその他の代替手段へ切り替える。
-
-NLOの常時利用性は、NLO First Policyを実運用で成立させるための基盤とみなす。
-
-#### 重要原則
-
-「別ツールの方が使い慣れている」
-「別ツールならすぐ実行できる」
-
-という理由だけでNLOを飛ばしてはならない。
-
-まずNLOの利用可否を確認し、利用できない場合にのみ代替手段へ移行する。
-
-ただし、NLOでは実行できないことが仕様上明白な操作、または特定サービス専用API・専用連携でのみ安全に実行可能な操作については、最初からその専用ツールを利用してよい。
-
-目的はNLOそのものを使うことではない。
-
-NOVELIGHTの開発・運営作業を一貫した優先順位で、安全かつ効率的に完了させることである。
+この方針変更は**ツール選択と復旧手段のみ**を変更する。最新main・MASTER・AGENTS等の確認、GitHub Repository Rules、権限、監査、秘密情報保護、Preview / Stagingの費用承認、本番承認、Production mutationの制御を緩和しない。後続の文書・Fast Pathにある「NLOを第一候補」「NLO確認を必須」と読める記述は、本方針に従い、NLOを実際に使う場合にのみ適用する。
 
 
 作業時間の可視化
@@ -1107,7 +1089,7 @@ SCOUT RECORDの称号画像を追加する反復作業は、以下の条件を�
 Fast Pathの標準手順は次とする。
 
 1. **Bootstrapを短縮する。** 可視実行カード → fresh latest main → MASTER / Preflight / Continuation Gateのblob確認を行い、`MASTER_CONTENT_REUSE` 条件を満たせば全文再読を行わない。SCOUT仕様は第49章と対象差分だけを確認する。
-2. **NLO確認はbatch単位で1回を基本とする。** 直接NLOまたはIssue #797の `nlo_health` が成功したら、同一badge batch中に無意味なhealth再確認を繰り返さない。NLO action失敗、接続状態変化、長時間中断等があった場合だけ再確認する。
+2. **NLO確認はbatch単位で1回を基本とする。** 直接NLOまたは現行Issue #1837の `nlo_health` が成功したら、同一badge batch中に無意味なhealth再確認を繰り返さない。NLO action失敗、接続状態変化、長時間中断等があった場合だけ再確認する。
 3. **画像を1枚ずつ処理しない。** 完成済み個別画像がある場合はbatchでまとめて取得・materializeする。元画像が取得不能でcanonical spriteからの機械的切り出しが許可された場合だけ、絵柄を変えずbatch切り出しする。ChatGPT画像生成・画像編集は、現在のユーザー指示で明示解除されていない限り使用しない。
 4. **canonical pathを固定する。** SCOUT称号画像は原則 `assets/scout-badges/<badge_id>.png` とし、同一badge_idを別名・別場所へ重複登録しない。
 5. **batch validationを先に1回で行う。** 件数、canonical順、badge_id重複、ファイル名、PNG signature、期待寸法、欠損、余剰、0-byte、mapping対象を一括検証する。現行標準は256×256 PNGとし、将来別仕様を採用する場合はbatch開始時に期待寸法を固定する。

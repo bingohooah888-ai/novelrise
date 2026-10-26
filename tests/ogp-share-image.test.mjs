@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import middleware, { config as middlewareConfig } from '../middleware.js';
 import { URL } from 'node:url';
 
 const imageFile = '../assets/ogp/novelight-ogp-1200x630.png';
@@ -43,20 +44,46 @@ test('homepage uses approved OGP image', () => {
   }
 });
 
-test('Twitterbot homepage uses an internal large-card HTML rewrite', () => {
+test('Twitterbot gets the large card from middleware at the root URL', async () => {
+  assert.equal(middlewareConfig.matcher, '/');
+  const response = middleware(
+    new globalThis.Request('https://novelight.jp/', {
+      headers: { 'user-agent': 'Twitterbot/1.0' }
+    })
+  );
+  assert.equal(response.status, 200);
+  assert.equal(
+    response.headers.get('x-novelight-card-route'),
+    'twitterbot-home-middleware-v1'
+  );
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const html = await response.text();
+  assert.match(html, /name="twitter:card" content="summary_large_image"/u);
+  assert.match(html, /property="og:url" content="https:\/\/novelight\.jp\/"/u);
+  assert.ok(html.includes(`name="twitter:image" content="${imageUrl}"`));
+  assert.match(html, /property="og:image:width" content="1200"/u);
+  assert.match(html, /property="og:image:height" content="630"/u);
+});
+
+test('routing middleware does not change normal visitors or other pages', () => {
+  const requests = [
+    new globalThis.Request('https://novelight.jp/', {
+      headers: { 'user-agent': 'Mozilla/5.0' }
+    }),
+    new globalThis.Request('https://novelight.jp/index.html', {
+      headers: { 'user-agent': 'Twitterbot/1.0' }
+    }),
+    new globalThis.Request('https://novelight.jp/search.html', {
+      headers: { 'user-agent': 'Twitterbot/1.0' }
+    })
+  ];
+  for (const request of requests) {
+    assert.equal(middleware(request), undefined);
+  }
   const config = JSON.parse(
     readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')
   );
-  const rewrite = config.rewrites[0];
-  assert.equal(rewrite.source, '/');
-  assert.deepEqual(rewrite.has, [
-    { type: 'header', key: 'user-agent', value: '.*Twitterbot.*' }
-  ]);
-  assert.equal(rewrite.destination, '/welcome.html');
-  const welcomeRedirect = config.redirects.find(
-    (route) => route.source === '/welcome.html'
-  );
-  assert.equal(welcomeRedirect, undefined);
+  assert.ok(!config.rewrites.some((route) => route.source === '/'));
 });
 
 test('homepage social metadata precedes startup scripts', () => {

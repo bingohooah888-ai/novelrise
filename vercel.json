@@ -79,17 +79,6 @@
   ],
   "rewrites": [
     {
-      "source": "/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*Twitterbot.*"
-        }
-      ],
-      "destination": "/welcome.html"
-    },
-    {
       "source": "/contest.html",
       "destination": "/api/contest-page"
     },
