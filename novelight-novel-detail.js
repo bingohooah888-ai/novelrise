@@ -541,7 +541,7 @@
     left.append(cover, tags);
     const metaBox = node('div', 'nl-work-detail-bookmeta');
     metaBox.append(
-      node('strong', '', rows.length ? '公開中' : '作品情報'),
+      node('strong', '', publishedRows.length ? '公開中' : '下書き管理中'),
       node('span', '', countLabel),
       node('span', '', '作品情報・目次・読書状態を一冊にまとめて表示')
     );
