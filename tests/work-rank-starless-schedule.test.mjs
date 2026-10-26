@@ -34,12 +34,12 @@ test('work Rank no longer requires stars', async () => {
   assert.doesNotMatch(evaluator, /rating_count|rating_average/i);
 });
 
-test('cron evaluates Rank without an immediate migration backfill', async () => {
+test('cron never runs an immediate migration backfill', async () => {
   const sql = await readFile(migration, 'utf8');
   assert.match(sql, /'novelight-recalculate-work-ranks'/);
   assert.match(sql, /'15 \* \* \* \*'/);
   assert.match(sql, /select public\.novelight_recalculate_work_ranks\(\);/);
-  const directRun = /^\s*select\s+public\.novelight_recalculate_work_ranks\(\)\s*;/im;
+  const directRun = /^\s*select\s+public\.novelight_recalculate_work_ranks/im;
   assert.equal(directRun.test(sql), false);
   assert.match(sql, /drop table public\.novel_star_ratings restrict;/);
   assert.match(sql, /drop function if exists public\.set_novel_star_rating/);
