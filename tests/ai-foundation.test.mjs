@@ -6,10 +6,7 @@ import {
   APPROVED_AI_FEATURE_COUNT,
   requireAiFeature
 } from '../api/_lib/ai/registry.js';
-import {
-  projectAiWorkContext,
-  makeAiPrompt
-} from '../api/_lib/ai/context.js';
+import { projectAiWorkContext, makeAiPrompt } from '../api/_lib/ai/context.js';
 import { createAiRouter } from '../api/_lib/ai/router.js';
 import {
   createGeminiTextProvider,
@@ -17,7 +14,12 @@ import {
 } from '../api/_lib/ai/providers.js';
 
 const USER = { id: 'author-1' };
-const NOVEL = { id: 41, user_id: 'author-1', title: 'TEST', publiclyVisible: true };
+const NOVEL = {
+  id: 41,
+  user_id: 'author-1',
+  title: 'TEST',
+  publiclyVisible: true
+};
 
 function fakeRouter(overrides = {}) {
   const state = { calls: 0, reserves: [], settlements: [], audits: [] };
@@ -133,10 +135,16 @@ test('author-only private notes are never projected into reader context', () => 
   });
   const serialized = JSON.stringify(context);
   assert.match(serialized, /Known detail/);
-  assert.doesNotMatch(serialized, /Future revelation|Author secret|Secret world notes/);
+  assert.doesNotMatch(
+    serialized,
+    /Future revelation|Author secret|Secret world notes/
+  );
   assert.equal(context.episodes.length, 1);
   assert.ok(!Object.hasOwn(context, 'privateNotes'));
-  assert.match(makeAiPrompt({ context, instruction: '感想を教えて' }).system, /later plot/);
+  assert.match(
+    makeAiPrompt({ context, instruction: '感想を教えて' }).system,
+    /later plot/
+  );
 });
 
 test('unknown progress, unpublished title, future scheduling are fail-closed', () => {
@@ -258,7 +266,10 @@ test('provider fallback requires a retryable error and reserves both attempts', 
       second: {
         async generate() {
           state.calls += 1;
-          return { text: 'fallback', usage: { inputTokens: 20, outputTokens: 10 } };
+          return {
+            text: 'fallback',
+            usage: { inputTokens: 20, outputTokens: 10 }
+          };
         }
       }
     },
