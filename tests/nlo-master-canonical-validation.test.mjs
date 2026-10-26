@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { validateMasterText } from '../tools/novelight-commander/src/master-sync.js';
 
-test('NLO project sync accepts the current canonical main MASTER', async () => {
+test('NLO sync validates the canonical MASTER', async () => {
   const master = await readFile(
     new URL('../docs/NOVELIGHT-MASTER.md', import.meta.url),
     'utf8',
@@ -13,7 +13,7 @@ test('NLO project sync accepts the current canonical main MASTER', async () => {
   assert.ok(Object.values(checks).every(Boolean));
 });
 
-test('NLO project sync accepts Tool Optimization Policy without requiring NLO First', () => {
+test('NLO sync accepts Tool Optimization Policy', () => {
   const text = [
     '# NOVELIGHT MASTER',
     '最終更新：2026年10月26日',
@@ -26,7 +26,7 @@ test('NLO project sync accepts Tool Optimization Policy without requiring NLO Fi
   assert.ok(Object.values(validateMasterText(text)).every(Boolean));
 });
 
-test('NLO project sync still rejects missing NLO identity or DC state separation', () => {
+test('NLO sync rejects missing identity or DC separation', () => {
   const base = [
     '# NOVELIGHT MASTER',
     '最終更新：2026年10月26日',
@@ -36,8 +36,12 @@ test('NLO project sync still rejects missing NLO identity or DC state separation
     'x'.repeat(11000),
   ].join('\n');
   assert.throws(() => validateMasterText(base), /hasNloIdentity/);
+  const withoutBoundary = base.replace(
+    'DCのonline/offlineをNLOの稼働状態と混同しない。',
+    '',
+  );
   assert.throws(
-    () => validateMasterText(base.replace('DCのonline/offlineをNLOの稼働状態と混同しない。', '')),
+    () => validateMasterText(withoutBoundary),
     /hasDcOfflineBoundary/,
   );
 });
