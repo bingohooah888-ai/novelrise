@@ -12,7 +12,7 @@ test('novel HTML and SEO routes load the publication-aware detail UI', () => {
   }
 });
 
-test('author table of contents distinguishes published and private drafts', () => {
+test('author TOC distinguishes public episodes and private drafts', () => {
   const code = read('novelight-novel-detail.js');
   assert.match(code, /numberText\.includes\('下書き'\)/u);
   assert.match(code, /nl-work-toc-draft-badge/u);
@@ -22,7 +22,7 @@ test('author table of contents distinguishes published and private drafts', () =
   assert.match(code, /countLabel/u);
 });
 
-test('editor and administration scripts parse and confirm before publishing', () => {
+test('all publishing screens parse and confirm the reader-visible episode', () => {
   const paths = [
     'my-novels.html',
     'episode-post.html',
@@ -62,6 +62,9 @@ test('legacy published episodes keep a stable publication timestamp', () => {
   const sql = read(
     'supabase/migrations/20261026150000_preserve_legacy_episode_publish_date.sql'
   );
-  assert.match(sql, /first_published_at=coalesce\(first_published_at,created_at\)/u);
+  assert.match(
+    sql,
+    /first_published_at=coalesce\(first_published_at,created_at\)/u
+  );
   assert.match(sql, /if v_episode_status='published' then/u);
 });
