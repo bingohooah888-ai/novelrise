@@ -15,7 +15,7 @@ test('Rank no longer needs star-rating metrics; original reader/favorite floors 
     '>= 200 and coalesce(p_favorites, 0) >= 8',
     '>= 800 and coalesce(p_favorites, 0) >= 30',
     '>= 3000 and coalesce(p_favorites, 0) >= 100',
-    '>= 10000 and coalesce(p_favorites, 0) >= 300',
+    '>= 10000 and coalesce(p_favorites, 0) >= 300'
   ]) {
     assert.ok(sql.includes(condition), condition);
   }
@@ -36,7 +36,7 @@ test('cron schedules private evaluation, not migration-time Rank mutation', asyn
   assert.match(sql, /'novelight-recalculate-work-ranks'/);
   assert.match(sql, /'15 \* \* \* \*'/);
   assert.match(sql, /select public\.novelight_recalculate_work_ranks\(\);/);
-  assert.equal(/\bselect\s+public\.novelight_recalculate_work_ranks\(\)\s*;/i.test(sql), false);
+  assert.equal(/^\s*select\s+public\.novelight_recalculate_work_ranks\(\)\s*;/im.test(sql), false);
   assert.match(sql, /drop table public\.novel_star_ratings restrict;/);
   assert.match(sql, /drop function if exists public\.set_novel_star_rating/);
   assert.match(sql, /earned_at is not null/);
