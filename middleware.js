@@ -40,7 +40,7 @@ export default function middleware(request) {
   if (
     url.pathname !== '/' ||
     (request.method !== 'GET' && request.method !== 'HEAD') ||
-    !/\\bTwitterbot(?:\\/|\\b)/iu.test(userAgent)
+    !userAgent.toLowerCase().includes('twitterbot')
   ) {
     return;
   }
