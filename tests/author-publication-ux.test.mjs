@@ -50,7 +50,7 @@ test('all publishing screens parse and confirm the reader-visible episode', () =
 
 test('database visibility RPCs use author ownership and invoker RLS', () => {
   const sql = read(
-    'supabase/migrations/20261026143000_author_publication_visibility.sql'
+    'supabase/migrations/20261026145241_author_publication_visibility.sql'
   );
   assert.match(sql, /security invoker/iu);
   assert.match(sql, /auth\.uid\(\)/u);
@@ -61,7 +61,7 @@ test('database visibility RPCs use author ownership and invoker RLS', () => {
 
 test('legacy published episodes keep a stable publication timestamp', () => {
   const sql = read(
-    'supabase/migrations/20261026150000_preserve_legacy_episode_publish_date.sql'
+    'supabase/migrations/20261026145650_preserve_legacy_episode_publish_date.sql'
   );
   assert.match(
     sql,
