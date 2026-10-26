@@ -45,10 +45,7 @@ async function postJson(url, apiKey, headers, body, fetchImpl, timeoutMs) {
   }
 }
 
-export function createOpenAiTextProvider({
-  apiKey,
-  fetchImpl = fetch
-}) {
+export function createOpenAiTextProvider({ apiKey, fetchImpl = fetch }) {
   return {
     async generate({ model, system, user, maxOutputTokens, timeoutMs }) {
       const data = await postJson(
@@ -84,10 +81,7 @@ export function createOpenAiTextProvider({
   };
 }
 
-export function createGeminiTextProvider({
-  apiKey,
-  fetchImpl = fetch
-}) {
+export function createGeminiTextProvider({ apiKey, fetchImpl = fetch }) {
   return {
     async generate({ model, system, user, maxOutputTokens, timeoutMs }) {
       if (!/^[a-z0-9._-]+$/i.test(model)) {
