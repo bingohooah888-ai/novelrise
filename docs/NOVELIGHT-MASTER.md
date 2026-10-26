@@ -912,7 +912,13 @@ NOVELIGHTの開発・運営では、NLOを必須・最優先とせず、作業�
 - Web調査・作品本文取得：利用可能な適切なWeb閲覧手段
 - Windowsローカル操作、専用自動化：必要に応じてNLOまたはRemote Desktop Commander等
 
-NLOはNOVELIGHT専用ツールであり、一般のRemote Desktop Commander（DC）とは別物である。DCのonline/offlineをNLOの稼働状態と混同しない。NLOが必要な場合に限り、直接NLO MCPまたは既存のNLO GitHub Bridge（GitHub Control Issue #797）等、実際に利用可能な経路を確認する。NLOが使用不能でも、独立して実行できる作業は別ツールで継続し、不要な接続確認・再試行で開発を停止しない。
+#### NLO / DC 絶対分離ルール
+
+- **NLO = NOVELIGHT Commander**：NOVELIGHT専用の開発・運営支援ツール。
+- **DC = Remote Desktop Commander / Desktop Commander**：NLOとは別物であり、相互の稼働状況を混同しない。
+- **DCのオンライン / オフライン**を根拠としてNLOの稼働状態を判定しない。DCの `online/offline` はNLOの `online/offline` を示さない。
+- NLOが必要な場合に限り、直接NLO MCPまたはNLO専用GitHub Bridge（**現行Control Issue #1837**、旧#797は履歴専用）等、利用可能な経路でNLO固有のhealthを確認する。NLOが使用不能でも、独立して実行可能な作業は他ツールで継続し、接続確認の反復で開発を止めない。
+- この分離ルールはツール選択の優先順位を規定しない。直前の「Tool Optimization Policy」に従い、NLOは必須・最優先ではなく、作業に適したツールを利用する。
 
 #### NLO停止時の手動PowerShell起動・復旧
 
@@ -1083,7 +1089,7 @@ SCOUT RECORDの称号画像を追加する反復作業は、以下の条件を�
 Fast Pathの標準手順は次とする。
 
 1. **Bootstrapを短縮する。** 可視実行カード → fresh latest main → MASTER / Preflight / Continuation Gateのblob確認を行い、`MASTER_CONTENT_REUSE` 条件を満たせば全文再読を行わない。SCOUT仕様は第49章と対象差分だけを確認する。
-2. **NLO確認はbatch単位で1回を基本とする。** 直接NLOまたはIssue #797の `nlo_health` が成功したら、同一badge batch中に無意味なhealth再確認を繰り返さない。NLO action失敗、接続状態変化、長時間中断等があった場合だけ再確認する。
+2. **NLO確認はbatch単位で1回を基本とする。** 直接NLOまたは現行Issue #1837の `nlo_health` が成功したら、同一badge batch中に無意味なhealth再確認を繰り返さない。NLO action失敗、接続状態変化、長時間中断等があった場合だけ再確認する。
 3. **画像を1枚ずつ処理しない。** 完成済み個別画像がある場合はbatchでまとめて取得・materializeする。元画像が取得不能でcanonical spriteからの機械的切り出しが許可された場合だけ、絵柄を変えずbatch切り出しする。ChatGPT画像生成・画像編集は、現在のユーザー指示で明示解除されていない限り使用しない。
 4. **canonical pathを固定する。** SCOUT称号画像は原則 `assets/scout-badges/<badge_id>.png` とし、同一badge_idを別名・別場所へ重複登録しない。
 5. **batch validationを先に1回で行う。** 件数、canonical順、badge_id重複、ファイル名、PNG signature、期待寸法、欠損、余剰、0-byte、mapping対象を一括検証する。現行標準は256×256 PNGとし、将来別仕様を採用する場合はbatch開始時に期待寸法を固定する。
