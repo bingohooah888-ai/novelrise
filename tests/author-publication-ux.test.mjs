@@ -10,6 +10,7 @@ const read = (path) =>
 test('novel HTML and SEO routes load the publication-aware detail UI', () => {
   for (const path of ['novel.html', 'api/seo/templates/novel.html']) {
     assert.match(read(path), /novelight-novel-detail\.js/u);
+    assert.match(read(path), /data-episode-status/u);
   }
 });
 
