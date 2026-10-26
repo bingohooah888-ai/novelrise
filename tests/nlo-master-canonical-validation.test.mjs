@@ -5,10 +5,8 @@ import test from 'node:test';
 import { validateMasterText } from '../tools/novelight-commander/src/master-sync.js';
 
 test('NLO sync validates the canonical MASTER', async () => {
-  const master = await readFile(
-    new URL('../docs/NOVELIGHT-MASTER.md', import.meta.url),
-    'utf8',
-  );
+  const masterUrl = new URL('../docs/NOVELIGHT-MASTER.md', import.meta.url);
+  const master = await readFile(masterUrl, 'utf8');
   const checks = validateMasterText(master);
   assert.ok(Object.values(checks).every(Boolean));
 });
@@ -36,12 +34,6 @@ test('NLO sync rejects missing identity or DC separation', () => {
     'x'.repeat(11000),
   ].join('\n');
   assert.throws(() => validateMasterText(base), /hasNloIdentity/);
-  const withoutBoundary = base.replace(
-    'DCのonline/offlineをNLOの稼働状態と混同しない。',
-    '',
-  );
-  assert.throws(
-    () => validateMasterText(withoutBoundary),
-    /hasDcOfflineBoundary/,
-  );
+  const noBoundary = base.replace('DCのonline/offlineをNLOの稼働状態と混同しない。', '');
+  assert.throws(() => validateMasterText(noBoundary), /hasDcOfflineBoundary/);
 });
