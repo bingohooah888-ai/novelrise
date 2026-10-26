@@ -20,9 +20,6 @@
       '.nl-synopsis-toggle:hover{opacity:1;}',
       '.nl-synopsis-toggle:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:3px;}',
       '.nl-synopsis-toggle[hidden]{display:none!important;}',
-      'body.nl-work-detail-v2 .nl-work-detail-left .novelight-work-tag{display:none!important;}',
-      'body.nl-work-detail-v2 .nl-work-tag-more{display:none!important;}',
-      'body.nl-work-detail-v2 .nl-work-detail-bookmeta{display:none!important;}',
       'body.nl-work-detail-v2 .nl-work-detail-main .author{display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:17px;color:#746b62;}',
       'body.nl-work-detail-v2 .nl-work-author-primary{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
       'body.nl-work-detail-v2 .nl-work-author-note{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:30px;height:30px;border:1px solid #d8cec1;border-radius:8px;background:#fff;color:#70542d!important;text-decoration:none!important;}',
@@ -194,7 +191,11 @@
   }
 
   function workDetailEpisodeCount() {
-    return document.querySelectorAll('#episodeList .episode').length;
+    const rows = Array.from(document.querySelectorAll('#episodeList .episode'));
+    return {
+      published: rows.filter((row) => row.dataset.episodeStatus !== 'draft').length,
+      draft: rows.filter((row) => row.dataset.episodeStatus === 'draft').length
+    };
   }
 
   function noteIconMarkup() {
@@ -203,12 +204,6 @@
 
   function polishWorkDetail() {
     if (!document.body.classList.contains('nl-work-detail-v2')) return;
-
-    const tagStrip = document.querySelector('.nl-work-detail-left .tags');
-    if (tagStrip) {
-      tagStrip.querySelectorAll('.novelight-work-tag,.nl-work-tag-more').forEach((element) => element.remove());
-    }
-    document.querySelectorAll('.nl-work-detail-bookmeta').forEach((element) => element.remove());
 
     const author = document.querySelector('.nl-work-detail-main .author');
     if (!author) return;
@@ -244,8 +239,10 @@
     const count = workDetailEpisodeCount();
     const episodeCount = author.querySelector('.nl-work-author-episodes');
     if (episodeCount) {
-      episodeCount.textContent = count > 0 ? `全${count}話` : '';
-      episodeCount.hidden = count <= 0;
+      episodeCount.textContent = count.draft
+        ? `公開${count.published}話・下書き${count.draft}話`
+        : count.published > 0 ? `全${count.published}話` : '';
+      episodeCount.hidden = count.published + count.draft <= 0;
     }
   }
 
