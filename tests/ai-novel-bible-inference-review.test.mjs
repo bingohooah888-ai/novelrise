@@ -95,10 +95,7 @@ test('provider output cannot forge provenance, metadata or source quotes', () =>
     JSON.stringify({ suggestions: [suggestion], commands: ['publish'] })
   ];
   for (const modelText of cases) {
-    assert.throws(
-      () => review({ modelText }),
-      /AI_BIBLE_INFERENCE_INVALID/
-    );
+    assert.throws(() => review({ modelText }), /AI_BIBLE_INFERENCE_INVALID/);
   }
 });
 
