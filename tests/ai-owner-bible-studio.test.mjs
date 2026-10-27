@@ -184,24 +184,15 @@ test('private notebook mounts only after existing novel ownership and notes load
   assert.equal(html.includes('id="novelight-ai-bible-public-button"'), false);
 });
 
-test('owner-only Bible preview text keeps high contrast on white cards', async () => {
+test('owner Bible text remains readable on white author cards', async () => {
   const html = await readFile(
     new URL('../story-notes.html', import.meta.url),
     'utf8'
   );
-  const css = html.match(/\.novelight-ai-bible-owner-content\s*\{([^}]*)\}/)?.[1];
-  assert.ok(css, 'owner-only preview needs its own text style');
-  const ink = css.match(/(?:^|;)\s*color:\s*(#[0-9a-f]{6})\b/i)?.[1];
-  assert.ok(ink, 'owner preview ink must be explicitly specified');
-  const channels = [1, 3, 5].map((at) =>
-    parseInt(ink.slice(at, at + 2), 16) / 255
-  );
-  const linear = channels.map((value) =>
-    value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
-  );
-  const luminance =
-    0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
-  const contrast = 1.05 / (luminance + 0.05);
-  assert.ok(contrast >= 7, 'text must meet enhanced contrast on white cards');
-  assert.ok(css.includes('-webkit-text-fill-color: ' + ink));
+  const selector = /\.novelight-ai-bible-owner-content\s*\{([^}]*)\}/;
+  const rule = html.match(selector)?.[1];
+  assert.ok(rule, 'owner preview needs a text style');
+  assert.match(rule, /\bcolor:\s*#1f2937;/);
+  assert.match(rule, /-webkit-text-fill-color:\s*#1f2937;/);
+  assert.match(rule, /\bfont-size:\s*16px;/);
 });
