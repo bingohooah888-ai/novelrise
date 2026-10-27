@@ -104,7 +104,10 @@ test('owner review route stays 404 with zero privileged clients by default', asy
   await handle({ method: 'POST', headers: {} }, response);
   assert.equal(response.statusCode, 404);
   assert.equal(constructed, 0);
-  assert.equal(response.headers['Cache-Control'], 'private, no-store, max-age=0');
+  assert.equal(
+    response.headers['Cache-Control'],
+    'private, no-store, max-age=0'
+  );
 });
 
 test('wrong method, cross-origin, and missing bearer fail before DB', async () => {
@@ -146,10 +149,7 @@ test('POST requires same-origin and explicit request header', async () => {
     { ...headers, origin: 'https://novelight.jp' }
   ]) {
     const response = res();
-    await handler(
-      request({ method: 'POST', headers: h, body }),
-      response
-    );
+    await handler(request({ method: 'POST', headers: h, body }), response);
     assert.equal(response.statusCode, 403);
   }
   assert.equal(calls.clients, 0);
