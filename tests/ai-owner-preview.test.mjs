@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
+import '../novelight-ai-bible-owner-panel.js';
+import '../novelight-ai-bible-owner-studio.js';
 import {
   createOwnerNovelBiblePreviewHandler,
   resolveOwnerNovelBiblePreviewConfig
@@ -35,7 +38,12 @@ function reply() {
   };
 }
 
-function fixture({ userId = OWNER, ownerId = OWNER, failRpc = '' } = {}) {
+function fixture({
+  userId = OWNER,
+  ownerId = OWNER,
+  failRpc = '',
+  factRows = []
+} = {}) {
   const calls = [];
   const serviceClient = {
     auth: {
@@ -65,7 +73,10 @@ function fixture({ userId = OWNER, ownerId = OWNER, failRpc = '' } = {}) {
           return { data: { id: 14, user_id: ownerId }, error: null };
         },
         async limit() {
-          return { data: [], error: null };
+          return {
+            data: table === 'novelight_ai_bible_facts' ? factRows : [],
+            error: null
+          };
         }
       };
       return query;
@@ -217,4 +228,113 @@ test('preview owner does not require shared admin access', async () => {
   const f = fixture();
   const res = await f.run({ env });
   assert.equal(res.statusCode, 200);
+});
+
+test('owner-only studio renders populated API data and clears it on logout', async () => {
+  const f = fixture({
+    factRows: [
+      {
+        id: 9,
+        novel_id: 14,
+        source_episode_id: null,
+        fact_kind: 'world',
+        fact_key: 'capital',
+        fact_payload: { name: 'Demo City' },
+        provenance: 'author_confirmed',
+        revision: 1
+      }
+    ]
+  });
+  const host = {
+    children: [],
+    appendChild(child) {
+      this.children.push(child);
+    }
+  };
+  const doc = {
+    getElementById(id) {
+      assert.equal(id, 'main-content');
+      return host;
+    },
+    createElement(tag) {
+      return {
+        tag,
+        hidden: true,
+        textContent: '',
+        children: [],
+        attributes: {},
+        className: '',
+        setAttribute(name, value) {
+          this.attributes[name] = value;
+        },
+        appendChild(child) {
+          this.children.push(child);
+        },
+        remove() {
+          this.removed = true;
+        }
+      };
+    }
+  };
+  let notifyAuthChange;
+  const client = {
+    auth: {
+      async getSession() {
+        return {
+          data: {
+            session: { access_token: TOKEN, user: { id: OWNER } }
+          },
+          error: null
+        };
+      },
+      onAuthStateChange(listener) {
+        notifyAuthChange = listener;
+        return { data: { subscription: { unsubscribe() {} } } };
+      }
+    }
+  };
+  const panel = {
+    mount(args) {
+      return globalThis.NovelightAiBibleOwnerPanel.mount({
+        ...args,
+        async fetcher(url, request) {
+          assert.equal(url, '/api/ai-owner-novel-bible?novel_id=14');
+          assert.equal(request.headers.Authorization, 'Bearer ' + TOKEN);
+          assert.equal(request.cache, 'no-store');
+          const response = await f.run();
+          assert.equal(response.body.aiGenerated, false);
+          return {
+            ok: response.statusCode === 200,
+            async json() {
+              return response.body;
+            }
+          };
+        }
+      });
+    }
+  };
+  const attached = await globalThis.NovelightAiBibleOwnerStudio.attach({
+    client,
+    novelId: '14',
+    ownerId: OWNER,
+    doc,
+    panel
+  });
+  assert.equal(attached, true);
+  assert.equal(host.children.length, 1);
+  const section = host.children[0];
+  const content = section.children[0];
+  assert.equal(content.hidden, false);
+  assert.match(content.textContent, /・Hero/);
+  assert.match(content.textContent, /・Secret plan/);
+  assert.match(content.textContent, /Confidential ending/);
+  assert.match(content.textContent, /・world：capital/);
+  assert.doesNotMatch(content.textContent, /まだ登録されていません/);
+  assert.deepEqual(
+    f.calls.filter((call) => call[0] === 'authorRpc').map((call) => call[1]),
+    ['novelight_author_character_list', 'novelight_private_story_notes']
+  );
+  notifyAuthChange('SIGNED_OUT', null);
+  assert.equal(section.removed, true);
+  assert.equal(content.textContent, '');
 });
