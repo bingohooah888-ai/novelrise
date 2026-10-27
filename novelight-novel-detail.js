@@ -214,16 +214,6 @@
       const url = String(value || '').trim();
       if (url && !raw.includes(url)) raw.push(url);
     };
-    // Resolve the saved thumbnail independently of optional artwork services.
-    if (typeof novel !== 'undefined' && String(novel?.id) === String(id)) {
-      push(novel.thumbnail_url);
-    }
-    try {
-      const direct = await client.from('novels').select('thumbnail_url').eq('id', id).maybeSingle();
-      if (!direct.error) push(direct.data?.thumbnail_url);
-    } catch (error) {
-      console.warn('saved thumbnail lookup unavailable', error);
-    }
     try {
       const custom = await client.from('novel_custom_covers')
         .select('storage_path').eq('novel_id', Number(id)).maybeSingle();
@@ -244,7 +234,18 @@
         push(first?.base_image_url);
       }
     } catch (error) {
-      console.warn('work cover candidates unavailable', error);
+      console.warn('optional artwork candidates unavailable', error);
+    }
+    // Keep custom author covers ahead of official artwork, but don't let an
+    // optional lookup error suppress the saved publication thumbnail.
+    if (typeof novel !== 'undefined' && String(novel?.id) === String(id)) {
+      push(novel.thumbnail_url);
+    }
+    try {
+      const direct = await client.from('novels').select('thumbnail_url').eq('id', id).maybeSingle();
+      if (!direct.error) push(direct.data?.thumbnail_url);
+    } catch (error) {
+      console.warn('saved thumbnail lookup unavailable', error);
     }
     const candidates = [];
     raw.forEach((url) => {
