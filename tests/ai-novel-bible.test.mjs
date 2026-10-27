@@ -201,3 +201,147 @@ test('no AI calls, money, database writes, or public endpoints are required', ()
   const empty = groupNovelBibleFacts({ principal: author, novel, facts: [] });
   assert.deepEqual(empty.groups, []);
 });
+
+test('title-only edits and appended episodes do not replay unchanged chapters', () => {
+  const initial = plan();
+  const hashes = initial.pending.map((item) => ({
+    episode_id: item.episodeId,
+    source_hash: item.sourceHash
+  }));
+  const result = plan({
+    episodes: [
+      episode(10, '第一話・改題', '秘密の城'),
+      episode(11, '第二話', '冬の街'),
+      episode(12, '第三話', '新しい出会い')
+    ],
+    analyses: hashes
+  });
+  assert.deepEqual(
+    result.pending.map((item) => [item.episodeId, item.reason]),
+    [
+      [10, 'changed'],
+      [12, 'new']
+    ]
+  );
+  assert.equal(result.unchangedCount, 1);
+  assert.equal(result.deferredCount, 0);
+});
+
+test('noncanonical IDs and invalid episode metadata fail closed', () => {
+  for (const badId of [
+    true,
+    [10],
+    '1e1',
+    '10.0',
+    ' 10',
+    0,
+    -1,
+    1.5,
+    Number.MAX_SAFE_INTEGER + 1
+  ]) {
+    assert.throws(
+      () => plan({ episodes: [{ ...episode(10, 'Safe', 'body'), id: badId }] }),
+      /AI_NOVEL_BIBLE_INVALID_SOURCE/
+    );
+  }
+  for (const changes of [
+    { novel_id: true },
+    { title: null },
+    { title: 'x'.repeat(8193) },
+    { content: null },
+    { content: { body: 'not text' } },
+    { order_index: true },
+    { order_index: -1 },
+    { order_index: '1e1' }
+  ]) {
+    assert.throws(
+      () => plan({ episodes: [{ ...episode(10, 'Safe', 'body'), ...changes }] }),
+      /AI_NOVEL_BIBLE_INVALID_SOURCE/
+    );
+  }
+});
+
+test('duplicate analysis rows, forged hashes and invalid sources fail closed', () => {
+  const initial = plan();
+  const existing = {
+    episode_id: 10,
+    source_hash: initial.pending[0].sourceHash
+  };
+  for (const analyses of [
+    [existing, existing],
+    [{ ...existing, source_hash: existing.source_hash.toUpperCase() }],
+    [{ ...existing, episode_id: true }],
+    [{ ...existing, episode_id: 99 }]
+  ]) {
+    assert.throws(
+      () => plan({ analyses }),
+      /AI_NOVEL_BIBLE_INVALID_SOURCE/
+    );
+  }
+  assert.throws(
+    () => plan({ episodes: [episode(10, 'x', 'y'.repeat(1000001))] }),
+    /AI_NOVEL_BIBLE_INVALID_SOURCE/
+  );
+});
+
+test('fact groups keep all eight kinds and reject malformed IDs or revisions', () => {
+  const kinds = [
+    'character',
+    'relationship',
+    'location',
+    'world',
+    'timeline',
+    'event',
+    'foreshadowing',
+    'other'
+  ];
+  const facts = kinds.map((kind, index) => ({
+    ...fact(index + 1, 'author_confirmed', { statement: kind }),
+    fact_kind: kind,
+    fact_key: kind
+  }));
+  const grouped = groupNovelBibleFacts({ principal: author, novel, facts });
+  assert.deepEqual(
+    grouped.groups.map((group) => group.kind).sort(),
+    [...kinds].sort()
+  );
+  assert.ok(grouped.groups.every((group) => group.suggestions.length === 0));
+  assert.ok(grouped.groups.every((group) => group.needsAuthorReview === false));
+
+  for (const invalid of [
+    { id: true },
+    { id: '1e0' },
+    { source_episode_id: [10] },
+    { fact_key: '' },
+    { revision: 0 },
+    { revision: '1' },
+    { fact_payload: { oversized: 'x'.repeat(8193) } }
+  ]) {
+    assert.throws(
+      () =>
+        groupNovelBibleFacts({
+          principal: author,
+          novel,
+          facts: [{ ...fact(1, 'author_confirmed', { ok: true }), ...invalid }]
+        }),
+      /AI_NOVEL_BIBLE_INVALID_SOURCE/
+    );
+  }
+});
+
+test('offline Novel Bible planning does not invoke network or mutate inputs', () => {
+  const previousFetch = globalThis.fetch;
+  const episodes = [episode(10, 'Safe title', 'Unpublished draft')];
+  const facts = [fact(1, 'author_confirmed', { name: 'Author canon' })];
+  const snapshots = JSON.stringify({ episodes, facts });
+  globalThis.fetch = () => {
+    throw new Error('OFFLINE_ONLY_NETWORK_CALL');
+  };
+  try {
+    plan({ episodes });
+    groupNovelBibleFacts({ principal: author, novel, facts });
+    assert.equal(JSON.stringify({ episodes, facts }), snapshots);
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});

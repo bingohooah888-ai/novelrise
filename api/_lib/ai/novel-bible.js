@@ -25,7 +25,14 @@ function denied() {
 }
 
 function positiveId(value) {
-  const id = Number(value);
+  // BIGINT rows may arrive as decimal strings; never coerce booleans, arrays,
+  // floating-point notation or whitespace into valid identifiers.
+  const id =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^[1-9]\d*$/.test(value)
+        ? Number(value)
+        : NaN;
   if (!Number.isSafeInteger(id) || id < 1) denied();
   return id;
 }
@@ -46,11 +53,12 @@ function validateEpisodes(episodes, novelId) {
     if (
       typeof episode.content !== 'string' ||
       typeof episode.title !== 'string' ||
-      Buffer.byteLength(episode.content, 'utf8') > MAX_EPISODE_BYTES
+      Buffer.byteLength(episode.content, 'utf8') > MAX_EPISODE_BYTES ||
+      Buffer.byteLength(episode.title, 'utf8') > 8192
     ) {
       denied();
     }
-    const order = Number(episode.order_index ?? 0);
+    const order = episode.order_index ?? 0;
     if (!Number.isSafeInteger(order) || order < 0) denied();
     return { id, order, title: episode.title, content: episode.content };
   });
