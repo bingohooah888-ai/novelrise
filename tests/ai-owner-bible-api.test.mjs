@@ -117,7 +117,7 @@ test('incomplete trial settings never initialize privileged clients', async () =
     {
       NOVELIGHT_ADMIN_USER_IDS: '',
       NOVELIGHT_ADMIN_EMAILS: 'owner@example.jp'
-    }
+    },
     { NOVELIGHT_AI_ADMIN_USER_ID: undefined },
     { SUPABASE_URL: 'https://untrusted.example' },
     { SUPABASE_SECRET_KEY: undefined }
