@@ -38,11 +38,7 @@ function positiveId(value) {
 }
 
 function boundedString(value, limit) {
-  if (
-    typeof value !== 'string' ||
-    !value.trim() ||
-    value.length > limit
-  ) {
+  if (typeof value !== 'string' || !value.trim() || value.length > limit) {
     invalid();
   }
   return value.trim();
