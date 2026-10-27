@@ -3,12 +3,17 @@ import { expect, test } from '../fixtures/diagnostic-fixture.js';
 const SAMPLE_SYNOPSIS =
   'かつて天才だった少年が新しい勝ち方を見つけていく。'.repeat(24);
 
+const COVER_IMAGE = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="30"><rect width="20" height="30" fill="navy"/></svg>'
+);
+
 test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', async ({
   page
 }) => {
-  await page.addInitScript((synopsis) => {
+  await page.addInitScript(({ synopsis, cover }) => {
     globalThis.__NOVEL_DETAIL_TEST_SYNOPSIS__ = synopsis;
-  }, SAMPLE_SYNOPSIS);
+    globalThis.__NOVEL_DETAIL_TEST_COVER__ = cover;
+  }, { synopsis: SAMPLE_SYNOPSIS, cover: COVER_IMAGE });
   await page.route('**/assets/vendor/supabase-js-2.112.3.js', async (route) => {
     await route.fulfill({
       status: 200,
@@ -19,6 +24,7 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
             id: 354, user_id: 'test-author', status: 'published',
             title: '作品タイトルの表示確認', genre: '現代ファンタジー',
             description: window.__NOVEL_DETAIL_TEST_SYNOPSIS__,
+            thumbnail_url: window.__NOVEL_DETAIL_TEST_COVER__,
             ai_usage: 'human', content_rating: 'general', content_warnings: [],
             created_at: '2026-09-28T00:00:00Z', show_episode_numbers: true
           };
@@ -31,9 +37,11 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
               order() { return api; },
               limit() { return api; },
               range() { return api; },
-              maybeSingle: async () => ({
-                data: table === 'novels' ? novel : null, error: null
-              }),
+              // The custom-cover lookup is deliberately stalled. The saved
+              // render should be visible independently of this optional RPC.
+              maybeSingle: async () => table === 'novel_custom_covers'
+                ? new Promise(() => {})
+                : { data: table === 'novels' ? novel : null, error: null },
               single: async () => ({
                 data: table === 'novels'
                   ? selected === 'description'
@@ -99,6 +107,9 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
 
   await page.goto('/novel.html?id=354', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.nl-work-detail-grid')).toBeVisible();
+  const cover = page.locator('.nl-work-detail-cover img');
+  await expect(cover).toBeVisible();
+  await expect.poll(() => cover.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
   await expect(page.locator('.nl-work-detail-main > .title')).toBeVisible();
   await expect(page.locator('.nl-work-detail-main > .title')).toContainText(
     '作品タイトルの表示確認'
