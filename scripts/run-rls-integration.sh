@@ -30,6 +30,7 @@ AI_REPLAY=(
   psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}"
   -d "${NOVELIGHT_REPLAY_DB:-novelight_migration_replay}" -v ON_ERROR_STOP=1
 )
+"${AI_REPLAY[@]}" -f supabase/checks/20261027120000_novelight_ai_shared_runtime_foundation_postcheck.sql
 "${AI_REPLAY[@]}" -f tests/rls/ai-runtime-foundation.sql
 echo "::endgroup::"
 # The replay uses a separate disposable database, never Production.
