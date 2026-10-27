@@ -36,12 +36,18 @@
       '',
       '【登場人物】'
     ];
+    if (payload.characters.length === 0) {
+      sections.push('・まだ登録されていません（「登場人物を管理」から追加できます）。');
+    }
     for (const character of payload.characters) {
       const name = boundedText(character?.name, 80);
       if (name === null) return null;
       sections.push('・' + name);
     }
     sections.push('', '【創作ノート（非公開）】');
+    if (payload.notes.length === 0) {
+      sections.push('・まだ登録されていません（上の創作ノートで追加できます）。');
+    }
     for (const note of payload.notes) {
       const title = boundedText(note?.title, 120);
       const body = boundedText(note?.body, 20000);
@@ -49,6 +55,9 @@
       sections.push('・' + title, body);
     }
     sections.push('', '【確認候補】');
+    if (payload.facts.length === 0) {
+      sections.push('・確認候補はありません（AIによる自動抽出は未実施です）。');
+    }
     for (const fact of payload.facts) {
       const kind = boundedText(fact?.kind, 32);
       const key = boundedText(fact?.key, 120);
