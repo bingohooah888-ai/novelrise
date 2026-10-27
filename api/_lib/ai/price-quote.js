@@ -63,8 +63,7 @@ export function quoteAiProviderCeiling({
     const inputMicrosPerMillion = ceilDiv(inputUsd * fx * risk, BPS);
     const outputMicrosPerMillion = ceilDiv(outputUsd * fx * risk, BPS);
     const ceilingMicros = ceilDiv(
-      inputCeiling * inputMicrosPerMillion +
-        maxOutput * outputMicrosPerMillion,
+      inputCeiling * inputMicrosPerMillion + maxOutput * outputMicrosPerMillion,
       MILLION
     );
     converted.push({
