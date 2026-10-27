@@ -127,3 +127,92 @@ test('populated owner Bible omits empty-state markers', () => {
     /まだ登録されていません|確認候補はありません/
   );
 });
+
+test('mock-only extraction renders review candidates as literal private text', () => {
+  const target = fakeNode();
+  const ok = globalThis.NovelightAiBibleOwnerPanel.renderMockReview({
+    target,
+    payload: {
+      mockOnly: true,
+      requiresAuthorReview: true,
+      candidates: [
+        {
+          factKind: 'character',
+          factKey: '<script>凛</script>',
+          factPayload: {
+            summary: '青い鍵を所持',
+            evidence: '凛は青い鍵を持っていた。'
+          },
+          sourceEpisodeId: 11,
+          provenance: 'ai_inferred',
+          requiresAuthorReview: true,
+          conflictsWithAuthorCanon: true
+        }
+      ]
+    }
+  });
+  assert.equal(ok, true);
+  assert.equal(target.hidden, false);
+  assert.match(target.textContent, /模擬解析/);
+  assert.match(target.textContent, /本文根拠：凛は青い鍵/);
+  assert.match(target.textContent, /作者の確定設定と重複/);
+  assert.match(target.textContent, /<script>凛<\/script>/);
+  assert.doesNotMatch(target.textContent, /自動採用しました/);
+});
+
+test('mock review rejects unapproved data and clears existing private text', () => {
+  const target = fakeNode();
+  for (const payload of [
+    { mockOnly: false, requiresAuthorReview: true, candidates: [] },
+    { mockOnly: true, requiresAuthorReview: false, candidates: [] },
+    {
+      mockOnly: true,
+      requiresAuthorReview: true,
+      candidates: [
+        {
+          factKind: 'world',
+          factKey: '作者の世界観',
+          factPayload: { summary: '説明', evidence: '出典' },
+          sourceEpisodeId: 1,
+          provenance: 'author_confirmed',
+          requiresAuthorReview: false,
+          conflictsWithAuthorCanon: false
+        }
+      ]
+    }
+  ]) {
+    target.hidden = false;
+    target.textContent = 'OLD_UNPUBLISHED_SECRET';
+    assert.equal(
+      globalThis.NovelightAiBibleOwnerPanel.renderMockReview({
+        target,
+        payload
+      }),
+      false
+    );
+    assert.equal(target.hidden, true);
+    assert.equal(target.textContent, '');
+  }
+});
+
+test('invalid response after successful render clears old author data', () => {
+  const target = fakeNode();
+  assert.equal(
+    render({
+      target,
+      payload: {
+        notes: [{ title: '秘密', body: 'SECRET_FROM_OLD_OWNER' }],
+        characters: [],
+        facts: []
+      }
+    }),
+    true
+  );
+  assert.match(target.textContent, /SECRET_FROM_OLD_OWNER/);
+  assert.equal(
+    render({ target, payload: { notes: null, characters: [], facts: [] } }),
+    false
+  );
+  assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
+});
