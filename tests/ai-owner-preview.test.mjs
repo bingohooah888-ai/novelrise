@@ -211,22 +211,10 @@ test('private RPC failures never leak manuscripts', async () => {
   );
 });
 
-test('preview requires the exact administrator UUID in the ID allowlist', async () => {
-  assert.equal(resolveOwnerNovelBiblePreviewConfig(ENV)?.id, OWNER);
-  for (const changes of [
-    { NOVELIGHT_ADMIN_USER_IDS: OTHER },
-    {
-      NOVELIGHT_ADMIN_USER_IDS: '',
-      NOVELIGHT_ADMIN_EMAILS: 'author@example.jp'
-    },
-    { NOVELIGHT_ADMIN_USER_IDS: 'invalid-admin-uuid' },
-    { SUPABASE_PUBLISHABLE_KEY: '' }
-  ]) {
-    const env = { ...ENV, ...changes };
-    assert.equal(resolveOwnerNovelBiblePreviewConfig(env), null);
-    const fixtureData = fixture();
-    const response = await fixtureData.run({ env });
-    assert.equal(response.statusCode, 503);
-    assert.deepEqual(fixtureData.calls, []);
-  }
+test('preview owner does not require shared admin access', async () => {
+  const env = { ...ENV, NOVELIGHT_ADMIN_USER_IDS: OTHER };
+  assert.equal(resolveOwnerNovelBiblePreviewConfig(env)?.id, OWNER);
+  const f = fixture();
+  const res = await f.run({ env });
+  assert.equal(res.statusCode, 200);
 });

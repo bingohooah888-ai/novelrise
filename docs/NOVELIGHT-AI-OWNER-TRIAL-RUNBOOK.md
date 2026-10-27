@@ -6,13 +6,13 @@
 
 作品カルテは既存の「創作ノート」画面に読み取り専用で接続済み。ただし `NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED` は未設定／OFFであり、APIはすべて404で閉じる。本手順書のマージで**試用を開始しない**。
 
-2026-10-27のVercel Production設定名の確認では、`NOVELIGHT_AI_ADMIN_USER_ID` とProduction対象の `SUPABASE_PUBLISHABLE_KEY` が未設定。`NOVELIGHT_ADMIN_USER_IDS`、`SUPABASE_URL`、`SUPABASE_SECRET_KEY` は設定名として確認済み。**値はチャット、PR、ログ、文書へ記録しない。**
+2026-10-27にProductionの `NOVELIGHT_AI_ADMIN_USER_ID` と `SUPABASE_PUBLISHABLE_KEY` を登録済み。ただし現在の稼働デプロイはその登録より前に作成されており、再デプロイするまで有効化に必要な設定が反映されているとは扱わない。管理人本人のUIDは管理操作監査ログの単一実行者と照合済み。共有 `NOVELIGHT_ADMIN_USER_IDS` に本人IDが含まれていないことを確認したため、**共有管理者権限を追加せず、作品カルテ専用のUID照合を使用する**。UUIDや設定値をチャット、PR、ログ、文書に記録しない。
 
 AI本体のグローバルスイッチはOFF、個人・全体の日次・月次予算上限は0を維持する。今回の対象は既存登場人物・作者の非公開創作ノート・作品カルテ記録の**読み取りのみ**であり、AI生成、外部送信、課金、クレジット消費、データ編集を含めない。
 
 ## 有効化前チェック（すべて必須）
 
-1. 管理人本人のSupabase Auth UUIDを**本人確認済みの値**として取得する。推測やメールアドレスでは代用しない。`NOVELIGHT_AI_ADMIN_USER_ID` をProductionに設定し、同じUUIDが既存の `NOVELIGHT_ADMIN_USER_IDS` の**ID**一覧に明示的に含まれることを検証する。メールのみの管理者許可では試用しない。
+1. 管理人本人のSupabase Auth UUIDを**管理操作の監査証跡と一致した本人確認済みの値**として取得し、Productionの `NOVELIGHT_AI_ADMIN_USER_ID` に設定する。作品カルテ専用のサーバー認証でSupabase AuthのBearerを検証し、そのUIDが上記IDと完全一致することを確認する。**共有 `NOVELIGHT_ADMIN_USER_IDS` へ追加しない**。未ログイン、別の管理者、別作品の作者は拒否する。
 2. 対象Supabaseプロジェクトの本番**公開用**キーを `SUPABASE_PUBLISHABLE_KEY` にProductionスコープで安全に設定する。Preview専用キー、サービス秘密鍵、`sb_secret_` を流用しない。本番URLは正しいHTTPS Supabase URLであること。
 3. `NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED` は**OFFのまま**必要設定を検証する。必要な環境変数変更、再デプロイ、試用開始はそれぞれ既存のProduction承認ゲートを通す。
 4. 最新CI、CodeQL、匿名・別管理者・別作品・本人のアクセス境界、非公開内容の漏洩、no-store、GET限定、ログアウト時消去を確認する。テストで実作品本文・ユーザーUUID・トークンをログ出力しない。
@@ -24,7 +24,7 @@ AI本体のグローバルスイッチはOFF、個人・全体の日次・月次
 
 ## 承認の区別
 
-- **本PRの「本番承認」**：認証設定の事前検証・テスト・手順書をmainへマージする承認に限る。
+- **作品カルテ専用認証PRの「本番承認」**：作品カルテだけに限定したUID照合と安全テスト・手順書をmainへマージする承認に限る。
 - **管理人限定試用開始承認**：Production設定を変更して管理人本人だけに読み取り専用機能を表示する別承認。
 - **「全体公開OK」**：試用後に管理人が実際に合否判定してから一般公開を許可する別承認。
 
