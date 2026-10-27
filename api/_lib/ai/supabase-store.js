@@ -1,6 +1,7 @@
 // Service-role Supabase adapter for the Phase 2 foundation.
 // Never instantiate this module with a browser client or pass it to the UI.
 import { requireAiFeature } from './registry.js';
+import { projectNovelBibleAuthorCanon } from './novel-bible.js';
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -145,6 +146,40 @@ export function createSupabaseAiBible({ serviceClient }) {
   }
 
   return Object.freeze({
+    // Server-only read of the two existing Chapter 43 author-owned sources.
+    // Never trust a caller-supplied owner identity or return these private
+    // records from a public/reader endpoint. No DB mutation or provider call.
+    async listOwnerCanon({ actorId, novelId }) {
+      await assertOwner(actorId, novelId);
+      const [characterResult, noteResult] = await Promise.all([
+        serviceClient
+          .from('novel_characters')
+          .select('id,novel_id,name,aliases')
+          .eq('novel_id', novelId)
+          .order('id', { ascending: true })
+          .limit(101),
+        serviceClient
+          .from('novel_private_story_notes')
+          .select('id,novel_id,note_type,character_id,title,body')
+          .eq('novel_id', novelId)
+          .order('id', { ascending: true })
+          .limit(201)
+      ]);
+      if (
+        characterResult.error ||
+        noteResult.error ||
+        !Array.isArray(characterResult.data) ||
+        !Array.isArray(noteResult.data)
+      ) {
+        throw new AiStorageError();
+      }
+      return projectNovelBibleAuthorCanon({
+        principal: { id: actorId },
+        novel: { id: novelId, user_id: actorId },
+        characters: characterResult.data,
+        notes: noteResult.data
+      });
+    },
     async listOwnerFacts({ actorId, novelId }) {
       await assertOwner(actorId, novelId);
       const { data, error } = await serviceClient
