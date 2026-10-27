@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 import {
@@ -113,14 +114,22 @@ test('owner checks, stale chapters and forged segments fail closed', () => {
     { ...chunk, byteLength: 5000 },
     { ...chunk, chunkHash: '0'.repeat(64) },
     { ...chunk, sourceHash: '0'.repeat(64) },
-    { ...chunk, reason: 'confirmed' }
+    { ...chunk, reason: 'confirmed' },
+    {
+      ...chunk,
+      end: 1,
+      byteLength: Buffer.byteLength(e.content.slice(0, 1), 'utf8'),
+      chunkHash: createHash('sha256')
+        .update(e.content.slice(0, 1))
+        .digest('hex')
+    }
   ];
   for (const candidate of cases) {
     assert.throws(() => read({ chunk: candidate }), /AI_BIBLE_CHUNK_INVALID/);
   }
 });
 
-test('no analysis, empty chapters, deferred items and read-only operation', () => {
+test('empty chapters, deferred items and read-only guard', () => {
   const chapters = [episode(4, ''), episode(3, 'alpha'), episode(2, 'beta')];
   const frozen = JSON.stringify(chapters);
   const oldFetch = globalThis.fetch;
