@@ -126,7 +126,9 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
         leftToToc: Math.abs(left.bottom - toc.bottom),
         tocToGrid: Math.abs(toc.bottom - grid.bottom),
         tocToSeed: seed.top - toc.bottom,
-        position: getComputedStyle(document.querySelector('.nl-work-detail-toc')).position
+        position: getComputedStyle(
+          document.querySelector('.nl-work-detail-toc')
+        ).position
       };
     });
     expect(aligned.leftToMain).toBeLessThan(3);
