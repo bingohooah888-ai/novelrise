@@ -61,7 +61,11 @@ function adapter({ rpcData = 1, rpcError = null } = {}) {
     async rpc(name, args) {
       calls.push([name, args]);
       if (rpcError) return { error: rpcError };
-      return { data: name.endsWith('decide') ? [{ status: 'accepted', revision: 2 }] : rpcData };
+      return {
+        data: name.endsWith('decide')
+          ? [{ status: 'accepted', revision: 2 }]
+          : rpcData
+      };
     }
   };
   const authorClient = {
@@ -204,25 +208,4 @@ test('proposed SQL is restricted to service_role and not in migrations', async (
   assert.match(sql, /unique \(actor_id, request_hash, fact_kind, fact_key\)/);
   assert.match(sql, /p_expected_revision/);
   assert.match(sql, /status = 'pending'/);
-});
-
-
-/* OWNER_REVIEW_PRETTIER_DIAGNOSTIC_TEMP */
-test('temporary CI Prettier output for owner review files', async () => {
-  const prettier = await import('prettier');
-  const list = [
-    ['API', 'api/ai-owner-bible-review.js'],
-    ['APITEST', 'tests/ai-owner-bible-review-api.test.mjs'],
-    ['REPOSITORYTEST', 'tests/ai-owner-bible-review-repository.test.mjs']
-  ];
-  for (const [label, path] of list) {
-    const source = await readFile(path, 'utf8');
-    const clean = source.split('/* OWNER_REVIEW_PRETTIER_DIAGNOSTIC_TEMP */')[0];
-    const config = await prettier.resolveConfig(path);
-    const formatted = await prettier.format(clean, {
-      ...config,
-      filepath: path
-    });
-    console.log('OWNER_FMT_' + label + '_START' + encodeURIComponent(formatted) + 'OWNER_FMT_' + label + '_END');
-  }
 });
