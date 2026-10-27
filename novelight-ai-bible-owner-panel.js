@@ -67,12 +67,73 @@
     return sections.join('\n');
   }
 
-  function render({ target, payload }) {
-    const value = previewText(payload);
-    if (!target || value === null) return false;
+  // The synthetic preview is not mounted into a user page. It is a
+  // text-only renderer for CI / future author-reviewed trial UI tests.
+  function mockReviewText(payload) {
+    if (
+      payload?.mockOnly !== true ||
+      payload.requiresAuthorReview !== true ||
+      !Array.isArray(payload.candidates) ||
+      payload.candidates.length > 36
+    ) {
+      return null;
+    }
+    const lines = [
+      '作品カルテ：模擬解析（管理人限定・非公開）',
+      '架空データのみ。AIの実行・設定の保存は行っていません。',
+      '',
+      '【作者の確認が必要な候補】'
+    ];
+    if (payload.candidates.length === 0) {
+      lines.push('・候補はありません。');
+    }
+    for (const item of payload.candidates) {
+      const kind = boundedText(item?.factKind, 32);
+      const key = boundedText(item?.factKey, 120);
+      const summary = boundedText(item?.factPayload?.summary, 320);
+      const evidence = boundedText(item?.factPayload?.evidence, 160);
+      const sourceId = workId(item?.sourceEpisodeId);
+      if (
+        kind === null ||
+        key === null ||
+        summary === null ||
+        evidence === null ||
+        !sourceId ||
+        item.provenance !== 'ai_inferred' ||
+        item.requiresAuthorReview !== true ||
+        typeof item.conflictsWithAuthorCanon !== 'boolean'
+      ) {
+        return null;
+      }
+      lines.push(
+        '・' + kind + '：' + key + '（第' + sourceId + '話ID）',
+        '  候補：' + summary,
+        '  本文根拠：' + evidence
+      );
+      if (item.conflictsWithAuthorCanon) {
+        lines.push('  ※作者の確定設定と重複・衝突する可能性があります。');
+      }
+    }
+    return lines.join('\n');
+  }
+
+  function renderText(target, value) {
+    if (!target) return false;
+    // A failed replacement must never leave a previous owner's data visible.
+    target.hidden = true;
+    target.textContent = '';
+    if (value === null) return false;
     target.textContent = value;
     target.hidden = false;
     return true;
+  }
+
+  function render({ target, payload }) {
+    return renderText(target, previewText(payload));
+  }
+
+  function renderMockReview({ target, payload }) {
+    return renderText(target, mockReviewText(payload));
   }
 
   async function mount({ target, client, novelId, fetcher = root.fetch }) {
@@ -104,5 +165,9 @@
     }
   }
 
-  root.NovelightAiBibleOwnerPanel = Object.freeze({ mount, render });
+  root.NovelightAiBibleOwnerPanel = Object.freeze({
+    mount,
+    render,
+    renderMockReview
+  });
 })(globalThis);
