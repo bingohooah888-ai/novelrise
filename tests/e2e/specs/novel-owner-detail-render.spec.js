@@ -155,7 +155,9 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   // Updating identical textContent was recreating a text node on every
   // animation frame, waking the page-wide MutationObserver indefinitely.
   const redundantMutations = await page.evaluate(async () => {
-    const target = globalThis.document.querySelector('.nl-work-author-episodes');
+    const target = globalThis.document.querySelector(
+      '.nl-work-author-episodes'
+    );
     let mutations = 0;
     const observer = new globalThis.MutationObserver((records) => {
       mutations += records.length;
