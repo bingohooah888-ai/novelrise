@@ -36,7 +36,7 @@ jobs:
       manifest_b64: ${{ steps.verify.outputs.manifest_b64 }}
     steps:
       - name: Checkout trusted main only, not the candidate branch
-        uses: actions/checkout@3d3c42e5aac5ba805825fa76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           persist-credentials: false
@@ -117,7 +117,7 @@ jobs:
       PGSSLMODE: require
     steps:
       - name: Checkout approved trusted main; never execute candidate code
-        uses: actions/checkout@3d3c42e5aac5ba805825fa76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.admit.outputs.main_sha }}
           persist-credentials: false
