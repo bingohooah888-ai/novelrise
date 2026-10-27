@@ -20,6 +20,10 @@ function validId(value) {
   return Number.isSafeInteger(value) && value > 0;
 }
 
+function isLowSurrogate(code) {
+  return code >= 0xdc00 && code <= 0xdfff;
+}
+
 function ensureUnicodeScalar(value) {
   for (let i = 0; i < value.length; i += 1) {
     const code = value.charCodeAt(i);
@@ -90,20 +94,17 @@ export function planNovelBibleChangedChunks({
     analyses,
     limit
   });
-  const byId = new Map(
-    episodes.map((episode) => [Number(episode.id), episode])
-  );
+  const byId = new Map();
+  for (const episode of episodes) {
+    byId.set(Number(episode.id), episode);
+  }
   const chunks = [];
   const emptyChangedEpisodes = [];
   for (const item of base.pending) {
     const episode = byId.get(item.episodeId);
     if (!episode) invalid();
-    const parts = segments(
-      episode.content,
-      item.episodeId,
-      item.sourceHash,
-      item.reason
-    );
+    const { episodeId, sourceHash, reason } = item;
+    const parts = segments(episode.content, episodeId, sourceHash, reason);
     if (!parts.length) emptyChangedEpisodes.push(item.episodeId);
     chunks.push(...parts);
   }
@@ -159,12 +160,7 @@ export function materializeNovelBibleChunk({
   ensureUnicodeScalar(episode.content);
   const startCode = episode.content.charCodeAt(chunk.start);
   const endCode = episode.content.charCodeAt(chunk.end);
-  if (
-    (startCode >= 0xdc00 && startCode <= 0xdfff) ||
-    (endCode >= 0xdc00 && endCode <= 0xdfff)
-  ) {
-    invalid();
-  }
+  if (isLowSurrogate(startCode) || isLowSurrogate(endCode)) invalid();
   const text = episode.content.slice(chunk.start, chunk.end);
   if (
     Buffer.byteLength(text, 'utf8') !== chunk.byteLength ||
