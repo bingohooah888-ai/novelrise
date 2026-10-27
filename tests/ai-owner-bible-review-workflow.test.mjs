@@ -123,7 +123,7 @@ function setup(options = {}) {
     async readCandidate({ actorId, novelId, candidateId }) {
       const row = state.records.get(candidateId);
       if (row?.actorId !== actorId || row?.novelId !== novelId) return null;
-      return structuredClone(row);
+      return { ...row };
     },
     async compareAndSwapDecision({
       actorId,
