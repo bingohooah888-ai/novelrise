@@ -131,7 +131,7 @@ export function createSupabaseAiAudit({ serviceClient }) {
   });
 }
 
-export function createSupabaseAiBible({ serviceClient }) {
+export function createSupabaseAiBible({ serviceClient, authorClient = null }) {
   requireServiceClient(serviceClient);
   async function assertOwner(actorId, novelId) {
     requireIdentity(actorId);
@@ -145,25 +145,26 @@ export function createSupabaseAiBible({ serviceClient }) {
     if (!data || data.user_id !== actorId) throw new Error('AI_ACCESS_DENIED');
   }
 
-  return Object.freeze({
-    // Server-only read of the two existing Chapter 43 author-owned sources.
-    // Never trust a caller-supplied owner identity or return these private
-    // records from a public/reader endpoint. No DB mutation or provider call.
+  re    // Chapter 43 revokes raw character/notes table privileges even from the
+    // service_role. Use the existing *authenticated owner* RPCs instead.
+    // authorClient must be bound to a server-verified author JWT, NEVER the
+    // service client. Both RPCs independently check auth.uid() and owner.
     async listOwnerCanon({ actorId, novelId }) {
       await assertOwner(actorId, novelId);
+      if (
+        !authorClient ||
+        authorClient === serviceClient ||
+        typeof authorClient.rpc !== 'function'
+      ) {
+        throw new AiStorageError();
+      }
       const [characterResult, noteResult] = await Promise.all([
-        serviceClient
-          .from('novel_characters')
-          .select('id,novel_id,name,aliases')
-          .eq('novel_id', novelId)
-          .order('id', { ascending: true })
-          .limit(101),
-        serviceClient
-          .from('novel_private_story_notes')
-          .select('id,novel_id,note_type,character_id,title,body')
-          .eq('novel_id', novelId)
-          .order('id', { ascending: true })
-          .limit(201)
+        authorClient.rpc('novelight_author_character_list', {
+          p_novel_id: novelId
+        }),
+        authorClient.rpc('novelight_private_story_notes', {
+          p_novel_id: novelId
+        })
       ]);
       if (
         characterResult.error ||
@@ -173,11 +174,20 @@ export function createSupabaseAiBible({ serviceClient }) {
       ) {
         throw new AiStorageError();
       }
+      // RPCs explicitly restrict every record to p_novel_id on the server;
+      // neither RPC returns novel_id. Annotate their trusted scoped result
+      // before the projection validates IDs, links, shapes and batch limits.
       return projectNovelBibleAuthorCanon({
         principal: { id: actorId },
         novel: { id: novelId, user_id: actorId },
-        characters: characterResult.data,
-        notes: noteResult.data
+        characters: characterResult.data.map((row) => ({
+          ...row,
+          novel_id: novelId
+        })),
+        notes: noteResult.data.map((row) => ({
+          ...row,
+          novel_id: novelId
+        }))
       });
     },
     async listOwnerFacts({ actorId, novelId }) {

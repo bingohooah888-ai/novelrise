@@ -257,58 +257,38 @@ test('Novel Bible rejects cross-work episode source before creating a fact', asy
   );
 });
 
-function ownerCanonClient({
+function ownerCanonClients({
   ownerId = OWNER,
   characters = [],
   notes = [],
-  failTable = null
+  failRpc = null
 } = {}) {
   const calls = [];
-  return {
-    calls,
-    rpc() {
-      throw new Error('no rpc calls expected');
-    },
-    from(table) {
-      const query = {
-        select(fields) {
-          calls.push({ table, fields });
-          return query;
-        },
-        eq(key, value) {
-          calls.push({ table, key, value });
-          return query;
-        },
-        order() {
-          return query;
-        },
-        async limit(limit) {
-          calls.push({ table, limit });
-          return {
-            data: table === 'novel_characters' ? characters : notes,
-            error: table === failTable ? { code: '42501' } : null
-          };
-        },
-        async maybeSingle() {
-          calls.push({ table, single: true });
-          return {
-            data: { id: 17, user_id: ownerId },
-            error: table === failTable ? { code: '42501' } : null
-          };
-        }
+  const serviceClient = mockClient({ authorId: ownerId });
+  const originalFrom = serviceClient.from;
+  serviceClient.from = (table) => {
+    calls.push({ table });
+    return originalFrom(table);
+  };
+  const authorClient = {
+    async rpc(name, args) {
+      calls.push({ name, args });
+      return {
+        data:
+          name === 'novelight_author_character_list' ? characters : notes,
+        error: name === failRpc ? { code: '42501' } : null
       };
-      return query;
     }
   };
+  return { serviceClient, authorClient, calls };
 }
 
-test('owner-only canon reads the existing private tables', async () => {
-  const client = ownerCanonClient({
-    characters: [{ id: 3, novel_id: 17, name: 'Hero', aliases: ['Alias'] }],
+test('owner-only canon uses the existing authenticated RPCs', async () => {
+  const clients = ownerCanonClients({
+    characters: [{ id: 3, name: 'Hero', aliases: ['Alias'] }],
     notes: [
       {
         id: 8,
-        novel_id: 17,
         note_type: 'character',
         character_id: 3,
         title: 'Backstory',
@@ -316,61 +296,66 @@ test('owner-only canon reads the existing private tables', async () => {
       }
     ]
   });
-  const bible = createSupabaseAiBible({ serviceClient: client });
+  const bible = createSupabaseAiBible(clients);
   const view = await bible.listOwnerCanon({ actorId: OWNER, novelId: 17 });
   assert.equal(view.characters[0].name, 'Hero');
   assert.equal(view.notes[0].body, 'Private plot');
   assert.deepEqual(
-    client.calls.filter((x) => x.limit).map((x) => [x.table, x.limit]),
-    [
-      ['novel_characters', 101],
-      ['novel_private_story_notes', 201]
-    ]
+    clients.calls.filter((x) => x.name).map((x) => x.name),
+    ['novelight_author_character_list', 'novelight_private_story_notes']
   );
   assert.deepEqual(
-    client.calls.filter((x) => x.key === 'novel_id').map((x) => x.value),
+    clients.calls.filter((x) => x.name).map((x) => x.args.p_novel_id),
     [17, 17]
   );
-  assert.equal(
-    client.calls.some((x) => x.inserted || x.updated),
-    false
+  assert.deepEqual(
+    clients.calls.filter((x) => x.table).map((x) => x.table),
+    ['novels']
   );
 });
 
-test('owner check denies strangers before private table access', async () => {
-  const client = ownerCanonClient();
-  const bible = createSupabaseAiBible({ serviceClient: client });
+test('owner check denies strangers before invoking private RPCs', async () => {
+  const clients = ownerCanonClients();
+  const bible = createSupabaseAiBible(clients);
   await assert.rejects(
     bible.listOwnerCanon({ actorId: OTHER, novelId: 17 }),
     /AI_ACCESS_DENIED/
   );
-  assert.equal(
-    client.calls.some(
-      (x) =>
-        x.table === 'novel_characters' ||
-        x.table === 'novel_private_story_notes'
-    ),
-    false
-  );
+  assert.equal(clients.calls.some((x) => x.name), false);
 });
 
-test('canon rejects missing private data and cross-novel rows', async () => {
-  const broken = createSupabaseAiBible({
-    serviceClient: ownerCanonClient({
-      failTable: 'novel_private_story_notes'
-    })
-  });
+test('missing authenticated client never falls back to service-role RPCs', async () => {
+  const clients = ownerCanonClients();
   await assert.rejects(
-    broken.listOwnerCanon({ actorId: OWNER, novelId: 17 }),
+    createSupabaseAiBible({ serviceClient: clients.serviceClient })
+      .listOwnerCanon({ actorId: OWNER, novelId: 17 }),
     AiStorageError
   );
-  const mismatch = createSupabaseAiBible({
-    serviceClient: ownerCanonClient({
-      characters: [{ id: 1, novel_id: 99, name: 'Foreign', aliases: [] }]
-    })
-  });
   await assert.rejects(
-    mismatch.listOwnerCanon({ actorId: OWNER, novelId: 17 }),
+    createSupabaseAiBible({
+      serviceClient: clients.serviceClient,
+      authorClient: clients.serviceClient
+    }).listOwnerCanon({ actorId: OWNER, novelId: 17 }),
+    AiStorageError
+  );
+  assert.equal(clients.calls.some((x) => x.name), false);
+});
+
+test('RPC authorization failure and invalid canon are fail-closed', async () => {
+  const failed = createSupabaseAiBible(
+    ownerCanonClients({ failRpc: 'novelight_private_story_notes' })
+  );
+  await assert.rejects(
+    failed.listOwnerCanon({ actorId: OWNER, novelId: 17 }),
+    AiStorageError
+  );
+  const malformed = createSupabaseAiBible(
+    ownerCanonClients({
+      characters: [{ id: 1, name: 'Foreign', aliases: [123] }]
+    })
+  );
+  await assert.rejects(
+    malformed.listOwnerCanon({ actorId: OWNER, novelId: 17 }),
     /AI_NOVEL_BIBLE_INVALID_SOURCE/
   );
 });
