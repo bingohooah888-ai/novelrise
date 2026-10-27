@@ -550,7 +550,9 @@
     const id = currentNovelId();
     if (!id) return;
     await waitFor('#favoriteButton');
-    await waitFor('#episodeList a[href*="episode.html?id="]', { timeout: 15000 }).catch(() => null);
+    // The episode list can finish empty or with only drafts; neither should
+    // cause a 15-second wait for a published episode link.
+    await waitFor('#episodeList .episode, #episodeList .empty, #episodeList .error', { timeout: 8000 }).catch(() => null);
     const header = document.getElementById('novelHeader');
     const favorite = document.getElementById('favoriteButton');
     const title = header?.querySelector('.title');
@@ -578,7 +580,9 @@
     stripReaderPv(meta);
     collapseTags(tags);
     const items = outlineItems(rows);
-    await syncProgress(id);
+    // The author has no reader-progress CTA; avoid a network request that
+    // would otherwise delay the entire work-detail layout for owners.
+    if (!viewerOwnsNovel) await syncProgress(id);
     const target = viewerOwnsNovel ? null : continueTarget(publishedRows, readProgress(id));
     const grid = node('div', 'nl-work-detail-grid');
     grid.id = 'novelightWorkDetailGrid';
