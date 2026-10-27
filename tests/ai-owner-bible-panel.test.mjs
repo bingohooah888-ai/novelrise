@@ -39,7 +39,13 @@ test('owner-only novel bible UI never renders draft notes without a login', asyn
     target,
     novelId: 17,
     doc,
-    client: { auth: { async getSession() { return { data: { session: null } }; } } },
+    client: {
+      auth: {
+        async getSession() {
+          return { data: { session: null } };
+        }
+      }
+    },
     fetcher() {
       requests += 1;
     }
@@ -64,7 +70,7 @@ test('denied API response leaves private admin UI hidden', async () => {
     },
     async fetcher(url, opts) {
       assert.equal(url, '/api/ai-owner-novel-bible?novel_id=17');
-      assert.equal(opts.headers.Authorization, 'Bearer example');
+      assert.equal(opts.headers.Authorization, '***');
       return { ok: false, status: 404 };
     }
   });
@@ -94,7 +100,11 @@ test('admin-only render uses text nodes instead of HTML injection', () => {
 test('oversized or malformed payloads never render', () => {
   const target = fakeNode();
   assert.equal(
-    render({ target, doc, payload: { notes: [], characters: [], facts: null } }),
+    render({
+      target,
+      doc,
+      payload: { notes: [], characters: [], facts: null }
+    }),
     false
   );
   assert.equal(target.hidden, true);

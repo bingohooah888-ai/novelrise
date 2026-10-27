@@ -96,10 +96,7 @@ test('an enabled but unauthorized caller is rejected by the owner-only boundary'
     }
   });
   const res = reply();
-  await handle(
-    { method: 'GET', headers: { host: 'novelight.jp' } },
-    res
-  );
+  await handle({ method: 'GET', headers: { host: 'novelight.jp' } }, res);
   assert.equal(res.statusCode, 401);
   assert.equal(constructed, 1);
 });
