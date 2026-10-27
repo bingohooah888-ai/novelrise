@@ -148,7 +148,10 @@ test('other admins and owners of other works never reach private RPCs', async ()
     const f = fixture(options);
     const res = await f.run();
     assert.equal(res.statusCode, 404);
-    assert.equal(f.calls.some((c) => c[0] === 'authorRpc'), false);
+    assert.equal(
+      f.calls.some((c) => c[0] === 'authorRpc'),
+      false
+    );
   }
 });
 
@@ -172,7 +175,14 @@ test('unauthenticated and cross-origin access is denied', async () => {
 test('method, invalid work IDs and preview configuration fail closed', async () => {
   const f = fixture();
   assert.equal((await f.run({ method: 'POST' })).statusCode, 405);
-  for (const novel_id of ['0', '-3', '1e1', ' 14', ['14'], '999999999999999999']) {
+  for (const novel_id of [
+    '0',
+    '-3',
+    '1e1',
+    ' 14',
+    ['14'],
+    '999999999999999999'
+  ]) {
     assert.equal((await f.run({ query: { novel_id } })).statusCode, 400);
   }
   for (const changes of [
@@ -192,5 +202,8 @@ test('private RPC failures never leak manuscripts', async () => {
   const f = fixture({ failRpc: 'novelight_private_story_notes' });
   const res = await f.run();
   assert.equal(res.statusCode, 503);
-  assert.doesNotMatch(JSON.stringify(res.body), /Secret plan|Confidential ending/);
+  assert.doesNotMatch(
+    JSON.stringify(res.body),
+    /Secret plan|Confidential ending/
+  );
 });
