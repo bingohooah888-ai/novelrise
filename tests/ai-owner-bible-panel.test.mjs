@@ -71,7 +71,7 @@ test('author-owned content is assigned literally through textContent', () => {
   assert.equal(ok, true);
   assert.equal(target.hidden, false);
   assert.match(target.textContent, /PRIVATE END/);
-  assert.match(target.textContent, /<script>/);
+  assert.equal(target.textContent.includes('<script>alert(1)</script>'), true);
 });
 
 test('oversized or malformed payloads fail closed', () => {
