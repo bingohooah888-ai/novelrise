@@ -320,7 +320,10 @@ test('owner check denies strangers before invoking private RPCs', async () => {
     bible.listOwnerCanon({ actorId: OTHER, novelId: 17 }),
     /AI_ACCESS_DENIED/
   );
-  assert.equal(clients.calls.some((x) => x.name), false);
+  assert.equal(
+    clients.calls.some((x) => x.name),
+    false
+  );
 });
 
 test('missing author client never uses service-role RPCs', async () => {
@@ -339,7 +342,10 @@ test('missing author client never uses service-role RPCs', async () => {
     }).listOwnerCanon({ actorId: OWNER, novelId: 17 }),
     AiStorageError
   );
-  assert.equal(clients.calls.some((x) => x.name), false);
+  assert.equal(
+    clients.calls.some((x) => x.name),
+    false
+  );
 });
 
 test('RPC authorization failure and invalid canon are fail-closed', async () => {
