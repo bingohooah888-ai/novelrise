@@ -10,6 +10,9 @@ permissions:
 jobs:
   admit:
     name: Admit one OWNER candidate and record immutable SQL pins
+    concurrency:
+      group: novelight-staging-candidate-admission-294
+      cancel-in-progress: false
     if: >-
       github.event.issue.number == 294 &&
       github.event.issue.state == 'open' &&
