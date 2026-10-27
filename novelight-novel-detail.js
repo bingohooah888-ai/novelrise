@@ -238,6 +238,11 @@
     } catch (error) {
       console.warn('work cover candidates unavailable', error);
     }
+    // Even if one of the optional cover lookups fails, use the image
+    // already supplied with the novel's initial record.
+    if (typeof novel !== 'undefined' && String(novel?.id) === String(id)) {
+      push(novel.thumbnail_url);
+    }
     const candidates = [];
     raw.forEach((url) => {
       const optimized = optimizedImageUrl(url, 384, 75);
@@ -252,30 +257,67 @@
   }
 
   async function mountCover(id, cover) {
-    const candidates = await coverCandidates(id);
+    // Do not wait for optional custom-cover/composition RPCs to show a
+    // previously rendered thumbnail. The initial novel record contains it.
+    const existingUrl = typeof novel !== 'undefined' && String(novel?.id) === String(id)
+      ? String(novel.thumbnail_url || '').trim() : '';
+    const candidatePromise = coverCandidates(id);
+    let eagerImage = null;
+    let eagerFailed = false;
+    let fallbackCandidates = [];
+
+    const trySources = (sources) => {
+      let index = 0;
+      const tryNext = () => {
+        if (index >= sources.length) {
+          coverPlaceholder(cover);
+          return;
+        }
+        const image = node('img');
+        image.alt = '';
+        image.decoding = 'async';
+        image.loading = 'eager';
+        image.fetchPriority = 'high';
+        image.addEventListener('error', () => {
+          index += 1;
+          tryNext();
+        }, { once: true });
+        image.src = sources[index];
+        cover.replaceChildren(image);
+      };
+      tryNext();
+    };
+
+    if (existingUrl) {
+      eagerImage = node('img');
+      eagerImage.alt = '';
+      eagerImage.decoding = 'async';
+      eagerImage.loading = 'eager';
+      eagerImage.fetchPriority = 'high';
+      eagerImage.addEventListener('error', () => {
+        eagerFailed = true;
+        if (fallbackCandidates.length) {
+          trySources(fallbackCandidates);
+        } else {
+          coverPlaceholder(cover);
+        }
+      }, { once: true });
+      eagerImage.src = existingUrl;
+      cover.replaceChildren(eagerImage);
+    }
+
+    const candidates = await candidatePromise;
+    fallbackCandidates = candidates.filter((source) => source !== existingUrl);
     if (!candidates.length) {
-      coverPlaceholder(cover);
+      if (!existingUrl || eagerFailed) coverPlaceholder(cover);
       return;
     }
-    let index = 0;
-    const tryNext = () => {
-      if (index >= candidates.length) {
-        coverPlaceholder(cover);
-        return;
-      }
-      const image = node('img');
-      image.alt = '';
-      image.decoding = 'async';
-      image.loading = 'eager';
-      image.fetchPriority = 'high';
-      image.addEventListener('error', () => {
-        index += 1;
-        tryNext();
-      }, { once: true });
-      image.src = candidates[index];
-      cover.replaceChildren(image);
-    };
-    tryNext();
+    const sameRenderedCover = candidates[0] === existingUrl
+      || candidates[0] === optimizedImageUrl(existingUrl, 384, 75);
+    if (existingUrl && !eagerFailed && sameRenderedCover) return;
+    // A selected custom cover still takes precedence over the generic
+    // thumbnail once its storage lookup completes.
+    trySources(eagerFailed ? fallbackCandidates : candidates);
   }
 
   function collapseTags(tags) {
