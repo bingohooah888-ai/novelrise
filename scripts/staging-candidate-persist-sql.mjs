@@ -23,6 +23,11 @@ export function composeCandidatePersistentSql({
   }
   const name = migrationFile.slice(15, -4);
   if (!name || name.length > 120) fail('invalid migration name');
+  // psql meta-commands may start after SQL on the same line. No candidate
+  // source containing a backslash may reach psql at this privilege level.
+  if ([precheck, migration, postcheck].some(
+    (sql) => typeof sql === 'string' && sql.includes('\\')
+  )) fail('backslash metacommands and escapes are forbidden');
   const a = unwrapCandidateSql(precheck, 'precheck');
   const b = unwrapCandidateSql(migration, 'migration');
   const c = unwrapCandidateSql(postcheck, 'postcheck');
