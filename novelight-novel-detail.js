@@ -31,6 +31,31 @@
     });
   }
 
+  function waitForEpisodeResults(timeout = 8000) {
+    const list = document.getElementById('episodeList');
+    if (!list) return Promise.resolve(false);
+    const settled = () => {
+      if (list.querySelector('.episode a[href*="episode.html?id="], .error')) return true;
+      const empty = list.querySelector('.empty');
+      return Boolean(empty && !/読み込み中/u.test(empty.textContent || ''));
+    };
+    if (settled()) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      let timer;
+      const observer = new MutationObserver(() => {
+        if (!settled()) return;
+        observer.disconnect();
+        clearTimeout(timer);
+        resolve(true);
+      });
+      observer.observe(list, { childList: true, subtree: true, characterData: true });
+      timer = window.setTimeout(() => {
+        observer.disconnect();
+        resolve(false);
+      }, timeout);
+    });
+  }
+
   function node(tag, className = '', text = '') {
     const element = document.createElement(tag);
     if (className) element.className = className;
@@ -209,12 +234,6 @@
   }
 
   async function coverCandidates(id) {
-    // The already-saved thumbnail is displayed immediately in mountCover.
-    // When present, do not repeat the same novels query or call the
-    // composition RPC. Only an explicitly configured custom cover can replace it.
-    const hasSavedThumbnail = typeof novel !== 'undefined'
-      && String(novel?.id) === String(id)
-      && Boolean(String(novel?.thumbnail_url || '').trim());
     const raw = [];
     const push = (value) => {
       const url = String(value || '').trim();
@@ -228,30 +247,30 @@
         const url = client.storage.from('novel-custom-covers').getPublicUrl(path);
         push(url.data?.publicUrl);
       }
-      if (!hasSavedThumbnail) {
-        let composition = await client.rpc('novelight_thumbnail_compositions_v3', { p_novel_ids: [String(id)] });
-        if (['42883', '42P01', '42703'].includes(String(composition.error?.code || ''))) {
-          composition = await client.rpc('novelight_thumbnail_compositions_v2', { p_novel_ids: [String(id)] });
-        }
-        if (!composition.error) {
-          const first = Array.isArray(composition.data) ? composition.data[0] : null;
-          push(first?.render_url);
-          push(first?.blob_url);
-          push(first?.hero_image_url);
-          push(first?.base_image_url);
-        }
+      let composition = await client.rpc('novelight_thumbnail_compositions_v3', { p_novel_ids: [String(id)] });
+      if (['42883', '42P01', '42703'].includes(String(composition.error?.code || ''))) {
+        composition = await client.rpc('novelight_thumbnail_compositions_v2', { p_novel_ids: [String(id)] });
+      }
+      if (!composition.error) {
+        const first = Array.isArray(composition.data) ? composition.data[0] : null;
+        push(first?.render_url);
+        push(first?.blob_url);
+        push(first?.hero_image_url);
+        push(first?.base_image_url);
       }
     } catch (error) {
       console.warn('optional artwork candidates unavailable', error);
     }
-    // The saved thumbnail is already being displayed; never download it twice.
-    if (!hasSavedThumbnail) {
-      try {
-        const direct = await client.from('novels').select('thumbnail_url').eq('id', id).maybeSingle();
-        if (!direct.error) push(direct.data?.thumbnail_url);
-      } catch (error) {
-        console.warn('saved thumbnail lookup unavailable', error);
-      }
+    // Keep custom author covers ahead of official artwork, but don't let an
+    // optional lookup error suppress the saved publication thumbnail.
+    if (typeof novel !== 'undefined' && String(novel?.id) === String(id)) {
+      push(novel.thumbnail_url);
+    }
+    try {
+      const direct = await client.from('novels').select('thumbnail_url').eq('id', id).maybeSingle();
+      if (!direct.error) push(direct.data?.thumbnail_url);
+    } catch (error) {
+      console.warn('saved thumbnail lookup unavailable', error);
     }
     const candidates = [];
     raw.forEach((url) => {
@@ -549,10 +568,14 @@
     if (!/(^|\/)novel\.html$/u.test(window.location.pathname) || document.body.classList.contains('nl-work-detail-v2')) return;
     const id = currentNovelId();
     if (!id) return;
+    // Lock across duplicate script loads before any async DOM work.
+    // Without this, two control-move observers can fight over the same nodes.
+    if (window.__novelightDetailBootClaimed) return;
+    window.__novelightDetailBootClaimed = true;
     await waitFor('#favoriteButton');
-    // The episode list can finish empty or with only drafts; neither should
-    // cause a 15-second wait for a published episode link.
-    await waitFor('#episodeList .episode, #episodeList .empty, #episodeList .error', { timeout: 8000 }).catch(() => null);
+    // Wait for an actual episode link, error, or settled empty state. The
+    // initial .empty node says "読み込み中..." and is NOT a finished response.
+    if (!await waitForEpisodeResults()) return;
     const header = document.getElementById('novelHeader');
     const favorite = document.getElementById('favoriteButton');
     const title = header?.querySelector('.title');
@@ -580,8 +603,6 @@
     stripReaderPv(meta);
     collapseTags(tags);
     const items = outlineItems(rows);
-    // The author has no reader-progress CTA; avoid a network request that
-    // would otherwise delay the entire work-detail layout for owners.
     if (!viewerOwnsNovel) await syncProgress(id);
     const target = viewerOwnsNovel ? null : continueTarget(publishedRows, readProgress(id));
     const grid = node('div', 'nl-work-detail-grid');
