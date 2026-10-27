@@ -157,6 +157,14 @@ export function materializeNovelBibleChunk({
     invalid();
   }
   ensureUnicodeScalar(episode.content);
+  const startCode = episode.content.charCodeAt(chunk.start);
+  const endCode = episode.content.charCodeAt(chunk.end);
+  if (
+    (startCode >= 0xdc00 && startCode <= 0xdfff) ||
+    (endCode >= 0xdc00 && endCode <= 0xdfff)
+  ) {
+    invalid();
+  }
   const text = episode.content.slice(chunk.start, chunk.end);
   if (
     Buffer.byteLength(text, 'utf8') !== chunk.byteLength ||
