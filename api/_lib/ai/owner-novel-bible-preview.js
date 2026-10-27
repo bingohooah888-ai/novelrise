@@ -3,7 +3,10 @@
 import { URL } from 'node:url';
 
 import { createClient } from '@supabase/supabase-js';
-import { applyAdminSecurityHeaders, isSameOriginRequest } from '../admin-auth.js';
+import {
+  applyAdminSecurityHeaders,
+  isSameOriginRequest
+} from '../admin-auth.js';
 import { groupNovelBibleFacts } from './novel-bible.js';
 import { AiStorageError, createSupabaseAiBible } from './supabase-store.js';
 
@@ -119,7 +122,12 @@ export function createOwnerNovelBiblePreviewHandler({
 
     let owner;
     try {
-      owner = await requireNovelBiblePreviewOwner(req, res, serviceClient, config.id);
+      owner = await requireNovelBiblePreviewOwner(
+        req,
+        res,
+        serviceClient,
+        config.id
+      );
     } catch {
       return fail(res, 503, 'AI_PREVIEW_UNAVAILABLE');
     }
