@@ -183,3 +183,16 @@ test('private notebook mounts only after existing novel ownership and notes load
   assert.ok(html.includes('src="novelight-ai-bible-owner-studio.js"'));
   assert.equal(html.includes('id="novelight-ai-bible-public-button"'), false);
 });
+
+test('owner Bible text remains readable on white author cards', async () => {
+  const html = await readFile(
+    new URL('../story-notes.html', import.meta.url),
+    'utf8'
+  );
+  const selector = /\.novelight-ai-bible-owner-content\s*\{([^}]*)\}/;
+  const rule = html.match(selector)?.[1];
+  assert.ok(rule, 'owner preview needs a text style');
+  assert.match(rule, /\bcolor:\s*#1f2937;/);
+  assert.match(rule, /-webkit-text-fill-color:\s*#1f2937;/);
+  assert.match(rule, /\bfont-size:\s*16px;/);
+});
