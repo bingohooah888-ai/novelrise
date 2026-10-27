@@ -100,3 +100,37 @@ test('an enabled but unauthorized caller is rejected by the owner-only boundary'
   assert.equal(res.statusCode, 401);
   assert.equal(constructed, 1);
 });
+
+test('incomplete trial settings never initialize privileged clients', async () => {
+  const complete = {
+    NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED: 'true',
+    NOVELIGHT_AI_ADMIN_USER_ID: '11111111-1111-4111-8111-111111111111',
+    NOVELIGHT_ADMIN_USER_IDS: '11111111-1111-4111-8111-111111111111',
+    SUPABASE_URL: 'https://example.supabase.co',
+    SUPABASE_SECRET_KEY: 'fake-test-only',
+    SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_public_key'
+  };
+  for (const changes of [
+    { SUPABASE_PUBLISHABLE_KEY: undefined },
+    { SUPABASE_PUBLISHABLE_KEY: 'sb_secret_not_public' },
+    { NOVELIGHT_ADMIN_USER_IDS: '22222222-2222-4222-8222-222222222222' },
+    { NOVELIGHT_ADMIN_USER_IDS: '', NOVELIGHT_ADMIN_EMAILS: 'owner@example.jp' },
+    { NOVELIGHT_AI_ADMIN_USER_ID: undefined },
+    { SUPABASE_URL: 'https://untrusted.example' },
+    { SUPABASE_SECRET_KEY: undefined }
+  ]) {
+    let created = 0;
+    const handler = createOwnerNovelBibleApiHandler({
+      env: { ...complete, ...changes },
+      createServiceClient() {
+        created += 1;
+        throw new Error('incomplete preview must not initialize service client');
+      }
+    });
+    const res = reply();
+    await handler({ method: 'GET', headers: {} }, res);
+    assert.equal(res.statusCode, 503);
+    assert.equal(created, 0);
+    assert.deepEqual(res.body, { error: 'AI_PREVIEW_UNAVAILABLE' });
+  }
+});
