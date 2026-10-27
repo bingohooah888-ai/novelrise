@@ -239,10 +239,15 @@
     const count = workDetailEpisodeCount();
     const episodeCount = author.querySelector('.nl-work-author-episodes');
     if (episodeCount) {
-      episodeCount.textContent = count.draft
+      const label = count.draft
         ? `公開${count.published}話・下書き${count.draft}話`
         : count.published > 0 ? `全${count.published}話` : '';
-      episodeCount.hidden = count.published + count.draft <= 0;
+      // Writing the same textContent recreates text nodes. The page-wide
+      // MutationObserver then schedules another frame, producing a permanent
+      // 60fps mutation / layout loop on every novel detail page.
+      if (episodeCount.textContent !== label) episodeCount.textContent = label;
+      const hide = count.published + count.draft <= 0;
+      if (episodeCount.hidden !== hide) episodeCount.hidden = hide;
     }
   }
 
