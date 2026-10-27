@@ -87,7 +87,8 @@ test('an enabled but unauthorized caller is rejected by the owner-only boundary'
       NOVELIGHT_AI_ADMIN_USER_ID: '11111111-1111-4111-8111-111111111111',
       NOVELIGHT_ADMIN_USER_IDS: '11111111-1111-4111-8111-111111111111',
       SUPABASE_URL: 'https://example.supabase.co',
-      SUPABASE_SECRET_KEY: 'fake-test-only'
+      SUPABASE_SECRET_KEY: 'fake-test-only',
+      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_public_key'
     },
     createServiceClient() {
       constructed += 1;
