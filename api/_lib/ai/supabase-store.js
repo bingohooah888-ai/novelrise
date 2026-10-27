@@ -145,7 +145,8 @@ export function createSupabaseAiBible({ serviceClient, authorClient = null }) {
     if (!data || data.user_id !== actorId) throw new Error('AI_ACCESS_DENIED');
   }
 
-  re    // Chapter 43 revokes raw character/notes table privileges even from the
+  return Object.freeze({
+    // Chapter 43 revokes raw character/notes table privileges even from the
     // service_role. Use the existing *authenticated owner* RPCs instead.
     // authorClient must be bound to a server-verified author JWT, NEVER the
     // service client. Both RPCs independently check auth.uid() and owner.
