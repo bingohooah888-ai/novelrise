@@ -25,6 +25,12 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
           };
           function builder(table) {
             let selected = '';
+            // Match actual Supabase behavior: unselected fields aren't returned.
+            const projected = () => Object.fromEntries(
+              selected.split(',').map((key) => key.trim())
+                .filter((key) => Object.prototype.hasOwnProperty.call(novel, key))
+                .map((key) => [key, novel[key]])
+            );
             const api = {
               select(fields) { selected = fields; return api; },
               eq() { return api; },
@@ -33,14 +39,10 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
               limit() { return api; },
               range() { return api; },
               maybeSingle: async () => ({
-                data: table === 'novels' ? novel : null, error: null
+                data: table === 'novels' ? projected() : null, error: null
               }),
               single: async () => ({
-                data: table === 'novels'
-                  ? selected === 'description'
-                    ? { description: novel.description }
-                    : novel
-                  : null,
+                data: table === 'novels' ? projected() : null,
                 error: null
               }),
               then(resolve, reject) {
@@ -102,8 +104,8 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await expect(page.locator('.nl-work-detail-grid')).toBeVisible();
   await expect(page.locator('.nl-work-detail-cover img')).toBeVisible();
   await expect(page.locator('.nl-work-detail-cover img')).toHaveJSProperty(
-    'complete',
-    true
+    'naturalWidth',
+    100
   );
   await expect(page.locator('.nl-work-detail-main > .title')).toBeVisible();
   await expect(page.locator('.nl-work-detail-main > .title')).toContainText(
