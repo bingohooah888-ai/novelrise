@@ -202,33 +202,38 @@ test('no AI calls, money, database writes, or public endpoints are required', ()
   assert.deepEqual(empty.groups, []);
 });
 
-test('title-only edits and appended episodes do not replay unchanged chapters', () => {
+test('title-only edits and appended episodes do not replay old chapters', () => {
   const initial = plan();
-  const hashes = initial.pending.map((item) => ({
-    episode_id: item.episodeId,
-    source_hash: item.sourceHash
+  const analyses = initial.pending.map(({ episodeId, sourceHash }) => ({
+    episode_id: episodeId,
+    source_hash: sourceHash
   }));
-  const result = plan({
+  const updated = plan({
     episodes: [
       episode(10, '第一話・改題', '秘密の城'),
       episode(11, '第二話', '冬の街'),
       episode(12, '第三話', '新しい出会い')
     ],
-    analyses: hashes
+    analyses
   });
   assert.deepEqual(
-    result.pending.map((item) => [item.episodeId, item.reason]),
+    updated.pending.map(({ episodeId, reason }) => [episodeId, reason]),
     [
       [10, 'changed'],
       [12, 'new']
     ]
   );
-  assert.equal(result.unchangedCount, 1);
-  assert.equal(result.deferredCount, 0);
+  assert.equal(updated.unchangedCount, 1);
+  assert.equal(updated.deferredCount, 0);
 });
 
+function rejectsInvalidSource(run) {
+  assert.throws(run, /AI_NOVEL_BIBLE_INVALID_SOURCE/);
+}
+
 test('noncanonical IDs and invalid episode metadata fail closed', () => {
-  for (const badId of [
+  const base = episode(10, 'Safe', 'body');
+  const invalidIds = [
     true,
     [10],
     '1e1',
@@ -238,13 +243,11 @@ test('noncanonical IDs and invalid episode metadata fail closed', () => {
     -1,
     1.5,
     Number.MAX_SAFE_INTEGER + 1
-  ]) {
-    assert.throws(
-      () => plan({ episodes: [{ ...episode(10, 'Safe', 'body'), id: badId }] }),
-      /AI_NOVEL_BIBLE_INVALID_SOURCE/
-    );
+  ];
+  for (const id of invalidIds) {
+    rejectsInvalidSource(() => plan({ episodes: [{ ...base, id }] }));
   }
-  for (const changes of [
+  const invalidRows = [
     { novel_id: true },
     { title: null },
     { title: 'x'.repeat(8193) },
@@ -253,38 +256,33 @@ test('noncanonical IDs and invalid episode metadata fail closed', () => {
     { order_index: true },
     { order_index: -1 },
     { order_index: '1e1' }
-  ]) {
-    assert.throws(
-      () => plan({ episodes: [{ ...episode(10, 'Safe', 'body'), ...changes }] }),
-      /AI_NOVEL_BIBLE_INVALID_SOURCE/
-    );
+  ];
+  for (const changes of invalidRows) {
+    const broken = { ...base, ...changes };
+    rejectsInvalidSource(() => plan({ episodes: [broken] }));
   }
 });
 
-test('duplicate analysis rows, forged hashes and invalid sources fail closed', () => {
+test('duplicate analyses and invalid hashes or sources fail closed', () => {
   const initial = plan();
   const existing = {
     episode_id: 10,
     source_hash: initial.pending[0].sourceHash
   };
-  for (const analyses of [
+  const invalidRows = [
     [existing, existing],
     [{ ...existing, source_hash: existing.source_hash.toUpperCase() }],
     [{ ...existing, episode_id: true }],
     [{ ...existing, episode_id: 99 }]
-  ]) {
-    assert.throws(
-      () => plan({ analyses }),
-      /AI_NOVEL_BIBLE_INVALID_SOURCE/
-    );
+  ];
+  for (const analyses of invalidRows) {
+    rejectsInvalidSource(() => plan({ analyses }));
   }
-  assert.throws(
-    () => plan({ episodes: [episode(10, 'x', 'y'.repeat(1000001))] }),
-    /AI_NOVEL_BIBLE_INVALID_SOURCE/
-  );
+  const overlong = episode(10, 'x', 'y'.repeat(1000001));
+  rejectsInvalidSource(() => plan({ episodes: [overlong] }));
 });
 
-test('fact groups keep all eight kinds and reject malformed IDs or revisions', () => {
+test('all fact kinds stay separate and malformed fact records fail closed', () => {
   const kinds = [
     'character',
     'relationship',
@@ -305,10 +303,10 @@ test('fact groups keep all eight kinds and reject malformed IDs or revisions', (
     grouped.groups.map((group) => group.kind).sort(),
     [...kinds].sort()
   );
-  assert.ok(grouped.groups.every((group) => group.suggestions.length === 0));
-  assert.ok(grouped.groups.every((group) => group.needsAuthorReview === false));
+  assert.ok(grouped.groups.every((group) => !group.suggestions.length));
+  assert.ok(grouped.groups.every((group) => !group.needsAuthorReview));
 
-  for (const invalid of [
+  const invalidFields = [
     { id: true },
     { id: '1e0' },
     { source_episode_id: [10] },
@@ -316,20 +314,19 @@ test('fact groups keep all eight kinds and reject malformed IDs or revisions', (
     { revision: 0 },
     { revision: '1' },
     { fact_payload: { oversized: 'x'.repeat(8193) } }
-  ]) {
-    assert.throws(
-      () =>
-        groupNovelBibleFacts({
-          principal: author,
-          novel,
-          facts: [{ ...fact(1, 'author_confirmed', { ok: true }), ...invalid }]
-        }),
-      /AI_NOVEL_BIBLE_INVALID_SOURCE/
-    );
+  ];
+  for (const changes of invalidFields) {
+    const broken = {
+      ...fact(1, 'author_confirmed', { ok: true }),
+      ...changes
+    };
+    rejectsInvalidSource(() => {
+      groupNovelBibleFacts({ principal: author, novel, facts: [broken] });
+    });
   }
 });
 
-test('offline Novel Bible planning does not invoke network or mutate inputs', () => {
+test('offline planning makes no network request and does not mutate inputs', () => {
   const previousFetch = globalThis.fetch;
   const episodes = [episode(10, 'Safe title', 'Unpublished draft')];
   const facts = [fact(1, 'author_confirmed', { name: 'Author canon' })];
