@@ -57,8 +57,8 @@
       .nl-work-detail-bookmeta strong{color:#3d3126}
       .nl-work-detail-center{min-width:0;display:grid;gap:18px}
       .nl-work-detail-main{padding:30px;background:#fffdfa;border:1px solid #e5ddd1;border-radius:16px;box-shadow:0 10px 32px rgba(55,43,31,.04)}
-      .nl-work-detail-main .title{display:block;visibility:visible;font-size:clamp(25px,2vw,34px);line-height:1.14;margin-bottom:12px;letter-spacing:.005em;text-wrap:pretty}
-      .nl-work-detail-main .author{display:flex;visibility:visible;margin-bottom:17px;color:#746b62}
+      .nl-work-detail-main > .title{display:block!important;visibility:visible!important;opacity:1!important;color:#30251c;font-size:clamp(25px,2vw,34px);line-height:1.14;margin-bottom:12px;letter-spacing:.005em;text-wrap:pretty}
+      .nl-work-detail-main > .author{display:flex!important;visibility:visible!important;opacity:1!important;margin-bottom:17px;color:#746b62}
       .nl-work-detail-main .meta{width:100%;margin:0 0 18px;padding:12px 0;border-top:1px solid #eee7dc;border-bottom:1px solid #eee7dc;color:#7d746a}
       .nl-work-detail-synopsis{margin:4px 0 22px;padding-top:2px}
       .nl-work-detail-kicker{margin-bottom:8px;color:#9a7b4e;font-size:11px;font-weight:900;letter-spacing:.14em}
@@ -595,18 +595,25 @@
     tocHead.append(node('h2', '', '目次'), node('span', 'nl-work-detail-toc-count', displayedCount));
     toc.append(tocHead, buildToc(items, id, { isOwner: viewerOwnsNovel }));
     grid.append(left, center, toc);
-    header.remove();
-    document.getElementById('nlContinueReading')?.remove();
-    await ensureExistingControls(id, actions, secondaryActions);
-    await renderCharacters(rows, id, center);
-    void mountCover(id, cover);
+    // Place the seed/owner panels immediately. They must never depend on
+    // bookshelf, reading progress, or character-feed network responses.
     const support = node('div', 'nl-work-support-stack');
     grid.insertAdjacentElement('afterend', support);
     ['lightSeedArea', 'receivedSeedArea', 'novelPollArea'].forEach((elementId) => {
       const element = document.getElementById(elementId);
       if (element) support.appendChild(element);
     });
+    // Preserve the stable novelHeader element for other modules that query it.
+    // Its children have been moved into the new grid, so hide the empty shell.
+    header.hidden = true;
+    header.setAttribute('aria-hidden', 'true');
+    document.getElementById('nlContinueReading')?.remove();
+    void mountCover(id, cover);
     window.dispatchEvent(new Event('novelight:page-content-ready'));
+    void ensureExistingControls(id, actions, secondaryActions)
+      .catch((error) => console.warn('work control enhancement unavailable', error));
+    void renderCharacters(rows, id, center)
+      .catch((error) => console.warn('character cards unavailable', error));
   }
 
   window.NovelightNovelDetailV2 = Object.freeze({ boot, episodeRows, buildToc });
