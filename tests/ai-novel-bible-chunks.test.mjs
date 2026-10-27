@@ -41,7 +41,10 @@ test('02-07-02 indexes only changed or new chapters without raw text', () => {
   );
   assert.deepEqual(
     revised.chunks.map((chunk) => [chunk.episodeId, chunk.reason]),
-    [[1, 'new'], [3, 'new']]
+    [
+      [1, 'new'],
+      [3, 'new']
+    ]
   );
   assert.equal(revised.unchangedCount, 1);
   assert.doesNotMatch(
@@ -111,9 +114,7 @@ test('owner checks, stale chapters and forged segments fail closed', () => {
   const halfEmoji = e.content.slice(0, 1);
   const forgedChunk = { ...chunk, end: 1 };
   forgedChunk.byteLength = Buffer.byteLength(halfEmoji, 'utf8');
-  forgedChunk.chunkHash = createHash('sha256')
-    .update(halfEmoji)
-    .digest('hex');
+  forgedChunk.chunkHash = createHash('sha256').update(halfEmoji).digest('hex');
   const cases = [
     { ...chunk, episodeId: 99 },
     { ...chunk, end: e.content.length + 1 },
@@ -139,7 +140,10 @@ test('empty chapters, deferred items and read-only guard', () => {
     const result = plan(chapters, { limit: 2 });
     assert.equal(result.deferredEpisodeCount, 1);
     assert.deepEqual(result.emptyChangedEpisodes, []);
-    assert.deepEqual(result.chunks.map((x) => x.episodeId), [2, 3]);
+    assert.deepEqual(
+      result.chunks.map((x) => x.episodeId),
+      [2, 3]
+    );
     assert.equal(JSON.stringify(chapters), frozen);
     const empty = plan([episode(1, '')]);
     assert.deepEqual(empty.emptyChangedEpisodes, [1]);
@@ -162,18 +166,4 @@ test('reject invalid owners, cross-work rows and malformed Unicode', () => {
     () => plan([episode(1, 'broken\uD800sequence')]),
     /AI_BIBLE_CHUNK_INVALID/
   );
-});
-
-/* PRETTIER_DIAGNOSTIC_ONLY */
-test('offline formatter diagnostic (temporary)', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const prettier = await import('prettier');
-  const modulePath = 'api/_lib/ai/novel-bible-chunks.js';
-  const testPath = 'tests/ai-novel-bible-chunks.test.mjs';
-  const moduleText = await readFile(modulePath, 'utf8');
-  const testText = (await readFile(testPath, 'utf8')).split('/* PRETTIER_DIAGNOSTIC_ONLY */')[0];
-  const formattedModule = await prettier.format(moduleText, { filepath: modulePath });
-  const formattedTest = await prettier.format(testText, { filepath: testPath });
-  console.log('FMT_MODULE_START' + encodeURIComponent(formattedModule) + 'FMT_MODULE_END');
-  console.log('FMT_TEST_START' + encodeURIComponent(formattedTest) + 'FMT_TEST_END');
 });
