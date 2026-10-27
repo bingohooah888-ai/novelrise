@@ -211,22 +211,47 @@ test('private RPC failures never leak manuscripts', async () => {
   );
 });
 
-test('preview requires the exact administrator UUID in the ID allowlist', async () => {
-  assert.equal(resolveOwnerNovelBiblePreviewConfig(ENV)?.id, OWNER);
+test('owner-only preview is independent from site-wide administrator allowlist', async () => {
   for (const changes of [
     { NOVELIGHT_ADMIN_USER_IDS: OTHER },
-    {
-      NOVELIGHT_ADMIN_USER_IDS: '',
-      NOVELIGHT_ADMIN_EMAILS: 'author@example.jp'
-    },
-    { NOVELIGHT_ADMIN_USER_IDS: 'invalid-admin-uuid' },
-    { SUPABASE_PUBLISHABLE_KEY: '' }
+    { NOVELIGHT_ADMIN_USER_IDS: '' },
+    { NOVELIGHT_ADMIN_USER_IDS: 'invalid-admin-uuid' }
+  ]) {
+    const env = { ...ENV, ...changes };
+    assert.equal(resolveOwnerNovelBiblePreviewConfig(env)?.id, OWNER);
+    const authorized = fixture();
+    assert.equal((await authorized.run({ env })).statusCode, 200);
+    const other = fixture({ userId: OTHER });
+    assert.equal((await other.run({ env })).statusCode, 404);
+    assert.equal(
+      other.calls.some((call) => call[0] === 'from'),
+      false
+    );
+  }
+});
+
+test('preview rejects incomplete dedicated owner config before authentication', async () => {
+  for (const changes of [
+    { NOVELIGHT_AI_ADMIN_USER_ID: '' },
+    { NOVELIGHT_AI_ADMIN_USER_ID: 'invalid-owner-uuid' },
+    { SUPABASE_PUBLISHABLE_KEY: '' },
+    { SUPABASE_PUBLISHABLE_KEY: 'sb_secret_not_public' },
+    { SUPABASE_URL: 'https://untrusted.example' }
   ]) {
     const env = { ...ENV, ...changes };
     assert.equal(resolveOwnerNovelBiblePreviewConfig(env), null);
-    const fixtureData = fixture();
-    const response = await fixtureData.run({ env });
+    const f = fixture();
+    const response = await f.run({ env });
     assert.equal(response.statusCode, 503);
-    assert.deepEqual(fixtureData.calls, []);
+    assert.deepEqual(f.calls, []);
   }
+});
+
+test('a different configured preview owner never inherits admin access', async () => {
+  const f = fixture();
+  const res = await f.run({
+    env: { ...ENV, NOVELIGHT_AI_ADMIN_USER_ID: OTHER }
+  });
+  assert.equal(res.statusCode, 404);
+  assert.equal(f.calls.some((call) => call[0] === 'from'), false);
 });
