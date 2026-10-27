@@ -24,6 +24,15 @@ SEARCH_CARD_COMPAT_MIGRATION="supabase/migrations/20260930210000_search_card_met
 cp supabase/migrations/20260930153337_search_card_metadata.sql "$SEARCH_CARD_COMPAT_MIGRATION"
 trap 'rm -f "$SEARCH_CARD_COMPAT_MIGRATION"' EXIT
 bash scripts/run-migration-replay.sh
+# Phase 2 AI foundation is tested ONLY on this disposable replay database.
+echo "::group::Verify disabled AI ledger, service-only roles, and budget limits"
+AI_REPLAY=(
+  psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}"
+  -d "${NOVELIGHT_REPLAY_DB:-novelight_migration_replay}" -v ON_ERROR_STOP=1
+)
+"${AI_REPLAY[@]}" -f supabase/checks/20261027120000_novelight_ai_shared_runtime_foundation_postcheck.sql
+"${AI_REPLAY[@]}" -f tests/rls/ai-runtime-foundation.sql
+echo "::endgroup::"
 # The replay uses a separate disposable database, never Production.
 # Exercise the newly introduced contest functions on real PostgreSQL before
 # returning to existing historical RLS and rollback fixtures. The SQL fixture
