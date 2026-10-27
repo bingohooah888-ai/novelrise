@@ -114,7 +114,10 @@ test('incomplete trial settings never initialize privileged clients', async () =
     { SUPABASE_PUBLISHABLE_KEY: undefined },
     { SUPABASE_PUBLISHABLE_KEY: 'sb_secret_not_public' },
     { NOVELIGHT_ADMIN_USER_IDS: '22222222-2222-4222-8222-222222222222' },
-    { NOVELIGHT_ADMIN_USER_IDS: '', NOVELIGHT_ADMIN_EMAILS: 'owner@example.jp' },
+    {
+      NOVELIGHT_ADMIN_USER_IDS: '',
+      NOVELIGHT_ADMIN_EMAILS: 'owner@example.jp'
+    }
     { NOVELIGHT_AI_ADMIN_USER_ID: undefined },
     { SUPABASE_URL: 'https://untrusted.example' },
     { SUPABASE_SECRET_KEY: undefined }
@@ -124,7 +127,9 @@ test('incomplete trial settings never initialize privileged clients', async () =
       env: { ...complete, ...changes },
       createServiceClient() {
         created += 1;
-        throw new Error('incomplete preview must not initialize service client');
+        throw new Error(
+          'incomplete preview must not initialize service client'
+        );
       }
     });
     const res = reply();
