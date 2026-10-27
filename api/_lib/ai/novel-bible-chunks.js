@@ -43,7 +43,7 @@ function segments(content, episodeId, sourceHash, reason) {
   const items = [];
   let start = 0;
   let bytes = 0;
-  for (let pos = 0; pos < content.length; ) {
+  for (let pos = 0; pos < content.length;) {
     const symbol = String.fromCodePoint(content.codePointAt(pos));
     const symbolBytes = Buffer.byteLength(symbol, 'utf8');
     if (bytes + symbolBytes > MAX_CHUNK_BYTES) {
