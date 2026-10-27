@@ -205,3 +205,88 @@ export function groupNovelBibleFacts({ principal, novel, facts }) {
       }))
   };
 }
+
+// A projection of Chapter 43's existing author-managed source of truth.
+// It is neither a second notebook nor an AI-generated fact record. No model
+// input/output or reader-facing endpoint is created by this projection.
+export function projectNovelBibleAuthorCanon({
+  principal,
+  novel,
+  characters,
+  notes
+}) {
+  const novelId = requireAuthor(principal, novel);
+  if (
+    !Array.isArray(characters) ||
+    characters.length > 100 ||
+    !Array.isArray(notes) ||
+    notes.length > 200
+  ) {
+    denied();
+  }
+
+  const characterIds = new Set();
+  const canonCharacters = characters.map((character) => {
+    if (!character || positiveId(character.novel_id) !== novelId) denied();
+    const id = positiveId(character.id);
+    if (characterIds.has(id)) denied();
+    characterIds.add(id);
+    if (
+      typeof character.name !== 'string' ||
+      character.name.trim().length === 0 ||
+      character.name.length > 80 ||
+      !Array.isArray(character.aliases) ||
+      character.aliases.length > 12 ||
+      character.aliases.some(
+        (alias) =>
+          typeof alias !== 'string' ||
+          alias.trim().length === 0 ||
+          alias.length > 120
+      )
+    ) {
+      denied();
+    }
+    return {
+      id,
+      name: character.name,
+      aliases: [...character.aliases],
+      source: 'novel_characters'
+    };
+  });
+
+  const noteIds = new Set();
+  const canonNotes = notes.map((note) => {
+    if (!note || positiveId(note.novel_id) !== novelId) denied();
+    const id = positiveId(note.id);
+    if (noteIds.has(id)) denied();
+    noteIds.add(id);
+    const characterId =
+      note.character_id === null ? null : positiveId(note.character_id);
+    if (
+      !['plot', 'world', 'character'].includes(note.note_type) ||
+      typeof note.title !== 'string' ||
+      note.title.trim().length === 0 ||
+      note.title.length > 120 ||
+      typeof note.body !== 'string' ||
+      note.body.length > 20000 ||
+      (note.note_type !== 'character' && characterId !== null) ||
+      (characterId !== null && !characterIds.has(characterId))
+    ) {
+      denied();
+    }
+    return {
+      id,
+      type: note.note_type,
+      characterId,
+      title: note.title,
+      body: note.body,
+      source: 'novel_private_story_notes'
+    };
+  });
+
+  return {
+    novelId,
+    characters: canonCharacters.sort((a, b) => a.id - b.id),
+    notes: canonNotes.sort((a, b) => a.id - b.id)
+  };
+}
