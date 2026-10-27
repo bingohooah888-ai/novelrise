@@ -112,23 +112,22 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
 
   // Desktop: the center card and table of contents extend to the left
   // column's bottom. The TOC must scroll inside its own card, never stick.
-  if ((await page.evaluate(() => window.innerWidth)) > 1050) {
+  if ((await page.evaluate(() => globalThis.innerWidth)) > 1050) {
     const aligned = await page.evaluate(() => {
       const bounds = (selector) =>
-        document.querySelector(selector).getBoundingClientRect();
+        globalThis.document.querySelector(selector).getBoundingClientRect();
       const left = bounds('.nl-work-detail-left');
       const main = bounds('.nl-work-detail-main');
       const toc = bounds('.nl-work-detail-toc');
       const grid = bounds('.nl-work-detail-grid');
       const seed = bounds('#lightSeedArea');
+      const tocNode = globalThis.document.querySelector('.nl-work-detail-toc');
       return {
         leftToMain: Math.abs(left.bottom - main.bottom),
         leftToToc: Math.abs(left.bottom - toc.bottom),
         tocToGrid: Math.abs(toc.bottom - grid.bottom),
         tocToSeed: seed.top - toc.bottom,
-        position: getComputedStyle(
-          document.querySelector('.nl-work-detail-toc')
-        ).position
+        position: globalThis.getComputedStyle(tocNode).position
       };
     });
     expect(aligned.leftToMain).toBeLessThan(3);
@@ -139,12 +138,12 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
 
     // Even with many episodes, their overflow must not grow the outer grid.
     const scrolling = await page.evaluate(() => {
-      const grid = document.querySelector('.nl-work-detail-grid');
-      const list = document.querySelector('.nl-work-toc-list');
+      const grid = globalThis.document.querySelector('.nl-work-detail-grid');
+      const list = globalThis.document.querySelector('.nl-work-toc-list');
       const initialHeight = grid.getBoundingClientRect().height;
-      const fragment = document.createDocumentFragment();
+      const fragment = globalThis.document.createDocumentFragment();
       for (let i = 0; i < 100; i += 1) {
-        const item = document.createElement('a');
+        const item = globalThis.document.createElement('a');
         item.className = 'nl-work-toc-link';
         item.href = '#test-chapter';
         item.textContent = `テスト用 第${i + 1}話`;
