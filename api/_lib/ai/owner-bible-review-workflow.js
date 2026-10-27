@@ -277,5 +277,44 @@ export function createOwnerBibleReviewWorkflow({
     };
   }
 
-  return Object.freeze({ stage, decide });
+  // Candidate listing is still private author data. No inference or write.
+  async function list({ token, novelId }) {
+    const actorId = await authenticate(token);
+    const novel = await loadNovel(actorId, novelId);
+    if (typeof repository.listPending !== 'function') denied();
+    const rows = await repository.listPending({
+      actorId,
+      novelId: novel.id
+    });
+    if (!Array.isArray(rows) || rows.length > 100) denied();
+    const candidates = rows.map((row) => {
+      if (
+        !row ||
+        row.actorId !== actorId ||
+        positiveId(row.novelId) !== novel.id ||
+        !Number.isSafeInteger(row.revision) ||
+        row.revision < 1 ||
+        row.status !== 'pending' ||
+        row.provenance !== 'ai_inferred' ||
+        !KINDS.has(row.factKind) ||
+        typeof row.sourceHash !== 'string' ||
+        !SHA256.test(row.sourceHash)
+      ) {
+        denied();
+      }
+      return {
+        id: positiveId(row.id),
+        revision: row.revision,
+        episodeId: positiveId(row.sourceEpisodeId),
+        kind: row.factKind,
+        key: boundedText(row.factKey, 120),
+        summary: boundedText(row.summary, 320),
+        evidence: boundedText(row.evidence, 160),
+        status: 'pending'
+      };
+    });
+    return { novelId: novel.id, candidates, aiGenerated: false };
+  }
+
+  return Object.freeze({ stage, decide, list });
 }
