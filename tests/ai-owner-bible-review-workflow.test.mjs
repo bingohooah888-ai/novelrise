@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  createOwnerBibleReviewWorkflow
-} from '../api/_lib/ai/owner-bible-review-workflow.js';
+import { createOwnerBibleReviewWorkflow } from '../api/_lib/ai/owner-bible-review-workflow.js';
 import { planNovelBibleEpisodeChanges } from '../api/_lib/ai/novel-bible.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
@@ -216,10 +214,7 @@ test('reject is durable and non-repeatable', async () => {
   const result = await decide({ action: 'reject' });
   assert.equal(result.status, 'rejected');
   assert.equal(state.records.get(1).revision, 2);
-  await assert.rejects(
-    decide({ action: 'reject' }),
-    /AI_OWNER_REVIEW_DENIED/
-  );
+  await assert.rejects(decide({ action: 'reject' }), /AI_OWNER_REVIEW_DENIED/);
 });
 
 test('disabled workflow cannot read a token, DB, or repository', async () => {
@@ -290,10 +285,7 @@ test('reject stale chapters, missing click and revision', async () => {
     decide({ expectedRevision: 4 }),
     /AI_OWNER_REVIEW_DENIED/
   );
-  await assert.rejects(
-    decide({ novelId: 100 }),
-    /AI_OWNER_REVIEW_DENIED/
-  );
+  await assert.rejects(decide({ novelId: 100 }), /AI_OWNER_REVIEW_DENIED/);
   state.episode.content = '新しい原稿';
   await assert.rejects(decide(), /AI_BIBLE_INFERENCE_INVALID/);
   assert.equal(state.records.get(1).status, 'pending');
@@ -322,17 +314,4 @@ test('fail closed for bad repository and settings', async () => {
   state.storedCanon = [{ kind: 'made-up-kind', key: '凛' }];
   await assert.rejects(stage(), /AI_OWNER_REVIEW_DENIED/);
   assert.equal(state.records.size, 0);
-});
-
-
-/* REVIEW_WORKFLOW_PRETTIER_DIAGNOSTIC_TEMP */
-test('print exact repository Prettier output (temporary)', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const prettier = await import('prettier');
-  const path = 'tests/ai-owner-bible-review-workflow.test.mjs';
-  const original = await readFile(path, 'utf8');
-  const clean = original.split('/* REVIEW_WORKFLOW_PRETTIER_DIAGNOSTIC_TEMP */')[0];
-  const config = await prettier.resolveConfig(path);
-  const result = await prettier.format(clean, { ...config, filepath: path });
-  console.log('REVIEW_FMT_BEGIN' + encodeURIComponent(result) + 'REVIEW_FMT_END');
 });
