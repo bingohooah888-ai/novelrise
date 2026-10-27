@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createOwnerNovelBiblePreviewHandler } from '../api/_lib/ai/owner-novel-bible-preview.js';
+import {
+  createOwnerNovelBiblePreviewHandler,
+  resolveOwnerNovelBiblePreviewConfig
+} from '../api/_lib/ai/owner-novel-bible-preview.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
@@ -206,4 +209,24 @@ test('private RPC failures never leak manuscripts', async () => {
     JSON.stringify(res.body),
     /Secret plan|Confidential ending/
   );
+});
+
+test('preview requires the exact administrator UUID in the ID allowlist', async () => {
+  assert.equal(resolveOwnerNovelBiblePreviewConfig(ENV)?.id, OWNER);
+  for (const changes of [
+    { NOVELIGHT_ADMIN_USER_IDS: OTHER },
+    {
+      NOVELIGHT_ADMIN_USER_IDS: '',
+      NOVELIGHT_ADMIN_EMAILS: 'author@example.jp'
+    },
+    { NOVELIGHT_ADMIN_USER_IDS: 'invalid-admin-uuid' },
+    { SUPABASE_PUBLISHABLE_KEY: '' }
+  ]) {
+    const env = { ...ENV, ...changes };
+    assert.equal(resolveOwnerNovelBiblePreviewConfig(env), null);
+    const fixtureData = fixture();
+    const response = await fixtureData.run({ env });
+    assert.equal(response.statusCode, 503);
+    assert.deepEqual(fixtureData.calls, []);
+  }
 });
