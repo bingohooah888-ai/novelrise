@@ -94,6 +94,12 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
             }),
             from: (table) => builder(table)
           };
+          window.__NOVEL_DETAIL_RPC_CALLS__ = [];
+          const originalRpc = client.rpc.bind(client);
+          client.rpc = (name, ...args) => {
+            window.__NOVEL_DETAIL_RPC_CALLS__.push(name);
+            return originalRpc(name, ...args);
+          };
           window.supabase = { createClient: () => client };
         })();
       `
@@ -107,6 +113,17 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
     'naturalWidth',
     100
   );
+  // The saved image must not trigger extra composition RPCs, and the
+  // author's detail page must not hydrate irrelevant reading progress.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        globalThis.__NOVEL_DETAIL_RPC_CALLS__.filter((name) =>
+          name.startsWith('novelight_thumbnail_compositions')
+        )
+      )
+    )
+    .toEqual([]);
   await expect(page.locator('.nl-work-detail-main > .title')).toBeVisible();
   await expect(page.locator('.nl-work-detail-main > .title')).toContainText(
     '作品タイトルの表示確認'
