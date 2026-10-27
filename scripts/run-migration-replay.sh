@@ -61,6 +61,13 @@ SQL
 echo '::endgroup::'
 
 for migration in supabase/migrations/*.sql; do
+  # The newest star-rating retirement intentionally drops legacy schema.
+  # Historical rollback/replay fixtures still exercise that old schema;
+  # apply this cutover in run-rls-integration.sh AFTER those fixtures.
+  if [[ "$migration" == "supabase/migrations/20261027090000_remove_star_ratings_and_schedule_work_ranks.sql" ]]; then
+    echo "::notice::Defer starless Rank cutover until after legacy replay/rollback verification"
+    continue
+  fi
   if [[ "$migration" == "supabase/migrations/20260923064500_secure_beta_author_invites.sql" ]]; then
     echo "::notice::Defer $migration until historical Founding/Auth replay checks finish"
     continue

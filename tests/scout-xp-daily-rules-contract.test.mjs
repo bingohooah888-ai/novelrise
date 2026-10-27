@@ -41,8 +41,8 @@ test('MASTER defines the canonical 40 XP daily SCOUT activity rules', () => {
 
   assert.doesNotMatch(master, /^### ☆評価Scout XP$/m);
   assert.doesNotMatch(master, /^#### ☆評価$/m);
-  assert.match(master, /正当に付与済みの☆評価Scout XPは履歴として保持/);
-  assert.match(master, /仕様変更後の☆評価はScout XP対象外/);
+  assert.match(master, /星評価Scout XPの新規付与仕様は撤廃/);
+  assert.match(master, /過去の正当な実績履歴は遡及取消ししない/);
 });
 
 test('valid reads award separate work and episode SCOUT XP buckets', () => {
@@ -56,7 +56,7 @@ test('valid reads award separate work and episode SCOUT XP buckets', () => {
   assert.match(migration, /episode_id_snapshot = new\.episode_id_snapshot/);
 });
 
-test('star rating remains product data but stops creating future SCOUT XP', () => {
+test('historic star XP was already disabled before schema retirement', () => {
   assert.match(
     migration,
     /create or replace function public\.set_novel_star_rating/
