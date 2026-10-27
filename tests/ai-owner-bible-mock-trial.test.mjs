@@ -228,8 +228,10 @@ test('mock is bounded to three chunks and cannot mutate source data', async () =
     authorConfirmedFacts: []
   });
   const before = JSON.stringify(source);
-  const { factory, state } = trial({
+  let reads = 0;
+  const { factory } = trial({
     async loadSyntheticFixture() {
+      reads += 1;
       return source;
     },
     async mockGenerate({ user }) {
@@ -255,7 +257,7 @@ test('mock is bounded to three chunks and cannot mutate source data', async () =
   assert.ok(result.deferredChunks > 0);
   assert.equal(result.candidates.length, 1);
   assert.equal(JSON.stringify(source), before);
-  assert.equal(state.reads, 2);
+  assert.equal(reads, 2);
   await assert.rejects(
     factory.preview({ principal, novelId: 41, maxChunks: 4 }),
     /TRIAL_DENIED/
@@ -277,4 +279,26 @@ test('model JSON passes chunk validation and reaches private text-only UI', asyn
   assert.match(target.textContent, /凛は青い鍵を持っていた/);
   assert.match(target.textContent, /作者の確定設定と重複/);
   assert.doesNotMatch(target.textContent, /KEEP_UNPUBLISHED_SECRET/);
+});
+
+
+/* NOVELIGHT_04_PRETTIER_DIAGNOSTIC_TEMP */
+test('emit exact Prettier layout for 04 candidate and owner panel tests', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const prettier = await import('prettier');
+  const files = [
+    'tests/ai-owner-bible-mock-trial.test.mjs',
+    'tests/ai-owner-bible-panel.test.mjs'
+  ];
+  for (const filename of files) {
+    const original = await readFile(filename, 'utf8');
+    const cleaned = original.split('/* NOVELIGHT_04_PRETTIER_DIAGNOSTIC_TEMP */')[0];
+    const config = await prettier.resolveConfig(filename);
+    const result = await prettier.format(cleaned, {
+      ...config,
+      filepath: filename
+    });
+    const label = filename.includes('mock-trial') ? 'MOCK' : 'PANEL';
+    console.log('FORMAT_04_' + label + '_BEGIN' + encodeURIComponent(result) + 'FORMAT_04_' + label + '_END');
+  }
 });
