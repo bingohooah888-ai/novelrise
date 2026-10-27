@@ -224,6 +224,20 @@ alter table public.novelight_ai_usage_audit enable row level security;
 alter table public.novelight_ai_bible_facts enable row level security;
 alter table public.novelight_ai_episode_analysis enable row level security;
 
+-- Supabase production service_role has BYPASSRLS; these explicit policies
+-- also allow its non-BYPASSRLS disposable CI counterpart to exercise the
+-- same service-only, fail-closed contract.
+create policy ai_service_access on public.novelight_ai_runtime_settings
+  for all to service_role using (true) with check (true);
+create policy ai_service_access on public.novelight_ai_usage_requests
+  for all to service_role using (true) with check (true);
+create policy ai_service_access on public.novelight_ai_usage_audit
+  for all to service_role using (true) with check (true);
+create policy ai_service_access on public.novelight_ai_bible_facts
+  for all to service_role using (true) with check (true);
+create policy ai_service_access on public.novelight_ai_episode_analysis
+  for all to service_role using (true) with check (true);
+
 revoke all on public.novelight_ai_runtime_settings,
   public.novelight_ai_usage_requests, public.novelight_ai_usage_audit,
   public.novelight_ai_bible_facts, public.novelight_ai_episode_analysis
