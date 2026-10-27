@@ -234,3 +234,17 @@ test('compiler refuses unexpected migration filename, escapes, and postcheck tra
     );
   }
 });
+
+
+test('rejects inline psql meta-command even after a valid SQL statement', () => {
+  assert.throws(
+    () => composeCandidatePersistentSql({
+      version,
+      migrationFile: filename,
+      precheck: 'SELECT 1;',
+      migration: 'BEGIN;\\nSELECT 1; \\\\! id\\nCOMMIT;',
+      postcheck: 'SELECT 1;'
+    }),
+    /metacommands/
+  );
+});
