@@ -1,0 +1,258 @@
+name: NOVELIGHT Pre-Merge Candidate DB Staging Check
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Admit one OWNER candidate and record immutable SQL pins
+    concurrency:
+      group: novelight-staging-candidate-admission-294
+      cancel-in-progress: false
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_CANDIDATE_CHECK_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.verify.outputs.main_sha }}
+      candidate_sha: ${{ steps.verify.outputs.candidate_sha }}
+      pr_number: ${{ steps.verify.outputs.pr_number }}
+      request_id: ${{ steps.verify.outputs.request_id }}
+      migration: ${{ steps.verify.outputs.migration }}
+      manifest_b64: ${{ steps.verify.outputs.manifest_b64 }}
+    steps:
+      - name: Checkout trusted main only, not the candidate branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Bind exact OWNER-approved draft PR and unused ledger entry
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          number="$(printf '%s\n' "$COMMENT_BODY" |
+            sed -n 's/^NOVELIGHT_STAGING_CANDIDATE_CHECK_APPROVE //p' |
+            jq -er '.pr | select(type == "number" and . > 0 and floor == .)')"
+          [[ "$number" =~ ^[1-9][0-9]*$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/candidate-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$number" > /tmp/candidate-pr.json
+          main="$(jq -er '.object.sha' /tmp/candidate-main.json)"
+          head="$(jq -er '.head.sha' /tmp/candidate-pr.json)"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/candidate-compare.json
+          gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$number/files?per_page=100" > /tmp/candidate-files.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/candidate-ledger.json
+          node scripts/staging-candidate-admission.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/candidate-main.json /tmp/candidate-pr.json \
+            /tmp/candidate-compare.json /tmp/candidate-files.json \
+            /tmp/candidate-ledger.json > /tmp/candidate-decision.json
+          test "$(git rev-parse HEAD)" = "$main"
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/candidate-decision.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/candidate-decision.json)"
+            echo "pr_number=$(jq -er '.pr' /tmp/candidate-decision.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/candidate-decision.json)"
+            echo "migration=$(jq -er '.migration' /tmp/candidate-decision.json)"
+            echo "manifest_b64=$(base64 -w0 /tmp/candidate-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+          echo 'Pinned candidate SQL by source Git blob SHA; approval scope is rollback-only.'
+
+      - name: CLAIM one-time approval before Staging secrets can be accessed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.verify.outputs.main_sha }}
+          CANDIDATE: ${{ steps.verify.outputs.candidate_sha }}
+          REQUEST_ID: ${{ steps.verify.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN" --arg candidateSha "$CANDIDATE" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_CANDIDATE_CHECK_CLAIMED $payload" >/dev/null
+
+  stage:
+    name: Verify candidate SQL on dedicated Staging with unconditional ROLLBACK
+    needs: admit
+    if: needs.admit.result == 'success'
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      MAIN: ${{ needs.admit.outputs.main_sha }}
+      CANDIDATE: ${{ needs.admit.outputs.candidate_sha }}
+      PR_NUMBER: ${{ needs.admit.outputs.pr_number }}
+      MIGRATION: ${{ needs.admit.outputs.migration }}
+      MANIFEST_B64: ${{ needs.admit.outputs.manifest_b64 }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-candidate-staging-url
+      PGSSLMODE: require
+    steps:
+      - name: Checkout approved trusted main; never execute candidate code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check exact current refs and fixed isolated Staging environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.head.sha')" = "$CANDIDATE"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.draft')" = true
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.state')" = open
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+
+      - name: Retrieve only three SHA-pinned candidate SQL blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$(mktemp -d)"
+          echo "CANDIDATE_SQL_ROOT=$root" >> "$GITHUB_ENV"
+          printf '%s' "$MANIFEST_B64" | base64 -d > /tmp/candidate-pinned-manifest.json
+          test "$(jq -er '.mainSha' /tmp/candidate-pinned-manifest.json)" = "$MAIN"
+          test "$(jq -er '.candidateSha' /tmp/candidate-pinned-manifest.json)" = "$CANDIDATE"
+          test "$(jq -er '.pr' /tmp/candidate-pinned-manifest.json)" = "$PR_NUMBER"
+          test "$(jq -er '.migration' /tmp/candidate-pinned-manifest.json)" = "$MIGRATION"
+          jq -r '.artifacts | to_entries[] | [.key,.value.path,.value.sha] | join("|")' \
+            /tmp/candidate-pinned-manifest.json > /tmp/candidate-sql-file-list
+          while IFS='|' read -r kind path blob; do
+            [[ "$kind" =~ ^(migration|precheck|postcheck|rollback)$ ]]
+            [[ "$blob" =~ ^[a-f0-9]{40}$ ]]
+            case "$path" in
+              supabase/migrations/*|supabase/checks/*|supabase/rollback/*) ;;
+              *) exit 1 ;;
+            esac
+            gh api "repos/$GITHUB_REPOSITORY/contents/$path?ref=$CANDIDATE" \
+              > /tmp/candidate-blob-response.json
+            jq -e --arg pin "$blob" \
+              '.sha == $pin and .encoding == "base64"' \
+              /tmp/candidate-blob-response.json >/dev/null
+            jq -r '.content' /tmp/candidate-blob-response.json |
+              base64 -d > "$root/$kind.sql"
+            test "$(git hash-object "$root/$kind.sql")" = "$blob"
+          done < /tmp/candidate-sql-file-list
+          test "$(wc -l </tmp/candidate-sql-file-list | tr -d ' ')" = 4
+          node scripts/staging-candidate-sql.mjs compose "$root" \
+            > /tmp/novelight-staging-candidate-rollback.sql
+          echo 'Compiled reviewed SQL only; never execute PR scripts or workflows.'
+
+      - name: Establish and verify dedicated Staging connection
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/resolve-staging-session-pooler.mjs
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          command -v psql
+
+      - name: Require complete main/Staging migration history parity first
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          find supabase/migrations -maxdepth 1 -type f \
+            -name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*.sql' \
+            -printf '%f\n' | cut -c1-14 | sort -u > /tmp/staging-main-migration-versions
+          test -s /tmp/staging-main-migration-versions
+          psql "$STAGING_DATABASE_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c 'SELECT version FROM supabase_migrations.schema_migrations ORDER BY version' \
+            > /tmp/staging-baseline-versions
+          diff -u /tmp/staging-main-migration-versions /tmp/staging-baseline-versions
+          if grep -Fxq "$MIGRATION" /tmp/staging-baseline-versions; then
+            echo 'Candidate migration is already installed; no mutation allowed.'
+            exit 1
+          fi
+
+      - name: Recheck exact refs and execute ONE rollback-only Staging transaction
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.head.sha')" = "$CANDIDATE"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.draft')" = true
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -f /tmp/novelight-staging-candidate-rollback.sql
+          psql "$STAGING_DATABASE_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c 'SELECT version FROM supabase_migrations.schema_migrations ORDER BY version' \
+            > /tmp/staging-after-rollback-versions
+          diff -u /tmp/staging-baseline-versions /tmp/staging-after-rollback-versions
+          echo 'STAGING_CANDIDATE_PASS: all SQL evaluated, transaction rolled back, migration history unchanged.'
+
+      - name: Clean up temporary secrets and SQL
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$STAGING_DATABASE_URL_FILE" /tmp/novelight-staging-candidate-rollback.sql
+          if [ -n "$CANDIDATE_SQL_ROOT" ]; then rm -rf "$CANDIDATE_SQL_ROOT"; fi
+
+  record:
+    name: Consume Staging approval exactly once, regardless of result
+    needs: [admit, stage]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Record one-time CONSUMED result on Issue 294
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          CANDIDATE: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST_ID: ${{ needs.admit.outputs.request_id }}
+          RESULT: ${{ needs.stage.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$RESULT" in success|failure|cancelled|skipped) ;; *) exit 1;; esac
+          body="$(jq -cn --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN" --arg candidateSha "$CANDIDATE" \
+            --arg runId "$GITHUB_RUN_ID" --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_CANDIDATE_CHECK_CONSUMED $body" >/dev/null
+          echo 'One-time Staging approval consumed; no implicit retry.'
