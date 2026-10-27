@@ -211,4 +211,57 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
     return mutations;
   });
   expect(redundantMutations).toBe(0);
+
+  // Regression: asynchronously added character cards must NOT stretch the
+  // left sidebar to the combined height of the synopsis and characters.
+  const characterLayout = await page.evaluate(() => {
+    const dom = globalThis.document;
+    const center = dom.querySelector('.nl-work-detail-center');
+    const section = dom.createElement('section');
+    section.className = 'nl-work-character-section';
+    const heading = dom.createElement('h2');
+    heading.textContent = '登場人物';
+    const cards = dom.createElement('div');
+    cards.className = 'nl-work-character-grid';
+    for (let index = 0; index < 6; index += 1) {
+      const card = dom.createElement('article');
+      card.className = 'nl-work-character-card';
+      card.textContent = `キャラクター${index + 1}の紹介`;
+      cards.appendChild(card);
+    }
+    section.append(heading, cards);
+    center.appendChild(section);
+    const rect = (selector) =>
+      dom.querySelector(selector).getBoundingClientRect();
+    const left = rect('.nl-work-detail-left');
+    const main = rect('.nl-work-detail-main');
+    const characters = rect('.nl-work-character-section');
+    const toc = rect('.nl-work-detail-toc');
+    const grid = rect('.nl-work-detail-grid');
+    const seed = rect('#lightSeedArea');
+    const desktop = globalThis.innerWidth > 1050;
+    return {
+      desktop,
+      leftToMain: Math.abs(left.bottom - main.bottom),
+      charactersBelowMain: characters.top - main.bottom,
+      tocToGrid: Math.abs(toc.bottom - grid.bottom),
+      tocCoversCharacters: toc.bottom >= characters.bottom - 3,
+      seedBelowToc: seed.top >= toc.bottom,
+      centerDisplay: globalThis.getComputedStyle(center).display,
+      leftDisplay: globalThis.getComputedStyle(
+        dom.querySelector('.nl-work-detail-left')
+      ).display
+    };
+  });
+  if (characterLayout.desktop) {
+    expect(characterLayout.leftToMain).toBeLessThan(3);
+    expect(characterLayout.charactersBelowMain).toBeGreaterThanOrEqual(0);
+    expect(characterLayout.tocToGrid).toBeLessThan(3);
+    expect(characterLayout.tocCoversCharacters).toBe(true);
+    expect(characterLayout.seedBelowToc).toBe(true);
+    expect(characterLayout.centerDisplay).toBe('contents');
+    expect(characterLayout.leftDisplay).toBe('flex');
+  } else {
+    expect(characterLayout.centerDisplay).not.toBe('contents');
+  }
 });
