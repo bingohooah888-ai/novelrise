@@ -64,7 +64,12 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
                 data: { subscription: { unsubscribe() {} } }
               })
             },
-            rpc: async (name) => ({
+            rpc: async (name) => {
+              // Delayed outline reproduces the real loading-placeholder race.
+              if (name === 'novelight_novel_outline') {
+                await new Promise((resolve) => setTimeout(resolve, 650));
+              }
+              return {
               data: name === 'novelight_novel_outline' ? [
                 {
                   episode_id: 991, episode_number: 1,
@@ -91,7 +96,8 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
                     ? { total: 2, gold: 1, silver: 1, bronze: 0 }
                     : [],
               error: null
-            }),
+              };
+            },
             from: (table) => builder(table)
           };
           window.supabase = { createClient: () => client };

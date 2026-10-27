@@ -31,6 +31,31 @@
     });
   }
 
+  function waitForEpisodeResults(timeout = 8000) {
+    const list = document.getElementById('episodeList');
+    if (!list) return Promise.resolve(false);
+    const settled = () => {
+      if (list.querySelector('.episode a[href*="episode.html?id="], .error')) return true;
+      const empty = list.querySelector('.empty');
+      return Boolean(empty && !/読み込み中/u.test(empty.textContent || ''));
+    };
+    if (settled()) return Promise.resolve(true);
+    return new Promise((resolve) => {
+      let timer;
+      const observer = new MutationObserver(() => {
+        if (!settled()) return;
+        observer.disconnect();
+        clearTimeout(timer);
+        resolve(true);
+      });
+      observer.observe(list, { childList: true, subtree: true, characterData: true });
+      timer = window.setTimeout(() => {
+        observer.disconnect();
+        resolve(false);
+      }, timeout);
+    });
+  }
+
   function node(tag, className = '', text = '') {
     const element = document.createElement(tag);
     if (className) element.className = className;
@@ -544,7 +569,9 @@
     const id = currentNovelId();
     if (!id) return;
     await waitFor('#favoriteButton');
-    await waitFor('#episodeList a[href*="episode.html?id="]', { timeout: 15000 }).catch(() => null);
+    // Wait for an actual episode link, error, or settled empty state. The
+    // initial .empty node says "読み込み中..." and is NOT a finished response.
+    if (!await waitForEpisodeResults()) return;
     const header = document.getElementById('novelHeader');
     const favorite = document.getElementById('favoriteButton');
     const title = header?.querySelector('.title');
