@@ -214,6 +214,16 @@
       const url = String(value || '').trim();
       if (url && !raw.includes(url)) raw.push(url);
     };
+    // Resolve the saved thumbnail independently of optional artwork services.
+    if (typeof novel !== 'undefined' && String(novel?.id) === String(id)) {
+      push(novel.thumbnail_url);
+    }
+    try {
+      const direct = await client.from('novels').select('thumbnail_url').eq('id', id).maybeSingle();
+      if (!direct.error) push(direct.data?.thumbnail_url);
+    } catch (error) {
+      console.warn('saved thumbnail lookup unavailable', error);
+    }
     try {
       const custom = await client.from('novel_custom_covers')
         .select('storage_path').eq('novel_id', Number(id)).maybeSingle();
@@ -222,8 +232,6 @@
         const url = client.storage.from('novel-custom-covers').getPublicUrl(path);
         push(url.data?.publicUrl);
       }
-      const direct = await client.from('novels').select('thumbnail_url').eq('id', id).maybeSingle();
-      if (!direct.error) push(direct.data?.thumbnail_url);
       let composition = await client.rpc('novelight_thumbnail_compositions_v3', { p_novel_ids: [String(id)] });
       if (['42883', '42P01', '42703'].includes(String(composition.error?.code || ''))) {
         composition = await client.rpc('novelight_thumbnail_compositions_v2', { p_novel_ids: [String(id)] });
@@ -252,9 +260,20 @@
   }
 
   async function mountCover(id, cover) {
+    // Display the novel's saved thumbnail before any optional network lookups.
+    const saved = typeof novel !== 'undefined' && String(novel?.id) === String(id)
+      ? String(novel.thumbnail_url || '').trim() : '';
+    if (saved) {
+      const initial = node('img');
+      initial.alt = '';
+      initial.loading = 'eager';
+      initial.decoding = 'async';
+      initial.src = saved;
+      cover.replaceChildren(initial);
+    }
     const candidates = await coverCandidates(id);
     if (!candidates.length) {
-      coverPlaceholder(cover);
+      if (!saved) coverPlaceholder(cover);
       return;
     }
     let index = 0;
