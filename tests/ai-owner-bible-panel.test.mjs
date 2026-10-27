@@ -102,13 +102,13 @@ test('empty owner Bible sources display explicit no-data states', () => {
   });
   assert.equal(ok, true);
   assert.equal(target.hidden, false);
-  assert.match(target.textContent, /登場人物[^]*まだ登録されていません/);
-  assert.match(target.textContent, /創作ノート（非公開）[^]*まだ登録されていません/);
-  assert.match(target.textContent, /確認候補[^]*確認候補はありません/);
+  assert.match(target.textContent, /【登場人物】\n・まだ登録/);
+  assert.match(target.textContent, /【創作ノート（非公開）】\n・まだ登録/);
+  assert.match(target.textContent, /【確認候補】\n・確認候補はありません/);
   assert.match(target.textContent, /AIによる自動抽出は未実施/);
 });
 
-test('owner Bible with existing records does not display misleading no-data states', () => {
+test('populated owner Bible omits empty-state markers', () => {
   const target = fakeNode();
   const ok = render({
     target,
