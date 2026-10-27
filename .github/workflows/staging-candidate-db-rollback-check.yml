@@ -66,12 +66,14 @@ jobs:
             /tmp/candidate-compare.json /tmp/candidate-files.json \
             /tmp/candidate-ledger.json > /tmp/candidate-decision.json
           test "$(git rev-parse HEAD)" = "$main"
-          echo "main_sha=$(jq -er '.mainSha' /tmp/candidate-decision.json)" >> "$GITHUB_OUTPUT"
-          echo "candidate_sha=$(jq -er '.candidateSha' /tmp/candidate-decision.json)" >> "$GITHUB_OUTPUT"
-          echo "pr_number=$(jq -er '.pr' /tmp/candidate-decision.json)" >> "$GITHUB_OUTPUT"
-          echo "request_id=$(jq -er '.requestCommentId' /tmp/candidate-decision.json)" >> "$GITHUB_OUTPUT"
-          echo "migration=$(jq -er '.migration' /tmp/candidate-decision.json)" >> "$GITHUB_OUTPUT"
-          echo "manifest_b64=$(base64 -w0 /tmp/candidate-decision.json)" >> "$GITHUB_OUTPUT"
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/candidate-decision.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/candidate-decision.json)"
+            echo "pr_number=$(jq -er '.pr' /tmp/candidate-decision.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/candidate-decision.json)"
+            echo "migration=$(jq -er '.migration' /tmp/candidate-decision.json)"
+            echo "manifest_b64=$(base64 -w0 /tmp/candidate-decision.json)"
+          } >> "$GITHUB_OUTPUT"
           echo 'Pinned candidate SQL by source Git blob SHA; approval scope is rollback-only.'
 
       - name: CLAIM one-time approval before Staging secrets can be accessed
