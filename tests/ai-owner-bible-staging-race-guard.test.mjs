@@ -86,3 +86,15 @@ test('SQL remains a non-migration proposal until staging approval', async () => 
   assert.match(sql, /revoke all on public\.novelight_ai_review_candidates/);
   assert.match(sql, /revoke all on function/);
 });
+
+
+/* STAGING_RACE_PRETTIER_DIAGNOSTIC_TEMP */
+test('temporary repo Prettier exact fixture', async () => {
+  const prettier = await import('prettier');
+  const filename = 'tests/ai-owner-bible-staging-race-guard.test.mjs';
+  const source = await readFile(new URL('./ai-owner-bible-staging-race-guard.test.mjs', import.meta.url), 'utf8');
+  const clean = source.split('/* STAGING_RACE_PRETTIER_DIAGNOSTIC_TEMP */')[0];
+  const config = await prettier.resolveConfig(filename);
+  const formatted = await prettier.format(clean, { ...config, filepath: filename });
+  console.log('STAGING_RACE_FMT_BEGIN' + encodeURIComponent(formatted) + 'STAGING_RACE_FMT_END');
+});
