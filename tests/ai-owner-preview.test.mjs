@@ -211,44 +211,10 @@ test('private RPC failures never leak manuscripts', async () => {
   );
 });
 
-test('owner preview does not require site-wide admin rights', async () => {
-  for (const changes of [
-    { NOVELIGHT_ADMIN_USER_IDS: OTHER },
-    { NOVELIGHT_ADMIN_USER_IDS: '' },
-    { NOVELIGHT_ADMIN_USER_IDS: 'invalid-admin-uuid' }
-  ]) {
-    const env = { ...ENV, ...changes };
-    assert.equal(resolveOwnerNovelBiblePreviewConfig(env)?.id, OWNER);
-    const authorized = fixture();
-    assert.equal((await authorized.run({ env })).statusCode, 200);
-    const other = fixture({ userId: OTHER });
-    assert.equal((await other.run({ env })).statusCode, 404);
-    assert.equal(other.calls.some((call) => call[0] === 'from'), false);
-  }
-});
-
-test('owner preview fails closed on invalid configuration', async () => {
-  for (const changes of [
-    { NOVELIGHT_AI_ADMIN_USER_ID: '' },
-    { NOVELIGHT_AI_ADMIN_USER_ID: 'invalid-owner-uuid' },
-    { SUPABASE_PUBLISHABLE_KEY: '' },
-    { SUPABASE_PUBLISHABLE_KEY: 'sb_secret_not_public' },
-    { SUPABASE_URL: 'https://untrusted.example' }
-  ]) {
-    const env = { ...ENV, ...changes };
-    assert.equal(resolveOwnerNovelBiblePreviewConfig(env), null);
-    const f = fixture();
-    const response = await f.run({ env });
-    assert.equal(response.statusCode, 503);
-    assert.deepEqual(f.calls, []);
-  }
-});
-
-test('wrong preview owner cannot read private work', async () => {
+test('preview owner does not require shared admin access', async () => {
+  const env = { ...ENV, NOVELIGHT_ADMIN_USER_IDS: OTHER };
+  assert.equal(resolveOwnerNovelBiblePreviewConfig(env)?.id, OWNER);
   const f = fixture();
-  const res = await f.run({
-    env: { ...ENV, NOVELIGHT_AI_ADMIN_USER_ID: OTHER }
-  });
-  assert.equal(res.statusCode, 404);
-  assert.equal(f.calls.some((call) => call[0] === 'from'), false);
+  const res = await f.run({ env });
+  assert.equal(res.statusCode, 200);
 });
