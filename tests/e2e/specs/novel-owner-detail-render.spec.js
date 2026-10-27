@@ -20,7 +20,8 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
             title: '作品タイトルの表示確認', genre: '現代ファンタジー',
             description: window.__NOVEL_DETAIL_TEST_SYNOPSIS__,
             ai_usage: 'human', content_rating: 'general', content_warnings: [],
-            created_at: '2026-09-28T00:00:00Z', show_episode_numbers: true
+            created_at: '2026-09-28T00:00:00Z', show_episode_numbers: true,
+            thumbnail_url: 'data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%22100%22%20height=%22150%22%3E%3Crect%20width=%22100%22%20height=%22150%22%20fill=%22teal%22/%3E%3C/svg%3E'
           };
           function builder(table) {
             let selected = '';
@@ -99,6 +100,8 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
 
   await page.goto('/novel.html?id=354', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.nl-work-detail-grid')).toBeVisible();
+  await expect(page.locator('.nl-work-detail-cover img')).toBeVisible();
+  await expect(page.locator('.nl-work-detail-cover img')).toHaveJSProperty('complete', true);
   await expect(page.locator('.nl-work-detail-main > .title')).toBeVisible();
   await expect(page.locator('.nl-work-detail-main > .title')).toContainText(
     '作品タイトルの表示確認'
