@@ -125,7 +125,10 @@ test('owner verified before and after response receives private view once', asyn
   };
   assert.equal(await attach(args), true);
   assert.equal(f.main.children.length, 1);
-  assert.equal(f.main.children[0].attributes['aria-label'], '作品カルテ（管理人限定・非公開）');
+  assert.equal(
+    f.main.children[0].attributes['aria-label'],
+    '作品カルテ（管理人限定・非公開）'
+  );
   assert.equal(
     f.main.children[0].children[0].textContent,
     '非公開の本文と設定'
@@ -165,9 +168,14 @@ test('account switch before append and missing auth listener fail closed', async
 });
 
 test('private notebook mounts only after existing novel ownership and notes load', async () => {
-  const html = await readFile(new URL('../story-notes.html', import.meta.url), 'utf8');
+  const html = await readFile(
+    new URL('../story-notes.html', import.meta.url),
+    'utf8'
+  );
   const verified = html.indexOf('result.data.user_id!==session.user.id');
-  const notes = html.indexOf('await loadCharacters();await loadNotes();ready=true;');
+  const notes = html.indexOf(
+    'await loadCharacters();await loadNotes();ready=true;'
+  );
   const mounted = html.indexOf('NovelightAiBibleOwnerStudio.attach(');
   assert.ok(verified >= 0 && notes > verified && mounted > notes);
   assert.ok(html.includes('src="novelight-ai-bible-owner-panel.js"'));
