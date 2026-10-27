@@ -1,5 +1,7 @@
 // Phase 2 internal read-only factory; deliberately NOT mounted as an API route.
 // No author UI, paid AI calls, DB mutations, or public exposure in this change.
+import { URL } from 'node:url';
+
 import { createClient } from '@supabase/supabase-js';
 import { applyAdminSecurityHeaders, requireAdmin } from '../admin-auth.js';
 import { groupNovelBibleFacts } from './novel-bible.js';
