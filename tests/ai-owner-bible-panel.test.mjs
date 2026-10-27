@@ -122,5 +122,8 @@ test('populated owner Bible omits empty-state markers', () => {
   assert.match(target.textContent, /主人公/);
   assert.match(target.textContent, /作者のみの設定/);
   assert.match(target.textContent, /世界設定/);
-  assert.doesNotMatch(target.textContent, /まだ登録されていません|確認候補はありません/);
+  assert.doesNotMatch(
+    target.textContent,
+    /まだ登録されていません|確認候補はありません/
+  );
 });
