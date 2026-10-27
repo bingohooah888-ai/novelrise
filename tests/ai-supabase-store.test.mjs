@@ -257,7 +257,6 @@ test('Novel Bible rejects cross-work episode source before creating a fact', asy
   );
 });
 
-
 function ownerCanonClient({
   ownerId = OWNER,
   characters = [],
@@ -267,12 +266,22 @@ function ownerCanonClient({
   const calls = [];
   return {
     calls,
-    rpc() { throw new Error('no rpc calls expected'); },
+    rpc() {
+      throw new Error('no rpc calls expected');
+    },
     from(table) {
       const query = {
-        select(fields) { calls.push({ table, fields }); return query; },
-        eq(key, value) { calls.push({ table, key, value }); return query; },
-        order() { return query; },
+        select(fields) {
+          calls.push({ table, fields });
+          return query;
+        },
+        eq(key, value) {
+          calls.push({ table, key, value });
+          return query;
+        },
+        order() {
+          return query;
+        },
         async limit(limit) {
           calls.push({ table, limit });
           return {
@@ -293,32 +302,42 @@ function ownerCanonClient({
   };
 }
 
-test('owner-only Novel Bible canon reads the existing private tables safely', async () => {
+test('owner-only canon reads the existing private tables', async () => {
   const client = ownerCanonClient({
-    characters: [
-      { id: 3, novel_id: 17, name: 'Hero', aliases: ['Alias'] }
-    ],
-    notes: [{
-      id: 8, novel_id: 17, note_type: 'character',
-      character_id: 3, title: 'Backstory', body: 'Private plot'
-    }]
+    characters: [{ id: 3, novel_id: 17, name: 'Hero', aliases: ['Alias'] }],
+    notes: [
+      {
+        id: 8,
+        novel_id: 17,
+        note_type: 'character',
+        character_id: 3,
+        title: 'Backstory',
+        body: 'Private plot'
+      }
+    ]
   });
   const bible = createSupabaseAiBible({ serviceClient: client });
   const view = await bible.listOwnerCanon({ actorId: OWNER, novelId: 17 });
   assert.equal(view.characters[0].name, 'Hero');
   assert.equal(view.notes[0].body, 'Private plot');
   assert.deepEqual(
-    client.calls.filter(x => x.limit).map(x => [x.table, x.limit]),
-    [['novel_characters', 101], ['novel_private_story_notes', 201]]
+    client.calls.filter((x) => x.limit).map((x) => [x.table, x.limit]),
+    [
+      ['novel_characters', 101],
+      ['novel_private_story_notes', 201]
+    ]
   );
   assert.deepEqual(
-    client.calls.filter(x => x.key === 'novel_id').map(x => x.value),
+    client.calls.filter((x) => x.key === 'novel_id').map((x) => x.value),
     [17, 17]
   );
-  assert.equal(client.calls.some(x => x.inserted || x.updated), false);
+  assert.equal(
+    client.calls.some((x) => x.inserted || x.updated),
+    false
+  );
 });
 
-test('owner check denies other authors before touching private notes', async () => {
+test('owner check denies strangers before private table access', async () => {
   const client = ownerCanonClient();
   const bible = createSupabaseAiBible({ serviceClient: client });
   await assert.rejects(
@@ -326,26 +345,32 @@ test('owner check denies other authors before touching private notes', async () 
     /AI_ACCESS_DENIED/
   );
   assert.equal(
-    client.calls.some(x =>
-      x.table === 'novel_characters' || x.table === 'novel_private_story_notes'
+    client.calls.some(
+      (x) =>
+        x.table === 'novel_characters' ||
+        x.table === 'novel_private_story_notes'
     ),
     false
   );
 });
 
-test('partial read failure and forged cross-work canon are fail-closed', async () => {
-  const storageFailure = ownerCanonClient({ failTable: 'novel_private_story_notes' });
-  await assert.rejects(
-    createSupabaseAiBible({ serviceClient: storageFailure })
-      .listOwnerCanon({ actorId: OWNER, novelId: 17 }),
-    AiStorageError
-  );
-  const mismatch = ownerCanonClient({
-    characters: [{ id: 1, novel_id: 99, name: 'Foreign', aliases: [] }]
+test('canon rejects missing private data and cross-novel rows', async () => {
+  const broken = createSupabaseAiBible({
+    serviceClient: ownerCanonClient({
+      failTable: 'novel_private_story_notes'
+    })
   });
   await assert.rejects(
-    createSupabaseAiBible({ serviceClient: mismatch })
-      .listOwnerCanon({ actorId: OWNER, novelId: 17 }),
+    broken.listOwnerCanon({ actorId: OWNER, novelId: 17 }),
+    AiStorageError
+  );
+  const mismatch = createSupabaseAiBible({
+    serviceClient: ownerCanonClient({
+      characters: [{ id: 1, novel_id: 99, name: 'Foreign', aliases: [] }]
+    })
+  });
+  await assert.rejects(
+    mismatch.listOwnerCanon({ actorId: OWNER, novelId: 17 }),
     /AI_NOVEL_BIBLE_INVALID_SOURCE/
   );
 });

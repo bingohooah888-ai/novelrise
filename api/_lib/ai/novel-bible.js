@@ -206,7 +206,6 @@ export function groupNovelBibleFacts({ principal, novel, facts }) {
   };
 }
 
-
 // A projection of Chapter 43's existing author-managed source of truth.
 // It is neither a second notebook nor an AI-generated fact record. No model
 // input/output or reader-facing endpoint is created by this projection.

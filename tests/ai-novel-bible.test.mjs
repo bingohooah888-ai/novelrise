@@ -344,32 +344,54 @@ test('offline planning makes no network request and does not mutate inputs', () 
   }
 });
 
-
-test('author canon reuses Chapter 43 characters and notes without elevating AI guesses', async () => {
+test('author canon reuses Chapter 43 records without elevating AI guesses', () => {
   const view = projectNovelBibleAuthorCanon({
     principal: author,
     novel,
     characters: [
-      { id: 8, novel_id: 41, name: 'Secret identity', aliases: ['Masked one'] },
+      {
+        id: 8,
+        novel_id: 41,
+        name: 'Secret identity',
+        aliases: ['Masked one']
+      },
       { id: 2, novel_id: 41, name: 'Main hero', aliases: [] }
     ],
     notes: [
       {
-        id: 5, novel_id: 41, note_type: 'character', character_id: 8,
-        title: 'Author character note', body: 'Hidden backstory'
+        id: 5,
+        novel_id: 41,
+        note_type: 'character',
+        character_id: 8,
+        title: 'Author character note',
+        body: 'Hidden backstory'
       },
       {
-        id: 1, novel_id: 41, note_type: 'world', character_id: null,
-        title: 'World', body: 'Unpublished secret'
+        id: 1,
+        novel_id: 41,
+        note_type: 'world',
+        character_id: null,
+        title: 'World',
+        body: 'Unpublished secret'
       },
       {
-        id: 7, novel_id: 41, note_type: 'character', character_id: null,
-        title: 'Deleted-character notes survive', body: ''
+        id: 7,
+        novel_id: 41,
+        note_type: 'character',
+        character_id: null,
+        title: 'Deleted-character notes survive',
+        body: ''
       }
     ]
   });
-  assert.deepEqual(view.characters.map((entry) => entry.id), [2, 8]);
-  assert.deepEqual(view.notes.map((entry) => entry.id), [1, 5, 7]);
+  assert.deepEqual(
+    view.characters.map((entry) => entry.id),
+    [2, 8]
+  );
+  assert.deepEqual(
+    view.notes.map((entry) => entry.id),
+    [1, 5, 7]
+  );
   assert.equal(view.notes[1].characterId, 8);
   assert.equal(view.notes[2].characterId, null);
   assert.equal(view.notes[1].source, 'novel_private_story_notes');
@@ -377,15 +399,25 @@ test('author canon reuses Chapter 43 characters and notes without elevating AI g
   assert.equal(JSON.stringify(view).includes('ai_inferred'), false);
 });
 
-test('Chapter 43 canon never allows other authors, cross-work notes, or fabricated links', () => {
+test('canon rejects other owners, foreign rows and false character links', () => {
   const characters = [{ id: 4, novel_id: 41, name: 'Hero', aliases: [] }];
-  const notes = [{
-    id: 9, novel_id: 41, note_type: 'character', character_id: 4,
-    title: 'Secret', body: 'Author-only'
-  }];
+  const notes = [
+    {
+      id: 9,
+      novel_id: 41,
+      note_type: 'character',
+      character_id: 4,
+      title: 'Secret',
+      body: 'Author-only'
+    }
+  ];
   function project(overrides = {}) {
     return projectNovelBibleAuthorCanon({
-      principal: author, novel, characters, notes, ...overrides
+      principal: author,
+      novel,
+      characters,
+      notes,
+      ...overrides
     });
   }
   assert.throws(
@@ -409,18 +441,29 @@ test('Chapter 43 canon never allows other authors, cross-work notes, or fabricat
   }
 });
 
-test('Chapter 43 canon does not mutate the source or make network/AI calls', () => {
+test('canon projection makes no network calls and never mutates input', () => {
   const characters = [{ id: 1, novel_id: 41, name: 'Hero', aliases: ['H'] }];
-  const notes = [{
-    id: 2, novel_id: 41, note_type: 'plot', character_id: null,
-    title: 'Ending', body: 'Do not reveal'
-  }];
+  const notes = [
+    {
+      id: 2,
+      novel_id: 41,
+      note_type: 'plot',
+      character_id: null,
+      title: 'Ending',
+      body: 'Do not reveal'
+    }
+  ];
   const before = JSON.stringify({ characters, notes });
   const oldFetch = globalThis.fetch;
-  globalThis.fetch = () => { throw new Error('NETWORK_FORBIDDEN'); };
+  globalThis.fetch = () => {
+    throw new Error('NETWORK_FORBIDDEN');
+  };
   try {
     const view = projectNovelBibleAuthorCanon({
-      principal: author, novel, characters, notes
+      principal: author,
+      novel,
+      characters,
+      notes
     });
     view.characters[0].aliases.push('Mutation should stay local');
     assert.equal(JSON.stringify({ characters, notes }), before);
