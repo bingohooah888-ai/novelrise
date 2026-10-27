@@ -3,7 +3,11 @@
 import { URL } from 'node:url';
 
 import { createClient } from '@supabase/supabase-js';
-import { applyAdminSecurityHeaders, requireAdmin } from '../admin-auth.js';
+import {
+  applyAdminSecurityHeaders,
+  parseAdminAllowlist,
+  requireAdmin
+} from '../admin-auth.js';
 import { groupNovelBibleFacts } from './novel-bible.js';
 import { AiStorageError, createSupabaseAiBible } from './supabase-store.js';
 
@@ -29,7 +33,7 @@ function parsePublicKey(value) {
   }
 }
 
-function previewConfig(env) {
+export function resolveOwnerNovelBiblePreviewConfig(env) {
   const id = env.NOVELIGHT_AI_ADMIN_USER_ID;
   const key = parsePublicKey(
     env.SUPABASE_PUBLISHABLE_KEY ?? env.SUPABASE_ANON_KEY
@@ -48,6 +52,10 @@ function previewConfig(env) {
     ) {
       return null;
     }
+    // Require this exact owner UUID in the ID-based admin allowlist.
+    // Email-only admin access must never activate private AI preview.
+    const allowlist = parseAdminAllowlist(env);
+    if (!allowlist.userIds.has(id.toLowerCase())) return null;
     return { id: id.toLowerCase(), url: url.origin, key };
   } catch {
     return null;
@@ -85,7 +93,7 @@ export function createOwnerNovelBiblePreviewHandler({
     if (env.NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED !== 'true') {
       return fail(res, 404, 'NOT_FOUND');
     }
-    const config = previewConfig(env);
+    const config = resolveOwnerNovelBiblePreviewConfig(env);
     if (!config) return fail(res, 503, 'AI_PREVIEW_UNAVAILABLE');
 
     let admin;
