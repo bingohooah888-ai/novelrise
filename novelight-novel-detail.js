@@ -568,6 +568,10 @@
     if (!/(^|\/)novel\.html$/u.test(window.location.pathname) || document.body.classList.contains('nl-work-detail-v2')) return;
     const id = currentNovelId();
     if (!id) return;
+    // Lock across duplicate script loads before any async DOM work.
+    // Without this, two control-move observers can fight over the same nodes.
+    if (window.__novelightDetailBootClaimed) return;
+    window.__novelightDetailBootClaimed = true;
     await waitFor('#favoriteButton');
     // Wait for an actual episode link, error, or settled empty state. The
     // initial .empty node says "読み込み中..." and is NOT a finished response.
@@ -599,7 +603,7 @@
     stripReaderPv(meta);
     collapseTags(tags);
     const items = outlineItems(rows);
-    await syncProgress(id);
+    if (!viewerOwnsNovel) await syncProgress(id);
     const target = viewerOwnsNovel ? null : continueTarget(publishedRows, readProgress(id));
     const grid = node('div', 'nl-work-detail-grid');
     grid.id = 'novelightWorkDetailGrid';
