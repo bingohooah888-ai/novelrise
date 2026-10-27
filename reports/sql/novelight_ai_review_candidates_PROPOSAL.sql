@@ -47,8 +47,8 @@ begin
     raise exception using errcode = '42501', message = 'AI service access required';
   end if;
   if p_actor_id is null or p_novel_id is null or p_episode_id is null
-    or p_source_hash !~ '^[a-f0-9]{64}$'
-    or p_request_hash !~ '^[a-f0-9]{64}$'
+    or p_source_hash is null or p_source_hash !~ '^[a-f0-9]{64}$'
+    or p_request_hash is null or p_request_hash !~ '^[a-f0-9]{64}$'
     or jsonb_typeof(p_candidates) is distinct from 'array'
   then
     raise exception using errcode = '22023', message = 'Invalid review batch';
@@ -122,9 +122,9 @@ begin
     raise exception using errcode = '42501', message = 'AI service access required';
   end if;
   if p_actor_id is null or p_novel_id is null or p_candidate_id is null
-    or p_source_hash !~ '^[a-f0-9]{64}$'
+    or p_source_hash is null or p_source_hash !~ '^[a-f0-9]{64}$'
     or p_expected_revision is null or p_expected_revision < 1
-    or p_decision not in ('accepted', 'rejected')
+    or p_decision is null or p_decision not in ('accepted', 'rejected')
   then
     raise exception using errcode = '22023', message = 'Invalid review decision';
   end if;
