@@ -104,21 +104,14 @@ test('model output cannot invent source quotes or privileged metadata', () => {
     JSON.stringify({
       suggestions: [{ ...suggestion, kind: 'unapproved-kind' }]
     }),
-    JSON.stringify({
-      suggestions: [suggestion, suggestion]
-    }),
-    JSON.stringify({
-      suggestions: Array.from({ length: 13 }, () => suggestion)
-    }),
+    JSON.stringify({ suggestions: [suggestion, suggestion] }),
+    JSON.stringify({ suggestions: Array.from({ length: 13 }, () => suggestion) }),
     JSON.stringify({
       suggestions: [{ ...suggestion, summary: 'a'.repeat(321) }]
     }),
     JSON.stringify({ suggestions: [suggestion], commands: ['delete'] })
   ]) {
-    assert.throws(
-      () => review({ modelText }),
-      /AI_BIBLE_INFERENCE_INVALID/
-    );
+    assert.throws(() => review({ modelText }), /AI_BIBLE_INFERENCE_INVALID/);
   }
 });
 
