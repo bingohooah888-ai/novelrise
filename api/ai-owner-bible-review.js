@@ -91,9 +91,7 @@ export function createOwnerBibleReviewApiHandler({
       if (
         typeof req.headers?.origin !== 'string' ||
         req.headers['x-novelight-review'] !== '1' ||
-        !/^application\/json(?:\s*;|$)/i.test(
-          req.headers['content-type'] ?? ''
-        )
+        !/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] ?? '')
       ) {
         return fail(res, 403, 'FORBIDDEN');
       }
@@ -130,9 +128,7 @@ export function createOwnerBibleReviewApiHandler({
         repository
       });
       if (req.method === 'GET') {
-        return res.status(200).json(
-          await workflow.list({ token, novelId })
-        );
+        return res.status(200).json(await workflow.list({ token, novelId }));
       }
       return res.status(200).json(
         await workflow.decide({
