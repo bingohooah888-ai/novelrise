@@ -108,6 +108,12 @@ test('owner checks, stale chapters and forged segments fail closed', () => {
     () => read({ episode: { ...e, content: e.content + '修正' } }),
     /AI_BIBLE_CHUNK_INVALID/
   );
+  const halfEmoji = e.content.slice(0, 1);
+  const forgedChunk = { ...chunk, end: 1 };
+  forgedChunk.byteLength = Buffer.byteLength(halfEmoji, 'utf8');
+  forgedChunk.chunkHash = createHash('sha256')
+    .update(halfEmoji)
+    .digest('hex');
   const cases = [
     { ...chunk, episodeId: 99 },
     { ...chunk, end: e.content.length + 1 },
@@ -115,14 +121,7 @@ test('owner checks, stale chapters and forged segments fail closed', () => {
     { ...chunk, chunkHash: '0'.repeat(64) },
     { ...chunk, sourceHash: '0'.repeat(64) },
     { ...chunk, reason: 'confirmed' },
-    {
-      ...chunk,
-      end: 1,
-      byteLength: Buffer.byteLength(e.content.slice(0, 1), 'utf8'),
-      chunkHash: createHash('sha256')
-        .update(e.content.slice(0, 1))
-        .digest('hex')
-    }
+    forgedChunk
   ];
   for (const candidate of cases) {
     assert.throws(() => read({ chunk: candidate }), /AI_BIBLE_CHUNK_INVALID/);
