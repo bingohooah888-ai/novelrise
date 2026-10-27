@@ -149,4 +149,21 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await expect(page.locator('#receivedSeedArea')).toBeVisible();
   await expect(page.locator('.nl-work-detail-bookmeta')).toBeVisible();
   await expect(page.locator('.nl-work-detail-toc')).toContainText('下書き');
+  await expect(page.locator('.nl-work-author-episodes')).toHaveText(
+    '公開1話・下書き1話'
+  );
+  // Updating identical textContent was recreating a text node on every
+  // animation frame, waking the page-wide MutationObserver indefinitely.
+  const redundantMutations = await page.evaluate(async () => {
+    const target = document.querySelector('.nl-work-author-episodes');
+    let mutations = 0;
+    const observer = new MutationObserver((records) => {
+      mutations += records.length;
+    });
+    observer.observe(target, { childList: true, subtree: true });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    observer.disconnect();
+    return mutations;
+  });
+  expect(redundantMutations).toBe(0);
 });
