@@ -323,3 +323,16 @@ test('fail closed for bad repository and settings', async () => {
   await assert.rejects(stage(), /AI_OWNER_REVIEW_DENIED/);
   assert.equal(state.records.size, 0);
 });
+
+
+/* REVIEW_WORKFLOW_PRETTIER_DIAGNOSTIC_TEMP */
+test('print exact repository Prettier output (temporary)', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const prettier = await import('prettier');
+  const path = 'tests/ai-owner-bible-review-workflow.test.mjs';
+  const original = await readFile(path, 'utf8');
+  const clean = original.split('/* REVIEW_WORKFLOW_PRETTIER_DIAGNOSTIC_TEMP */')[0];
+  const config = await prettier.resolveConfig(path);
+  const result = await prettier.format(clean, { ...config, filepath: path });
+  console.log('REVIEW_FMT_BEGIN' + encodeURIComponent(result) + 'REVIEW_FMT_END');
+});
