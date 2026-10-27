@@ -9,6 +9,29 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await page.addInitScript((synopsis) => {
     globalThis.__NOVEL_DETAIL_TEST_SYNOPSIS__ = synopsis;
   }, SAMPLE_SYNOPSIS);
+  // Diagnostic-only observer guard to identify an event-loop mutation storm.
+  // On runaway callbacks, disconnect the specific observer and record its origin.
+  await page.addInitScript(() => {
+    const NativeObserver = globalThis.MutationObserver;
+    let observerId = 0;
+    globalThis.MutationObserver = class DiagnosticMutationObserver extends NativeObserver {
+      constructor(callback) {
+        const id = ++observerId;
+        const origin = new Error().stack?.split('\\n').slice(1, 5).join(' | ') || 'unknown';
+        let callbacks = 0;
+        super((records, observer) => {
+          callbacks += 1;
+          if (callbacks === 150) console.error('[NOVELIGHT_DIAG] observer 150 callbacks', id, origin);
+          if (callbacks === 600) {
+            console.error('[NOVELIGHT_DIAG] disconnecting runaway observer', id, origin);
+            observer.disconnect();
+            return;
+          }
+          callback(records, observer);
+        });
+      }
+    };
+  });
   await page.route('**/assets/vendor/supabase-js-2.112.3.js', async (route) => {
     await route.fulfill({
       status: 200,
