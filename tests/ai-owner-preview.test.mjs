@@ -211,7 +211,7 @@ test('private RPC failures never leak manuscripts', async () => {
   );
 });
 
-test('owner-only preview is independent from site-wide administrator allowlist', async () => {
+test('owner preview does not require site-wide admin rights', async () => {
   for (const changes of [
     { NOVELIGHT_ADMIN_USER_IDS: OTHER },
     { NOVELIGHT_ADMIN_USER_IDS: '' },
@@ -227,7 +227,7 @@ test('owner-only preview is independent from site-wide administrator allowlist',
   }
 });
 
-test('preview rejects incomplete dedicated owner config before authentication', async () => {
+test('owner preview fails closed on invalid configuration', async () => {
   for (const changes of [
     { NOVELIGHT_AI_ADMIN_USER_ID: '' },
     { NOVELIGHT_AI_ADMIN_USER_ID: 'invalid-owner-uuid' },
@@ -244,7 +244,7 @@ test('preview rejects incomplete dedicated owner config before authentication', 
   }
 });
 
-test('a different configured preview owner never inherits admin access', async () => {
+test('wrong preview owner cannot read private work', async () => {
   const f = fixture();
   const res = await f.run({
     env: { ...ENV, NOVELIGHT_AI_ADMIN_USER_ID: OTHER }
