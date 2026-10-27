@@ -126,6 +126,19 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
         leftToMain: Math.abs(left.bottom - main.bottom),
         leftToToc: Math.abs(left.bottom - toc.bottom),
         tocToGrid: Math.abs(toc.bottom - grid.bottom),
+      tocBottom: toc.bottom,
+      gridBottom: grid.bottom,
+      characterBottom: characters.bottom,
+      gridTemplateAreas: globalThis.getComputedStyle(
+        dom.querySelector('.nl-work-detail-grid')
+      ).gridTemplateAreas,
+      gridTemplateRows: globalThis.getComputedStyle(
+        dom.querySelector('.nl-work-detail-grid')
+      ).gridTemplateRows,
+      tocGridArea: globalThis.getComputedStyle(
+        dom.querySelector('.nl-work-detail-toc')
+      ).gridArea,
+      tocHeight: toc.height,
         tocToSeed: seed.top - toc.bottom,
         position: globalThis.getComputedStyle(tocNode).position
       };
@@ -230,7 +243,9 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
       cards.appendChild(card);
     }
     section.append(heading, cards);
-    const gridHeightBefore = dom.querySelector('.nl-work-detail-grid').getBoundingClientRect().height;
+    const gridHeightBefore = dom
+      .querySelector('.nl-work-detail-grid')
+      .getBoundingClientRect().height;
     center.appendChild(section);
     const rect = (selector) =>
       dom.querySelector(selector).getBoundingClientRect();
@@ -259,8 +274,13 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   if (characterLayout.desktop) {
     expect(characterLayout.leftToMain).toBeLessThan(3);
     expect(characterLayout.charactersBelowMain).toBeGreaterThanOrEqual(0);
-    expect(characterLayout.tocToGrid).toBeLessThan(3);
-    expect(characterLayout.gridGrowth).toBeLessThan(characterLayout.characterHeight + 100);
+    expect(
+      characterLayout.tocToGrid,
+      JSON.stringify(characterLayout)
+    ).toBeLessThan(3);
+    expect(characterLayout.gridGrowth).toBeLessThan(
+      characterLayout.characterHeight + 100
+    );
     expect(characterLayout.tocCoversCharacters).toBe(true);
     expect(characterLayout.seedBelowToc).toBe(true);
     expect(characterLayout.centerDisplay).toBe('contents');
