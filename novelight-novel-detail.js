@@ -209,6 +209,12 @@
   }
 
   async function coverCandidates(id) {
+    // The already-saved thumbnail is displayed immediately in mountCover.
+    // When present, do not repeat the same novels query or call the
+    // composition RPC. Only an explicitly configured custom cover can replace it.
+    const hasSavedThumbnail = typeof novel !== 'undefined'
+      && String(novel?.id) === String(id)
+      && Boolean(String(novel?.thumbnail_url || '').trim());
     const raw = [];
     const push = (value) => {
       const url = String(value || '').trim();
@@ -222,30 +228,30 @@
         const url = client.storage.from('novel-custom-covers').getPublicUrl(path);
         push(url.data?.publicUrl);
       }
-      let composition = await client.rpc('novelight_thumbnail_compositions_v3', { p_novel_ids: [String(id)] });
-      if (['42883', '42P01', '42703'].includes(String(composition.error?.code || ''))) {
-        composition = await client.rpc('novelight_thumbnail_compositions_v2', { p_novel_ids: [String(id)] });
-      }
-      if (!composition.error) {
-        const first = Array.isArray(composition.data) ? composition.data[0] : null;
-        push(first?.render_url);
-        push(first?.blob_url);
-        push(first?.hero_image_url);
-        push(first?.base_image_url);
+      if (!hasSavedThumbnail) {
+        let composition = await client.rpc('novelight_thumbnail_compositions_v3', { p_novel_ids: [String(id)] });
+        if (['42883', '42P01', '42703'].includes(String(composition.error?.code || ''))) {
+          composition = await client.rpc('novelight_thumbnail_compositions_v2', { p_novel_ids: [String(id)] });
+        }
+        if (!composition.error) {
+          const first = Array.isArray(composition.data) ? composition.data[0] : null;
+          push(first?.render_url);
+          push(first?.blob_url);
+          push(first?.hero_image_url);
+          push(first?.base_image_url);
+        }
       }
     } catch (error) {
       console.warn('optional artwork candidates unavailable', error);
     }
-    // Keep custom author covers ahead of official artwork, but don't let an
-    // optional lookup error suppress the saved publication thumbnail.
-    if (typeof novel !== 'undefined' && String(novel?.id) === String(id)) {
-      push(novel.thumbnail_url);
-    }
-    try {
-      const direct = await client.from('novels').select('thumbnail_url').eq('id', id).maybeSingle();
-      if (!direct.error) push(direct.data?.thumbnail_url);
-    } catch (error) {
-      console.warn('saved thumbnail lookup unavailable', error);
+    // The saved thumbnail is already being displayed; never download it twice.
+    if (!hasSavedThumbnail) {
+      try {
+        const direct = await client.from('novels').select('thumbnail_url').eq('id', id).maybeSingle();
+        if (!direct.error) push(direct.data?.thumbnail_url);
+      } catch (error) {
+        console.warn('saved thumbnail lookup unavailable', error);
+      }
     }
     const candidates = [];
     raw.forEach((url) => {
