@@ -88,16 +88,21 @@ function manyEpisodes() {
   return items;
 }
 
-test('PC TOC uses natural-height scrollable chapter tracks', () => {
+test('PC TOC fills the row without sticking and scrolls its own list', () => {
   const css = detail.match(/\.nl-work-toc-list\{([^}]+)\}/u)?.[1];
   assert.ok(css, 'TOC layout CSS exists');
   assert.match(css, /display:grid/u);
   assert.match(css, /grid-auto-rows:max-content/u);
   assert.match(css, /align-content:start/u);
-  assert.match(css, /overflow-y:auto/u);
+  assert.match(css, /flex:1 1 0%;height:0;min-height:0;overflow-y:auto/u);
+  assert.match(detail, /\.nl-work-detail-grid\{[^}]*align-items:stretch/u);
   assert.match(
     detail,
-    /\.nl-work-detail-toc\{[^}]*max-height:calc\(100vh - 152px\)/u
+    /\.nl-work-detail-center\{[^}]*display:flex;flex-direction:column/u
+  );
+  assert.match(
+    detail,
+    /\.nl-work-detail-toc\{position:static;height:100%;min-height:0/u
   );
 });
 
