@@ -3,7 +3,10 @@
 import { createClient } from '@supabase/supabase-js';
 
 import { applyAdminSecurityHeaders } from './_lib/admin-auth.js';
-import { createOwnerNovelBiblePreviewHandler } from './_lib/ai/owner-novel-bible-preview.js';
+import {
+  createOwnerNovelBiblePreviewHandler,
+  resolveOwnerNovelBiblePreviewConfig
+} from './_lib/ai/owner-novel-bible-preview.js';
 
 export function createOwnerNovelBibleApiHandler({
   env = process.env,
@@ -24,9 +27,8 @@ export function createOwnerNovelBibleApiHandler({
       // Do not even initialize a service-role client until the separate
       // owner-preview enablement gate is deliberately configured.
       if (
-        !env.SUPABASE_URL ||
         !env.SUPABASE_SECRET_KEY ||
-        !env.NOVELIGHT_AI_ADMIN_USER_ID
+        !resolveOwnerNovelBiblePreviewConfig(env)
       ) {
         return res.status(503).json({ error: 'AI_PREVIEW_UNAVAILABLE' });
       }
