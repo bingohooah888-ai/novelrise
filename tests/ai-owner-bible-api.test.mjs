@@ -85,7 +85,6 @@ test('an enabled but unauthorized caller is rejected by the owner-only boundary'
     env: {
       NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED: 'true',
       NOVELIGHT_AI_ADMIN_USER_ID: '11111111-1111-4111-8111-111111111111',
-      NOVELIGHT_ADMIN_USER_IDS: '11111111-1111-4111-8111-111111111111',
       SUPABASE_URL: 'https://example.supabase.co',
       SUPABASE_SECRET_KEY: 'fake-test-only',
       SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_public_key'
@@ -105,7 +104,6 @@ test('incomplete trial settings never initialize privileged clients', async () =
   const complete = {
     NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED: 'true',
     NOVELIGHT_AI_ADMIN_USER_ID: '11111111-1111-4111-8111-111111111111',
-    NOVELIGHT_ADMIN_USER_IDS: '11111111-1111-4111-8111-111111111111',
     SUPABASE_URL: 'https://example.supabase.co',
     SUPABASE_SECRET_KEY: 'fake-test-only',
     SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test_public_key'
@@ -113,12 +111,8 @@ test('incomplete trial settings never initialize privileged clients', async () =
   for (const changes of [
     { SUPABASE_PUBLISHABLE_KEY: undefined },
     { SUPABASE_PUBLISHABLE_KEY: 'sb_secret_not_public' },
-    { NOVELIGHT_ADMIN_USER_IDS: '22222222-2222-4222-8222-222222222222' },
-    {
-      NOVELIGHT_ADMIN_USER_IDS: '',
-      NOVELIGHT_ADMIN_EMAILS: 'owner@example.jp'
-    },
     { NOVELIGHT_AI_ADMIN_USER_ID: undefined },
+    { NOVELIGHT_AI_ADMIN_USER_ID: 'invalid-owner-uuid' },
     { SUPABASE_URL: 'https://untrusted.example' },
     { SUPABASE_SECRET_KEY: undefined }
   ]) {

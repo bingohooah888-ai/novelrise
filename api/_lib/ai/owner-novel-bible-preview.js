@@ -5,8 +5,7 @@ import { URL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import {
   applyAdminSecurityHeaders,
-  parseAdminAllowlist,
-  requireAdmin
+  isSameOriginRequest
 } from '../admin-auth.js';
 import { groupNovelBibleFacts } from './novel-bible.js';
 import { AiStorageError, createSupabaseAiBible } from './supabase-store.js';
@@ -52,10 +51,7 @@ export function resolveOwnerNovelBiblePreviewConfig(env) {
     ) {
       return null;
     }
-    // Require this exact owner UUID in the ID-based admin allowlist.
-    // Email-only admin access must never activate private AI preview.
-    const allowlist = parseAdminAllowlist(env);
-    if (!allowlist.userIds.has(id.toLowerCase())) return null;
+    // Dedicated read-only trial identity never grants site-wide admin rights.
     return { id: id.toLowerCase(), url: url.origin, key };
   } catch {
     return null;
@@ -66,8 +62,36 @@ function fail(res, code, message) {
   return res.status(code).json({ error: message });
 }
 
-// Exported for offline testing and later server-side wiring only.
-// Explicit single-owner ID is stricter than the shared multi-admin allowlist.
+// This endpoint's privilege is narrower than global administrator access.
+// Verify a bearer with Supabase Auth and match exactly one configured user.
+async function requireNovelBiblePreviewOwner(req, res, supabase, ownerId) {
+  if (!isSameOriginRequest(req)) {
+    fail(res, 403, 'Forbidden');
+    return null;
+  }
+  const authorization = req.headers?.authorization;
+  const bearer =
+    typeof authorization === 'string'
+      ? authorization.match(/^Bearer\s+(\S{16,4096})$/i)
+      : null;
+  if (!bearer) {
+    fail(res, 401, 'Unauthorized');
+    return null;
+  }
+  const { data, error } = await supabase.auth.getUser(bearer[1]);
+  if (error || typeof data?.user?.id !== 'string') {
+    fail(res, 401, 'Unauthorized');
+    return null;
+  }
+  if (data.user.id.toLowerCase() !== ownerId) {
+    fail(res, 404, 'NOT_FOUND');
+    return null;
+  }
+  return data.user;
+}
+
+// The dedicated preview ID never modifies global administrator privileges.
+// Work ownership is additionally verified in the storage service.
 export function createOwnerNovelBiblePreviewHandler({
   serviceClient,
   env = process.env,
@@ -96,16 +120,18 @@ export function createOwnerNovelBiblePreviewHandler({
     const config = resolveOwnerNovelBiblePreviewConfig(env);
     if (!config) return fail(res, 503, 'AI_PREVIEW_UNAVAILABLE');
 
-    let admin;
+    let owner;
     try {
-      admin = await requireAdmin({ req, res, supabase: serviceClient, env });
+      owner = await requireNovelBiblePreviewOwner(
+        req,
+        res,
+        serviceClient,
+        config.id
+      );
     } catch {
       return fail(res, 503, 'AI_PREVIEW_UNAVAILABLE');
     }
-    if (!admin) return;
-    if (admin.id?.toLowerCase() !== config.id) {
-      return fail(res, 404, 'NOT_FOUND');
-    }
+    if (!owner) return;
     const novelId = parseWorkId(req.query?.novel_id);
     if (!novelId) return fail(res, 400, 'INVALID_NOVEL_ID');
     const authHeader = req.headers?.authorization;
@@ -127,7 +153,7 @@ export function createOwnerNovelBiblePreviewHandler({
         throw new AiStorageError();
       }
       const bible = createSupabaseAiBible({ serviceClient, authorClient });
-      const actorId = admin.id;
+      const actorId = owner.id;
       const canon = await bible.listOwnerCanon({ actorId, novelId });
       const facts = await bible.listOwnerFacts({ actorId, novelId });
       const grouped = groupNovelBibleFacts({
