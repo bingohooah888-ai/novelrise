@@ -100,3 +100,14 @@ test('quotes contain no raw prompts, author text or network calls', () => {
     globalThis.fetch = oldFetch;
   }
 });
+
+/* PRICE_QUOTE_PRETTIER_DIAGNOSTIC_DELETE_BEFORE_MERGE */
+test('emit exact configured Prettier output (temporary)', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const prettier = await import('prettier');
+  const path = 'api/_lib/ai/price-quote.js';
+  const source = await readFile(path, 'utf8');
+  const config = await prettier.resolveConfig(path);
+  const formatted = await prettier.format(source, { ...config, filepath: path });
+  console.log('PRICE_QUOTE_FMT_BEGIN' + encodeURIComponent(formatted) + 'PRICE_QUOTE_FMT_END');
+});
