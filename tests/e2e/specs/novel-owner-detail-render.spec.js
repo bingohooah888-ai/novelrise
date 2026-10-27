@@ -17,7 +17,7 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
     globalThis.MutationObserver = class DiagnosticMutationObserver extends NativeObserver {
       constructor(callback) {
         const id = ++observerId;
-        const origin = new Error().stack?.split('\\n').slice(1, 5).join(' | ') || 'unknown';
+        const origin = (new Error().stack || 'unknown').slice(0, 1200);
         let callbacks = 0;
         super((records, observer) => {
           callbacks += 1;
