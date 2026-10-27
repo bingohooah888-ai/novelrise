@@ -223,10 +223,7 @@ test('owner-only preview is independent from site-wide administrator allowlist',
     assert.equal((await authorized.run({ env })).statusCode, 200);
     const other = fixture({ userId: OTHER });
     assert.equal((await other.run({ env })).statusCode, 404);
-    assert.equal(
-      other.calls.some((call) => call[0] === 'from'),
-      false
-    );
+    assert.equal(other.calls.some((call) => call[0] === 'from'), false);
   }
 });
 
