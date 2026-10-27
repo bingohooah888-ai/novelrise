@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createOfflineNovelBibleTrial } from '../api/_lib/ai/owner-novel-bible-mock-trial.js';
+import '../novelight-ai-bible-owner-panel.js';
 import { planNovelBibleEpisodeChanges } from '../api/_lib/ai/novel-bible.js';
 
 const OWNER = 'mock-owner';
@@ -259,4 +260,21 @@ test('mock is bounded to three chunks and cannot mutate source data', async () =
     factory.preview({ principal, novelId: 41, maxChunks: 4 }),
     /TRIAL_DENIED/
   );
+});
+
+
+test('model JSON passes chunk validation and reaches private text-only UI', async () => {
+  const { factory } = trial();
+  const result = await factory.preview({ principal, novelId: 41 });
+  const target = { textContent: '', hidden: true };
+  const accepted = globalThis.NovelightAiBibleOwnerPanel.renderMockReview({
+    target,
+    payload: result
+  });
+  assert.equal(accepted, true);
+  assert.equal(target.hidden, false);
+  assert.match(target.textContent, /架空データのみ/);
+  assert.match(target.textContent, /凛は青い鍵を持っていた/);
+  assert.match(target.textContent, /作者の確定設定と重複/);
+  assert.doesNotMatch(target.textContent, /KEEP_UNPUBLISHED_SECRET/);
 });
