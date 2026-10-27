@@ -64,8 +64,10 @@
     const button = toggles.get(host);
     if (!button) return;
     const expanded = host.classList.contains('is-expanded');
-    button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    button.textContent = expanded ? '閉じる ▲' : 'あらすじをもっと見る ▼';
+    const ariaValue = expanded ? 'true' : 'false';
+    if (button.getAttribute('aria-expanded') !== ariaValue) button.setAttribute('aria-expanded', ariaValue);
+    const nextLabel = expanded ? '閉じる ▲' : 'あらすじをもっと見る ▼';
+    if (button.textContent !== nextLabel) button.textContent = nextLabel;
   }
 
   function refreshHost(host) {
@@ -151,7 +153,9 @@
       });
       Array.from(meta.childNodes).forEach((child) => {
         if (child.nodeType !== Node.TEXT_NODE) return;
-        child.textContent = (child.textContent || '').replace(/^\s*👁?\s*[\d,]+\s*PV\s*(?:・\s*)?/u, '');
+        const before = child.textContent || '';
+        const after = before.replace(/^\s*👁?\s*[\d,]+\s*PV\s*(?:・\s*)?/u, '');
+        if (after !== before) child.textContent = after;
       });
       if (/^\s*👁?\s*[\d,]+\s*PV\s*$/u.test(meta.textContent || '')) meta.remove();
     });
