@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createOwnerBibleReviewWorkflow } from '../api/_lib/ai/owner-bible-review-workflow.js';
+import {
+  createOwnerBibleReviewWorkflow
+} from '../api/_lib/ai/owner-bible-review-workflow.js';
 import { planNovelBibleEpisodeChanges } from '../api/_lib/ai/novel-bible.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
@@ -180,7 +182,7 @@ function setup(options = {}) {
   return { workflow, state, stage, decide };
 }
 
-test('04 staging requires valid Auth owner, source evidence and trusted work', async () => {
+test('04 stages only owner-verified source candidates', async () => {
   const { state, stage } = setup();
   const result = await stage();
   assert.deepEqual(result, { novelId: 354, stagedCount: 1 });
@@ -191,7 +193,7 @@ test('04 staging requires valid Auth owner, source evidence and trusted work', a
   assert.equal(state.authCalls, 1);
 });
 
-test('explicit accept is a review decision, never canonical auto-promotion', async () => {
+test('accept reviews but never promotes author canon', async () => {
   const { state, stage, decide } = setup();
   await stage();
   const accepted = await decide();
@@ -208,7 +210,7 @@ test('explicit accept is a review decision, never canonical auto-promotion', asy
   await assert.rejects(decide(), /AI_OWNER_REVIEW_DENIED/);
 });
 
-test('explicit rejection is durable through mock store and cannot replay', async () => {
+test('reject is durable and non-repeatable', async () => {
   const { state, stage, decide } = setup();
   await stage();
   const result = await decide({ action: 'reject' });
@@ -237,7 +239,7 @@ test('disabled workflow cannot read a token, DB, or repository', async () => {
   assert.equal(state.attempts, 0);
 });
 
-test('another authenticated user is rejected before any DB access', async () => {
+test('reject other user before reading DB', async () => {
   const { state, stage, decide } = setup();
   await assert.rejects(
     stage({ token: 'b'.repeat(32) }),
@@ -251,7 +253,7 @@ test('another authenticated user is rejected before any DB access', async () => 
   assert.equal(state.records.size, 0);
 });
 
-test('invalid work, source, forged model data and stale edits fail closed', async () => {
+test('reject foreign sources, forgeries and stale edits', async () => {
   const { state, stage } = setup();
   const changes = [
     { novelId: 99 },
@@ -277,7 +279,7 @@ test('invalid work, source, forged model data and stale edits fail closed', asyn
   assert.equal(state.records.size, 0);
 });
 
-test('revised chapter, missing click and stale revision cannot be approved', async () => {
+test('reject stale chapters, missing click and revision', async () => {
   const { state, stage, decide } = setup();
   await stage();
   await assert.rejects(
@@ -311,7 +313,7 @@ test('replay is idempotent and empty inference writes nothing', async () => {
   assert.equal(state.records.size, 1);
 });
 
-test('misconfigured adapters and malformed repository responses fail closed', async () => {
+test('fail closed for bad repository and settings', async () => {
   assert.throws(
     () => createOwnerBibleReviewWorkflow({ enabled: true }),
     /AI_OWNER_REVIEW_DENIED/
