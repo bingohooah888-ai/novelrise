@@ -109,6 +109,58 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await page.goto('/novel.html?id=354', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.nl-work-detail-grid')).toBeVisible();
   await expect(page.locator('.nl-work-detail-grid')).toHaveCount(1);
+
+  // Desktop: the center card and table of contents extend to the left
+  // column's bottom. The TOC must scroll inside its own card, never stick.
+  if ((await page.evaluate(() => window.innerWidth)) > 1050) {
+    const aligned = await page.evaluate(() => {
+      const bounds = (selector) =>
+        document.querySelector(selector).getBoundingClientRect();
+      const left = bounds('.nl-work-detail-left');
+      const main = bounds('.nl-work-detail-main');
+      const toc = bounds('.nl-work-detail-toc');
+      const grid = bounds('.nl-work-detail-grid');
+      const seed = bounds('#lightSeedArea');
+      return {
+        leftToMain: Math.abs(left.bottom - main.bottom),
+        leftToToc: Math.abs(left.bottom - toc.bottom),
+        tocToGrid: Math.abs(toc.bottom - grid.bottom),
+        tocToSeed: seed.top - toc.bottom,
+        position: getComputedStyle(document.querySelector('.nl-work-detail-toc')).position
+      };
+    });
+    expect(aligned.leftToMain).toBeLessThan(3);
+    expect(aligned.leftToToc).toBeLessThan(3);
+    expect(aligned.tocToGrid).toBeLessThan(3);
+    expect(aligned.tocToSeed).toBeGreaterThanOrEqual(0);
+    expect(aligned.position).toBe('static');
+
+    // Even with many episodes, their overflow must not grow the outer grid.
+    const scrolling = await page.evaluate(() => {
+      const grid = document.querySelector('.nl-work-detail-grid');
+      const list = document.querySelector('.nl-work-toc-list');
+      const initialHeight = grid.getBoundingClientRect().height;
+      const fragment = document.createDocumentFragment();
+      for (let i = 0; i < 100; i += 1) {
+        const item = document.createElement('a');
+        item.className = 'nl-work-toc-link';
+        item.href = '#test-chapter';
+        item.textContent = `テスト用 第${i + 1}話`;
+        fragment.appendChild(item);
+      }
+      list.appendChild(fragment);
+      const canScroll = list.scrollHeight > list.clientHeight;
+      list.scrollTop = list.scrollHeight;
+      return {
+        canScroll,
+        scrolled: list.scrollTop > 0,
+        gridGrowth: grid.getBoundingClientRect().height - initialHeight
+      };
+    });
+    expect(scrolling.canScroll).toBe(true);
+    expect(scrolling.scrolled).toBe(true);
+    expect(Math.abs(scrolling.gridGrowth)).toBeLessThan(3);
+  }
   await expect(page.locator('.nl-work-detail-cover img')).toBeVisible();
   await expect(page.locator('.nl-work-detail-cover img')).toHaveJSProperty(
     'naturalWidth',
