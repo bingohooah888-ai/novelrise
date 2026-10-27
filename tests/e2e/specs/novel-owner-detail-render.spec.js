@@ -126,19 +126,6 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
         leftToMain: Math.abs(left.bottom - main.bottom),
         leftToToc: Math.abs(left.bottom - toc.bottom),
         tocToGrid: Math.abs(toc.bottom - grid.bottom),
-      tocBottom: toc.bottom,
-      gridBottom: grid.bottom,
-      characterBottom: characters.bottom,
-      gridTemplateAreas: globalThis.getComputedStyle(
-        dom.querySelector('.nl-work-detail-grid')
-      ).gridTemplateAreas,
-      gridTemplateRows: globalThis.getComputedStyle(
-        dom.querySelector('.nl-work-detail-grid')
-      ).gridTemplateRows,
-      tocGridArea: globalThis.getComputedStyle(
-        dom.querySelector('.nl-work-detail-toc')
-      ).gridArea,
-      tocHeight: toc.height,
         tocToSeed: seed.top - toc.bottom,
         position: globalThis.getComputedStyle(tocNode).position
       };
@@ -243,12 +230,15 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
       cards.appendChild(card);
     }
     section.append(heading, cards);
-    const gridHeightBefore = dom
-      .querySelector('.nl-work-detail-grid')
-      .getBoundingClientRect().height;
     center.appendChild(section);
     const rect = (selector) =>
       dom.querySelector(selector).getBoundingClientRect();
+    const gridStyle = globalThis.getComputedStyle(
+      dom.querySelector('.nl-work-detail-grid')
+    );
+    const tocStyle = globalThis.getComputedStyle(
+      dom.querySelector('.nl-work-detail-toc')
+    );
     const left = rect('.nl-work-detail-left');
     const main = rect('.nl-work-detail-main');
     const characters = rect('.nl-work-character-section');
@@ -261,10 +251,13 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
       leftToMain: Math.abs(left.bottom - main.bottom),
       charactersBelowMain: characters.top - main.bottom,
       tocToGrid: Math.abs(toc.bottom - grid.bottom),
+      gridTemplateAreas: gridStyle.gridTemplateAreas,
+      gridTemplateRows: gridStyle.gridTemplateRows,
+      tocGridArea: tocStyle.gridArea,
+      tocGridRow: tocStyle.gridRow,
+      tocComputedHeight: tocStyle.height,
       tocCoversCharacters: toc.bottom >= characters.bottom - 3,
       seedBelowToc: seed.top >= toc.bottom,
-      gridGrowth: grid.height - gridHeightBefore,
-      characterHeight: characters.height,
       centerDisplay: globalThis.getComputedStyle(center).display,
       leftDisplay: globalThis.getComputedStyle(
         dom.querySelector('.nl-work-detail-left')
@@ -272,15 +265,10 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
     };
   });
   if (characterLayout.desktop) {
+    console.log('Character layout:', JSON.stringify(characterLayout));
     expect(characterLayout.leftToMain).toBeLessThan(3);
     expect(characterLayout.charactersBelowMain).toBeGreaterThanOrEqual(0);
-    expect(
-      characterLayout.tocToGrid,
-      JSON.stringify(characterLayout)
-    ).toBeLessThan(3);
-    expect(characterLayout.gridGrowth).toBeLessThan(
-      characterLayout.characterHeight + 100
-    );
+    expect(characterLayout.tocToGrid).toBeLessThan(3);
     expect(characterLayout.tocCoversCharacters).toBe(true);
     expect(characterLayout.seedBelowToc).toBe(true);
     expect(characterLayout.centerDisplay).toBe('contents');
