@@ -93,3 +93,34 @@ test('oversized or malformed payloads fail closed', () => {
   );
   assert.equal(target.hidden, true);
 });
+
+test('empty owner Bible sources display explicit no-data states', () => {
+  const target = fakeNode();
+  const ok = render({
+    target,
+    payload: { characters: [], notes: [], facts: [] }
+  });
+  assert.equal(ok, true);
+  assert.equal(target.hidden, false);
+  assert.match(target.textContent, /登場人物[^]*まだ登録されていません/);
+  assert.match(target.textContent, /創作ノート（非公開）[^]*まだ登録されていません/);
+  assert.match(target.textContent, /確認候補[^]*確認候補はありません/);
+  assert.match(target.textContent, /AIによる自動抽出は未実施/);
+});
+
+test('owner Bible with existing records does not display misleading no-data states', () => {
+  const target = fakeNode();
+  const ok = render({
+    target,
+    payload: {
+      characters: [{ name: '主人公' }],
+      notes: [{ title: '世界観', body: '作者のみの設定' }],
+      facts: [{ kind: 'world', key: '世界設定' }]
+    }
+  });
+  assert.equal(ok, true);
+  assert.match(target.textContent, /主人公/);
+  assert.match(target.textContent, /作者のみの設定/);
+  assert.match(target.textContent, /世界設定/);
+  assert.doesNotMatch(target.textContent, /まだ登録されていません|確認候補はありません/);
+});
