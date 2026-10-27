@@ -163,3 +163,17 @@ test('reject invalid owners, cross-work rows and malformed Unicode', () => {
     /AI_BIBLE_CHUNK_INVALID/
   );
 });
+
+/* PRETTIER_DIAGNOSTIC_ONLY */
+test('offline formatter diagnostic (temporary)', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const prettier = await import('prettier');
+  const modulePath = 'api/_lib/ai/novel-bible-chunks.js';
+  const testPath = 'tests/ai-novel-bible-chunks.test.mjs';
+  const moduleText = await readFile(modulePath, 'utf8');
+  const testText = (await readFile(testPath, 'utf8')).split('/* PRETTIER_DIAGNOSTIC_ONLY */')[0];
+  const formattedModule = await prettier.format(moduleText, { filepath: modulePath });
+  const formattedTest = await prettier.format(testText, { filepath: testPath });
+  console.log('FMT_MODULE_START' + encodeURIComponent(formattedModule) + 'FMT_MODULE_END');
+  console.log('FMT_TEST_START' + encodeURIComponent(formattedTest) + 'FMT_TEST_END');
+});
