@@ -256,6 +256,8 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
       tocGridArea: tocStyle.gridArea,
       tocGridRow: tocStyle.gridRow,
       tocComputedHeight: tocStyle.height,
+      tocMaxHeight: tocStyle.maxHeight,
+      tocInlineStyle: dom.querySelector('.nl-work-detail-toc').getAttribute('style'),
       tocCoversCharacters: toc.bottom >= characters.bottom - 3,
       seedBelowToc: seed.top >= toc.bottom,
       centerDisplay: globalThis.getComputedStyle(center).display,
