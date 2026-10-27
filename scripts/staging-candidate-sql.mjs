@@ -2,6 +2,7 @@
 // This is a conservative safety filter, not a replacement for human SQL review.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const MAX_SQL_BYTES = 200000;
 function deny(reason) { throw new Error('STAGING_CANDIDATE_SQL_DENIED: ' + reason); }
@@ -63,7 +64,9 @@ export function composeCandidateRollbackSql({precheck,migration,postcheck}) {
   ].join('\n');
 }
 
-if (process.argv[2] === 'compose') {
+// Importing the SQL validator must never execute the rollback CLI parser.
+// Persistent Staging composes a different argv contract using this module.
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href && process.argv[2] === 'compose') {
   try {
     if (process.argv.length !== 4) deny('exact SQL artifact directory required');
     const root=process.argv[3];
