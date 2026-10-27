@@ -1,6 +1,7 @@
 // Service-role Supabase adapter for the Phase 2 foundation.
 // Never instantiate this module with a browser client or pass it to the UI.
 import { requireAiFeature } from './registry.js';
+import { projectNovelBibleAuthorCanon } from './novel-bible.js';
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -130,7 +131,7 @@ export function createSupabaseAiAudit({ serviceClient }) {
   });
 }
 
-export function createSupabaseAiBible({ serviceClient }) {
+export function createSupabaseAiBible({ serviceClient, authorClient = null }) {
   requireServiceClient(serviceClient);
   async function assertOwner(actorId, novelId) {
     requireIdentity(actorId);
@@ -145,6 +146,51 @@ export function createSupabaseAiBible({ serviceClient }) {
   }
 
   return Object.freeze({
+    // Chapter 43 revokes raw character/notes table privileges even from the
+    // service_role. Use the existing *authenticated owner* RPCs instead.
+    // authorClient must be bound to a server-verified author JWT, NEVER the
+    // service client. Both RPCs independently check auth.uid() and owner.
+    async listOwnerCanon({ actorId, novelId }) {
+      await assertOwner(actorId, novelId);
+      if (
+        !authorClient ||
+        authorClient === serviceClient ||
+        typeof authorClient.rpc !== 'function'
+      ) {
+        throw new AiStorageError();
+      }
+      const [characterResult, noteResult] = await Promise.all([
+        authorClient.rpc('novelight_author_character_list', {
+          p_novel_id: novelId
+        }),
+        authorClient.rpc('novelight_private_story_notes', {
+          p_novel_id: novelId
+        })
+      ]);
+      if (
+        characterResult.error ||
+        noteResult.error ||
+        !Array.isArray(characterResult.data) ||
+        !Array.isArray(noteResult.data)
+      ) {
+        throw new AiStorageError();
+      }
+      // RPCs explicitly restrict every record to p_novel_id on the server;
+      // neither RPC returns novel_id. Annotate their trusted scoped result
+      // before the projection validates IDs, links, shapes and batch limits.
+      return projectNovelBibleAuthorCanon({
+        principal: { id: actorId },
+        novel: { id: novelId, user_id: actorId },
+        characters: characterResult.data.map((row) => ({
+          ...row,
+          novel_id: novelId
+        })),
+        notes: noteResult.data.map((row) => ({
+          ...row,
+          novel_id: novelId
+        }))
+      });
+    },
     async listOwnerFacts({ actorId, novelId }) {
       await assertOwner(actorId, novelId);
       const { data, error } = await serviceClient
