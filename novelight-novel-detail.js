@@ -269,6 +269,10 @@
       initial.alt = '';
       initial.loading = 'eager';
       initial.decoding = 'async';
+      initial.addEventListener('error', () => {
+        // A missing saved asset should not leave a broken image in the cover.
+        if (cover.firstElementChild === initial) coverPlaceholder(cover);
+      }, { once: true });
       initial.src = saved;
       cover.replaceChildren(initial);
     }
@@ -280,7 +284,8 @@
     let index = 0;
     const tryNext = () => {
       if (index >= candidates.length) {
-        coverPlaceholder(cover);
+        // Retain a working saved cover if every optional image fails.
+        if (!saved && !cover.querySelector('img')) coverPlaceholder(cover);
         return;
       }
       const image = node('img');
@@ -288,12 +293,15 @@
       image.decoding = 'async';
       image.loading = 'eager';
       image.fetchPriority = 'high';
+      image.addEventListener('load', () => {
+        // Only replace a displayed image after its replacement loads.
+        cover.replaceChildren(image);
+      }, { once: true });
       image.addEventListener('error', () => {
         index += 1;
         tryNext();
       }, { once: true });
       image.src = candidates[index];
-      cover.replaceChildren(image);
     };
     tryNext();
   }

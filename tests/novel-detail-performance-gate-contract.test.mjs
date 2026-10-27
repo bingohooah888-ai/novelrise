@@ -11,7 +11,7 @@ const source = await readFile(
 test('novel detail initial load uses safe columns and parallel safe dependencies', () => {
   assert.match(
     source,
-    /Promise\.all\(\[client\.auth\.getSession\(\),client\.from\('novels'\)\.select\('id,user_id,title,genre,ai_usage,status,content_rating,content_warnings,created_at,show_episode_numbers'\)/
+    /Promise\.all\(\[client\.auth\.getSession\(\),client\.from\('novels'\)\.select\('id,user_id,title,genre,ai_usage,status,content_rating,content_warnings,created_at,show_episode_numbers,thumbnail_url'\)/
   );
   assert.match(source, /loadWorkTags\(\)/);
 });
