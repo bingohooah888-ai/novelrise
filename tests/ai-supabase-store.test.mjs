@@ -274,8 +274,7 @@ function ownerCanonClients({
     async rpc(name, args) {
       calls.push({ name, args });
       return {
-        data:
-          name === 'novelight_author_character_list' ? characters : notes,
+        data: name === 'novelight_author_character_list' ? characters : notes,
         error: name === failRpc ? { code: '42501' } : null
       };
     }
@@ -324,11 +323,13 @@ test('owner check denies strangers before invoking private RPCs', async () => {
   assert.equal(clients.calls.some((x) => x.name), false);
 });
 
-test('missing authenticated client never falls back to service-role RPCs', async () => {
+test('missing author client never uses service-role RPCs', async () => {
   const clients = ownerCanonClients();
+  const noAuthor = createSupabaseAiBible({
+    serviceClient: clients.serviceClient
+  });
   await assert.rejects(
-    createSupabaseAiBible({ serviceClient: clients.serviceClient })
-      .listOwnerCanon({ actorId: OWNER, novelId: 17 }),
+    noAuthor.listOwnerCanon({ actorId: OWNER, novelId: 17 }),
     AiStorageError
   );
   await assert.rejects(
