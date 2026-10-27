@@ -10,7 +10,11 @@ const proposalUrl = new URL(
 );
 
 const cases = [
-  ['A', 'B', 'b64e3448a83a5b86466465080361c1a7e1157a27ddccd4b68069cb18caffb74a'],
+  [
+    'A',
+    'B',
+    'b64e3448a83a5b86466465080361c1a7e1157a27ddccd4b68069cb18caffb74a'
+  ],
   [
     '架空の第一話',
     '凛は青い鍵を持っていた。',
@@ -85,16 +89,4 @@ test('SQL remains a non-migration proposal until staging approval', async () => 
   assert.match(sql, /REVIEW ONLY\. NOT a runnable migration/);
   assert.match(sql, /revoke all on public\.novelight_ai_review_candidates/);
   assert.match(sql, /revoke all on function/);
-});
-
-
-/* STAGING_RACE_PRETTIER_DIAGNOSTIC_TEMP */
-test('temporary repo Prettier exact fixture', async () => {
-  const prettier = await import('prettier');
-  const filename = 'tests/ai-owner-bible-staging-race-guard.test.mjs';
-  const source = await readFile(new URL('./ai-owner-bible-staging-race-guard.test.mjs', import.meta.url), 'utf8');
-  const clean = source.split('/* STAGING_RACE_PRETTIER_DIAGNOSTIC_TEMP */')[0];
-  const config = await prettier.resolveConfig(filename);
-  const formatted = await prettier.format(clean, { ...config, filepath: filename });
-  console.log('STAGING_RACE_FMT_BEGIN' + encodeURIComponent(formatted) + 'STAGING_RACE_FMT_END');
 });
