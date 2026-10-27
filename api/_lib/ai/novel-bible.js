@@ -154,7 +154,10 @@ export function groupNovelBibleFacts({ principal, novel, facts }) {
         ? null
         : positiveId(row.source_episode_id);
     const payload = JSON.stringify(row.fact_payload);
-    if (typeof payload !== 'string' || Buffer.byteLength(payload, 'utf8') > 8192) {
+    if (
+      typeof payload !== 'string' ||
+      Buffer.byteLength(payload, 'utf8') > 8192
+    ) {
       denied();
     }
     const key = JSON.stringify([row.fact_kind, row.fact_key]);
@@ -182,7 +185,9 @@ export function groupNovelBibleFacts({ principal, novel, facts }) {
   return {
     novelId,
     groups: [...groups.values()]
-      .sort((a, b) => a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key))
+      .sort(
+        (a, b) => a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)
+      )
       .map((group) => ({
         ...group,
         confirmed: group.confirmed.sort((a, b) => a.id - b.id),
