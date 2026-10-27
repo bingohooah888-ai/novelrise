@@ -1,0 +1,180 @@
+-- REVIEW ONLY. NOT a runnable migration in the pending production set.
+-- Promote with "supabase migration new" on approved staging branch after
+-- OWNER Staging approval; then run RLS / rollback tests before production.
+-- NOVELIGHT AI global switch and individual/global budgets remain OFF / zero.
+begin;
+
+create table public.novelight_ai_review_candidates (
+  id bigint generated always as identity primary key,
+  actor_id uuid not null,
+  novel_id bigint not null references public.novels(id) on delete cascade,
+  source_episode_id bigint not null references public.episodes(id) on delete cascade,
+  source_hash text not null check (source_hash ~ '^[a-f0-9]{64}$'),
+  request_hash text not null check (request_hash ~ '^[a-f0-9]{64}$'),
+  fact_kind text not null check (
+    fact_kind in ('character','relationship','location','world',
+      'timeline','event','foreshadowing','other')
+  ),
+  fact_key text not null check (char_length(fact_key) between 1 and 120),
+  summary text not null check (char_length(summary) between 1 and 320),
+  evidence text not null check (char_length(evidence) between 1 and 160),
+  status text not null default 'pending'
+    check (status in ('pending','accepted','rejected')),
+  revision integer not null default 1 check (revision >= 1),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (actor_id, request_hash, fact_kind, fact_key)
+);
+
+create index novelight_ai_review_scope_idx
+  on public.novelight_ai_review_candidates
+  (actor_id, novel_id, status, id);
+
+create or replace function public.novelight_ai_review_stage_batch(
+  p_actor_id uuid,
+  p_novel_id bigint,
+  p_episode_id bigint,
+  p_source_hash text,
+  p_request_hash text,
+  p_candidates jsonb
+) returns integer
+language plpgsql security invoker set search_path = '' as $$
+declare
+  v_candidate jsonb;
+  v_count integer;
+begin
+  if current_user <> 'service_role' then
+    raise exception using errcode = '42501', message = 'AI service access required';
+  end if;
+  if p_actor_id is null or p_novel_id is null or p_episode_id is null
+    or p_source_hash is null or p_source_hash !~ '^[a-f0-9]{64}$'
+    or p_request_hash is null or p_request_hash !~ '^[a-f0-9]{64}$'
+    or jsonb_typeof(p_candidates) is distinct from 'array'
+  then
+    raise exception using errcode = '22023', message = 'Invalid review batch';
+  end if;
+  v_count := jsonb_array_length(p_candidates);
+  if v_count not between 1 and 12 then
+    raise exception using errcode = '22023', message = 'Invalid review count';
+  end if;
+  if not exists (
+    select 1 from public.novels n
+    where n.id = p_novel_id and n.user_id = p_actor_id
+  ) or not exists (
+    select 1 from public.episodes e
+    where e.id = p_episode_id and e.novel_id = p_novel_id
+  ) then
+    raise exception using errcode = '42501', message = 'Review scope denied';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtext(p_actor_id::text),
+    pg_catalog.hashtext(p_request_hash)
+  );
+  if exists (
+    select 1 from public.novelight_ai_review_candidates c
+    where c.actor_id = p_actor_id and c.request_hash = p_request_hash
+  ) then
+    return 0;
+  end if;
+
+  for v_candidate in select value from jsonb_array_elements(p_candidates)
+  loop
+    if jsonb_typeof(v_candidate) is distinct from 'object'
+      or (select count(*) from jsonb_object_keys(v_candidate)) <> 4
+      or jsonb_typeof(v_candidate -> 'kind') is distinct from 'string'
+      or jsonb_typeof(v_candidate -> 'key') is distinct from 'string'
+      or jsonb_typeof(v_candidate -> 'summary') is distinct from 'string'
+      or jsonb_typeof(v_candidate -> 'evidence') is distinct from 'string'
+      or v_candidate ->> 'kind' not in
+        ('character','relationship','location','world',
+         'timeline','event','foreshadowing','other')
+      or char_length(v_candidate ->> 'key') not between 1 and 120
+      or char_length(v_candidate ->> 'summary') not between 1 and 320
+      or char_length(v_candidate ->> 'evidence') not between 1 and 160
+    then
+      raise exception using errcode = '22023', message = 'Invalid review candidate';
+    end if;
+    insert into public.novelight_ai_review_candidates (
+      actor_id, novel_id, source_episode_id, source_hash, request_hash,
+      fact_kind, fact_key, summary, evidence
+    ) values (
+      p_actor_id, p_novel_id, p_episode_id, p_source_hash, p_request_hash,
+      v_candidate ->> 'kind', v_candidate ->> 'key',
+      v_candidate ->> 'summary', v_candidate ->> 'evidence'
+    );
+  end loop;
+  return v_count;
+end
+$$;
+
+create or replace function public.novelight_ai_review_decide(
+  p_actor_id uuid,
+  p_novel_id bigint,
+  p_candidate_id bigint,
+  p_source_hash text,
+  p_expected_revision integer,
+  p_decision text
+) returns table(status text, revision integer)
+language plpgsql security invoker set search_path = '' as $$
+begin
+  if current_user <> 'service_role' then
+    raise exception using errcode = '42501', message = 'AI service access required';
+  end if;
+  if p_actor_id is null or p_novel_id is null or p_candidate_id is null
+    or p_source_hash is null or p_source_hash !~ '^[a-f0-9]{64}$'
+    or p_expected_revision is null or p_expected_revision < 1
+    or p_decision is null or p_decision not in ('accepted', 'rejected')
+  then
+    raise exception using errcode = '22023', message = 'Invalid review decision';
+  end if;
+  return query
+    update public.novelight_ai_review_candidates as c
+      set status = p_decision,
+          revision = c.revision + 1,
+          updated_at = now()
+    where c.id = p_candidate_id
+      and c.actor_id = p_actor_id
+      and c.novel_id = p_novel_id
+      and c.source_hash = p_source_hash
+      and c.revision = p_expected_revision
+      and c.status = 'pending'
+      and exists (
+        select 1 from public.novels n
+        where n.id = c.novel_id and n.user_id = p_actor_id
+      )
+    returning c.status, c.revision;
+end
+$$;
+
+alter table public.novelight_ai_review_candidates enable row level security;
+create policy ai_review_service_only
+  on public.novelight_ai_review_candidates
+  for all to service_role using (true) with check (true);
+
+revoke all on public.novelight_ai_review_candidates
+  from public, anon, authenticated;
+revoke all on sequence public.novelight_ai_review_candidates_id_seq
+  from public, anon, authenticated;
+grant select, insert, update on public.novelight_ai_review_candidates
+  to service_role;
+grant usage, select on sequence public.novelight_ai_review_candidates_id_seq
+  to service_role;
+
+revoke all on function public.novelight_ai_review_stage_batch(
+  uuid, bigint, bigint, text, text, jsonb
+) from public, anon, authenticated;
+revoke all on function public.novelight_ai_review_decide(
+  uuid, bigint, bigint, text, integer, text
+) from public, anon, authenticated;
+grant execute on function public.novelight_ai_review_stage_batch(
+  uuid, bigint, bigint, text, text, jsonb
+) to service_role;
+grant execute on function public.novelight_ai_review_decide(
+  uuid, bigint, bigint, text, integer, text
+) to service_role;
+
+comment on table public.novelight_ai_review_candidates is
+  'Private author-only review decisions. Accepted does NOT mean confirmed canon.';
+
+commit;
