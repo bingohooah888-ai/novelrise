@@ -155,7 +155,7 @@ export function createSupabaseAiBible({ serviceClient }) {
       }
       const { data, error } = await serviceClient
         .from('novelight_ai_bible_facts')
-        .upsert({
+        .insert({
           novel_id: novelId,
           source_episode_id: episodeId,
           fact_kind: kind,
@@ -164,8 +164,13 @@ export function createSupabaseAiBible({ serviceClient }) {
           provenance: 'ai_inferred',
           source_hash: sourceHash,
           updated_at: new Date().toISOString()
-        }, { onConflict: 'novel_id,source_episode_id,fact_kind,fact_key' })
+        })
         .select('id,revision,provenance').single();
+      // Never let AI overwrite a human-confirmed fact on conflict. A changed
+      // source version must be reviewed in a later explicitly-authorized flow.
+      if (error?.code === '23505') {
+        return { unchanged: true };
+      }
       if (error || !data) throw new AiStorageError();
       return data;
     }
