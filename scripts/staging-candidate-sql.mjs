@@ -65,7 +65,7 @@ export function composeCandidateRollbackSql({precheck,migration,postcheck}) {
 
 if (process.argv[2] === 'compose') {
   try {
-    if (process.argv.length !== 6) deny('exact three SQL paths required');
+    if (process.argv.length !== 4) deny('exact SQL artifact directory required');
     const root=process.argv[3];
     const paths=['precheck','migration','postcheck'];
     const parts=Object.fromEntries(paths.map((kind) =>
