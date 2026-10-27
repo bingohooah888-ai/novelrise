@@ -5,40 +5,19 @@ import '../novelight-ai-bible-owner-panel.js';
 
 const { mount, render } = globalThis.NovelightAiBibleOwnerPanel;
 
-function fakeNode(tag = 'div') {
+function fakeNode() {
   return {
-    tag,
     hidden: true,
-    children: [],
-    className: '',
-    textContent: '',
-    appendChild(node) {
-      this.children.push(node);
-    },
-    replaceChildren(...nodes) {
-      this.children = nodes;
-    }
+    textContent: 'stale secret'
   };
 }
 
-const doc = {
-  createElement: fakeNode,
-  createDocumentFragment() {
-    return fakeNode('fragment');
-  }
-};
-
-function getText(tree) {
-  return [tree.textContent, ...(tree.children || []).map(getText)].join(' ');
-}
-
-test('owner-only novel bible UI never renders draft notes without a login', async () => {
+test('owner-only novel bible UI clears old notes without a login', async () => {
   const target = fakeNode();
   let requests = 0;
   const ok = await mount({
     target,
     novelId: 17,
-    doc,
     client: {
       auth: {
         async getSession() {
@@ -52,15 +31,15 @@ test('owner-only novel bible UI never renders draft notes without a login', asyn
   });
   assert.equal(ok, false);
   assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
   assert.equal(requests, 0);
 });
 
-test('denied API response leaves private admin UI hidden', async () => {
+test('denied endpoint never renders unpublished notes', async () => {
   const target = fakeNode();
   const ok = await mount({
     target,
     novelId: 17,
-    doc,
     client: {
       auth: {
         async getSession() {
@@ -68,42 +47,47 @@ test('denied API response leaves private admin UI hidden', async () => {
         }
       }
     },
-    async fetcher(url, opts) {
+    async fetcher(url, options) {
       assert.equal(url, '/api/ai-owner-novel-bible?novel_id=17');
-      assert.equal(opts.headers.Authorization, '***');
+      assert.equal(options.headers.Authorization, 'Bearer example');
       return { ok: false, status: 404 };
     }
   });
   assert.equal(ok, false);
   assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
 });
 
-test('admin-only render uses text nodes instead of HTML injection', () => {
+test('author-owned content is assigned literally through textContent', () => {
   const target = fakeNode();
-  const result = render({
+  const ok = render({
     target,
-    doc,
     payload: {
       characters: [{ name: '<img src=x onerror=alert(1)>' }],
       notes: [{ title: '<script>alert(1)</script>', body: 'PRIVATE END' }],
       facts: [{ kind: 'world', key: 'setting' }]
     }
   });
-  assert.equal(result, true);
+  assert.equal(ok, true);
   assert.equal(target.hidden, false);
-  const text = getText(target);
-  assert.match(text, /PRIVATE END/);
-  assert.match(text, /<script>/);
-  assert.ok(target.children[0].tag === 'fragment');
+  assert.match(target.textContent, /PRIVATE END/);
+  assert.match(target.textContent, /<script>/);
 });
 
-test('oversized or malformed payloads never render', () => {
+test('oversized or malformed payloads fail closed', () => {
   const target = fakeNode();
+  assert.equal(
+    render({ target, payload: { notes: [], characters: [], facts: null } }),
+    false
+  );
   assert.equal(
     render({
       target,
-      doc,
-      payload: { notes: [], characters: [], facts: null }
+      payload: {
+        characters: [{ name: 'x'.repeat(81) }],
+        notes: [],
+        facts: []
+      }
     }),
     false
   );

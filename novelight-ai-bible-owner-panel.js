@@ -1,41 +1,24 @@
-// Standalone author-studio prototype; NOT loaded by any page until reviewed.
-// No script tag, menu link, API keys, automatic model calls or publication.
+// An unmounted, offline-tested owner-only author-studio preview prototype.
+// No existing page imports this script. No API calls occur until mount is
+// explicitly invoked after a separately approved administrator-only rollout.
 (function (root) {
   'use strict';
 
   function workId(value) {
     if (typeof value !== 'string' && typeof value !== 'number') return null;
-    const string = String(value);
-    if (!/^[1-9]\d*$/.test(string)) return null;
-    const id = Number(string);
+    const raw = String(value);
+    if (!/^[1-9]\d*$/.test(raw)) return null;
+    const id = Number(raw);
     return Number.isSafeInteger(id) && id > 0 ? id : null;
   }
 
-  function element(doc, tag, text, className) {
-    const node = doc.createElement(tag);
-    if (text !== undefined) node.textContent = String(text);
-    if (className) node.className = className;
-    return node;
+  function boundedText(value, maxLength) {
+    return typeof value === 'string' && value.length <= maxLength ? value : null;
   }
 
-  function section(doc, title, records, renderItem) {
-    const area = element(doc, 'section', undefined, 'ai-bible-section');
-    area.appendChild(element(doc, 'h3', title));
-    if (!records.length) {
-      area.appendChild(element(doc, 'p', '登録された情報はまだありません。'));
-      return area;
-    }
-    const list = element(doc, 'ul');
-    for (const item of records) {
-      const li = element(doc, 'li');
-      li.appendChild(renderItem(item));
-      list.appendChild(li);
-    }
-    area.appendChild(list);
-    return area;
-  }
-
-  function render({ target, doc, payload }) {
+  // No HTML, template interpolation, innerHTML or DOM element creation from
+  // unpublished story data: a single textContent assignment is the only sink.
+  function previewText(payload) {
     if (
       !payload ||
       !Array.isArray(payload.characters) ||
@@ -45,49 +28,53 @@
       !Array.isArray(payload.facts) ||
       payload.facts.length > 200
     ) {
-      return false;
+      return null;
     }
-    const fragment = doc.createDocumentFragment();
-    fragment.appendChild(element(doc, 'h2', '作品カルテ（管理人限定）'));
-    fragment.appendChild(
-      element(doc, 'p', '既存の登場人物と創作ノートを読み取り専用で表示します。AIによる文章生成・書き換えは行いません。')
-    );
-    fragment.appendChild(
-      section(doc, '登場人物', payload.characters, (character) =>
-        element(doc, 'span', character.name || '名称なし')
-      )
-    );
-    fragment.appendChild(
-      section(doc, '創作ノート（非公開）', payload.notes, (note) => {
-        const block = element(doc, 'div');
-        block.appendChild(element(doc, 'strong', note.title || '無題'));
-        block.appendChild(element(doc, 'p', note.body || ''));
-        return block;
-      })
-    );
-    fragment.appendChild(
-      section(doc, '作品カルテの確認候補', payload.facts, (fact) =>
-        element(doc, 'span', (fact.kind || '設定') + '：' + (fact.key || ''))
-      )
-    );
-    target.replaceChildren(fragment);
+    const sections = [
+      '作品カルテ（管理人限定）',
+      '既存設定の読み取り専用プレビューです。AI生成は行いません。',
+      '',
+      '【登場人物】'
+    ];
+    for (const character of payload.characters) {
+      const name = boundedText(character?.name, 80);
+      if (name === null) return null;
+      sections.push('・' + name);
+    }
+    sections.push('', '【創作ノート（非公開）】');
+    for (const note of payload.notes) {
+      const title = boundedText(note?.title, 120);
+      const body = boundedText(note?.body, 20000);
+      if (title === null || body === null) return null;
+      sections.push('・' + title, body);
+    }
+    sections.push('', '【確認候補】');
+    for (const fact of payload.facts) {
+      const kind = boundedText(fact?.kind, 32);
+      const key = boundedText(fact?.key, 120);
+      if (kind === null || key === null) return null;
+      sections.push('・' + kind + '：' + key);
+    }
+    return sections.join('\n');
+  }
+
+  function render({ target, payload }) {
+    const value = previewText(payload);
+    if (!target || value === null) return false;
+    target.textContent = value;
     target.hidden = false;
     return true;
   }
 
-  // An owning author session must already be present. A denied endpoint keeps
-  // the panel absent; neither a reader nor another author sees a placeholder.
-  async function mount({
-    target,
-    client,
-    novelId,
-    fetcher = root.fetch,
-    doc = root.document
-  }) {
+  async function mount({ target, client, novelId, fetcher = root.fetch }) {
     if (!target) return false;
+    // Clear any previous owner's unpublished notes before reauthenticating.
     target.hidden = true;
+    target.textContent = '';
     const id = workId(novelId);
-    if (!id || !client?.auth?.getSession || !doc || !fetcher) return false;
+    if (!id || !client?.auth?.getSession || typeof fetcher !== 'function') {
+      return false;
+    }
     try {
       const { data, error } = await client.auth.getSession();
       const token = !error && data?.session?.access_token;
@@ -102,7 +89,7 @@
         }
       );
       if (!response.ok) return false;
-      return render({ target, doc, payload: await response.json() });
+      return render({ target, payload: await response.json() });
     } catch {
       return false;
     }
