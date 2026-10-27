@@ -101,7 +101,10 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await page.goto('/novel.html?id=354', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.nl-work-detail-grid')).toBeVisible();
   await expect(page.locator('.nl-work-detail-cover img')).toBeVisible();
-  await expect(page.locator('.nl-work-detail-cover img')).toHaveJSProperty('complete', true);
+  await expect(page.locator('.nl-work-detail-cover img')).toHaveJSProperty(
+    'complete',
+    true
+  );
   await expect(page.locator('.nl-work-detail-main > .title')).toBeVisible();
   await expect(page.locator('.nl-work-detail-main > .title')).toContainText(
     '作品タイトルの表示確認'
