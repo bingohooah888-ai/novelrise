@@ -128,7 +128,6 @@ test('populated owner Bible omits empty-state markers', () => {
   );
 });
 
-
 test('mock-only extraction renders review candidates as literal private text', () => {
   const target = fakeNode();
   const ok = globalThis.NovelightAiBibleOwnerPanel.renderMockReview({
