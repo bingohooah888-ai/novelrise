@@ -45,8 +45,10 @@ function mockClient({ rpcResult, authorId = OWNER, onInsert } = {}) {
         },
         insert(value) {
           calls.push({ table, inserted: value });
-          const result = onInsert?.(table, value) ??
-            { data: { id: 9, revision: 1, provenance: 'ai_inferred' }, error: null };
+          const result = onInsert?.(table, value) ?? {
+            data: { id: 9, revision: 1, provenance: 'ai_inferred' },
+            error: null
+          };
           return {
             select() {
               return {
@@ -84,10 +86,10 @@ test('usage adapter sends only allowlisted fields to service-only RPC', async ()
   });
   assert.deepEqual(result, { id: RESERVATION });
   await store.settle({ reservationId: RESERVATION, chargedMicros: 200 });
-  assert.deepEqual(client.calls.map((call) => call.name), [
-    'novelight_ai_reserve_usage',
-    'novelight_ai_settle_usage'
-  ]);
+  assert.deepEqual(
+    client.calls.map((call) => call.name),
+    ['novelight_ai_reserve_usage', 'novelight_ai_settle_usage']
+  );
   assert.equal(client.calls[0].args.p_ceiling_micros, 800);
   assert.equal(client.calls[1].args.p_charged_micros, 200);
 });
@@ -98,10 +100,16 @@ test('kill switch and missing RPC fail closed', async () => {
       rpcResult: () => ({ data: null, error: null })
     })
   });
-  assert.equal(await disabled.reserve({
-    actorId: OWNER, featureKey: 'prepublish-check',
-    workId: null, ceilingMicros: 20, requestHash: REQUEST
-  }), null);
+  assert.equal(
+    await disabled.reserve({
+      actorId: OWNER,
+      featureKey: 'prepublish-check',
+      workId: null,
+      ceilingMicros: 20,
+      requestHash: REQUEST
+    }),
+    null
+  );
   const broken = createSupabaseAiBudget({
     serviceClient: mockClient({
       rpcResult: () => ({ data: null, error: { code: 'PGRST202' } })
@@ -109,8 +117,11 @@ test('kill switch and missing RPC fail closed', async () => {
   });
   await assert.rejects(
     broken.reserve({
-      actorId: OWNER, featureKey: 'prepublish-check',
-      workId: 17, ceilingMicros: 20, requestHash: REQUEST
+      actorId: OWNER,
+      featureKey: 'prepublish-check',
+      workId: 17,
+      ceilingMicros: 20,
+      requestHash: REQUEST
     }),
     AiStorageError
   );
@@ -121,15 +132,23 @@ test('invalid feature, invalid identity and settlement never contact database', 
   const store = createSupabaseAiBudget({ serviceClient: client });
   await assert.rejects(
     store.reserve({
-      actorId: OWNER, featureKey: 'no-such-ai-feature',
-      workId: null, ceilingMicros: 20, requestHash: REQUEST
-    }), /AI_FEATURE_NOT_APPROVED/
+      actorId: OWNER,
+      featureKey: 'no-such-ai-feature',
+      workId: null,
+      ceilingMicros: 20,
+      requestHash: REQUEST
+    }),
+    /AI_FEATURE_NOT_APPROVED/
   );
   await assert.rejects(
     store.reserve({
-      actorId: 'fabricated-author', featureKey: 'prepublish-check',
-      workId: null, ceilingMicros: 20, requestHash: REQUEST
-    }), /AI_INVALID_IDENTITY/
+      actorId: 'fabricated-author',
+      featureKey: 'prepublish-check',
+      workId: null,
+      ceilingMicros: 20,
+      requestHash: REQUEST
+    }),
+    /AI_INVALID_IDENTITY/
   );
   await assert.rejects(
     store.settle({ reservationId: RESERVATION, chargedMicros: -1 }),
@@ -142,10 +161,17 @@ test('AI audit records no prompts, story content, or generated output', async ()
   const client = mockClient();
   const audit = createSupabaseAiAudit({ serviceClient: client });
   await audit.record({
-    actorId: OWNER, workId: 17, featureKey: 'prepublish-check',
-    provider: 'mock', model: 'mock',
-    chargedMicros: 2, cacheHit: false, outcome: 'success',
-    user: 'PRIVATE DRAFT', system: 'SECRET', text: 'MODEL OUTPUT'
+    actorId: OWNER,
+    workId: 17,
+    featureKey: 'prepublish-check',
+    provider: 'mock',
+    model: 'mock',
+    chargedMicros: 2,
+    cacheHit: false,
+    outcome: 'success',
+    user: 'PRIVATE DRAFT',
+    system: 'SECRET',
+    text: 'MODEL OUTPUT'
   });
   const result = JSON.stringify(client.calls);
   assert.doesNotMatch(result, /PRIVATE DRAFT|SECRET|MODEL OUTPUT/);
@@ -179,14 +205,23 @@ test('AI inference never overwrites an existing confirmed fact', async () => {
   });
   const bible = createSupabaseAiBible({ serviceClient: client });
   const result = await bible.saveAiInference({
-    actorId: OWNER, novelId: 17, episodeId: 18,
-    kind: 'world', key: 'location', payload: { name: 'Arden' },
+    actorId: OWNER,
+    novelId: 17,
+    episodeId: 18,
+    kind: 'world',
+    key: 'location',
+    payload: { name: 'Arden' },
     sourceHash: REQUEST
   });
   assert.deepEqual(result, { unchanged: true });
-  const inserted = client.calls.find((call) => call.table === 'novelight_ai_bible_facts');
+  const inserted = client.calls.find(
+    (call) => call.table === 'novelight_ai_bible_facts'
+  );
   assert.equal(inserted.inserted.provenance, 'ai_inferred');
-  assert.equal(client.calls.some((call) => call.updated), false);
+  assert.equal(
+    client.calls.some((call) => call.updated),
+    false
+  );
 });
 
 test('Novel Bible rejects cross-work episode source before creating a fact', async () => {
@@ -210,8 +245,13 @@ test('Novel Bible rejects cross-work episode source before creating a fact', asy
   const bible = createSupabaseAiBible({ serviceClient: client });
   await assert.rejects(
     bible.saveAiInference({
-      actorId: OWNER, novelId: 17, episodeId: 18,
-      kind: 'world', key: 'planet', payload: { id: 1 }, sourceHash: REQUEST
+      actorId: OWNER,
+      novelId: 17,
+      episodeId: 18,
+      kind: 'world',
+      key: 'planet',
+      payload: { id: 1 },
+      sourceHash: REQUEST
     }),
     /AI_ACCESS_DENIED/
   );
