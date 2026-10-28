@@ -51,7 +51,7 @@ non_fk_residue() {
   local expected_typo="${1:-0}"
   local counts
   counts="$(psql_call -c "
-    select
+    select concat(
       (select count(*) from public.founding_authors
          where author_id in ('$owner', '$other'))
     + (select count(*) from public.beta_participants
@@ -69,8 +69,9 @@ non_fk_residue() {
     + (select count(*) from public.novel_rank_events
          where novel_id_snapshot = '$novel'
            or author_id_snapshot in ('$owner', '$other'))
-    || '|' || (select count(*) from public.novel_typo_report_settings
+    , '|', (select count(*) from public.novel_typo_report_settings
          where novel_id = $novel)
+    )
   ")"
   [[ "$counts" == "0|$expected_typo" ]]
 }
