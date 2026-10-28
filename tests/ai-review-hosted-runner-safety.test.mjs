@@ -88,6 +88,6 @@ test(
 );
 
 test('Staging runner joins both clients before cleanup', () => {
-  assert.match(runner, /wait "$pa" 2>/dev/null || true/u);
-  assert.match(runner, /wait "$pb" 2>/dev/null || true/u);
+  assert.ok(runner.includes('wait "$pa" 2>/dev/null || true'));
+  assert.ok(runner.includes('wait "$pb" 2>/dev/null || true'));
 });
