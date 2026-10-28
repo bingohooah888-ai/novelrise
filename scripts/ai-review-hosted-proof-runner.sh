@@ -75,9 +75,17 @@ SQL
       rc=1
     fi
   fi
+  if [[ "$fixture_committed" == 0 ]] && ! census > /dev/null; then
+    echo 'STAGING_RACE_AMBIGUOUS_SETUP: inspect Staging before any retry' >&2
+    rc=1
+  fi
+  if [[ "$finished" == 1 && "$rc" == 0 ]]; then
+    echo 'STAGING_RACE_PASS: 2 sessions, CAS, full fixture cleanup verified'
+  else
+    rc=1
+  fi
   rm -rf "$scratch"
   unset STAGING_DATABASE_URL
-  if [[ "$finished" != 1 ]]; then rc=1; fi
   exit "$rc"
 }
 trap cleanup EXIT
@@ -211,4 +219,3 @@ grep -qx 'accepted:2' "$scratch/decision-a.log"
 # A real signed JWT is a separate, Preview-scoped approval and test.
 # This proof does not fake a hosted token or turn on the AI feature.
 finished=1
-echo 'STAGING_RACE_PASS: 2 real sessions, duplicate guard and revision CAS'
