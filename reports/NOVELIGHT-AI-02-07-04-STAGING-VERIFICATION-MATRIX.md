@@ -47,3 +47,14 @@ After staging proof, prepare a separately reviewed formal migration and
 confirm that the Supabase GitHub App will not automatically apply it on PR
 creation. Production migration, real AI calls, admin trial and public release
 each require their own approval. Do not treat a green CI as approval.
+
+## Read-only staging preflight evidence — 2026-10-28 (NOT a live test)
+
+- GitHub main at preflight: `ceaf40f5503bb7eb801484471dc35e9de55a4ef2`; PR #2598 head: `2de8f26b237359268f538cbd306df3b8988050ff` (not merged).
+- Supabase production ref `fiepaguycecrredwrcwx` and isolated staging ref `wmlzjgvxgoyrovdhbqbg` were identified. Their migration ledgers each contained **206 matching versions and names**, with no ledger-only differences at the time of the check.
+- Staging `public.novels.id`, `public.episodes.id`, and `public.episodes.novel_id` are `bigint`; `novels.user_id` is `uuid`; `episodes.title` and `episodes.content` are nullable `text`. These are compatible with the proposed FK types and require null-aware test fixtures.
+- Staging currently has **zero** `public.novelight_ai_review_candidates` tables and **zero** `novelight_ai_review_stage_batch` / `novelight_ai_review_decide` RPCs. Therefore **none of the live verification cases in the matrix has been executed**.
+- Approval ledger Issue #294 accepts `migration-sync` only for an exact 14-digit formal migration version and current main SHA. The SQL remains in `reports/sql/*_PROPOSAL.sql` and is **not** a formal migration. Do not bypass the workflow by issuing DDL directly against staging.
+- The proposal's hash serialization `pg_catalog.to_json(text)::text` vs Node `JSON.stringify([title, content])` is not yet proven byte-identical for Unicode/control-character fixtures. Include explicit cross-runtime vectors before promotion.
+
+**Next safe engineering step:** independently review the proposal, create a separately reviewed formal migration on a dedicated branch using the repository's prescribed migration workflow, and establish an exact-version staging approval ledger entry before any staging DDL. This read-only preflight is not a substitute for transaction-level concurrency evidence, HTTP/JWT checks, or rollback proof. Production remains untouched.
