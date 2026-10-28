@@ -25,6 +25,52 @@ additional Staging writes.
 - The Auth sign-in necessarily changes `auth.users.last_sign_in_at` and
   may create Auth session records. It is **not** a read-only exercise.
 
+## Read-only Vercel environment audit (2026-10-28)
+
+Metadata-only check using the project's Vercel environment-variable listing
+(`decrypt=false`) found 26 entries and **zero** custom environments. Their
+secret values were **not fetched or decrypted**; a variable's presence does
+not certify its value or its Supabase/Stripe project.
+
+**Blocking gaps before any new Preview:**
+
+- No `NOVELIGHT_AI_REVIEW_ENABLED` entry in the project variables.
+  Missing keeps the HTTP owner-review route disabled; a scoped
+  `true` may be applied **only in an approved isolated Preview**.
+- `NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED` and
+  `NOVELIGHT_AI_ADMIN_USER_ID` are presently **Production-target only**.
+  Preview must get separate, approved branch-specific overrides; do not
+  copy a Production owner's identity into the fixture.
+- `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and
+  `SUPABASE_PUBLISHABLE_KEY` each have a Preview-target entry, as do
+  `NOVELIGHT_STAGING_SUPABASE_URL` and
+  `NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY`; values are **unknown**.
+  Compare the two URLs to the exact dedicated Staging project, and verify
+  that **all** Preview keys originate from that project by authorized
+  secret-safe checks before permitting any runtime access.
+- `STRIPE_SECRET_KEY` and price keys have Preview-target entries whose
+  values were **not inspected**. Require independent `sk_test_` mode
+  confirmation before making the Preview reachable.
+- The only explicitly Git-branch-scoped `NOVELIGHT_APP_URL` is for
+  `ci/isolate-staging-auth-smoke`, **not** Draft PR #2601.
+  The facts endpoint derives Preview base URL from `VERCEL_URL`, which
+  must equal the exact immutable deployment URL; do not rely on a
+  manually configured unrelated Preview alias.
+- The project uses Vercel Authentication/SSO protection for non-custom
+  deployments. A separately authorized, limited automation bypass is
+  required for probe requests; never disable protection globally.
+- The dormant verification script also requires
+  `NOVELIGHT_HOSTED_PREVIEW_DEPLOYMENT_ID` and a separately scoped
+  `VERCEL_READONLY_API_TOKEN` in the runner, both absent at this stage.
+  They must not enter Git source or logs.
+
+**Isolation preference:** use variables scoped to the exact approved
+Preview branch, rather than changing generic Preview variables affecting
+unrelated previews. Inspect the full effective environment before deploying;
+abort if any value is unknown or resolves to Production. The deploy must
+target `preview` and pin an exact immutable SHA from Draft #2601, with
+no Production alias or promotion. Preview creation is not yet approved.
+
 ## Proposed independently approved fixtures and strict scope
 
 - Only Staging synthetic user UUID
