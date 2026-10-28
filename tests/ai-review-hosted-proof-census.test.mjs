@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  PRECHECK_SQL,
-  assertPrecheck
-} from '../scripts/ai-review-hosted-proof-census.mjs';
+import { PRECHECK_SQL, assertPrecheck } from '../scripts/ai-review-hosted-proof-census.mjs';
 
 function snapshot() {
   return {
