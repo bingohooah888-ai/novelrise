@@ -216,6 +216,92 @@ pb=''
 grep -qx 'accepted:2' "$scratch/decision-a.log"
 [[ "$(psql_call -c "select status || ':' || revision from public.novelight_ai_review_candidates where id=$candidate")" == 'accepted:2' ]]
 
+# The chapter-edit race must invalidate old candidate evidence.
+psql_call -c "set role service_role; select
+  public.novelight_ai_review_stage_batch(
+  '$owner',$novel,$episode,'$hash',repeat('b',64),
+  '[{\"kind\":\"other\",\"key\":\"SyntheticB\",\"summary\":\"Draft-only rival\",\"evidence\":\"blue key\"}]'::jsonb
+  )" > "$scratch/stage-batch-2.log"
+second="$(psql_call -c "select id from public.novelight_ai_review_candidates where novel_id=$novel and fact_key='SyntheticB'")"
+[[ "$second" =~ ^[1-9][0-9]*$ ]] || exit 1
+PGAPPNAME=novelight-ai-edit-a psql_call > "$scratch/edit-a.log" 2>&1 <<SQL &
+BEGIN;
+SET LOCAL statement_timeout='15s';
+UPDATE public.episodes SET content='Edited fictional key evidence.' WHERE id=$episode;
+SELECT pg_sleep(3);
+COMMIT;
+SQL
+pa="$!"
+seen=0
+for _ in $(seq 1 60); do
+  if psql_call -c "select 1 from pg_stat_activity
+    where application_name='novelight-ai-edit-a'
+      and state='active' and query like '%pg_sleep%'" | grep -qx 1; then
+    seen=1
+    break
+  fi
+  sleep 0.05
+done
+[[ "$seen" == 1 ]] || exit 1
+PGAPPNAME=novelight-ai-edit-b psql_call -v VERBOSITY=verbose > "$scratch/edit-b.log" 2>&1 <<SQL &
+SET ROLE service_role;
+SELECT count(*) FROM public.novelight_ai_review_decide(
+  '$owner',$novel,$second,'$hash',1,'accepted');
+SQL
+pb="$!"
+wait "$pa"; pa=''
+if wait "$pb"; then
+  echo 'STAGING_RACE_DENIED: stale manuscript approval succeeded' >&2
+  exit 1
+fi
+pb=''
+grep -q 22023 "$scratch/edit-b.log"
+[[ "$(psql_call -c "select status || ':' || revision from public.novelight_ai_review_candidates where id=$second")" == 'pending:1' ]]
+
+new_hash="$(psql_call -c "select encode(
+  extensions.digest(convert_to(
+    '[' || to_json(title)::text || ',' || to_json(content)::text || ']',
+    'UTF8'), 'sha256'), 'hex')
+  from public.episodes where id=$episode and novel_id=$novel")"
+expect_state() {
+  local expected="$1" sql="$2"
+  if psql_call -v VERBOSITY=verbose -c "$sql" > "$scratch/denied.log" 2>&1; then
+    echo 'STAGING_RACE_DENIED: expected a security or integrity refusal' >&2
+    exit 1
+  fi
+  grep -q "$expected" "$scratch/denied.log" || {
+    echo 'STAGING_RACE_DENIED: unexpected SQLSTATE' >&2
+    exit 1
+  }
+}
+expect_state 42501 "set role service_role; select
+  public.novelight_ai_review_stage_batch(
+  '$other',$novel,$episode,'$new_hash',repeat('c',64),
+  '[{\"kind\":\"other\",\"key\":\"Foreign\",\"summary\":\"Denied\",\"evidence\":\"fictional\"}]'::jsonb)"
+expect_state 22023 "set role service_role; select
+  public.novelight_ai_review_stage_batch(
+  '$owner',$novel,$episode,'$new_hash',repeat('c',64),
+  '[{\"kind\":\"other\",\"key\":\"Forgery\",\"summary\":\"Denied\",\"evidence\":\"not in manuscript\"}]'::jsonb)"
+expect_state 42501 "set role authenticated; select
+  public.novelight_ai_review_stage_batch(
+  '$owner',$novel,$episode,'$new_hash',repeat('c',64),
+  '[{\"kind\":\"other\",\"key\":\"Browser\",\"summary\":\"Denied\",\"evidence\":\"fictional\"}]'::jsonb)"
+expect_state 42501 "set role anon; select
+  public.novelight_ai_review_stage_batch(
+  '$owner',$novel,$episode,'$new_hash',repeat('c',64),
+  '[{\"kind\":\"other\",\"key\":\"Guest\",\"summary\":\"Denied\",\"evidence\":\"fictional\"}]'::jsonb)"
+psql_call > "$scratch/rollback.log" 2>&1 <<SQL
+BEGIN;
+SET LOCAL ROLE service_role;
+SELECT public.novelight_ai_review_stage_batch(
+  '$owner',$novel,$episode,'$new_hash',repeat('d',64),
+  '[{"kind":"other","key":"RolledBack","summary":"Draft-only rollback","evidence":"fictional"}]'::jsonb
+);
+ROLLBACK;
+SQL
+[[ "$(psql_call -c "select count(*) from public.novelight_ai_review_candidates where actor_id='$owner' and request_hash=repeat('d',64)")" == 0 ]]
+[[ "$(psql_call -c "select count(*) from public.novelight_ai_review_candidates where novel_id=$novel")" == 2 ]]
+
 # A real signed JWT is a separate, Preview-scoped approval and test.
 # This proof does not fake a hosted token or turn on the AI feature.
 finished=1
