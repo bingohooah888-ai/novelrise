@@ -10,6 +10,9 @@ test('AI migration generator only creates a review candidate', () => {
     /reports\/sql\/novelight_ai_review_candidates_PROPOSAL\.sql/
   );
   assert.match(script, /STOP: Do not merge, apply or sync/);
-  assert.doesNotMatch(script, /supabase (?:db push|migration up|migration repair)/);
+  assert.doesNotMatch(
+    script,
+    /supabase (?:db push|migration up|migration repair)/
+  );
   assert.doesNotMatch(script, /supabase db reset/);
 });
