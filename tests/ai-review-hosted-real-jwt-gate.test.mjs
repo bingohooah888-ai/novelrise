@@ -29,8 +29,8 @@ function sample() {
     pr: 2601,
     migration: '20261028084410',
     stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg',
-    deploymentId: 'dpl_6DF1tKxfwYMmqJC7dU2qFAHT6D83',
-    previewHost: 'novelrise-bzrnrif4v-ranobe1.vercel.app',
+    deploymentId: 'dpl_2uDtKuUT5RpB97pxtMhYPQpmkCHx',
+    previewHost: 'novelrise-7mmz9wjjo-ranobe1.vercel.app',
     confirmation: 'STAGING APPROVED'
   };
   const comment = {
@@ -87,7 +87,7 @@ test('JWT approval is pinned to owner, Staging and Preview', () => {
   const admitted = verifyAIHostedJwtAdmission(input);
   assert.equal(admitted.fixtureNovel, 998891003);
   assert.equal(admitted.fixtureOwner, '00000000-0000-4000-8000-000000000943');
-  input.comment.body = input.comment.body.replace('dpl_6DF1', 'dpl_WRONG');
+  input.comment.body = input.comment.body.replace('dpl_2uDt', 'dpl_WRONG');
   assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
 });
 
