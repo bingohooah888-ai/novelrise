@@ -470,14 +470,15 @@
   installMobileMenuDismiss();
 
   function installOfficialThumbnailRuntime() {
-    if (!['index', 'search', 'ranking'].includes(currentPageSlug()))
+    if (!['index', 'search', 'ranking', 'community', 'curation',
+      'favorites', 'series', 'reading-history'].includes(currentPageSlug()))
       return false;
     if (document.querySelector('script[data-novelight-thumbnail-runtime]'))
       return false;
     const script = document.createElement('script');
     script.src = THUMBNAIL_RUNTIME_PATH;
     script.defer = true;
-    script.dataset.novelightThumbnailRuntime = 'official';
+    script.dataset.novelightThumbnailRuntime = 'covers';
     document.head.appendChild(script);
     return true;
   }
