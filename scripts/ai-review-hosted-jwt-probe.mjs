@@ -129,8 +129,8 @@ export async function probeRealHostedJwt(config, env) {
     Authorization: 'Bearer ' + token
   });
   if (ownerProof?.novelId !== config.novelId ||
-      !Array.isArray(ownerProof?.pending) ||
-      !Array.isArray(ownerProof?.confirmed)) {
+      !Array.isArray(ownerProof?.candidates) ||
+      ownerProof.aiGenerated !== false) {
     deny('hosted owner review GET did not return synthetic owner data');
   }
   // No bearer, secret, email/password, or manuscript may enter logs.
