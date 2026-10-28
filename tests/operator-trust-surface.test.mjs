@@ -36,7 +36,7 @@ test('operator information is public, complete, and aligned with the NOVELIGHT s
   assert.match(operator, /<title>運営者情報 \| NOVELIGHT<\/title>/);
   assert.match(operator, /サービス名[\s\S]*NOVELIGHT/);
   assert.match(operator, /小説投稿プラットフォーム/);
-  assert.match(operator, /β版公開予定日[\s\S]*2026年9月30日/);
+  assert.match(operator, /β版公開日[\s\S]*2026年9月30日/);
   assert.match(operator, /作品が評価される前の段階にある機会格差を減らし/);
   assert.match(operator, /知名度だけで作品の発見機会が決まらないよう/);
   assert.match(
