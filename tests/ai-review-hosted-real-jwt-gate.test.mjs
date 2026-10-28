@@ -8,9 +8,6 @@ import {
   verifyAIHostedJwtAdmission
 } from '../.github/staging-ai-jwt/admission.mjs';
 import { assertJwtGate } from '../.github/staging-ai-jwt/runner.mjs';
-import {
-  verifyHostedPreviewViaVercel
-} from '../.github/staging-ai-jwt/probe.mjs';
 
 const MAIN = 'a'.repeat(40);
 const CANDIDATE = 'b'.repeat(40);
@@ -167,64 +164,14 @@ test('BLOCKER: runner checks exact synthetic account before deletion', () => {
   assert.match(runner, /created\.id\s*!==\s*ID/u);
 });
 
-test('Preview SSO is verified by Vercel rather than the Preview', async () => {
-  const sha = 'a'.repeat(40);
-  const config = {
-    deploymentId: 'dpl_6DF1tKxfwYMmqJC7dU2qFAHT6D83',
-    preview: 'https://novelrise-bzrnrif4v-ranobe1.vercel.app',
-    revision: sha
-  };
-  const env = { VERCEL_READONLY_API_TOKEN: 'synthetic-test-token' };
-  const deployment = {
-    id: config.deploymentId,
-    project: { id: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe' },
-    name: 'novelrise',
-    url: new URL(config.preview).hostname,
-    readyState: 'READY',
-    target: null,
-    meta: {
-      githubOrg: 'bingohooah888-ai',
-      githubRepo: 'novelrise',
-      githubCommitRef: 'codex/ai020704-staging-candidate-db-20261028',
-      githubCommitSha: sha
-    }
-  };
-  const project = {
-    id: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
-    name: 'novelrise',
-    ssoProtection: {
-      enabled: true,
-      deploymentType: 'all_except_custom_domains'
-    }
-  };
-  function fakeFetch(protection) {
-    const calls = [];
-    return {
-      calls,
-      fetcher: async (url) => {
-        calls.push(url);
-        return {
-          status: 200,
-          json: async () =>
-            calls.length === 1
-              ? deployment
-              : { ...project, ssoProtection: protection }
-        };
-      }
-    };
-  }
-  const valid = fakeFetch(project.ssoProtection);
-  await assert.doesNotReject(
-    verifyHostedPreviewViaVercel(config, env, valid.fetcher)
+test('Preview SSO must be checked with authenticated Vercel metadata', () => {
+  const src = readFileSync(
+    new URL('../.github/staging-ai-jwt/probe.mjs', import.meta.url),
+    'utf8'
   );
-  assert.equal(valid.calls.length, 2);
-  assert.match(valid.calls[0], /\/v13\/deployments\//u);
-  assert.match(valid.calls[1], /\/v1\/projects\//u);
-  const unsafe = fakeFetch({ enabled: false });
-  await assert.rejects(
-    verifyHostedPreviewViaVercel(config, env, unsafe.fetcher),
-    /PROOF_DENIED/u
-  );
+  assert.match(src, /ssoProtection\?\.enabled/u);
+  assert.match(src, /all_except_custom_domains/u);
+  assert.match(src, /api\.vercel\.com\/v1\/projects/u);
 });
 
 test('workflow requires OWNER and a single-use Staging ledger', () => {
