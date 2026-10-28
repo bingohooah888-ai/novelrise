@@ -5,10 +5,10 @@ import { readFileSync } from 'node:fs';
 
 const PROJECT = 'wmlzjgvxgoyrovdhbqbg';
 const EXPECTED_TRIGGERS = Object.freeze({
-  episodes: [7, '32dc9047f332d6a1a7bddae7f7538a6d'],
-  novels: [9, 'df0282d8ad64a429118e5057e57d20a2'],
-  profiles: [3, 'dc74a4cb78131f7375191c4edb2799f0'],
-  users: [6, '573355b7a9d1bcf2ae224721af2ffa1b']
+  episodes: [7, '3dc083fec719753df2e0da09f5dc0a30'],
+  novels: [9, '161076c63bc71a6f174f9699fe7aa285'],
+  profiles: [3, '99d2b001caf60357f38c90dbd58fc6bc'],
+  users: [6, '1a534e511428bd56bd1518ff8daad95a']
 });
 
 function deny(message) {
@@ -55,7 +55,8 @@ select json_build_object(
     from (
       select c.relname as table_name, count(*) as trigger_count,
         md5(string_agg(
-          t.tgname || ':' || pg_get_triggerdef(t.oid),
+          t.tgname || ':' || pg_get_triggerdef(t.oid) ||
+          E'\\n' || pg_get_functiondef(t.tgfoid),
           E'\\n' order by t.tgname
         )) as fingerprint
       from pg_trigger t
