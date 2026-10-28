@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  validateHostedJwtProofConfig
-} from '../scripts/ai-review-hosted-jwt-probe.mjs';
+import { validateHostedJwtProofConfig } from '../scripts/ai-review-hosted-jwt-probe.mjs';
 
 function sample() {
   return {
@@ -83,8 +81,7 @@ test('hosted JWT proof rejects arbitrary or production URL', () => {
 
 test('hosted JWT proof rejects any real or alternate user', () => {
   const entry = sample();
-  entry.NOVELIGHT_HOSTED_TEST_USER_ID =
-    '00000000-0000-4000-8000-000000000941';
+  entry.NOVELIGHT_HOSTED_TEST_USER_ID = '00000000-0000-4000-8000-000000000941';
   assert.throws(
     () => validateHostedJwtProofConfig(entry),
     /AI_HOSTED_JWT_PROOF_DENIED/u
