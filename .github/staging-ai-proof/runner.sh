@@ -41,9 +41,9 @@ psql_call() {
   psql "$STAGING_DATABASE_URL" -X -qAt -v ON_ERROR_STOP=1 "$@"
 }
 census() {
-  node scripts/ai-review-hosted-proof-census.mjs sql > "$scratch/census.sql"
+  node .github/staging-ai-proof/census.mjs sql > "$scratch/census.sql"
   psql_call -f "$scratch/census.sql" > "$scratch/census.json"
-  STAGING_PROJECT_REF="$STAGING_PROJECT_REF"     node scripts/ai-review-hosted-proof-census.mjs assert "$scratch/census.json"
+  STAGING_PROJECT_REF="$STAGING_PROJECT_REF"     node .github/staging-ai-proof/census.mjs assert "$scratch/census.json"
 }
 # Some trigger writes use denormalized snapshot IDs without foreign keys.
 # Their exact fixture keys must be empty before setup and after cleanup.

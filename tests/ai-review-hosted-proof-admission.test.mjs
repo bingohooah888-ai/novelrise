@@ -6,7 +6,7 @@ import {
   CLAIM_PREFIX,
   CONSUMED_PREFIX,
   verifyAIHostedRaceAdmission
-} from '../scripts/ai-review-hosted-proof-admission.mjs';
+} from '../.github/staging-ai-proof/admission.mjs';
 
 const M = 'a'.repeat(40);
 const C = 'b'.repeat(40);

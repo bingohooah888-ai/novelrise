@@ -57,7 +57,7 @@ jobs:
           candidate="$(jq -er '.head.sha' /tmp/ai-race-pr.json)"
           gh api "repos/$GITHUB_REPOSITORY/compare/$current_main...$candidate" > /tmp/ai-race-compare.json
           gh api --paginate --slurp             "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/ai-race-ledger.json
-          node scripts/ai-review-hosted-proof-admission.mjs validate             "$GITHUB_EVENT_PATH" /tmp/ai-race-main.json /tmp/ai-race-pr.json             /tmp/ai-race-compare.json /tmp/ai-race-ledger.json > /tmp/ai-race-admission.json
+          node .github/staging-ai-proof/admission.mjs validate             "$GITHUB_EVENT_PATH" /tmp/ai-race-main.json /tmp/ai-race-pr.json             /tmp/ai-race-compare.json /tmp/ai-race-ledger.json > /tmp/ai-race-admission.json
           test "$(git rev-parse HEAD)" = "$current_main"
           {
             echo "main_sha=$(jq -er '.mainSha' /tmp/ai-race-admission.json)"
@@ -130,7 +130,7 @@ jobs:
 
       - name: Execute trusted-main one-use synthetic race proof
         shell: bash
-        run: bash scripts/ai-review-hosted-proof-runner.sh
+        run: bash .github/staging-ai-proof/runner.sh
 
       - name: Shred temporary Staging URL file
         if: always()

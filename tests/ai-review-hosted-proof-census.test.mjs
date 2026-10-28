@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   PRECHECK_SQL,
   assertPrecheck
-} from '../scripts/ai-review-hosted-proof-census.mjs';
+} from '../.github/staging-ai-proof/census.mjs';
 
 function snapshot() {
   return {
