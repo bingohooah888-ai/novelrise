@@ -85,6 +85,67 @@ export function assertVerifiedVercelPreview(config, deployment) {
   return true;
 }
 
+// Metadata-only check; never request decrypted secrets. This proves that
+// branch-specific settings predate the immutable deployment, NOT that an
+// unreadable server secret actually belongs to Supabase Staging.
+const FROZEN_PREVIEW_KEYS = Object.freeze([
+  'SUPABASE_URL',
+  'NOVELIGHT_STAGING_SUPABASE_URL',
+  'SUPABASE_PUBLISHABLE_KEY',
+  'NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY',
+  'SUPABASE_SECRET_KEY',
+  'NOVELIGHT_AI_ADMIN_USER_ID',
+  'NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED',
+  'NOVELIGHT_AI_REVIEW_ENABLED',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_STANDARD_PRICE_ID',
+  'STRIPE_PREMIUM_PRICE_ID',
+  'STRIPE_WEBHOOK_SECRET'
+]);
+
+export function assertFrozenPreviewEnvMetadata(deployment, payload) {
+  const vars = payload?.envs;
+  if (!Number.isSafeInteger(deployment?.createdAt) ||
+      !Array.isArray(vars) || vars.length !== FROZEN_PREVIEW_KEYS.length) {
+    deny('Preview environment inventory is not complete');
+  }
+  const seen = new Set();
+  for (const entry of vars) {
+    if (!entry || !FROZEN_PREVIEW_KEYS.includes(entry.key) ||
+        seen.has(entry.key) ||
+        entry.gitBranch !== CANDIDATE_BRANCH ||
+        !Array.isArray(entry.target) || entry.target.length !== 1 ||
+        entry.target[0] !== 'preview' ||
+        !Number.isSafeInteger(entry.createdAt) ||
+        !Number.isSafeInteger(entry.updatedAt) ||
+        entry.createdAt > entry.updatedAt ||
+        entry.updatedAt > deployment.createdAt) {
+      deny('Preview branch environment changed after pinned deployment');
+    }
+    seen.add(entry.key);
+    const type = entry.key.includes('SECRET_KEY') ||
+      entry.key.includes('PUBLISHABLE_KEY') ||
+      entry.key === 'STRIPE_WEBHOOK_SECRET';
+    if (type && entry.type !== 'sensitive') {
+      deny('Preview sensitive keys have unsafe type');
+    }
+    if ((entry.key === 'SUPABASE_URL' ||
+         entry.key === 'NOVELIGHT_STAGING_SUPABASE_URL') &&
+        (entry.type !== 'plain' || entry.value !== STAGING)) {
+      deny('Preview Supabase URL not pinned to staging');
+    }
+    if ((entry.key === 'NOVELIGHT_AI_REVIEW_ENABLED' ||
+         entry.key === 'NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED') &&
+        (entry.type !== 'plain' || entry.value !== 'true')) {
+      deny('Preview AI probe flags do not match reviewed build');
+    }
+  }
+  if (seen.size !== FROZEN_PREVIEW_KEYS.length) {
+    deny('Preview environment inventory contains a missing key');
+  }
+  return true;
+}
+
 export async function verifyHostedPreviewViaVercel(
   config,
   env,
@@ -106,7 +167,8 @@ export async function verifyHostedPreviewViaVercel(
   if (response.status !== 200) {
     deny('could not verify Vercel deployment metadata');
   }
-  assertVerifiedVercelPreview(config, await response.json());
+  const deployed = await response.json();
+  assertVerifiedVercelPreview(config, deployed);
   // Protection is project-level and can change without rebuilding the pinned
   // deployment. Recheck the independently authenticated Vercel project API
   // immediately before any synthetic Auth identity can be created.
@@ -136,6 +198,25 @@ export async function verifyHostedPreviewViaVercel(
   ) {
     deny('pinned Preview is not protected by Vercel Authentication');
   }
+  const inventory = await fetcher(
+    'https://api.vercel.com/v10/projects/' +
+      VERCEL_PROJECT +
+      '/env?teamId=' + VERCEL_TEAM +
+      '&gitBranch=' + encodeURIComponent(CANDIDATE_BRANCH) +
+      '&decrypt=false',
+    {
+      headers: {
+        authorization: 'Bearer ' + env.VERCEL_READONLY_API_TOKEN,
+        'cache-control': 'no-store'
+      },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(12000)
+    }
+  );
+  if (inventory.status !== 200) {
+    deny('could not independently verify Preview env metadata');
+  }
+  assertFrozenPreviewEnvMetadata(deployed, await inventory.json());
 }
 
 async function getJson(url, headers, allowedStatus = 200) {
