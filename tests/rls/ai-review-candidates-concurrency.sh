@@ -38,6 +38,7 @@ delete from public.novels where id=$novel;
 delete from auth.users where id in ('$owner', '$other');
 SQL
   # Return the disposable CI role to its historical simulation state.
+  psql_call -c 'revoke usage on schema extensions from service_role' >/dev/null 2>&1 || true
   psql_call -c 'alter role service_role with nobypassrls' >/dev/null 2>&1 || true
   rm -rf "$tmp"
 }
@@ -47,6 +48,8 @@ trap cleanup EXIT
 # replay harness creates a plain nologin role. Mirror it ONLY in this
 # isolated disposable DB, then restore that role during cleanup.
 psql_call -c 'alter role service_role with bypassrls' >/dev/null
+# The hosted Supabase role also has USAGE on the pgcrypto extensions schema.
+psql_call -c 'grant usage on schema extensions to service_role' >/dev/null
 
 psql_call <<SQL
 insert into auth.users(id,email) values
