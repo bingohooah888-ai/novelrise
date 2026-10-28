@@ -1,0 +1,162 @@
+name: NOVELIGHT AI Hosted Staging Synthetic Race Proof (OWNER only)
+
+# Dormant on this Draft PR: GitHub issue_comment workflows run from main.
+# Requires separately approved promotion of ONLY the reviewed trusted runner.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Bind exact single-use OWNER synthetic race proof request
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_AI_RACE_PROOF_APPROVE ')
+    concurrency:
+      group: novelight-ai-hosted-race-approval-294
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.verify.outputs.main_sha }}
+      candidate_sha: ${{ steps.verify.outputs.candidate_sha }}
+      request_id: ${{ steps.verify.outputs.request_id }}
+    steps:
+      - name: Check out trusted main, never candidate code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Validate one OWNER request against complete approval ledger
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/ai-race-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2601" > /tmp/ai-race-pr.json
+          current_main="$(jq -er '.object.sha' /tmp/ai-race-main.json)"
+          candidate="$(jq -er '.head.sha' /tmp/ai-race-pr.json)"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$current_main...$candidate" > /tmp/ai-race-compare.json
+          gh api --paginate --slurp             "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/ai-race-ledger.json
+          node .github/staging-ai-proof/admission.mjs validate             "$GITHUB_EVENT_PATH" /tmp/ai-race-main.json /tmp/ai-race-pr.json             /tmp/ai-race-compare.json /tmp/ai-race-ledger.json > /tmp/ai-race-admission.json
+          test "$(git rev-parse HEAD)" = "$current_main"
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/ai-race-admission.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/ai-race-admission.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/ai-race-admission.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: CLAIM approval before accessing any Staging secret
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.verify.outputs.main_sha }}
+          CANDIDATE: ${{ steps.verify.outputs.candidate_sha }}
+          REQUEST_ID: ${{ steps.verify.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          body="$(jq -cn --arg requestCommentId "$REQUEST_ID"             --arg mainSha "$MAIN" --arg candidateSha "$CANDIDATE"             --arg runId "$GITHUB_RUN_ID"             '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments"             -f body="NOVELIGHT_STAGING_AI_RACE_PROOF_CLAIMED $body" > /dev/null
+
+  stage:
+    name: One Staging-only synthetic transaction and two-session test
+    needs: admit
+    if: needs.admit.result == 'success'
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      APPROVED_CANDIDATE_SHA: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_APPROVAL_COMMENT_ID: ${{ needs.admit.outputs.request_id }}
+      STAGING_PROJECT_REF: wmlzjgvxgoyrovdhbqbg
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-ai-race-staging-url
+      NOVELIGHT_STAGING_AI_RACE_ADMITTED: '1'
+      PGSSLMODE: require
+    steps:
+      - name: Checkout exact trusted main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Fail closed unless approved main, Draft and Staging still match
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2601" --jq '.head.sha')" = "$APPROVED_CANDIDATE_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2601" --jq '.state')" = 'open'
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2601" --jq '.draft')" = true
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+
+      - name: Resolve verified dedicated Staging session pooler
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/resolve-staging-session-pooler.mjs
+
+      - name: Execute trusted-main one-use synthetic race proof
+        shell: bash
+        run: bash .github/staging-ai-proof/runner.sh
+
+      - name: Shred temporary Staging URL file
+        if: always()
+        shell: bash
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
+
+  record:
+    name: Consume the approval exactly once, including failed runs
+    needs: [admit, stage]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Record unrepeatable outcome in Staging ledger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          CANDIDATE: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST_ID: ${{ needs.admit.outputs.request_id }}
+          RESULT: ${{ needs.stage.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$RESULT" in success|failure|cancelled|skipped) ;; *) exit 1 ;; esac
+          body="$(jq -cn --arg requestCommentId "$REQUEST_ID"             --arg mainSha "$MAIN" --arg candidateSha "$CANDIDATE"             --arg runId "$GITHUB_RUN_ID" --arg result "$RESULT"             '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments"             -f body="NOVELIGHT_STAGING_AI_RACE_PROOF_CONSUMED $body" > /dev/null
