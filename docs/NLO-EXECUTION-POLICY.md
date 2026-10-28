@@ -226,3 +226,30 @@ npm run nlo:capabilities -- record-gap --intent="<intent>" --effect="<effect>"
 ```
 
 自己拡張は安全ゲートを弱める理由にならない。同じ不足を二度繰り返さないことを目標とし、能力数そのものをKPIにしない。
+
+## 14. Continuous Until Approval / Local-First CI Policy
+
+ユーザーが「次の承認まで進めて」「承認まで連続実行」「途中報告不要」等を指示した場合、**そのworkstreamでは、次の実質的なOWNER承認境界または回復不能な外部障害まで、承認不要の作業を自律的に連続実行する**。単なる調査結果、PR作成、CI開始、CI失敗、修正コミット、短時間のCI待機を完了扱いにして返答してはならない。
+
+### 14.1 Local-first / One-batch
+
+1. 作業開始時に変更対象と検証コマンドを特定し、既存のpreflight・Runtime Gateを守る。
+2. GitHubへpushする前に、利用可能なローカルまたは安全な隔離環境で**実際のリポジトリ設定**によるformat（Prettier等）、lint、syntax、focused tests、diff checkを実行する。設定を推測して手作業で整形しない。
+3. 失敗はローカルでまとめて修正・再検証し、必要な変更をできるだけ一括コミットする。小修正ごとのpush→CI→失敗を繰り返さない。
+4. ローカル環境が利用不能な場合、実行できないチェックを実行済みと表現せず、既存CIの実行ログから正確な失敗原因を取得し、最小の修正をまとめる。失敗原因が不明なら推測修正の連続pushを禁止する。
+5. push後はCIの**最新head SHA**に紐づくrequired checksを確認し、失敗があればログ取得→修正→再検証→再実行を承認不要の範囲で続ける。古いSHAの成功を最新SHAの成功として扱わない。
+6. 同じ失敗を2回繰り返したら、場当たり的な再修正を止め、実行環境・formatter設定・ログ・差分を再診断してから次の1回にまとめる。
+7. 不要なVercel Preview、Supabase Staging、Production deploy、外部AI呼び出し、有料処理は起動しない。既存の費用・承認ゲートを維持する。
+
+### 14.2 No premature handoff
+
+- ユーザーが途中報告不要と指定した場合、**承認不要の工程の途中では報告だけして終了しない**。CI待ちが短時間であれば可能な限り継続監視する。
+- ユーザーへの次の応答は、原則として (a) 必要な承認を求めるとき、(b) 承認不要の範囲が完了したとき、(c) 自動復旧不能な障害・環境制約・実行上限で続行不能なときのいずれかに限る。
+- (c) の場合は、未完了事項と正確な停止理由を明示する。CI実行中・未検証の状態を完了と偽らない。
+- 承認を要する操作は先取り実行しない。「続けて」「承認まで」は本番承認・ステージング承認の代用にならない。
+
+### 14.3 Approval-ready definition
+
+承認依頼前に、変更差分、必要なformat/lint/tests/CI、security/secret確認、最新SHA、Preview/Stagingが未承認で起動していないこと、rollback方針を確認する。未実施のlive proofは未実施と明示する。PR作成だけをもって承認待ちに移行しない。
+
+この節は効率・継続実行の規定であり、MASTER、FULL PREFLIGHT、Runtime Gate、Preview/Staging費用ゲート、Production承認を緩和しない。
