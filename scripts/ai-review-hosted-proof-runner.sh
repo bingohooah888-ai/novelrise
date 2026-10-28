@@ -155,6 +155,7 @@ SQL
   exit "$rc"
 }
 trap cleanup EXIT
+trap 'exit 130' INT TERM
 
 # Close the gap between admission and the first persistent write.
 # If main/PR moved while the runner was being prepared, consume the approval
