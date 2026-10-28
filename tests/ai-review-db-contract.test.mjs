@@ -55,7 +55,10 @@ test('02-07-04: browser roles cannot read candidates or execute review RPCs', ()
   ]) {
     assert.match(
       sql,
-      new RegExp(`revoke all on function public\\.${name}\\([\\s\\S]*?\\) from public, anon, authenticated`, 'i')
+      new RegExp(
+        `revoke all on function public\\.${name}\\([\\s\\S]*?\\) from public, anon, authenticated`,
+        'i'
+      )
     );
   }
 });
