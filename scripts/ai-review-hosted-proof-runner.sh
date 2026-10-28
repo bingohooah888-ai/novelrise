@@ -48,8 +48,9 @@ census() {
 # Some trigger writes use denormalized snapshot IDs without foreign keys.
 # Their exact fixture keys must be empty before setup and after cleanup.
 non_fk_residue() {
-  local count
-  count="$(psql_call -c "
+  local expected_typo="${1:-0}"
+  local counts
+  counts="$(psql_call -c "
     select
       (select count(*) from public.founding_authors
          where author_id in ('$owner', '$other'))
@@ -68,10 +69,10 @@ non_fk_residue() {
     + (select count(*) from public.novel_rank_events
          where novel_id_snapshot = '$novel'
            or author_id_snapshot in ('$owner', '$other'))
-    + (select count(*) from public.novel_typo_report_settings
+    || '|' || (select count(*) from public.novel_typo_report_settings
          where novel_id = $novel)
   ")"
-  [[ "$count" == 0 ]]
+  [[ "$counts" == "0|$expected_typo" ]]
 }
 # Audit every actual FK referencing synthetic auth/profile/novel/episode IDs.
 # For each FK, a nonzero residual aborts the proof. No broad user data dumps.
@@ -193,8 +194,10 @@ fixture_committed=1
   where id in ('$owner', '$other')
     and raw_app_meta_data ->> 'internal_e2e' = 'true'
     and public.novelight_is_internal_participation_account(id)")" == 2 ]]
-non_fk_residue || {
-  echo 'STAGING_RACE_DENIED: signup generated a participation side effect' >&2
+# A DRAFT novel deliberately seeds exactly one private typo setting row.
+# All other denormalized records must remain absent.
+non_fk_residue 1 || {
+  echo 'STAGING_RACE_DENIED: signup generated unexpected side effects' >&2
   exit 1
 }
 
