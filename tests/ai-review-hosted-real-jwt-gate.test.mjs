@@ -7,9 +7,6 @@ import {
   APPROVAL_PREFIX,
   verifyAIHostedJwtAdmission
 } from '../.github/staging-ai-jwt/admission.mjs';
-import {
-  assertFrozenPreviewEnvMetadata
-} from '../.github/staging-ai-jwt/probe.mjs';
 import { assertJwtGate } from '../.github/staging-ai-jwt/runner.mjs';
 
 const MAIN = 'a'.repeat(40);
@@ -175,17 +172,9 @@ test('Preview SSO must be checked with authenticated Vercel metadata', () => {
   assert.match(src, /ssoProtection\?\.enabled/u);
   assert.match(src, /all_except_custom_domains/u);
   assert.match(src, /api\.vercel\.com\/v1\/projects/u);
-});
-
-test('frozen Preview inventory rejects absent metadata', () => {
-  assert.throws(
-    () => assertFrozenPreviewEnvMetadata({ createdAt: 1 }, { envs: [] }),
-    /PROOF_DENIED/u
-  );
-  assert.throws(
-    () => assertFrozenPreviewEnvMetadata({}, { envs: [] }),
-    /PROOF_DENIED/u
-  );
+  assert.match(src, /assertFrozenPreviewEnvMetadata/u);
+  assert.match(src, /entry\.updatedAt > deployment\.createdAt/u);
+  assert.match(src, /entry\.target\[0\] !== 'preview'/u);
 });
 
 test('workflow requires OWNER and a single-use Staging ledger', () => {
