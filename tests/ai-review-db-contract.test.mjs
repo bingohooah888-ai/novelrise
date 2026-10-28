@@ -45,18 +45,9 @@ test('02-07-04: decisions require an atomic pending revision CAS', () => {
 
 test('02-07-04: browser roles cannot read candidates or execute review RPCs', () => {
   assert.match(sql, /enable row level security/i);
-  assert.match(
-    sql,
-    /revoke all on public\.novelight_ai_review_candidates\s+from public, anon, authenticated/i
-  );
-  assert.match(
-    sql,
-    /revoke all on function public\.novelight_ai_review_stage_batch\([\s\S]*?\) from public, anon, authenticated/i
-  );
-  assert.match(
-    sql,
-    /revoke all on function public\.novelight_ai_review_decide\([\s\S]*?\) from public, anon, authenticated/i
-  );
+  assert.match(sql, /revoke all on public\.novelight_ai_review_candidates\s+from public, anon, authenticated/i);
+  assert.match(sql, /revoke all on function public\.novelight_ai_review_stage_batch\([\s\S]*?\) from public, anon, authenticated/i);
+  assert.match(sql, /revoke all on function public\.novelight_ai_review_decide\([\s\S]*?\) from public, anon, authenticated/i);
 });
 
 test('02-07-04: untrusted AI suggestions never self-confirm author canon', () => {
