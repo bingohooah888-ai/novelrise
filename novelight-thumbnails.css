@@ -122,3 +122,10 @@ body.novelight-page-ranking .card .novelight-official-thumbnail {
     margin-bottom: 4px;
   }
 }
+
+/* 2026-10-28: author cover artwork appears across discovery and detail surfaces. */
+.novelight-has-custom-cover img[data-novelight-custom-cover="1"],
+.novelight-has-custom-cover .novelight-custom-cover img {
+  object-fit: contain !important;
+  background: #0d1420;
+}
