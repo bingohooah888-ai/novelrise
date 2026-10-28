@@ -14,6 +14,24 @@ function snapshot() {
     reservedAuthCount: 0,
     reservedNovelCount: 0,
     reservedEpisodeCount: 0,
+    functionFingerprints: [
+      {
+        function: 'novelight_capture_scout_campaign_entry',
+        fingerprint: 'fcf216ef3062983bea13ff4143b92f53'
+      },
+      {
+        function: 'novelight_is_internal_participation_account',
+        fingerprint: 'aa1d87b299d789535f9e06571979b7ba'
+      },
+      {
+        function: 'novelight_sync_user_participation_qualifications',
+        fingerprint: '504d6dac6c932d0ed919a1e703ede89c'
+      },
+      {
+        function: 'sync_auth_user_participation_after_delete',
+        fingerprint: '8e67c239903d18194cabf631015f7a14'
+      }
+    ],
     triggerFingerprints: [
       {
         table: 'episodes',
@@ -79,5 +97,17 @@ test('census rejects changed or new triggers', () => {
   assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
   entry.triggerFingerprints[1].fingerprint = '161076c63bc71a6f174f9699fe7aa285';
   entry.triggerFingerprints.push({ table: 'payments', count: 1 });
+  assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
+});
+
+test('census refuses transitive participation logic changes', () => {
+  const entry = snapshot();
+  entry.functionFingerprints[1].fingerprint = '0'.repeat(32);
+  assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
+});
+
+test('census refuses omitted function fingerprints', () => {
+  const entry = snapshot();
+  entry.functionFingerprints.pop();
   assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
 });
