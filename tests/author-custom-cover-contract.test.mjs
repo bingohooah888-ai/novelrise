@@ -66,7 +66,10 @@ test('custom covers affect work detail, X and discovery', async () => {
   assert.match(list, /getPublicUrl\(path\)/u);
   assert.match(list, /custom cover lookup unavailable/u);
   // Never overlay an official cover on an already populated custom image card.
-  assert.match(list, /!link\.classList\.contains\('novelight-has-custom-cover'\)/u);
+  assert.match(
+    list,
+    /!link\.classList\.contains\('novelight-has-custom-cover'\)/u
+  );
   assert.match(list, /CUSTOM_COVER_PATH\.exec\(path\)/u);
   assert.match(list, /matched\[1\] !== id/u);
   assert.match(list, /currentImage\.src = previous/u);
