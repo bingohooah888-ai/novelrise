@@ -127,7 +127,7 @@ export function verifyAIHostedRaceAdmission({
 // CLI entrypoint for a future trusted-main workflow. No credentials accepted.
 if (process.argv[2] === 'validate') {
   try {
-    if (process.argv.length !== 8) deny('exact six input files required');
+    if (process.argv.length !== 8) deny('exact five input files required');
     const [eventPath, mainPath, prPath, comparePath, ledgerPath] =
       process.argv.slice(3);
     const event = JSON.parse(readFileSync(eventPath, 'utf8'));
@@ -135,8 +135,8 @@ if (process.argv[2] === 'validate') {
       repository: event.repository?.full_name,
       issue: event.issue,
       comment: event.comment,
-      actor: event.sender?.login,
-      triggeringActor: event.sender?.login,
+      actor: process.env.GITHUB_ACTOR,
+      triggeringActor: process.env.GITHUB_TRIGGERING_ACTOR,
       main: JSON.parse(readFileSync(mainPath, 'utf8')),
       pr: JSON.parse(readFileSync(prPath, 'utf8')),
       compare: JSON.parse(readFileSync(comparePath, 'utf8')),
