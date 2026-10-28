@@ -131,6 +131,7 @@
     return cardLinks().filter(
       (link) =>
         link.dataset.novelightThumbnailChecked !== '1' &&
+        !link.classList.contains('novelight-has-custom-cover') &&
         !link.querySelector('.novel-cover-image,.novelight-official-thumbnail img')
     );
   }
