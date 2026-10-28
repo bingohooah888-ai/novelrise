@@ -11,6 +11,11 @@ const STAGING = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
 const TEST_ID = '00000000-0000-4000-8000-000000000943';
 const TEST_EMAIL = 'ai-review-jwt@example.invalid';
 const TEST_NOVEL = 998891003;
+const VERCEL_PROJECT = 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe';
+const VERCEL_TEAM = 'team_2XFgtRCPJQ6pbrEa4mOLQAEx';
+const PREVIEW_HOST = /^novelrise-[a-z0-9-]+-ranobe1\.vercel\.app$/u;
+const DEPLOYMENT_ID = /^dpl_[a-zA-Z0-9]+$/u;
+const CANDIDATE_BRANCH = 'codex/ai020704-staging-candidate-db-20261028';
 
 function deny(message) {
   throw new Error('AI_HOSTED_JWT_PROOF_DENIED: ' + message);
@@ -30,7 +35,10 @@ export function validateHostedJwtProofConfig(env) {
       typeof env.NOVELIGHT_HOSTED_TEST_USER_PASSWORD !== 'string' ||
       env.NOVELIGHT_HOSTED_TEST_USER_PASSWORD.length < 12 ||
       typeof env.VERCEL_AUTOMATION_BYPASS_SECRET !== 'string' ||
-      !env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+      !env.VERCEL_AUTOMATION_BYPASS_SECRET ||
+      !DEPLOYMENT_ID.test(env.NOVELIGHT_HOSTED_PREVIEW_DEPLOYMENT_ID || '') ||
+      typeof env.VERCEL_READONLY_API_TOKEN !== 'string' ||
+      env.VERCEL_READONLY_API_TOKEN.length < 20) {
     deny('missing dedicated admission, synthetic user, or immutable pins');
   }
   let preview;
@@ -42,7 +50,7 @@ export function validateHostedJwtProofConfig(env) {
   if (preview.protocol !== 'https:' || preview.username || preview.password ||
       preview.port || preview.pathname !== '/' ||
       preview.search || preview.hash ||
-      !preview.hostname.endsWith('.vercel.app')) {
+      !PREVIEW_HOST.test(preview.hostname)) {
     deny('Preview must be an isolated exact HTTPS Vercel origin');
   }
   return Object.freeze({
@@ -51,8 +59,54 @@ export function validateHostedJwtProofConfig(env) {
     revision: env.APPROVED_PREVIEW_SHA,
     userId: TEST_ID,
     email: TEST_EMAIL,
-    novelId: TEST_NOVEL
+    novelId: TEST_NOVEL,
+    deploymentId: env.NOVELIGHT_HOSTED_PREVIEW_DEPLOYMENT_ID
   });
+}
+
+// This is an independently queried Vercel deployment, NOT information
+// self-reported by the Preview server that will later receive the JWT.
+export function assertVerifiedVercelPreview(config, deployment) {
+  if (
+    !deployment ||
+    deployment.id !== config.deploymentId ||
+    (deployment.project?.id ?? deployment.projectId) !== VERCEL_PROJECT ||
+    deployment.name !== 'novelrise' ||
+    deployment.url !== new URL(config.preview).hostname ||
+    deployment.readyState !== 'READY' ||
+    (deployment.target !== null && deployment.target !== 'preview') ||
+    deployment.meta?.githubOrg !== 'bingohooah888-ai' ||
+    deployment.meta?.githubRepo !== 'novelrise' ||
+    deployment.meta?.githubCommitRef !== CANDIDATE_BRANCH ||
+    deployment.meta?.githubCommitSha !== config.revision
+  ) {
+    deny('Vercel project, Preview origin, or exact deployment revision mismatch');
+  }
+  return true;
+}
+
+export async function verifyHostedPreviewViaVercel(
+  config,
+  env,
+  fetcher = globalThis.fetch
+) {
+  const url =
+    'https://api.vercel.com/v13/deployments/' +
+    config.deploymentId +
+    '?teamId=' +
+    VERCEL_TEAM;
+  const response = await fetcher(url, {
+    headers: {
+      authorization: 'Bearer ' + env.VERCEL_READONLY_API_TOKEN,
+      'cache-control': 'no-store'
+    },
+    redirect: 'manual',
+    signal: AbortSignal.timeout(12000)
+  });
+  if (response.status !== 200) {
+    deny('could not verify Vercel deployment metadata');
+  }
+  assertVerifiedVercelPreview(config, await response.json());
 }
 
 async function getJson(url, headers, allowedStatus = 200) {
@@ -68,6 +122,9 @@ async function getJson(url, headers, allowedStatus = 200) {
 }
 
 export async function probeRealHostedJwt(config, env) {
+  // No Preview request, protection bypass or Auth login before Vercel's own
+  // API attests this exact READY, non-Production deployment and Git SHA.
+  await verifyHostedPreviewViaVercel(config, env);
   const protection = {
     'x-vercel-protection-bypass': env.VERCEL_AUTOMATION_BYPASS_SECRET
   };
