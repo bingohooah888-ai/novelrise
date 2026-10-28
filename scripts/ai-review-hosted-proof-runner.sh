@@ -45,6 +45,42 @@ census() {
   psql_call -f "$scratch/census.sql" > "$scratch/census.json"
   STAGING_PROJECT_REF="$STAGING_PROJECT_REF"     node scripts/ai-review-hosted-proof-census.mjs assert "$scratch/census.json"
 }
+# Audit every actual FK referencing synthetic auth/profile/novel/episode IDs.
+# For each FK, a nonzero residual aborts the proof. No broad user data dumps.
+foreign_key_residue() {
+  psql_call > "$scratch/fk-residual-queries.sql" <<SQL
+SELECT format(
+  'SELECT %L AS fk_name, count(*) AS remaining FROM %I.%I WHERE %I %s;',
+  k.conname, n.nspname, c.relname, a.attname,
+  CASE
+    WHEN k.confrelid IN ('auth.users'::regclass, 'public.profiles'::regclass)
+      THEN 'IN (''$owner''::uuid, ''$other''::uuid)'
+    WHEN k.confrelid = 'public.novels'::regclass THEN '= $novel'
+    ELSE '= $episode'
+  END
+)
+FROM pg_constraint k
+JOIN pg_class c ON c.oid = k.conrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN LATERAL unnest(k.conkey) WITH ORDINALITY ck(attnum, pos) ON true
+JOIN LATERAL unnest(k.confkey) WITH ORDINALITY fk(attnum, pos)
+  ON fk.pos = ck.pos
+JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = ck.attnum
+JOIN pg_attribute ref_a
+  ON ref_a.attrelid = k.confrelid AND ref_a.attnum = fk.attnum
+WHERE k.contype = 'f' AND ref_a.attname = 'id'
+  AND k.confrelid IN (
+    'auth.users'::regclass, 'public.profiles'::regclass,
+    'public.novels'::regclass, 'public.episodes'::regclass
+  )
+ORDER BY 1;
+SQL
+  psql_call -f "$scratch/fk-residual-queries.sql" > "$scratch/fk-residuals.txt" ||
+    return 1
+  [[ -s "$scratch/fk-residuals.txt" ]] || return 1
+  awk -F '|' 'NF != 2 || $2 != "0" { failed=1 }
+    END { exit failed ? 1 : 0 }' "$scratch/fk-residuals.txt"
+}
 cleanup() {
   local rc="$?"
   trap - EXIT
@@ -70,8 +106,8 @@ SQL
     then
       echo 'STAGING_RACE_CLEANUP_FAILED: manual review required; no retry' >&2
       rc=1
-    elif ! census > /dev/null; then
-      echo 'STAGING_RACE_RESIDUE: manual review required; no retry' >&2
+    elif ! census > /dev/null || ! foreign_key_residue; then
+      echo 'STAGING_RACE_RESIDUE: synthetic FK or fixture residue; manual review' >&2
       rc=1
     fi
   fi
