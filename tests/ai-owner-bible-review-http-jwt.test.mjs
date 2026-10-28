@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 import { createOwnerBibleReviewApiHandler } from '../api/ai-owner-bible-review.js';
 
@@ -198,7 +199,7 @@ async function withLocalApi(handler, run) {
 
 async function request(base, jwt, opts = {}) {
   const { method = 'GET', origin, body, headers = {} } = opts;
-  const response = await fetch(
+  const response = await globalThis.fetch(
     base + '/api/ai-owner-bible-review?novel_id=354',
     {
       method,
