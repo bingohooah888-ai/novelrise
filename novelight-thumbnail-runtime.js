@@ -240,18 +240,34 @@
           );
           if (currentImage) {
             const optimized = optimizedImageUrl(publicUrl);
-            if (currentImage.getAttribute('src') !== optimized) {
+            const previous = currentImage.getAttribute('src') || '';
+            if (previous !== optimized) {
+              currentImage.addEventListener('error', () => {
+                if (previous) currentImage.src = previous;
+                currentImage.removeAttribute('data-novelight-custom-cover');
+                link.classList.remove('novelight-has-custom-cover');
+              }, { once: true });
               currentImage.src = optimized;
             }
             currentImage.dataset.novelightCustomCover = '1';
           } else if (link.querySelector('.zone-cover-placeholder')) {
+            const placeholder = link.querySelector('.zone-cover-placeholder');
             const cover = imageNode(publicUrl);
+            if (!cover) continue;
             cover.classList.add('zone-cover', 'novel-cover-image');
             cover.dataset.novelightCustomCover = '1';
-            link.querySelector('.zone-cover-placeholder').replaceWith(cover);
+            cover.addEventListener('error', () => {
+              cover.replaceWith(placeholder);
+              link.classList.remove('novelight-has-custom-cover');
+            }, { once: true });
+            placeholder.replaceWith(cover);
           } else {
             const media = cachedMediaNode(publicUrl);
             media.classList.add('novelight-custom-cover');
+            media.querySelector('img')?.addEventListener('error', () => {
+              media.remove();
+              link.classList.remove('novelight-has-custom-cover');
+            }, { once: true });
             insertMedia(link, media);
           }
           link.classList.add('novelight-has-custom-cover');
