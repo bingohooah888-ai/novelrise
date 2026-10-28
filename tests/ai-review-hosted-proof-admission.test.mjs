@@ -117,32 +117,38 @@ rejects('a missing approval in ledger is refused', (input) => {
   input.ledgerPages = [[]];
 });
 rejects('a partially paginated ledger is refused', (input) => {
-  input.ledgerPages = [Array.from({ length: 100 }, (_, i) => ({
-    id: i + 1,
-    body: 'filler'
-  }))];
+  input.ledgerPages = [
+    Array.from({ length: 100 }, (_, i) => ({
+      id: i + 1,
+      body: 'filler'
+    }))
+  ];
 });
 rejects('an approval that was claimed cannot be reused', (input) => {
   input.ledgerPages[0].push({
     id: 70002,
-    body: CLAIM_PREFIX + JSON.stringify({
-      requestCommentId: '70001',
-      mainSha: M,
-      candidateSha: C,
-      runId: '555'
-    })
+    body:
+      CLAIM_PREFIX +
+      JSON.stringify({
+        requestCommentId: '70001',
+        mainSha: M,
+        candidateSha: C,
+        runId: '555'
+      })
   });
 });
 rejects('a consumed approval cannot be reused', (input) => {
   input.ledgerPages[0].push({
     id: 70003,
-    body: CONSUMED_PREFIX + JSON.stringify({
-      requestCommentId: '70001',
-      mainSha: M,
-      candidateSha: C,
-      runId: '555',
-      result: 'failure'
-    })
+    body:
+      CONSUMED_PREFIX +
+      JSON.stringify({
+        requestCommentId: '70001',
+        mainSha: M,
+        candidateSha: C,
+        runId: '555',
+        result: 'failure'
+      })
   });
 });
 rejects('extra approval fields are refused', (input) => {
