@@ -10,7 +10,7 @@ const read = (path) => readFile(join(root, path), 'utf8');
 test('homepage exposes recommendations, real new arrivals, and a data-backed conditional LIGHT SEED shelf', async () => {
   const home = await read('index.html');
 
-  assert.match(home, /<h2>あなたへのおすすめ<\/h2>/u);
+  assert.match(home, /<h2>おすすめ作品<\/h2>/u);
   assert.match(home, /id="newGrid"/u);
   assert.match(home, /href="recommended\.html"/);
   assert.match(home, /href="new-arrivals\.html"/);
