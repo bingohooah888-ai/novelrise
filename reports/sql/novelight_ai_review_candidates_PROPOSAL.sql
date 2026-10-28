@@ -30,6 +30,13 @@ create index novelight_ai_review_scope_idx
   on public.novelight_ai_review_candidates
   (actor_id, novel_id, status, id);
 
+-- Required by FK delete checks; the actor-first scope index does not cover
+-- either foreign key as the leading index column.
+create index novelight_ai_review_novel_fk_idx
+  on public.novelight_ai_review_candidates (novel_id);
+create index novelight_ai_review_episode_fk_idx
+  on public.novelight_ai_review_candidates (source_episode_id);
+
 create or replace function public.novelight_ai_review_stage_batch(
   p_actor_id uuid,
   p_novel_id bigint,
@@ -133,7 +140,7 @@ create or replace function public.novelight_ai_review_decide(
   p_expected_revision integer,
   p_decision text
 ) returns table(status text, revision integer)
-language plpgsql security invoker set search_path = '' as $
+language plpgsql security invoker set search_path = '' as $$
 declare
   v_title text;
   v_body text;
