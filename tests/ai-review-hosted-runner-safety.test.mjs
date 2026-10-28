@@ -89,3 +89,21 @@ test('Staging runner joins both clients before cleanup', () => {
   assert.ok(runner.includes('wait "$pa" 2>/dev/null || true'));
   assert.ok(runner.includes('wait "$pb" 2>/dev/null || true'));
 });
+
+
+test('hosted concurrent observers use transaction-local application names', () => {
+  for (const name of [
+    'race-a',
+    'race-b',
+    'decide-a',
+    'decide-b',
+    'edit-a'
+  ]) {
+    assert.ok(
+      runner.includes(`SET LOCAL application_name='novelight-ai-${name}';`)
+    );
+  }
+  assert.equal(runner.split('SELECT pg_sleep(20);').length - 1, 3);
+  assert.ok(runner.includes("SET LOCAL statement_timeout='45s';"));
+  assert.ok(!runner.includes('SELECT pg_sleep(3);'));
+});

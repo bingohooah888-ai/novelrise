@@ -241,8 +241,9 @@ stage_sql="public.novelight_ai_review_stage_batch('$owner',$novel,$episode,'$has
 PGAPPNAME=novelight-ai-race-a psql_call > "$scratch/a.log" 2>&1 <<SQL &
 BEGIN;
 SET LOCAL ROLE service_role;
+SET LOCAL application_name='novelight-ai-race-a';
 SELECT $stage_sql;
-SELECT pg_sleep(3);
+SELECT pg_sleep(20);
 COMMIT;
 SQL
 pa="$!"
@@ -261,6 +262,7 @@ done
 PGAPPNAME=novelight-ai-race-b psql_call > "$scratch/b.log" 2>&1 <<SQL &
 BEGIN;
 SET LOCAL ROLE service_role;
+SET LOCAL application_name='novelight-ai-race-b';
 SELECT $stage_sql;
 COMMIT;
 SQL
@@ -289,8 +291,9 @@ decide_sql="public.novelight_ai_review_decide('$owner',$novel,$candidate,'$hash'
 PGAPPNAME=novelight-ai-decide-a psql_call > "$scratch/decision-a.log" 2>&1 <<SQL &
 BEGIN;
 SET LOCAL ROLE service_role;
+SET LOCAL application_name='novelight-ai-decide-a';
 SELECT status || ':' || revision FROM $decide_sql;
-SELECT pg_sleep(3);
+SELECT pg_sleep(20);
 COMMIT;
 SQL
 pa="$!"
@@ -308,6 +311,7 @@ done
 PGAPPNAME=novelight-ai-decide-b psql_call > "$scratch/decision-b.log" 2>&1 <<SQL &
 BEGIN;
 SET LOCAL ROLE service_role;
+SET LOCAL application_name='novelight-ai-decide-b';
 SELECT count(*) FROM public.novelight_ai_review_decide(
   '$owner',$novel,$candidate,'$hash',1,'rejected');
 COMMIT;
@@ -334,9 +338,10 @@ second="$(psql_call -c "select id from public.novelight_ai_review_candidates whe
 [[ "$second" =~ ^[1-9][0-9]*$ ]] || exit 1
 PGAPPNAME=novelight-ai-edit-a psql_call > "$scratch/edit-a.log" 2>&1 <<SQL &
 BEGIN;
-SET LOCAL statement_timeout='15s';
+SET LOCAL statement_timeout='45s';
+SET LOCAL application_name='novelight-ai-edit-a';
 UPDATE public.episodes SET content='Edited fictional key evidence.' WHERE id=$episode;
-SELECT pg_sleep(3);
+SELECT pg_sleep(20);
 COMMIT;
 SQL
 pa="$!"
