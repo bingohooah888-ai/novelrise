@@ -23,7 +23,9 @@
     'curation',
     'favorites',
     'series',
-    'reading-history'
+    'reading-history',
+    'special-zone',
+    'my-novels'
   ]);
   let client = null;
   let scheduled = false;
@@ -89,7 +91,9 @@
       'a.work-card[href*="novel.html?id="]',
       'a.book-card[href*="novel.html?id="]',
       'a.community-link[href*="novel.html?id="]',
-      'a.curation-work[href*="novel.html?id="]'
+      'a.curation-work[href*="novel.html?id="]',
+      'a.zone-card[href*="novel.html?id="]',
+      'a.novelight-curation-public-item[href*="novel.html?id="]'
     ].join(',');
     return Array.from(document.querySelectorAll(selector));
   }
@@ -232,7 +236,7 @@
 
         for (const link of byId.get(id) || []) {
           const currentImage = link.querySelector(
-            '.novel-cover-image, .novelight-official-thumbnail img, .card-media img'
+            '.novel-cover-image, .novelight-official-thumbnail img, .card-media img, .zone-cover:not(.zone-cover-placeholder), .community-link img'
           );
           if (currentImage) {
             const optimized = optimizedImageUrl(publicUrl);
@@ -240,6 +244,11 @@
               currentImage.src = optimized;
             }
             currentImage.dataset.novelightCustomCover = '1';
+          } else if (link.querySelector('.zone-cover-placeholder')) {
+            const cover = imageNode(publicUrl);
+            cover.classList.add('zone-cover', 'novel-cover-image');
+            cover.dataset.novelightCustomCover = '1';
+            link.querySelector('.zone-cover-placeholder').replaceWith(cover);
           } else {
             const media = cachedMediaNode(publicUrl);
             media.classList.add('novelight-custom-cover');
