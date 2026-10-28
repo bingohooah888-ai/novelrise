@@ -18,22 +18,22 @@ function snapshot() {
       {
         table: 'episodes',
         count: 7,
-        fingerprint: '32dc9047f332d6a1a7bddae7f7538a6d'
+        fingerprint: '3dc083fec719753df2e0da09f5dc0a30'
       },
       {
         table: 'novels',
         count: 9,
-        fingerprint: 'df0282d8ad64a429118e5057e57d20a2'
+        fingerprint: '161076c63bc71a6f174f9699fe7aa285'
       },
       {
         table: 'profiles',
         count: 3,
-        fingerprint: 'dc74a4cb78131f7375191c4edb2799f0'
+        fingerprint: '99d2b001caf60357f38c90dbd58fc6bc'
       },
       {
         table: 'users',
         count: 6,
-        fingerprint: '573355b7a9d1bcf2ae224721af2ffa1b'
+        fingerprint: '1a534e511428bd56bd1518ff8daad95a'
       }
     ]
   };
@@ -78,7 +78,7 @@ test('census rejects changed or new triggers', () => {
   entry.triggerFingerprints[1].fingerprint = '0'.repeat(32);
   assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
   entry.triggerFingerprints[1].fingerprint =
-    'df0282d8ad64a429118e5057e57d20a2';
+    '161076c63bc71a6f174f9699fe7aa285';
   entry.triggerFingerprints.push({ table: 'payments', count: 1 });
   assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
 });
