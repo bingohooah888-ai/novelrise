@@ -21,8 +21,8 @@ function command(name,args){
 export function assertJwtGate(env){
   if(env.NOVELIGHT_STAGING_AI_JWT_ADMITTED!=='1' ||
      env.STAGING_PROJECT_REF!==STAGE_REF||env.STAGING_SUPABASE_URL!==STAGING ||
-     env.APPROVED_PREVIEW_DEPLOYMENT_ID!=='dpl_6DF1tKxfwYMmqJC7dU2qFAHT6D83' ||
-     env.APPROVED_PREVIEW_HOST!=='novelrise-bzrnrif4v-ranobe1.vercel.app' ||
+     env.APPROVED_PREVIEW_DEPLOYMENT_ID!=='dpl_2uDtKuUT5RpB97pxtMhYPQpmkCHx' ||
+     env.APPROVED_PREVIEW_HOST!=='novelrise-7mmz9wjjo-ranobe1.vercel.app' ||
      !/^[a-f0-9]{40}$/.test(env.APPROVED_MAIN_SHA||'') ||
      !/^[a-f0-9]{40}$/.test(env.APPROVED_CANDIDATE_SHA||'') ||
      !/^[1-9][0-9]*$/.test(env.STAGING_APPROVAL_COMMENT_ID||'') ||
