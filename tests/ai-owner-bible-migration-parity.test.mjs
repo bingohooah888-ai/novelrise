@@ -50,18 +50,11 @@ test('previous staging-only additions must fail ledger parity gate', () => {
   const baseline = ['20261027090000', '20261027120000'];
   const result = compareMigrationLedgers({
     local: baseline,
-    staging: [
-      ...baseline,
-      '20261028020331',
-      '20261028020804'
-    ],
+    staging: [...baseline, '20261028020331', '20261028020804'],
     production: baseline
   });
   assert.equal(result.ok, false);
-  assert.deepEqual(result.staging.extra, [
-    '20261028020331',
-    '20261028020804'
-  ]);
+  assert.deepEqual(result.staging.extra, ['20261028020331', '20261028020804']);
 });
 
 test('invalid or duplicated migration versions fail closed', () => {
@@ -90,9 +83,16 @@ test('proposed SQL rejects false and empty evidence before insertion', async () 
     sql.indexOf('insert into public.novelight_ai_review_candidates')
   );
   assert.ok(validate.length > 0);
-  assert.match(validate, /pg_catalog\.strpos\(v_body, v_candidate ->> 'evidence'\) = 0/);
+  assert.match(
+    validate,
+    /pg_catalog\.strpos\(v_body, v_candidate ->> 'evidence'\) = 0/
+  );
   for (const field of ['key', 'summary', 'evidence']) {
-    assert.ok(validate.includes("pg_catalog.btrim(v_candidate ->> '" + field + "') = ''"));
+    assert.ok(
+      validate.includes(
+        "pg_catalog.btrim(v_candidate ->> '" + field + "') = ''"
+      )
+    );
   }
   assert.match(sql, /enable row level security/);
   assert.match(sql, /current_user <> 'service_role'/);
@@ -104,16 +104,4 @@ test('review SQL stays a proposal, not an automatically deployed migration', asy
   const sql = await readFile(proposal, 'utf8');
   assert.match(sql, /REVIEW ONLY\. NOT a runnable migration/);
   assert.ok(local.length > 0);
-});
-
-
-/* AI_REVIEW_PARITY_FORMAT_TEMP */
-test('temporary CI Prettier diagnostic', async () => {
-  const prettier = await import('prettier');
-  const filename = 'tests/ai-owner-bible-migration-parity.test.mjs';
-  const input = await readFile(new URL('./ai-owner-bible-migration-parity.test.mjs', import.meta.url), 'utf8');
-  const stripped = input.split('/* AI_REVIEW_PARITY_FORMAT_TEMP */')[0];
-  const config = await prettier.resolveConfig(filename);
-  const formatted = await prettier.format(stripped, { ...config, filepath: filename });
-  console.log('PARITY_FORMAT_BEGIN' + encodeURIComponent(formatted) + 'PARITY_FORMAT_END');
 });
