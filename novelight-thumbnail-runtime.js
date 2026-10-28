@@ -4,6 +4,9 @@
   const SUPABASE_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE';
   const STYLE_PATH = 'novelight-thumbnails.css';
+  const CUSTOM_COVER_BUCKET = 'novel-custom-covers';
+  const CUSTOM_COVER_PATH = /^[0-9a-f-]{36}\/([0-9]+)\/[0-9a-f-]{36}\.(?:webp|png|jpg)$/iu;
+  const CUSTOM_COVER_BATCH = 50;
   const THUMBNAIL_WIDTH = 384;
   const THUMBNAIL_QUALITY = 75;
   const ABOVE_FOLD_DESKTOP = 6;
@@ -15,7 +18,12 @@
     'recommended',
     'new-arrivals',
     'author',
-    'light-seed'
+    'light-seed',
+    'community',
+    'curation',
+    'favorites',
+    'series',
+    'reading-history'
   ]);
   let client = null;
   let scheduled = false;
@@ -77,7 +85,11 @@
     const selector = [
       'a.novel-card[href*="novel.html?id="]',
       'a.shelf-card[href*="novel.html?id="]',
-      'body.novelight-page-ranking a.card[href*="novel.html?id="]'
+      'body.novelight-page-ranking a.card[href*="novel.html?id="]',
+      'a.work-card[href*="novel.html?id="]',
+      'a.book-card[href*="novel.html?id="]',
+      'a.community-link[href*="novel.html?id="]',
+      'a.curation-work[href*="novel.html?id="]'
     ].join(',');
     return Array.from(document.querySelectorAll(selector));
   }
@@ -188,9 +200,77 @@
     return result.data ?? [];
   }
 
+  async function loadCustomCovers(browserClient, links) {
+    const byId = new Map();
+    for (const link of links) {
+      const id = novelIdFromLink(link);
+      if (!id) continue;
+      if (!byId.has(id)) byId.set(id, []);
+      byId.get(id).push(link);
+    }
+    const ids = Array.from(byId.keys());
+    if (!ids.length) return;
+
+    // One batched public/owner-RLS lookup, never one request per work card.
+    for (let i = 0; i < ids.length; i += CUSTOM_COVER_BATCH) {
+      const batch = ids.slice(i, i + CUSTOM_COVER_BATCH);
+      const { data, error } = await browserClient
+        .from('novel_custom_covers')
+        .select('novel_id,storage_path')
+        .in('novel_id', batch.map(Number));
+      if (error) throw error;
+
+      for (const row of data ?? []) {
+        const id = String(row.novel_id);
+        const path = String(row.storage_path || '');
+        const matched = CUSTOM_COVER_PATH.exec(path);
+        if (!matched || matched[1] !== id) continue;
+        const publicUrl = browserClient.storage
+          .from(CUSTOM_COVER_BUCKET)
+          .getPublicUrl(path).data?.publicUrl;
+        if (!publicUrl) continue;
+
+        for (const link of byId.get(id) || []) {
+          const currentImage = link.querySelector(
+            '.novel-cover-image, .novelight-official-thumbnail img, .card-media img'
+          );
+          if (currentImage) {
+            const optimized = optimizedImageUrl(publicUrl);
+            if (currentImage.getAttribute('src') !== optimized) {
+              currentImage.src = optimized;
+            }
+            currentImage.dataset.novelightCustomCover = '1';
+          } else {
+            const media = cachedMediaNode(publicUrl);
+            media.classList.add('novelight-custom-cover');
+            insertMedia(link, media);
+          }
+          link.classList.add('novelight-has-custom-cover');
+        }
+      }
+    }
+  }
+
   async function decorate() {
     scheduled = false;
     optimizeExistingImages();
+    const browserClient = getClient();
+    if (!browserClient) return;
+
+    const customLinks = cardLinks().filter(
+      (link) => link.dataset.novelightCustomCoverChecked !== '1'
+    );
+    customLinks.forEach((link) => {
+      link.dataset.novelightCustomCoverChecked = '1';
+    });
+    if (customLinks.length) {
+      try {
+        await loadCustomCovers(browserClient, customLinks);
+      } catch (error) {
+        // Official thumbnails remain a safe fallback when cover lookup fails.
+        console.warn('custom cover lookup unavailable', error);
+      }
+    }
 
     const links = candidateLinks();
     if (!links.length) return;
@@ -208,8 +288,6 @@
     const ids = Array.from(byId.keys());
     if (!ids.length) return;
 
-    const browserClient = getClient();
-    if (!browserClient) return;
     try {
       const { data, error } = await browserClient
         .from('novels')
