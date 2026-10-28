@@ -120,7 +120,10 @@ async function main(){
       "insert into public.novels(id,user_id,title,status) values ("+NOVEL+",'"+ID+"','Synthetic JWT read test','draft'); commit;");
     audit(db,'fixture');
     proofEnv.NOVELIGHT_HOSTED_TEST_USER_PASSWORD=password;
-    await probeRealHostedJwt(config,proofEnv);
+    await probeRealHostedJwt(config, proofEnv, async (jwt) => {
+      const result = await admin.auth.admin.signOut(jwt, 'global');
+      if (result.error) fail();
+    });
   }catch{error=new Error('JWT_PROOF_FAILED');}
   finally{
     let cleanupFailed=false;
@@ -130,7 +133,8 @@ async function main(){
       try{sql(db,"begin; set local statement_timeout='12s'; set local lock_timeout='3s';"+
         "delete from public.novels where id="+NOVEL+" and user_id='"+ID+"'; commit;");}
       catch{cleanupFailed=true;}
-      try{if(created.email!==EMAIL)cleanupFailed=true;
+      try{if(created.id!==ID || created.email!==EMAIL ||
+        created.app_metadata?.internal_e2e!==true)cleanupFailed=true;
         else{const deleted=await admin.auth.admin.deleteUser(created.id);
           if(deleted.error)cleanupFailed=true;}}
       catch{cleanupFailed=true;}
