@@ -105,3 +105,15 @@ test('review SQL stays a proposal, not an automatically deployed migration', asy
   assert.match(sql, /REVIEW ONLY\. NOT a runnable migration/);
   assert.ok(local.length > 0);
 });
+
+
+/* AI_REVIEW_PARITY_FORMAT_TEMP */
+test('temporary CI Prettier diagnostic', async () => {
+  const prettier = await import('prettier');
+  const filename = 'tests/ai-owner-bible-migration-parity.test.mjs';
+  const input = await readFile(new URL('./ai-owner-bible-migration-parity.test.mjs', import.meta.url), 'utf8');
+  const stripped = input.split('/* AI_REVIEW_PARITY_FORMAT_TEMP */')[0];
+  const config = await prettier.resolveConfig(filename);
+  const formatted = await prettier.format(stripped, { ...config, filepath: filename });
+  console.log('PARITY_FORMAT_BEGIN' + encodeURIComponent(formatted) + 'PARITY_FORMAT_END');
+});
