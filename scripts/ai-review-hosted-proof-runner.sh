@@ -114,8 +114,17 @@ SQL
 cleanup() {
   local rc="$?"
   trap - EXIT
-  if [[ -n "$pa" ]]; then kill "$pa" 2>/dev/null || true; fi
-  if [[ -n "$pb" ]]; then kill "$pb" 2>/dev/null || true; fi
+  # Wait until both client processes actually exit before cleanup SQL.
+  # Killing psql without joining it can leave in-flight connections racing
+  # against fixture deletion on a hosted database.
+  if [[ -n "$pa" ]]; then
+    kill "$pa" 2>/dev/null || true
+    wait "$pa" 2>/dev/null || true
+  fi
+  if [[ -n "$pb" ]]; then
+    kill "$pb" 2>/dev/null || true
+    wait "$pb" 2>/dev/null || true
+  fi
   if [[ "$fixture_committed" == 1 ]]; then
     # No wildcard delete. A failure here is never hidden or auto-retried.
     if ! psql_call > "$scratch/cleanup.log" 2>&1 <<SQL

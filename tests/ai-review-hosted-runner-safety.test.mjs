@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
 import { URL } from 'node:url';
 
 const runner = readFileSync(
@@ -50,4 +51,43 @@ test('workflow pins owner and one-use ledger before Staging access', () => {
   assert.match(workflow, /ref: main/u);
   assert.match(workflow, /environment: staging/u);
   assert.match(workflow, /cancel-in-progress: false/u);
+});
+
+test(
+  'hosted Staging runner parses as Bash (without executing)',
+  { skip: process.platform === 'win32' },
+  () => {
+    const result = spawnSync(
+      'bash',
+      ['-n', 'scripts/ai-review-hosted-proof-runner.sh'],
+      { encoding: 'utf8' }
+    );
+    assert.equal(result.status, 0, result.stderr);
+  }
+);
+
+test(
+  'hosted Staging runner refuses to run without one-time approval',
+  { skip: process.platform === 'win32' },
+  () => {
+    const result = spawnSync(
+      'bash',
+      ['scripts/ai-review-hosted-proof-runner.sh'],
+      {
+        encoding: 'utf8',
+        timeout: 5000,
+        env: { PATH: process.env.PATH, NOVELIGHT_STAGING_AI_RACE_ADMITTED: '0' }
+      }
+    );
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.stderr,
+      /missing dedicated one-time Staging race admission/u
+    );
+  }
+);
+
+test('Staging runner joins both clients before cleanup', () => {
+  assert.match(runner, /wait "$pa" 2>/dev/null || true/u);
+  assert.match(runner, /wait "$pb" 2>/dev/null || true/u);
 });
