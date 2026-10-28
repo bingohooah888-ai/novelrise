@@ -471,7 +471,8 @@
 
   function installOfficialThumbnailRuntime() {
     if (!['index', 'search', 'ranking', 'community', 'curation',
-      'favorites', 'series', 'reading-history'].includes(currentPageSlug()))
+      'favorites', 'series', 'reading-history', 'special-zone',
+      'my-novels'].includes(currentPageSlug()))
       return false;
     if (document.querySelector('script[data-novelight-thumbnail-runtime]'))
       return false;
