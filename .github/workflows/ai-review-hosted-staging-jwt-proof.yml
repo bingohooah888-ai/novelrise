@@ -1,0 +1,183 @@
+name: NOVELIGHT AI Hosted Staging Real Auth JWT Proof (OWNER only)
+
+# Dormant on this Draft PR: GitHub issue_comment workflows run from main.
+# Requires separately approved promotion of ONLY the reviewed trusted runner.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Bind exact single-use OWNER real Auth JWT proof request
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_AI_JWT_PROOF_APPROVE ')
+    concurrency:
+      group: novelight-ai-hosted-jwt-approval-294
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.verify.outputs.main_sha }}
+      candidate_sha: ${{ steps.verify.outputs.candidate_sha }}
+      request_id: ${{ steps.verify.outputs.request_id }}
+    steps:
+      - name: Check out trusted main, never candidate code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+
+      # Must pass in a trusted main checkout BEFORE CLAIM, environment
+      # secrets and any hosted Staging operation. Revocation and exact-ID
+      # cleanup checks remain mandatory even after the runner is repaired.
+      - name: Block unsafe real JWT runners before touching Staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund --quiet
+          node --test tests/ai-review-hosted-real-jwt-gate.test.mjs
+
+      - name: Validate one OWNER request against complete approval ledger
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/ai-jwt-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2601" > /tmp/ai-jwt-pr.json
+          current_main="$(jq -er '.object.sha' /tmp/ai-jwt-main.json)"
+          candidate="$(jq -er '.head.sha' /tmp/ai-jwt-pr.json)"
+          reviewed_base="b725b796f5a4cd51b5181b75e247bfc0502e9568"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$reviewed_base...$candidate" > /tmp/ai-jwt-compare.json
+          gh api "repos/$GITHUB_REPOSITORY/compare/$reviewed_base...$current_main" > /tmp/ai-jwt-lineage.json
+          gh api --paginate --slurp             "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/ai-jwt-ledger.json
+          node .github/staging-ai-jwt/admission.mjs validate             "$GITHUB_EVENT_PATH" /tmp/ai-jwt-main.json /tmp/ai-jwt-pr.json             /tmp/ai-jwt-compare.json /tmp/ai-jwt-lineage.json /tmp/ai-jwt-ledger.json > /tmp/ai-jwt-admission.json
+          test "$(git rev-parse HEAD)" = "$current_main"
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/ai-jwt-admission.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/ai-jwt-admission.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/ai-jwt-admission.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: CLAIM approval before accessing any Staging secret
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.verify.outputs.main_sha }}
+          CANDIDATE: ${{ steps.verify.outputs.candidate_sha }}
+          REQUEST_ID: ${{ steps.verify.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          body="$(jq -cn --arg requestCommentId "$REQUEST_ID"             --arg mainSha "$MAIN" --arg candidateSha "$CANDIDATE"             --arg runId "$GITHUB_RUN_ID"             '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments"             -f body="NOVELIGHT_STAGING_AI_JWT_PROOF_CLAIMED $body" > /dev/null
+
+  stage:
+    name: One Staging-only actual Auth JWT owner proof
+    needs: admit
+    if: needs.admit.result == 'success'
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      APPROVED_CANDIDATE_SHA: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_APPROVAL_COMMENT_ID: ${{ needs.admit.outputs.request_id }}
+      STAGING_PROJECT_REF: wmlzjgvxgoyrovdhbqbg
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-ai-jwt-staging-url
+      NOVELIGHT_STAGING_AI_JWT_ADMITTED: '1'
+      PGSSLMODE: require
+      STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      VERCEL_READONLY_API_TOKEN: ${{ secrets.VERCEL_READONLY_API_TOKEN }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      APPROVED_PREVIEW_DEPLOYMENT_ID: dpl_2uDtKuUT5RpB97pxtMhYPQpmkCHx
+      APPROVED_PREVIEW_HOST: novelrise-7mmz9wjjo-ranobe1.vercel.app
+    steps:
+      - name: Checkout exact trusted main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Fail closed unless approved main, Draft and Staging still match
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2601" --jq '.head.sha')" = "$APPROVED_CANDIDATE_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2601" --jq '.state')" = 'open'
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2601" --jq '.draft')" = true
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+
+      - name: Resolve verified dedicated Staging session pooler
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/resolve-staging-session-pooler.mjs
+
+      - name: Install pinned dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Execute trusted-main one-use real Auth JWT proof
+        shell: bash
+        run: node .github/staging-ai-jwt/runner.mjs
+
+      - name: Shred temporary Staging URL file
+        if: always()
+        shell: bash
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
+
+  record:
+    name: Consume the approval exactly once, including failed runs
+    needs: [admit, stage]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Record unrepeatable outcome in Staging ledger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          CANDIDATE: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST_ID: ${{ needs.admit.outputs.request_id }}
+          RESULT: ${{ needs.stage.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$RESULT" in success|failure|cancelled|skipped) ;; *) exit 1 ;; esac
+          body="$(jq -cn --arg requestCommentId "$REQUEST_ID"             --arg mainSha "$MAIN" --arg candidateSha "$CANDIDATE"             --arg runId "$GITHUB_RUN_ID" --arg result "$RESULT"             '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments"             -f body="NOVELIGHT_STAGING_AI_JWT_PROOF_CONSUMED $body" > /dev/null
