@@ -142,6 +142,31 @@ test('runner uses official Auth Admin APIs, not auth.users SQL', () => {
   assert.match(src, /fkResidue/u);
 });
 
+// These two assertions deliberately keep this Draft's CI RED until a reviewed
+// trusted-runner fix provides mandatory Auth session cleanup and exact-ID
+// deletion protection. The connected GitHub write tool refused that change.
+// Do not weaken or skip these tests to make the PR appear deployable.
+test('BLOCKER: runner supplies mandatory session revocation callback', () => {
+  const runner = readFileSync(
+    new URL('../.github/staging-ai-jwt/runner.mjs', import.meta.url),
+    'utf8'
+  );
+  assert.match(
+    runner,
+    /probeRealHostedJwt\(config,\s*proofEnv,\s*async\s*\(/u
+  );
+  assert.match(runner, /auth\.admin\.signOut/u);
+});
+
+test('BLOCKER: runner checks exact synthetic account before deletion', () => {
+  const runner = readFileSync(
+    new URL('../.github/staging-ai-jwt/runner.mjs', import.meta.url),
+    'utf8'
+  );
+  assert.match(runner, /created\.app_metadata\?\.internal_e2e/u);
+  assert.match(runner, /created\.id\s*!==\s*ID/u);
+});
+
 test('workflow requires OWNER and a single-use Staging ledger', () => {
   const src = readFileSync(
     new URL(
