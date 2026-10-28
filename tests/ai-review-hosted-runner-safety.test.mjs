@@ -90,7 +90,6 @@ test('Staging runner joins both clients before cleanup', () => {
   assert.ok(runner.includes('wait "$pb" 2>/dev/null || true'));
 });
 
-
 test('hosted concurrent observers use transaction-local application names', () => {
   const names = ['race-a', 'race-b', 'decide-a', 'decide-b', 'edit-a'];
   for (const name of names) {
