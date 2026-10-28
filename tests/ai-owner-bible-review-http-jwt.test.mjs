@@ -120,6 +120,9 @@ function createFixture() {
         async listAuthorConfirmed() {
           return [];
         },
+        async savePendingBatch() {
+          throw new Error('synthetic HTTP test never stages candidates');
+        },
         async readCandidate() {
           return {
             id: 7,
