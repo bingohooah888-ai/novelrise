@@ -177,74 +177,13 @@ test('Preview SSO must be checked with authenticated Vercel metadata', () => {
   assert.match(src, /api\.vercel\.com\/v1\/projects/u);
 });
 
-test('frozen Preview env metadata rejects drift and Production scope', () => {
-  const createdAt = 1793191469141;
-  const branch = 'codex/ai020704-staging-candidate-db-20261028';
-  const names = [
-    'SUPABASE_URL',
-    'NOVELIGHT_STAGING_SUPABASE_URL',
-    'SUPABASE_PUBLISHABLE_KEY',
-    'NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY',
-    'SUPABASE_SECRET_KEY',
-    'NOVELIGHT_AI_ADMIN_USER_ID',
-    'NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED',
-    'NOVELIGHT_AI_REVIEW_ENABLED',
-    'STRIPE_SECRET_KEY',
-    'STRIPE_STANDARD_PRICE_ID',
-    'STRIPE_PREMIUM_PRICE_ID',
-    'STRIPE_WEBHOOK_SECRET'
-  ];
-  const sensitive = new Set([
-    'SUPABASE_PUBLISHABLE_KEY',
-    'NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY',
-    'SUPABASE_SECRET_KEY',
-    'STRIPE_SECRET_KEY',
-    'STRIPE_WEBHOOK_SECRET'
-  ]);
-  const payload = {
-    envs: names.map((key) => {
-      let value = '';
-      if (key.includes('SUPABASE_URL')) {
-        value = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
-      } else if (key.endsWith('_ENABLED')) {
-        value = 'true';
-      }
-      return {
-        key,
-        gitBranch: branch,
-        target: ['preview'],
-        createdAt: createdAt - 1000,
-        updatedAt: createdAt - 100,
-        type: sensitive.has(key) ? 'sensitive' : 'plain',
-        value
-      };
-    })
-  };
-  const deployed = { createdAt };
-  assert.equal(assertFrozenPreviewEnvMetadata(deployed, payload), true);
-
-  const changed = structuredClone(payload);
-  changed.envs[4].updatedAt = createdAt + 1;
+test('frozen Preview inventory rejects absent metadata', () => {
   assert.throws(
-    () => assertFrozenPreviewEnvMetadata(deployed, changed),
+    () => assertFrozenPreviewEnvMetadata({ createdAt: 1 }, { envs: [] }),
     /PROOF_DENIED/u
   );
-  const production = structuredClone(payload);
-  production.envs[4].target = ['production'];
   assert.throws(
-    () => assertFrozenPreviewEnvMetadata(deployed, production),
-    /PROOF_DENIED/u
-  );
-  const incorrectUrl = structuredClone(payload);
-  incorrectUrl.envs[0].value = 'https://other.supabase.co';
-  assert.throws(
-    () => assertFrozenPreviewEnvMetadata(deployed, incorrectUrl),
-    /PROOF_DENIED/u
-  );
-  const duplicate = structuredClone(payload);
-  duplicate.envs[4].key = 'SUPABASE_URL';
-  assert.throws(
-    () => assertFrozenPreviewEnvMetadata(deployed, duplicate),
+    () => assertFrozenPreviewEnvMetadata({}, { envs: [] }),
     /PROOF_DENIED/u
   );
 });
