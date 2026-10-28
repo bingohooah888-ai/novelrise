@@ -68,9 +68,21 @@ test('02-07-04: AI cannot confirm canon', () => {
 // No schema mutation or manuscript data was involved.
 test('02-07-04: staging PostgreSQL and Node source hashes agree', () => {
   const vectors = [
-    ['題名', '本文', '9c75b5ea7a918989290ff9e6553947a9642e5b21c3d2e5357df89bb1bfdb13ad'],
-    ['A', 'line\nnext', 'e7927c331bc484adb17b76f4a624c112910be78eff3cef377a20e6f02b612818'],
-    ['絵文字😀', '引用"と逆斜線\\', 'ed1134bd20fc529319822191a876b07a8a85209dec0fb7d20ff98ae47d0fe96a'],
+    [
+      '題名',
+      '本文',
+      '9c75b5ea7a918989290ff9e6553947a9642e5b21c3d2e5357df89bb1bfdb13ad',
+    ],
+    [
+      'A',
+      'line\\nnext',
+      'e7927c331bc484adb17b76f4a624c112910be78eff3cef377a20e6f02b612818',
+    ],
+    [
+      '絵文字😀',
+      '引用"と逆斜線\\\\',
+      'ed1134bd20fc529319822191a876b07a8a85209dec0fb7d20ff98ae47d0fe96a',
+    ],
   ];
   assert.match(sql, /pg_catalog\.to_json\(v_title\)::text/i);
   assert.match(sql, /pg_catalog\.to_json\(v_body\)::text/i);
