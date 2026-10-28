@@ -49,10 +49,7 @@ test('02-07-04: browser roles cannot read candidates or execute review RPCs', ()
     sql,
     /revoke all on public\.novelight_ai_review_candidates\s+from public, anon, authenticated/i
   );
-  for (const name of [
-    'novelight_ai_review_stage_batch',
-    'novelight_ai_review_decide'
-  ]) {
+  for (const name of ['novelight_ai_review_stage_batch', 'novelight_ai_review_decide']) {
     assert.match(
       sql,
       new RegExp(
