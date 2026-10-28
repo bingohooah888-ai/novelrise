@@ -142,10 +142,9 @@ test('runner uses official Auth Admin APIs, not auth.users SQL', () => {
   assert.match(src, /fkResidue/u);
 });
 
-// These two assertions deliberately keep this Draft's CI RED until a reviewed
-// trusted-runner fix provides mandatory Auth session cleanup and exact-ID
-// deletion protection. The connected GitHub write tool refused that change.
-// Do not weaken or skip these tests to make the PR appear deployable.
+// Keep both required Auth cleanup regressions mandatory. The trusted runner
+// now supplies session revocation and exact synthetic user deletion guards.
+// Never remove these checks to make the staging approval appear deployable.
 test('BLOCKER: runner supplies mandatory session revocation callback', () => {
   const runner = readFileSync(
     new URL('../.github/staging-ai-jwt/runner.mjs', import.meta.url),
