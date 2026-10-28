@@ -7,6 +7,9 @@ import {
   APPROVAL_PREFIX,
   verifyAIHostedJwtAdmission
 } from '../.github/staging-ai-jwt/admission.mjs';
+import {
+  assertFrozenPreviewEnvMetadata
+} from '../.github/staging-ai-jwt/probe.mjs';
 import { assertJwtGate } from '../.github/staging-ai-jwt/runner.mjs';
 
 const MAIN = 'a'.repeat(40);
@@ -172,6 +175,69 @@ test('Preview SSO must be checked with authenticated Vercel metadata', () => {
   assert.match(src, /ssoProtection\?\.enabled/u);
   assert.match(src, /all_except_custom_domains/u);
   assert.match(src, /api\.vercel\.com\/v1\/projects/u);
+});
+
+test('frozen Preview env metadata rejects drift and Production scope', () => {
+  const createdAt = 1793191469141;
+  const branch = 'codex/ai020704-staging-candidate-db-20261028';
+  const names = [
+    'SUPABASE_URL',
+    'NOVELIGHT_STAGING_SUPABASE_URL',
+    'SUPABASE_PUBLISHABLE_KEY',
+    'NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY',
+    'SUPABASE_SECRET_KEY',
+    'NOVELIGHT_AI_ADMIN_USER_ID',
+    'NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED',
+    'NOVELIGHT_AI_REVIEW_ENABLED',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_STANDARD_PRICE_ID',
+    'STRIPE_PREMIUM_PRICE_ID',
+    'STRIPE_WEBHOOK_SECRET'
+  ];
+  const payload = {
+    envs: names.map((key) => ({
+      key,
+      gitBranch: branch,
+      target: ['preview'],
+      createdAt: createdAt - 1000,
+      updatedAt: createdAt - 100,
+      type: /SECRET_KEY|PUBLISHABLE_KEY|WEBHOOK_SECRET/u.test(key)
+        ? 'sensitive'
+        : 'plain',
+      value: /SUPABASE_URL/u.test(key)
+        ? 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+        : /NOVELIGHT_AI_(ADMIN_PREVIEW|REVIEW)_ENABLED/u.test(key)
+          ? 'true'
+          : ''
+    }))
+  };
+  const deployed = { createdAt };
+  assert.equal(assertFrozenPreviewEnvMetadata(deployed, payload), true);
+
+  const changed = structuredClone(payload);
+  changed.envs[4].updatedAt = createdAt + 1;
+  assert.throws(
+    () => assertFrozenPreviewEnvMetadata(deployed, changed),
+    /PROOF_DENIED/u
+  );
+  const production = structuredClone(payload);
+  production.envs[4].target = ['production'];
+  assert.throws(
+    () => assertFrozenPreviewEnvMetadata(deployed, production),
+    /PROOF_DENIED/u
+  );
+  const incorrectUrl = structuredClone(payload);
+  incorrectUrl.envs[0].value = 'https://other.supabase.co';
+  assert.throws(
+    () => assertFrozenPreviewEnvMetadata(deployed, incorrectUrl),
+    /PROOF_DENIED/u
+  );
+  const duplicate = structuredClone(payload);
+  duplicate.envs[4].key = 'SUPABASE_URL';
+  assert.throws(
+    () => assertFrozenPreviewEnvMetadata(deployed, duplicate),
+    /PROOF_DENIED/u
+  );
 });
 
 test('workflow requires OWNER and a single-use Staging ledger', () => {
