@@ -44,6 +44,16 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
+      # Must pass in a trusted main checkout BEFORE CLAIM, environment
+      # secrets and any hosted Staging operation. The Draft deliberately
+      # fails these two tests until Auth revocation and cleanup are repaired.
+      - name: Block unsafe real JWT runners before touching Staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund --quiet
+          node --test tests/ai-review-hosted-real-jwt-gate.test.mjs
+
       - name: Validate one OWNER request against complete approval ledger
         id: verify
         env:
