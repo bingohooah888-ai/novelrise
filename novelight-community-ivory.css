@@ -1,3 +1,11 @@
+/* The plaza does not load Home's global reset or the Legal footer stylesheet.
+   Supply the missing page shell locally; do not change the Home teaser. */
+body.novelight-page-community {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+}
+
 /* The plaza alone adopts the ivory discovery-page language.
    The dark community teaser on Home remains unchanged. */
 body.novelight-page-community,
@@ -135,5 +143,52 @@ body.novelight-page-community .community-tabs .nl-help-info.community-help-inlin
     min-height: 30px;
     margin-left: 4px;
     font-size: 14px;
+  }
+}
+
+/* The timeline and board share one footer. Keep links inside the same centered
+   content width and allow them to wrap instead of collapsing at the left edge. */
+body.novelight-page-community .site-footer {
+  border-top: 1px solid rgba(234, 196, 106, 0.16);
+  background: #081426;
+  color: #aeb7c4;
+}
+body.novelight-page-community .site-footer .footer-inner {
+  width: min(1180px, calc(100% - 40px));
+  margin-inline: auto;
+  padding: 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 30px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+body.novelight-page-community .site-footer .footer-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+}
+body.novelight-page-community .site-footer a {
+  color: #c9d0d9;
+  text-decoration: none;
+}
+body.novelight-page-community .site-footer a:is(:hover, :focus-visible) {
+  color: #eac46a;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 640px) {
+  body.novelight-page-community .site-footer .footer-inner {
+    width: calc(100% - 28px);
+    padding: 20px 0;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  body.novelight-page-community .site-footer .footer-links {
+    gap: 8px 16px;
   }
 }
