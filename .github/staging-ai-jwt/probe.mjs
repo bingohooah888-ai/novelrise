@@ -107,6 +107,35 @@ export async function verifyHostedPreviewViaVercel(
     deny('could not verify Vercel deployment metadata');
   }
   assertVerifiedVercelPreview(config, await response.json());
+  // Protection is project-level and can change without rebuilding the pinned
+  // deployment. Recheck the independently authenticated Vercel project API
+  // immediately before any synthetic Auth identity can be created.
+  const projectResponse = await fetcher(
+    'https://api.vercel.com/v1/projects/' +
+      VERCEL_PROJECT +
+      '?teamId=' +
+      VERCEL_TEAM,
+    {
+      headers: {
+        authorization: 'Bearer ' + env.VERCEL_READONLY_API_TOKEN,
+        'cache-control': 'no-store'
+      },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(12000)
+    }
+  );
+  if (projectResponse.status !== 200) {
+    deny('could not verify Vercel Preview protection');
+  }
+  const project = await projectResponse.json();
+  if (
+    project?.id !== VERCEL_PROJECT ||
+    project.name !== 'novelrise' ||
+    project.ssoProtection?.enabled !== true ||
+    project.ssoProtection?.deploymentType !== 'all_except_custom_domains'
+  ) {
+    deny('pinned Preview is not protected by Vercel Authentication');
+  }
 }
 
 async function getJson(url, headers, allowedStatus = 200) {
