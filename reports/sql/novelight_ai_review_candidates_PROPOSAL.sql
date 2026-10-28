@@ -133,7 +133,7 @@ create or replace function public.novelight_ai_review_decide(
   p_expected_revision integer,
   p_decision text
 ) returns table(status text, revision integer)
-language plpgsql security invoker set search_path = '' as $
+language plpgsql security invoker set search_path = '' as $$
 declare
   v_title text;
   v_body text;
