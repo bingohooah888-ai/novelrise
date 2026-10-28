@@ -176,10 +176,7 @@ jobs:
         run: npm ci
 
       - name: Check formatting
-        run: |
-          npx prettier tests/ai-review-hosted-proof-admission.test.mjs > /tmp/ai-proof-formatted.mjs
-          diff -u tests/ai-review-hosted-proof-admission.test.mjs /tmp/ai-proof-formatted.mjs || true
-          npm run format:check
+        run: npm run format:check
 
       - name: Run ESLint
         run: npm run lint
