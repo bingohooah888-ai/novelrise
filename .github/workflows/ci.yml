@@ -176,12 +176,7 @@ jobs:
         run: npm ci
 
       - name: Check formatting
-        run: |
-          for file in tests/ai-review-hosted-proof-census.test.mjs tests/ai-review-hosted-jwt-probe.test.mjs; do
-            npx prettier "$file" > /tmp/ai-proof-formatted.mjs
-            diff -u "$file" /tmp/ai-proof-formatted.mjs || true
-          done
-          npm run format:check
+        run: npm run format:check
 
       - name: Run ESLint
         run: npm run lint
