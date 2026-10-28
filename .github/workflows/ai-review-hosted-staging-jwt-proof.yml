@@ -24,7 +24,7 @@ jobs:
       github.triggering_actor == 'bingohooah888-ai' &&
       startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_AI_JWT_PROOF_APPROVE ')
     concurrency:
-      group: novelight-ai-hosted-race-approval-294
+      group: novelight-ai-hosted-jwt-approval-294
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -55,9 +55,11 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/pulls/2601" > /tmp/ai-jwt-pr.json
           current_main="$(jq -er '.object.sha' /tmp/ai-jwt-main.json)"
           candidate="$(jq -er '.head.sha' /tmp/ai-jwt-pr.json)"
-          gh api "repos/$GITHUB_REPOSITORY/compare/$current_main...$candidate" > /tmp/ai-jwt-compare.json
+          reviewed_base="b725b796f5a4cd51b5181b75e247bfc0502e9568"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$reviewed_base...$candidate" > /tmp/ai-jwt-compare.json
+          gh api "repos/$GITHUB_REPOSITORY/compare/$reviewed_base...$current_main" > /tmp/ai-jwt-lineage.json
           gh api --paginate --slurp             "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/ai-jwt-ledger.json
-          node .github/staging-ai-jwt/admission.mjs validate             "$GITHUB_EVENT_PATH" /tmp/ai-jwt-main.json /tmp/ai-jwt-pr.json             /tmp/ai-jwt-compare.json /tmp/ai-jwt-ledger.json > /tmp/ai-jwt-admission.json
+          node .github/staging-ai-jwt/admission.mjs validate             "$GITHUB_EVENT_PATH" /tmp/ai-jwt-main.json /tmp/ai-jwt-pr.json             /tmp/ai-jwt-compare.json /tmp/ai-jwt-lineage.json /tmp/ai-jwt-ledger.json > /tmp/ai-jwt-admission.json
           test "$(git rev-parse HEAD)" = "$current_main"
           {
             echo "main_sha=$(jq -er '.mainSha' /tmp/ai-jwt-admission.json)"
@@ -79,7 +81,7 @@ jobs:
           gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments"             -f body="NOVELIGHT_STAGING_AI_JWT_PROOF_CLAIMED $body" > /dev/null
 
   stage:
-    name: One Staging-only synthetic transaction and two-session test
+    name: One Staging-only actual Auth JWT owner proof
     needs: admit
     if: needs.admit.result == 'success'
     concurrency:
