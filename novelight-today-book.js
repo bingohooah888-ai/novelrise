@@ -88,6 +88,38 @@
     await recordAction(client, row.novel_id, source === 'swipe' ? 'swipe_read_later' : 'read_later');
   }
 
+  async function loadCustomCover(client, row, wrap) {
+    const novelId = Number(row.novel_id);
+    if (!Number.isSafeInteger(novelId) || novelId <= 0) return;
+    const result = await client
+      .from('novel_custom_covers')
+      .select('storage_path')
+      .eq('novel_id', novelId)
+      .maybeSingle();
+    if (result.error || !result.data?.storage_path) return;
+    const path = String(result.data.storage_path);
+    const match = /^[0-9a-f-]{36}\/([0-9]+)\/[0-9a-f-]{36}\.(?:webp|png|jpg)$/iu.exec(path);
+    if (!match || Number(match[1]) !== novelId) return;
+    const url = client.storage.from('novel-custom-covers').getPublicUrl(path).data?.publicUrl;
+    if (!url) return;
+
+    const existing = wrap.querySelector('img');
+    const fallback = wrap.firstElementChild;
+    const image = existing || document.createElement('img');
+    const previous = existing?.src || '';
+    image.className = 'nl-today-cover';
+    image.style.objectFit = 'contain';
+    image.addEventListener('error', () => {
+      if (existing && previous) {
+        image.src = previous;
+      } else if (fallback) {
+        image.replaceWith(fallback);
+      }
+    }, { once: true });
+    image.src = url;
+    if (!existing && fallback) fallback.replaceWith(image);
+  }
+
   function createCover(row) {
     const wrap = document.createElement('div');
     wrap.className = 'nl-today-cover-wrap';
@@ -127,7 +159,11 @@
     grid.className = 'nl-today-grid';
     const main = document.createElement('div');
     main.className = 'nl-today-main';
-    main.appendChild(createCover(row));
+    const coverWrap = createCover(row);
+    main.appendChild(coverWrap);
+    void loadCustomCover(client, row, coverWrap).catch((error) => {
+      console.warn('Today book custom cover unavailable', error);
+    });
 
     const copy = document.createElement('div');
     copy.className = 'nl-today-copy';

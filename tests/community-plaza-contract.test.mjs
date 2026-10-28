@@ -65,7 +65,7 @@ test('timeline and board share one page', () => {
   assert.match(html, /id="communityTimeline"/);
   assert.match(html, /id="communityBoardInfo"/);
   assert.match(html, /location\.hash==='#board'/);
-  assert.match(html, /両機能が完成してから同時に公開/);
+  assert.match(html, /交流広場を読み込んでいます/);
   assert.match(html, /id="communityPending"/);
   assert.match(html, /if \(!flags\.timeline \|\| !flags\.board\)/);
 });

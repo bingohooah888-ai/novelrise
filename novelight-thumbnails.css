@@ -122,3 +122,26 @@ body.novelight-page-ranking .card .novelight-official-thumbnail {
     margin-bottom: 4px;
   }
 }
+
+/* 2026-10-28: author cover artwork appears across discovery and detail surfaces. */
+.novelight-has-custom-cover img[data-novelight-custom-cover="1"],
+.novelight-has-custom-cover .novelight-custom-cover img {
+  object-fit: contain !important;
+  background: #0d1420;
+}
+
+/* Keep the complete uploaded artwork visible in AI/R18 zones and shared lists. */
+.zone-card.novelight-has-custom-cover .zone-cover,
+.novelight-curation-public-item.novelight-has-custom-cover img {
+  object-fit: contain !important;
+}
+.novelight-curation-public-item .novelight-custom-cover {
+  float: left;
+  width: 84px;
+  aspect-ratio: 3 / 4;
+  margin: 0 14px 8px 0;
+}
+.novelight-curation-public-item .novelight-custom-cover img {
+  width: 100%;
+  height: 100%;
+}
