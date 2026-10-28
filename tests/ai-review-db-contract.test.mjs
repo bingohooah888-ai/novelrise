@@ -48,10 +48,15 @@ test('02-07-04: browser roles cannot read candidates or execute review RPCs', ()
   const revokes = sql.toLowerCase().match(/revoke all on [^;]+;/g) ?? [];
   const blocked = 'from public, anon, authenticated';
   const table = 'public.novelight_ai_review_candidates';
-  assert.ok(revokes.some((statement) => statement.includes(table) && statement.includes(blocked)));
+  function isBlocked(target) {
+    return revokes.some((statement) => {
+      return statement.includes(target) && statement.includes(blocked);
+    });
+  }
+  assert.ok(isBlocked(table));
   for (const suffix of ['stage_batch', 'decide']) {
     const rpc = `public.novelight_ai_review_${suffix}(`;
-    assert.ok(revokes.some((statement) => statement.includes(rpc) && statement.includes(blocked)));
+    assert.ok(isBlocked(rpc));
   }
 });
 
