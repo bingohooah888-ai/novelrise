@@ -42,6 +42,9 @@ language plpgsql security invoker set search_path = '' as $$
 declare
   v_candidate jsonb;
   v_count integer;
+  v_title text;
+  v_body text;
+  v_current_hash text;
 begin
   if current_user <> 'service_role' then
     raise exception using errcode = '42501', message = 'AI service access required';
@@ -57,14 +60,28 @@ begin
   if v_count not between 1 and 12 then
     raise exception using errcode = '22023', message = 'Invalid review count';
   end if;
-  if not exists (
-    select 1 from public.novels n
-    where n.id = p_novel_id and n.user_id = p_actor_id
-  ) or not exists (
-    select 1 from public.episodes e
-    where e.id = p_episode_id and e.novel_id = p_novel_id
-  ) then
+  -- Lock the actual current chapter through commit. A simultaneous title or
+  -- body update waits until this batch has committed or rolled back.
+  select e.title, e.content into v_title, v_body
+  from public.episodes e
+    join public.novels n on n.id = e.novel_id
+  where e.id = p_episode_id
+    and e.novel_id = p_novel_id
+    and n.user_id = p_actor_id
+  for share of e, n;
+  if not found or v_title is null or v_body is null then
     raise exception using errcode = '42501', message = 'Review scope denied';
+  end if;
+  -- Node side uses sha256(JSON.stringify([title, content])).
+  -- Staging must independently verify identical UTF-8 JSON serialization.
+  v_current_hash := pg_catalog.encode(
+    extensions.digest(pg_catalog.convert_to(
+      '[' || pg_catalog.to_json(v_title)::text || ',' ||
+      pg_catalog.to_json(v_body)::text || ']', 'UTF8'
+    ), 'sha256'), 'hex'
+  );
+  if v_current_hash is distinct from p_source_hash then
+    raise exception using errcode = '22023', message = 'Stale episode source';
   end if;
 
   perform pg_catalog.pg_advisory_xact_lock(
@@ -116,7 +133,11 @@ create or replace function public.novelight_ai_review_decide(
   p_expected_revision integer,
   p_decision text
 ) returns table(status text, revision integer)
-language plpgsql security invoker set search_path = '' as $$
+language plpgsql security invoker set search_path = '' as $
+declare
+  v_title text;
+  v_body text;
+  v_current_hash text;
 begin
   if current_user <> 'service_role' then
     raise exception using errcode = '42501', message = 'AI service access required';
@@ -128,6 +149,35 @@ begin
   then
     raise exception using errcode = '22023', message = 'Invalid review decision';
   end if;
+  -- Re-read and lock the authoritative chapter before changing any decision.
+  -- The candidate's stored hash alone does not prove the current manuscript
+  -- still matches. The final UPDATE remains an atomic revision/status CAS.
+  select e.title, e.content into v_title, v_body
+  from public.novelight_ai_review_candidates c
+    join public.episodes e on e.id = c.source_episode_id
+    join public.novels n on n.id = c.novel_id
+  where c.id = p_candidate_id
+    and c.actor_id = p_actor_id
+    and c.novel_id = p_novel_id
+    and c.source_hash = p_source_hash
+    and c.revision = p_expected_revision
+    and c.status = 'pending'
+    and e.novel_id = c.novel_id
+    and n.user_id = p_actor_id
+  for share of e, n;
+  if not found or v_title is null or v_body is null then
+    raise exception using errcode = '42501', message = 'Review scope denied';
+  end if;
+  v_current_hash := pg_catalog.encode(
+    extensions.digest(pg_catalog.convert_to(
+      '[' || pg_catalog.to_json(v_title)::text || ',' ||
+      pg_catalog.to_json(v_body)::text || ']', 'UTF8'
+    ), 'sha256'), 'hex'
+  );
+  if v_current_hash is distinct from p_source_hash then
+    raise exception using errcode = '22023', message = 'Stale episode source';
+  end if;
+
   return query
     update public.novelight_ai_review_candidates as c
       set status = p_decision,
