@@ -151,10 +151,7 @@ test('BLOCKER: runner supplies mandatory session revocation callback', () => {
     new URL('../.github/staging-ai-jwt/runner.mjs', import.meta.url),
     'utf8'
   );
-  assert.match(
-    runner,
-    /probeRealHostedJwt\(config,\s*proofEnv,\s*async\s*\(/u
-  );
+  assert.match(runner, /probeRealHostedJwt\(config,\s*proofEnv,\s*async\s*\(/u);
   assert.match(runner, /auth\.admin\.signOut/u);
 });
 
