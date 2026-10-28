@@ -72,4 +72,7 @@ test('custom covers affect work detail, X and discovery', async () => {
   assert.match(list, /currentImage\.src = previous/u);
   assert.match(list, /link\.dataset\.communityWork/u);
   assert.match(list, /\.community-link img/u);
+  const todayBook = await source('novelight-today-book.js');
+  assert.match(todayBook, /from\('novel_custom_covers'\)/u);
+  assert.match(todayBook, /loadCustomCover\(client, row, coverWrap\)/u);
 });
