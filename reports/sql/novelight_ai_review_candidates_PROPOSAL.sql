@@ -116,6 +116,12 @@ begin
       or char_length(v_candidate ->> 'key') not between 1 and 120
       or char_length(v_candidate ->> 'summary') not between 1 and 320
       or char_length(v_candidate ->> 'evidence') not between 1 and 160
+      or pg_catalog.btrim(v_candidate ->> 'key') = ''
+      or pg_catalog.btrim(v_candidate ->> 'summary') = ''
+      or pg_catalog.btrim(v_candidate ->> 'evidence') = ''
+      -- Defense in depth: the original manuscript must contain the exact
+      -- evidence, even if a future internal caller skips the Node validator.
+      or pg_catalog.strpos(v_body, v_candidate ->> 'evidence') = 0
     then
       raise exception using errcode = '22023', message = 'Invalid review candidate';
     end if;
