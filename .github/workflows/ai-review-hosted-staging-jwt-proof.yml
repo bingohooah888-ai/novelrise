@@ -45,8 +45,8 @@ jobs:
           fetch-depth: 1
 
       # Must pass in a trusted main checkout BEFORE CLAIM, environment
-      # secrets and any hosted Staging operation. The Draft deliberately
-      # fails these two tests until Auth revocation and cleanup are repaired.
+      # secrets and any hosted Staging operation. Revocation and exact-ID
+      # cleanup checks remain mandatory even after the runner is repaired.
       - name: Block unsafe real JWT runners before touching Staging
         shell: bash
         run: |
