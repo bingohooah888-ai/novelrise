@@ -31,7 +31,10 @@ test('valid isolated JWT proof config yields only nonsecret pins', () => {
   const config = validateHostedJwtProofConfig(sample());
   assert.equal(config.stage, 'https://wmlzjgvxgoyrovdhbqbg.supabase.co');
   assert.equal(config.novelId, 998891003);
-  assert.equal(config.preview, 'https://novelrise-test12345-ranobe1.vercel.app');
+  assert.equal(
+    config.preview,
+    'https://novelrise-test12345-ranobe1.vercel.app'
+  );
   assert.equal(Object.isFrozen(config), true);
   assert.equal(JSON.stringify(config).includes('not-a-real'), false);
 });
@@ -97,7 +100,6 @@ test('hosted JWT proof rejects any real or alternate user', () => {
   );
 });
 
-
 function verifiedDeployment() {
   return {
     id: 'dpl_TestPreviewAB12345',
@@ -125,8 +127,18 @@ test('Vercel must attest exact project, READY Preview and Git commit', () => {
     { url: 'attacker.vercel.app' },
     { target: 'production' },
     { readyState: 'CANCELED' },
-    { meta: { ...verifiedDeployment().meta, githubCommitSha: 'c'.repeat(40) } },
-    { meta: { ...verifiedDeployment().meta, githubOrg: 'some-other-owner' } }
+    {
+      meta: {
+        ...verifiedDeployment().meta,
+        githubCommitSha: 'c'.repeat(40)
+      }
+    },
+    {
+      meta: {
+        ...verifiedDeployment().meta,
+        githubOrg: 'some-other-owner'
+      }
+    }
   ]) {
     const suspect = { ...verifiedDeployment(), ...patch };
     assert.throws(
@@ -148,8 +160,16 @@ test('Vercel attestation contacts only its API and does not expose JWT', async (
         '?teamId=team_2XFgtRCPJQ6pbrEa4mOLQAEx'
     );
     assert.equal(opts.redirect, 'manual');
-    assert.equal(opts.headers.authorization, 'Bearer ' + env.VERCEL_READONLY_API_TOKEN);
-    return { status: 200, async json() { return verifiedDeployment(); } };
+    assert.equal(
+      opts.headers.authorization,
+      'Bearer ' + env.VERCEL_READONLY_API_TOKEN
+    );
+    return {
+      status: 200,
+      async json() {
+        return verifiedDeployment();
+      }
+    };
   });
   assert.equal(seen, 1);
 });
@@ -160,7 +180,9 @@ test('Vercel preview rejects unverified deployment before remote requests', asyn
   await assert.rejects(
     verifyHostedPreviewViaVercel(config, env, async () => ({
       status: 403,
-      async json() { throw new Error('should not parse response'); }
+      async json() {
+        throw new Error('should not parse response');
+      }
     })),
     /AI_HOSTED_JWT_PROOF_DENIED/u
   );
