@@ -40,6 +40,7 @@ echo "::group::AI review candidate isolated postcheck and rollback/reapply"
 "${AI_REPLAY[@]}" -f supabase/checks/20261028084410_novelight_ai_review_candidates_precheck.sql
 "${AI_REPLAY[@]}" -f supabase/migrations/20261028084410_novelight_ai_review_candidates.sql
 "${AI_REPLAY[@]}" -f supabase/checks/20261028084410_novelight_ai_review_candidates_postcheck.sql
+NOVELIGHT_AI_REVIEW_DISPOSABLE=1 bash tests/rls/ai-review-candidates-concurrency.sh
 echo "::endgroup::"
 echo "::endgroup::"
 # The replay uses a separate disposable database, never Production.
