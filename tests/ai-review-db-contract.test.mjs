@@ -61,4 +61,3 @@ test('02-07-04: AI cannot confirm canon', () => {
   assert.match(reviewer, /episode\.content\.includes\(evidence\)/);
   assert.doesNotMatch(reviewer, /provenance:\s*'author_confirmed'/);
 });
-
