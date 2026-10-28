@@ -25,14 +25,14 @@ const ENV = {
 };
 
 function sign(sub, expiry = Math.floor(Date.now() / 1000) + 90) {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-    .toString('base64url');
-  const payload = Buffer.from(JSON.stringify({ sub, exp: expiry }))
-    .toString('base64url');
+  const header = Buffer.from(
+    JSON.stringify({ alg: 'HS256', typ: 'JWT' })
+  ).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ sub, exp: expiry })).toString(
+    'base64url'
+  );
   const data = `${header}.${payload}`;
-  const signature = createHmac('sha256', KEY)
-    .update(data)
-    .digest('base64url');
+  const signature = createHmac('sha256', KEY).update(data).digest('base64url');
   return `${data}.${signature}`;
 }
 
@@ -198,18 +198,21 @@ async function withLocalApi(handler, run) {
 
 async function request(base, jwt, opts = {}) {
   const { method = 'GET', origin, body, headers = {} } = opts;
-  const response = await fetch(base + '/api/ai-owner-bible-review?novel_id=354', {
-    method,
-    headers: {
-      'x-forwarded-host': 'novelight.jp',
-      'x-forwarded-proto': 'https',
-      'sec-fetch-site': 'same-origin',
-      ...(jwt ? { authorization: `Bearer ${jwt}` } : {}),
-      ...(origin ? { origin } : {}),
-      ...headers
-    },
-    ...(body ? { body: JSON.stringify(body) } : {})
-  });
+  const response = await fetch(
+    base + '/api/ai-owner-bible-review?novel_id=354',
+    {
+      method,
+      headers: {
+        'x-forwarded-host': 'novelight.jp',
+        'x-forwarded-proto': 'https',
+        'sec-fetch-site': 'same-origin',
+        ...(jwt ? { authorization: `Bearer ${jwt}` } : {}),
+        ...(origin ? { origin } : {}),
+        ...headers
+      },
+      ...(body ? { body: JSON.stringify(body) } : {})
+    }
+  );
   return { status: response.status, body: await response.json(), response };
 }
 
@@ -225,8 +228,10 @@ test('local HTTP: default OFF returns 404 before client construction', async () 
     const result = await request(base, sign(OWNER));
     assert.equal(result.status, 404);
     assert.deepEqual(result.body, { error: 'NOT_FOUND' });
-    assert.equal(result.response.headers.get('cache-control'),
-      'private, no-store, max-age=0');
+    assert.equal(
+      result.response.headers.get('cache-control'),
+      'private, no-store, max-age=0'
+    );
   });
   assert.equal(clients, 0);
 });
