@@ -12,6 +12,16 @@ const CONTROL_ISSUE = '[Staging Control] Supabase migration sync';
 const STAGING_REF = 'wmlzjgvxgoyrovdhbqbg';
 const MIGRATION = '20261028084410';
 const CANDIDATE_PR = 2601;
+// Frozen, already-audited common ancestor: trusted runner promotion changes
+// main while the immutable candidate/Preview must retain their original SHA.
+const REVIEWED_BASE = 'b725b796f5a4cd51b5181b75e247bfc0502e9568';
+const TRUSTED_PROMOTION_PATHS = new Set([
+  '.github/staging-ai-jwt/admission.mjs',
+  '.github/staging-ai-jwt/probe.mjs',
+  '.github/staging-ai-jwt/runner.mjs',
+  '.github/workflows/ai-review-hosted-staging-jwt-proof.yml',
+  'tests/ai-review-hosted-real-jwt-gate.test.mjs'
+]);
 const SHA = /^[0-9a-f]{40}$/u;
 const FIELDS = [
   'scope', 'mainSha', 'candidateSha', 'pr', 'migration',
@@ -42,7 +52,7 @@ function parseExact(body, prefix, fields) {
 
 export function verifyAIHostedJwtAdmission({
   repository, issue, comment, actor, triggeringActor,
-  main, pr, compare, ledgerPages
+  main, pr, compare, mainLineage, ledgerPages
 }) {
   if (repository !== REPOSITORY || issue?.number !== 294 ||
       issue.state !== 'open' || issue.title !== CONTROL_ISSUE ||
@@ -80,13 +90,28 @@ export function verifyAIHostedJwtAdmission({
       pr.head?.sha !== approval.candidateSha) {
     deny('main or candidate changed after approval');
   }
+  // The candidate and main must each descend from the SAME frozen audited
+  // base. The candidate may not be rebased: the Vercel Preview pins its SHA.
+  // Only this narrow reviewed runner change is allowed on the trusted-main
+  // lineage; unrelated main mutations require a separate security review.
   if (compare?.status !== 'ahead' || compare.behind_by !== 0 ||
-      compare.base_commit?.sha !== approval.mainSha ||
-      compare.total_commits < 1 ||
-      !Array.isArray(compare.commits) ||
+      compare.base_commit?.sha !== REVIEWED_BASE ||
+      compare.total_commits < 1 || !Array.isArray(compare.commits) ||
       compare.total_commits !== compare.commits.length ||
-      compare.commits.at(-1)?.sha !== approval.candidateSha) {
-    deny('candidate is not an exact current-main descendant');
+      compare.commits.at(-1)?.sha !== approval.candidateSha ||
+      mainLineage?.status !== 'ahead' ||
+      mainLineage.behind_by !== 0 ||
+      mainLineage.base_commit?.sha !== REVIEWED_BASE ||
+      mainLineage.total_commits < 1 ||
+      !Array.isArray(mainLineage.commits) ||
+      mainLineage.total_commits !== mainLineage.commits.length ||
+      mainLineage.commits.at(-1)?.sha !== approval.mainSha ||
+      !Array.isArray(mainLineage.files) ||
+      mainLineage.files.length !== TRUSTED_PROMOTION_PATHS.size ||
+      mainLineage.files.some((f) =>
+        !TRUSTED_PROMOTION_PATHS.has(f.filename) ||
+        f.status !== 'added')) {
+    deny('candidate or trusted-main promotion diverged from reviewed base');
   }
   if (!Array.isArray(ledgerPages) || !ledgerPages.length ||
       ledgerPages.length > 20 ||
@@ -117,6 +142,7 @@ export function verifyAIHostedJwtAdmission({
     migration: MIGRATION,
     mainSha: approval.mainSha,
     candidateSha: approval.candidateSha,
+    reviewedBaseSha: REVIEWED_BASE,
     requestCommentId: String(comment.id),
     // These identifiers are reserved for synthetic staging proof only.
     fixtureOwner: '00000000-0000-4000-8000-000000000943',
@@ -130,8 +156,8 @@ export function verifyAIHostedJwtAdmission({
 // CLI entrypoint for a future trusted-main workflow. No credentials accepted.
 if (process.argv[2] === 'validate') {
   try {
-    if (process.argv.length !== 8) deny('exact five input files required');
-    const [eventPath, mainPath, prPath, comparePath, ledgerPath] =
+    if (process.argv.length !== 9) deny('exact six input files required');
+    const [eventPath, mainPath, prPath, comparePath, lineagePath, ledgerPath] =
       process.argv.slice(3);
     const event = JSON.parse(readFileSync(eventPath, 'utf8'));
     const result = verifyAIHostedJwtAdmission({
@@ -143,6 +169,7 @@ if (process.argv[2] === 'validate') {
       main: JSON.parse(readFileSync(mainPath, 'utf8')),
       pr: JSON.parse(readFileSync(prPath, 'utf8')),
       compare: JSON.parse(readFileSync(comparePath, 'utf8')),
+      mainLineage: JSON.parse(readFileSync(lineagePath, 'utf8')),
       ledgerPages: JSON.parse(readFileSync(ledgerPath, 'utf8'))
     });
     process.stdout.write(JSON.stringify(result) + '\n');
