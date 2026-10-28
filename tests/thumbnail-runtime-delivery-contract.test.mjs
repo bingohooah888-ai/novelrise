@@ -41,9 +41,12 @@ test('thumbnail runtime prioritizes only the above-fold story covers', () => {
   );
 });
 
-test('thumbnail runtime does not re-fetch official thumbnail metadata for cards that already have an image', () => {
+test('thumbnail runtime skips official hydration for custom covers and cards with existing images', () => {
+  assert.match(runtimeSource, /function candidateLinks\(\)/u);
   assert.match(
     runtimeSource,
-    /!link\.querySelector\('\.novel-cover-image,\.novelight-official-thumbnail img'\)/u
+    /!link\.classList\.contains\('novelight-has-custom-cover'\)/u
   );
+  assert.match(runtimeSource, /!link\.querySelector/u);
+  assert.match(runtimeSource, /\.community-link img/u);
 });

@@ -52,7 +52,7 @@ test('board uses shared plaza page, timeline UI and responsive layer', () => {
     read('shared/header/public-header.html'),
     /href="community\.html"/u
   );
-  assert.match(html, /両機能が完成してから同時に公開/);
+  assert.match(html, /交流広場を読み込んでいます/);
 });
 
 test('board schema protects private data and release gate', () => {
