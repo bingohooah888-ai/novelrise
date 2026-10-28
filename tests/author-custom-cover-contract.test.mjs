@@ -42,7 +42,7 @@ test('cover processing and social card preserve the artwork', async () => {
   assert.match(og, /fit: 'contain'/u);
 });
 
-test('custom covers affect work detail and X, not discovery', async () => {
+test('custom covers affect work detail, X and discovery', async () => {
   const [work, og, x, list] = await Promise.all([
     source('novelight-novel-detail.js'),
     source('api/og/novel-data.js'),
@@ -60,5 +60,22 @@ test('custom covers affect work detail and X, not discovery', async () => {
   );
   assert.match(x, /from\('novel_custom_covers'\)/u);
   assert.match(x, /currentCardRevision\(shareUrl\)/u);
-  assert.doesNotMatch(list, /novel_custom_covers/u);
+  assert.match(list, /from\('novel_custom_covers'\)/u);
+  assert.match(list, /CUSTOM_COVER_BATCH/u);
+  assert.match(list, /novelight-has-custom-cover/u);
+  assert.match(list, /getPublicUrl\(path\)/u);
+  assert.match(list, /custom cover lookup unavailable/u);
+  // Never overlay an official cover on an already populated custom image card.
+  assert.match(
+    list,
+    /!link\.classList\.contains\('novelight-has-custom-cover'\)/u
+  );
+  assert.match(list, /CUSTOM_COVER_PATH\.exec\(path\)/u);
+  assert.match(list, /matched\[1\] !== id/u);
+  assert.match(list, /currentImage\.src = previous/u);
+  assert.match(list, /link\.dataset\.communityWork/u);
+  assert.match(list, /\.community-link img/u);
+  const todayBook = await source('novelight-today-book.js');
+  assert.match(todayBook, /from\('novel_custom_covers'\)/u);
+  assert.match(todayBook, /loadCustomCover\(client, row, coverWrap\)/u);
 });
