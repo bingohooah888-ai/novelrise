@@ -90,3 +90,14 @@ test('SQL remains a non-migration proposal until staging approval', async () => 
   assert.match(sql, /revoke all on public\.novelight_ai_review_candidates/);
   assert.match(sql, /revoke all on function/);
 });
+
+test('review functions have valid dollar-quoted bodies and FK indexes', async () => {
+  const sql = await readFile(proposalUrl, 'utf8');
+  const signatures = sql.match(
+    /language plpgsql security invoker set search_path = '' as \$\$/g
+  );
+  assert.equal(signatures?.length, 2);
+  assert.match(sql, /create index novelight_ai_review_novel_fk_idx/);
+  assert.match(sql, /create index novelight_ai_review_episode_fk_idx/);
+  assert.doesNotMatch(sql, /as \$\n(?:declare|begin)/);
+});
