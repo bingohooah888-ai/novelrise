@@ -8,7 +8,9 @@ import {
   verifyAIHostedJwtAdmission
 } from '../.github/staging-ai-jwt/admission.mjs';
 import { assertJwtGate } from '../.github/staging-ai-jwt/runner.mjs';
-import { verifyHostedPreviewViaVercel } from '../.github/staging-ai-jwt/probe.mjs';
+import {
+  verifyHostedPreviewViaVercel
+} from '../.github/staging-ai-jwt/probe.mjs';
 
 const MAIN = 'a'.repeat(40);
 const CANDIDATE = 'b'.repeat(40);
@@ -165,7 +167,7 @@ test('BLOCKER: runner checks exact synthetic account before deletion', () => {
   assert.match(runner, /created\.id\s*!==\s*ID/u);
 });
 
-test('Preview SSO is verified with Vercel API, not server self-report', async () => {
+test('Preview SSO is verified by Vercel rather than the Preview', async () => {
   const sha = 'a'.repeat(40);
   const config = {
     deploymentId: 'dpl_6DF1tKxfwYMmqJC7dU2qFAHT6D83',
