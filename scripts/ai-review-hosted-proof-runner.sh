@@ -45,6 +45,34 @@ census() {
   psql_call -f "$scratch/census.sql" > "$scratch/census.json"
   STAGING_PROJECT_REF="$STAGING_PROJECT_REF"     node scripts/ai-review-hosted-proof-census.mjs assert "$scratch/census.json"
 }
+# Some trigger writes use denormalized snapshot IDs without foreign keys.
+# Their exact fixture keys must be empty before setup and after cleanup.
+non_fk_residue() {
+  local count
+  count="$(psql_call -c "
+    select
+      (select count(*) from public.founding_authors
+         where author_id in ('$owner', '$other'))
+    + (select count(*) from public.beta_participants
+         where auth_user_id in ('$owner', '$other')
+           or email_normalized in ('ai-review-owner@example.invalid',
+                                   'ai-review-other@example.invalid'))
+    + (select count(*) from public.scout_reward_campaign_entries
+         where user_id in ('$owner', '$other'))
+    + (select count(*) from public.author_follow_events
+         where author_user_id in ('$owner', '$other')
+           or novel_id = $novel or episode_id = $episode)
+    + (select count(*) from public.novel_rank_state
+         where novel_id_snapshot = '$novel'
+           or author_id_snapshot in ('$owner', '$other'))
+    + (select count(*) from public.novel_rank_events
+         where novel_id_snapshot = '$novel'
+           or author_id_snapshot in ('$owner', '$other'))
+    + (select count(*) from public.novel_typo_report_settings
+         where novel_id = $novel)
+  ")"
+  [[ "$count" == 0 ]]
+}
 # Audit every actual FK referencing synthetic auth/profile/novel/episode IDs.
 # For each FK, a nonzero residual aborts the proof. No broad user data dumps.
 foreign_key_residue() {
@@ -106,7 +134,7 @@ SQL
     then
       echo 'STAGING_RACE_CLEANUP_FAILED: manual review required; no retry' >&2
       rc=1
-    elif ! census > /dev/null || ! foreign_key_residue; then
+    elif ! census > /dev/null || ! foreign_key_residue || ! non_fk_residue; then
       echo 'STAGING_RACE_RESIDUE: synthetic FK or fixture residue; manual review' >&2
       rc=1
     fi
@@ -129,6 +157,10 @@ trap cleanup EXIT
 # This census includes all 25 audited Auth/profile/novel/episode triggers,
 # exact migration and zero AI budgets, and reserved fixture collisions.
 census
+non_fk_residue || {
+  echo 'STAGING_RACE_DENIED: reserved synthetic snapshot IDs already in use' >&2
+  exit 1
+}
 
 # Both identities predate Beta/SCOUT; all novel and chapter content is
 # fictional, unpublished and private. No actual Auth sign-in is attempted.
@@ -136,12 +168,14 @@ psql_call > "$scratch/setup.log" 2>&1 <<SQL
 BEGIN;
 SET LOCAL statement_timeout='12s';
 SET LOCAL lock_timeout='3s';
-INSERT INTO auth.users(id, email, created_at, updated_at)
+INSERT INTO auth.users(id, email, created_at, updated_at, raw_app_meta_data)
 VALUES
   ('$owner', 'ai-review-owner@example.invalid',
-   '2024-01-01T00:00:00Z', '2024-01-01T00:00:00Z'),
+   '2024-01-01T00:00:00Z', '2024-01-01T00:00:00Z',
+   '{"internal_e2e":true}'::jsonb),
   ('$other', 'ai-review-other@example.invalid',
-   '2024-01-01T00:00:00Z', '2024-01-01T00:00:00Z');
+   '2024-01-01T00:00:00Z', '2024-01-01T00:00:00Z',
+   '{"internal_e2e":true}'::jsonb);
 INSERT INTO public.novels(id,user_id,title,status)
 VALUES ($novel,'$owner','Synthetic AI candidate race proof','draft');
 INSERT INTO public.episodes
@@ -152,6 +186,17 @@ VALUES
 COMMIT;
 SQL
 fixture_committed=1
+
+# Both fake accounts must use the application's pre-existing internal
+# participation exclusion. No real Founding, beta or campaign entry may form.
+[[ "$(psql_call -c "select count(*) from auth.users
+  where id in ('$owner', '$other')
+    and raw_app_meta_data ->> 'internal_e2e' = 'true'
+    and public.novelight_is_internal_participation_account(id)")" == 2 ]]
+non_fk_residue || {
+  echo 'STAGING_RACE_DENIED: signup generated a participation side effect' >&2
+  exit 1
+}
 
 hash="$(psql_call -c "select encode(
   extensions.digest(convert_to(
