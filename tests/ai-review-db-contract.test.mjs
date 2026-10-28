@@ -5,7 +5,10 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const sql = readFileSync(
-  new URL('../reports/sql/novelight_ai_review_candidates_PROPOSAL.sql', import.meta.url),
+  new URL(
+    '../reports/sql/novelight_ai_review_candidates_PROPOSAL.sql',
+    import.meta.url
+  ),
   'utf8'
 );
 const reviewer = readFileSync(
