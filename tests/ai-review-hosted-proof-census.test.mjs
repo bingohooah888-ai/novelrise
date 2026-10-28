@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { PRECHECK_SQL, assertPrecheck } from '../scripts/ai-review-hosted-proof-census.mjs';
+import {
+  PRECHECK_SQL,
+  assertPrecheck
+} from '../scripts/ai-review-hosted-proof-census.mjs';
 
 function snapshot() {
   return {
@@ -74,8 +77,7 @@ test('census rejects changed or new triggers', () => {
   const entry = snapshot();
   entry.triggerFingerprints[1].fingerprint = '0'.repeat(32);
   assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
-  entry.triggerFingerprints[1].fingerprint =
-    '161076c63bc71a6f174f9699fe7aa285';
+  entry.triggerFingerprints[1].fingerprint = '161076c63bc71a6f174f9699fe7aa285';
   entry.triggerFingerprints.push({ table: 'payments', count: 1 });
   assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
 });
