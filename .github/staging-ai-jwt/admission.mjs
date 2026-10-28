@@ -73,8 +73,8 @@ export function verifyAIHostedJwtAdmission({
       approval.stagingProjectRef !== STAGING_REF ||
       approval.migration !== MIGRATION ||
       approval.pr !== CANDIDATE_PR ||
-      approval.deploymentId !== 'dpl_6DF1tKxfwYMmqJC7dU2qFAHT6D83' ||
-      approval.previewHost !== 'novelrise-bzrnrif4v-ranobe1.vercel.app' ||
+      approval.deploymentId !== 'dpl_2uDtKuUT5RpB97pxtMhYPQpmkCHx' ||
+      approval.previewHost !== 'novelrise-7mmz9wjjo-ranobe1.vercel.app' ||
       !SHA.test(approval.mainSha || '') ||
       !SHA.test(approval.candidateSha || '') ||
       approval.mainSha === approval.candidateSha) {
