@@ -4,17 +4,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const sql = readFileSync(
-  new URL(
-    '../reports/sql/novelight_ai_review_candidates_PROPOSAL.sql',
-    import.meta.url
-  ),
-  'utf8'
-);
-const reviewer = readFileSync(
-  new URL('../api/_lib/ai/novel-bible-inference-review.js', import.meta.url),
-  'utf8'
-);
+const sqlPath = 'reports/sql/novelight_ai_review_candidates_PROPOSAL.sql';
+const reviewerPath = 'api/_lib/ai/novel-bible-inference-review.js';
+const sql = readFileSync(sqlPath, 'utf8');
+const reviewer = readFileSync(reviewerPath, 'utf8');
 
 function functionBody(name) {
   const start = sql.indexOf(`create or replace function public.${name}(`);
@@ -24,7 +17,7 @@ function functionBody(name) {
   return sql.slice(start, end);
 }
 
-test('02-07-04: batch stages only a current, author-owned locked episode', () => {
+test('02-07-04: staging is owner-locked', () => {
   const batch = functionBody('novelight_ai_review_stage_batch');
   assert.match(batch, /current_user\s*<>\s*'service_role'/i);
   assert.match(batch, /n\.user_id\s*=\s*p_actor_id/i);
@@ -35,7 +28,7 @@ test('02-07-04: batch stages only a current, author-owned locked episode', () =>
   assert.match(batch, /raise exception/i);
 });
 
-test('02-07-04: decisions require an atomic pending revision CAS', () => {
+test('02-07-04: decisions use pending CAS', () => {
   const decide = functionBody('novelight_ai_review_decide');
   assert.match(decide, /current_user\s*<>\s*'service_role'/i);
   assert.match(decide, /for share of e, n/i);
@@ -46,7 +39,7 @@ test('02-07-04: decisions require an atomic pending revision CAS', () => {
   assert.match(decide, /n\.user_id\s*=\s*p_actor_id/i);
 });
 
-test('02-07-04: browser roles cannot read candidates or execute review RPCs', () => {
+test('02-07-04: browser roles are blocked', () => {
   assert.match(sql, /enable row level security/i);
   const revokes = sql.toLowerCase().match(/revoke all on [^;]+;/g) ?? [];
   const blocked = 'from public, anon, authenticated';
@@ -63,7 +56,7 @@ test('02-07-04: browser roles cannot read candidates or execute review RPCs', ()
   }
 });
 
-test('02-07-04: untrusted AI suggestions never self-confirm author canon', () => {
+test('02-07-04: AI cannot confirm canon', () => {
   assert.match(reviewer, /requiresAuthorReview:\s*true/);
   assert.match(reviewer, /episode\.content\.includes\(evidence\)/);
   assert.doesNotMatch(reviewer, /provenance:\s*'author_confirmed'/);
