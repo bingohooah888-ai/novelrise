@@ -26,10 +26,7 @@ test('hosted writer is inert without a fresh approval and trusted main', () => {
 test('fictional users are excluded from public participation', () => {
   assert.match(runner, /raw_app_meta_data/u);
   assert.match(runner, /internal_e2e/u);
-  assert.match(
-    runner,
-    /novelight_is_internal_participation_account/u
-  );
+  assert.match(runner, /novelight_is_internal_participation_account/u);
   assert.match(runner, /non_fk_residue 1/u);
   assert.match(runner, /status\)\s*VALUES\s*\(\$novel[^\n]+draft/u);
 });
