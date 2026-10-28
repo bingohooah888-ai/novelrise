@@ -73,6 +73,8 @@
   }
 
   function novelIdFromLink(link) {
+    const communityId = link.dataset.communityWork;
+    if (communityId && /^\d+$/u.test(communityId)) return communityId;
     try {
       const url = new URL(link.getAttribute('href'), window.location.href);
       if (!url.pathname.endsWith('/novel.html') && !url.pathname.endsWith('novel.html')) return null;
@@ -90,7 +92,7 @@
       'body.novelight-page-ranking a.card[href*="novel.html?id="]',
       'a.work-card[href*="novel.html?id="]',
       'a.book-card[href*="novel.html?id="]',
-      'a.community-link[href*="novel.html?id="]',
+      'a.community-link[href*="novel.html?id="], a.community-link[data-community-work]',
       'a.curation-work[href*="novel.html?id="]',
       'a.zone-card[href*="novel.html?id="]',
       'a.novelight-curation-public-item[href*="novel.html?id="]'
@@ -132,7 +134,7 @@
       (link) =>
         link.dataset.novelightThumbnailChecked !== '1' &&
         !link.classList.contains('novelight-has-custom-cover') &&
-        !link.querySelector('.novel-cover-image,.novelight-official-thumbnail img')
+        !link.querySelector('.novel-cover-image,.novelight-official-thumbnail img,.card-media img,.community-link img,.zone-cover:not(.zone-cover-placeholder)')
     );
   }
 
