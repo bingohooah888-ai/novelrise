@@ -57,11 +57,8 @@ test(
   'hosted Staging runner parses as Bash (without executing)',
   { skip: process.platform === 'win32' },
   () => {
-    const result = spawnSync(
-      'bash',
-      ['-n', '.github/staging-ai-proof/runner.sh'],
-      { encoding: 'utf8' }
-    );
+    const args = ['-n', '.github/staging-ai-proof/runner.sh'];
+    const result = spawnSync('bash', args, { encoding: 'utf8' });
     assert.equal(result.status, 0, result.stderr);
   }
 );
@@ -70,15 +67,16 @@ test(
   'hosted Staging runner refuses to run without one-time approval',
   { skip: process.platform === 'win32' },
   () => {
-    const result = spawnSync(
-      'bash',
-      ['.github/staging-ai-proof/runner.sh'],
-      {
-        encoding: 'utf8',
-        timeout: 5000,
-        env: { PATH: process.env.PATH, NOVELIGHT_STAGING_AI_RACE_ADMITTED: '0' }
-      }
-    );
+    const args = ['.github/staging-ai-proof/runner.sh'];
+    const environment = {
+      PATH: process.env.PATH,
+      NOVELIGHT_STAGING_AI_RACE_ADMITTED: '0'
+    };
+    const result = spawnSync('bash', args, {
+      encoding: 'utf8',
+      timeout: 5000,
+      env: environment
+    });
     assert.notEqual(result.status, 0);
     assert.match(
       result.stderr,
