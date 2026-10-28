@@ -12,6 +12,14 @@ import { assertJwtGate } from '../.github/staging-ai-jwt/runner.mjs';
 const MAIN = 'a'.repeat(40);
 const CANDIDATE = 'b'.repeat(40);
 const OWNER = 'bingohooah888-ai';
+const BASE = 'b725b796f5a4cd51b5181b75e247bfc0502e9568';
+const FILES = [
+  '.github/staging-ai-jwt/admission.mjs',
+  '.github/staging-ai-jwt/probe.mjs',
+  '.github/staging-ai-jwt/runner.mjs',
+  '.github/workflows/ai-review-hosted-staging-jwt-proof.yml',
+  'tests/ai-review-hosted-real-jwt-gate.test.mjs'
+];
 
 function sample() {
   const approval = {
@@ -58,9 +66,17 @@ function sample() {
     compare: {
       status: 'ahead',
       behind_by: 0,
-      base_commit: { sha: MAIN },
+      base_commit: { sha: BASE },
       total_commits: 1,
       commits: [{ sha: CANDIDATE }]
+    },
+    mainLineage: {
+      status: 'ahead',
+      behind_by: 0,
+      base_commit: { sha: BASE },
+      total_commits: 1,
+      commits: [{ sha: MAIN }],
+      files: FILES.map((filename) => ({ filename, status: 'added' }))
     },
     ledgerPages: [[comment]]
   };
@@ -86,6 +102,27 @@ test('an already claimed one-use JWT approval is rejected', () => {
   input.ledgerPages[0].push({
     body: 'NOVELIGHT_STAGING_AI_JWT_PROOF_CLAIMED ' + JSON.stringify(claim)
   });
+  assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+});
+
+test('reject unrelated changed files on trusted main', () => {
+  const input = sample();
+  input.mainLineage.files.push({
+    filename: 'api/ai-owner-bible-review.js',
+    status: 'modified'
+  });
+  assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+});
+
+test('reject candidate rebased onto new main after Preview was pinned', () => {
+  const input = sample();
+  input.compare.base_commit.sha = MAIN;
+  assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+});
+
+test('reject a missing trusted runner main promotion', () => {
+  const input = sample();
+  input.mainLineage.status = 'identical';
   assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
 });
 
