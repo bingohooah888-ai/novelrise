@@ -194,22 +194,31 @@ test('frozen Preview env metadata rejects drift and Production scope', () => {
     'STRIPE_PREMIUM_PRICE_ID',
     'STRIPE_WEBHOOK_SECRET'
   ];
+  const sensitive = new Set([
+    'SUPABASE_PUBLISHABLE_KEY',
+    'NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY',
+    'SUPABASE_SECRET_KEY',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET'
+  ]);
   const payload = {
-    envs: names.map((key) => ({
-      key,
-      gitBranch: branch,
-      target: ['preview'],
-      createdAt: createdAt - 1000,
-      updatedAt: createdAt - 100,
-      type: /SECRET_KEY|PUBLISHABLE_KEY|WEBHOOK_SECRET/u.test(key)
-        ? 'sensitive'
-        : 'plain',
-      value: /SUPABASE_URL/u.test(key)
-        ? 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
-        : /NOVELIGHT_AI_(ADMIN_PREVIEW|REVIEW)_ENABLED/u.test(key)
-          ? 'true'
-          : ''
-    }))
+    envs: names.map((key) => {
+      let value = '';
+      if (key.includes('SUPABASE_URL')) {
+        value = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
+      } else if (key.endsWith('_ENABLED')) {
+        value = 'true';
+      }
+      return {
+        key,
+        gitBranch: branch,
+        target: ['preview'],
+        createdAt: createdAt - 1000,
+        updatedAt: createdAt - 100,
+        type: sensitive.has(key) ? 'sensitive' : 'plain',
+        value
+      };
+    })
   };
   const deployed = { createdAt };
   assert.equal(assertFrozenPreviewEnvMetadata(deployed, payload), true);
