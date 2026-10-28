@@ -121,7 +121,12 @@ async function getJson(url, headers, allowedStatus = 200) {
   return response.json();
 }
 
-export async function probeRealHostedJwt(config, env) {
+export async function probeRealHostedJwt(config, env, revokeToken) {
+  // Revocation is mandatory and must be supplied by the trusted server-side
+  // Staging Admin client. No sign-in may happen if cleanup is unavailable.
+  if (typeof revokeToken !== 'function') {
+    deny('missing mandatory trusted Auth session revocation callback');
+  }
   // No Preview request, protection bypass or Auth login before Vercel's own
   // API attests this exact READY, non-Production deployment and Git SHA.
   await verifyHostedPreviewViaVercel(config, env);
@@ -163,33 +168,49 @@ export async function probeRealHostedJwt(config, env) {
     password: env.NOVELIGHT_HOSTED_TEST_USER_PASSWORD
   });
   const token = signedIn.data?.session?.access_token;
-  if (signedIn.error || signedIn.data?.user?.id !== config.userId ||
-      typeof token !== 'string' || !token) {
-    deny('isolated test user sign-in failed');
+  if (typeof token !== 'string' || !token) {
+    deny('isolated test user sign-in returned no revocable bearer');
   }
-  const verified = await supabase.auth.getUser(token);
-  if (verified.error || verified.data?.user?.id !== config.userId) {
-    deny('Supabase Auth did not verify owner bearer');
-  }
+  let passed = false;
+  try {
+    if (signedIn.error || signedIn.data?.user?.id !== config.userId) {
+      deny('isolated test user sign-in failed identity verification');
+    }
+    const verified = await supabase.auth.getUser(token);
+    if (verified.error || verified.data?.user?.id !== config.userId) {
+      deny('Supabase Auth did not verify owner bearer');
+    }
 
-  const path = '/api/ai-owner-bible-review?novel_id=' + config.novelId;
-  const unauthorized = await globalThis.fetch(config.preview + path, {
-    headers: protection,
-    redirect: 'manual',
-    signal: AbortSignal.timeout(12000)
-  });
-  if (unauthorized.status !== 401) {
-    deny('missing bearer was not rejected');
+    const path = '/api/ai-owner-bible-review?novel_id=' + config.novelId;
+    const unauthorized = await globalThis.fetch(config.preview + path, {
+      headers: protection,
+      redirect: 'manual',
+      signal: AbortSignal.timeout(12000)
+    });
+    if (unauthorized.status !== 401) {
+      deny('missing bearer was not rejected');
+    }
+    const ownerProof = await getJson(config.preview + path, {
+      ...protection,
+      Authorization: 'Bearer ' + token
+    });
+    if (ownerProof?.novelId !== config.novelId ||
+        !Array.isArray(ownerProof?.candidates) ||
+        ownerProof.aiGenerated !== false) {
+      deny('hosted owner review GET did not return synthetic owner data');
+    }
+    passed = true;
+  } finally {
+    // Executed after every obtained bearer, even if the HTTP or identity
+    // assertion fails. Auth JWT access tokens themselves remain valid until
+    // expiry; this revokes refresh/session state, not the JWT cryptography.
+    try {
+      await revokeToken(token);
+    } catch {
+      deny('dedicated Staging Auth session revocation failed');
+    }
   }
-  const ownerProof = await getJson(config.preview + path, {
-    ...protection,
-    Authorization: 'Bearer ' + token
-  });
-  if (ownerProof?.novelId !== config.novelId ||
-      !Array.isArray(ownerProof?.candidates) ||
-      ownerProof.aiGenerated !== false) {
-    deny('hosted owner review GET did not return synthetic owner data');
-  }
+  if (!passed) deny('owner proof did not pass');
   // No bearer, secret, email/password, or manuscript may enter logs.
   return Object.freeze({ passed: true, revision: config.revision });
 }
@@ -198,6 +219,7 @@ if (process.argv[1] &&
     import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const cfg = validateHostedJwtProofConfig(process.env);
+    // Standalone probe has no trusted Auth Admin revoker: deliberately denied.
     await probeRealHostedJwt(cfg, process.env);
     process.stdout.write('AI_HOSTED_REAL_JWT_GET_PASS\n');
   } catch {
