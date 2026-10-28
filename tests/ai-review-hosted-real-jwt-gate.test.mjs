@@ -172,6 +172,10 @@ test('workflow requires OWNER and a single-use Staging ledger', () => {
     ),
     'utf8'
   );
+  const gate = src.indexOf('Block unsafe real JWT runners before touching Staging');
+  const claim = src.indexOf('CLAIM approval before accessing any Staging secret');
+  assert.ok(gate > 0 && gate < claim);
+  assert.match(src, /node --test tests\/ai-review-hosted-real-jwt-gate\.test\.mjs/u);
   assert.match(src, /issue_comment:/u);
   assert.match(src, /author_association == 'OWNER'/u);
   assert.match(src, /NOVELIGHT_STAGING_AI_JWT_PROOF_APPROVE/u);
