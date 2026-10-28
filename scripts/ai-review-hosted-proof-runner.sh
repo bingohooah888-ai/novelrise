@@ -156,6 +156,19 @@ SQL
 }
 trap cleanup EXIT
 
+# Close the gap between admission and the first persistent write.
+# If main/PR moved while the runner was being prepared, consume the approval
+# without touching the database.
+[[ "${GITHUB_REPOSITORY:-}" == "bingohooah888-ai/novelrise" ]] || exit 1
+[[ "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" == "$APPROVED_MAIN_SHA" ]] || {
+  echo 'STAGING_RACE_DENIED: main changed after approval' >&2
+  exit 1
+}
+[[ "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2601" --jq '.head.sha')" == "$APPROVED_CANDIDATE_SHA" ]] || {
+  echo 'STAGING_RACE_DENIED: candidate changed after approval' >&2
+  exit 1
+}
+
 # This census includes all 25 audited Auth/profile/novel/episode triggers,
 # exact migration and zero AI budgets, and reserved fixture collisions.
 census
