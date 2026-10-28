@@ -11,6 +11,13 @@ const EXPECTED_TRIGGERS = Object.freeze({
   users: [6, '1a534e511428bd56bd1518ff8daad95a']
 });
 
+const EXPECTED_FUNCTIONS = Object.freeze({
+  novelight_capture_scout_campaign_entry: 'fcf216ef3062983bea13ff4143b92f53',
+  novelight_is_internal_participation_account: 'aa1d87b299d789535f9e06571979b7ba',
+  novelight_sync_user_participation_qualifications: '504d6dac6c932d0ed919a1e703ede89c',
+  sync_auth_user_participation_after_delete: '8e67c239903d18194cabf631015f7a14'
+});
+
 function deny(message) {
   throw new Error('AI_HOSTED_RACE_CENSUS_DENIED: ' + message);
 }
@@ -43,6 +50,22 @@ select json_build_object(
   ),
   'reservedEpisodeCount', (
     select count(*) from public.episodes where id = 998891002
+  ),
+  'functionFingerprints', (
+    select coalesce(json_agg(
+      json_build_object(
+        'function', p.proname,
+        'fingerprint', md5(pg_get_functiondef(p.oid))
+      ) order by p.proname
+    ), '[]'::json)
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in (
+        'novelight_capture_scout_campaign_entry',
+        'novelight_is_internal_participation_account',
+        'novelight_sync_user_participation_qualifications',
+        'sync_auth_user_participation_after_delete'
+      )
   ),
   'triggerFingerprints', (
     select coalesce(json_agg(
@@ -98,6 +121,20 @@ export function assertPrecheck(snapshot, projectRef = PROJECT) {
       deny('unreviewed signup, novel, episode or profile trigger');
     }
     seen.add(name);
+  }
+  if (!Array.isArray(snapshot.functionFingerprints) ||
+      snapshot.functionFingerprints.length !== 4) {
+    deny('internal-test and campaign function coverage drift');
+  }
+  const functionNames = new Set();
+  for (const row of snapshot.functionFingerprints) {
+    const name = row?.function;
+    if (!Object.hasOwn(EXPECTED_FUNCTIONS, name) ||
+        functionNames.has(name) ||
+        row.fingerprint !== EXPECTED_FUNCTIONS[name]) {
+      deny('internal account, campaign or cleanup function changed');
+    }
+    functionNames.add(name);
   }
   return true;
 }
