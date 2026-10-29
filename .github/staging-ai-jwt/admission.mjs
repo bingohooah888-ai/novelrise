@@ -15,9 +15,10 @@ const CANDIDATE_PR = 2601;
 // Frozen, already-audited common ancestor: trusted runner promotion changes
 // main while the immutable candidate/Preview must retain their original SHA.
 const REVIEWED_BASE = 'b725b796f5a4cd51b5181b75e247bfc0502e9568';
-// Exact allowlist for the originally approved trusted runner promotion plus
-// its narrowly reviewed newline-only Staging census repair. Existing files
-// must be modified; new runner files must stay added. No application changes.
+// Exact allowlist for the trusted runner and audited Staging census repair,
+// plus the OWNER-approved quality policy and bookshelf PR #2618.
+// Even UI changes are pinned to exact reviewed Git blob SHAs below. All other
+// application changes remain denied.
 const TRUSTED_PROMOTION_PATHS = new Map([
   ['.github/staging-ai-jwt/admission.mjs', 'added'],
   ['.github/staging-ai-jwt/probe.mjs', 'added'],
@@ -25,8 +26,35 @@ const TRUSTED_PROMOTION_PATHS = new Map([
   ['.github/workflows/ai-review-hosted-staging-jwt-proof.yml', 'added'],
   ['tests/ai-review-hosted-real-jwt-gate.test.mjs', 'added'],
   ['.github/staging-ai-proof/census.mjs', 'modified'],
-  ['tests/ai-review-hosted-proof-census.test.mjs', 'modified']
+  ['tests/ai-review-hosted-proof-census.test.mjs', 'modified'],
+  ['AGENTS.md', 'modified'],
+  ['docs/NOVELIGHT-MASTER.md', 'modified'],
+  ['docs/development-workflow.md', 'modified'],
+  ['tests/master-integrity.test.js', 'modified'],
+  ['favorites.html', 'modified'],
+  ['novelight-bookshelf-overview.css', 'added'],
+  ['novelight-bookshelf-overview.js', 'added'],
+  ['novelight-bookshelf.js', 'modified'],
+  ['novelight-thumbnail-runtime.js', 'modified']
 ]);
+const FROZEN_REVIEWED_BLOBS = new Map([
+  ['.github/staging-ai-jwt/probe.mjs', '011a154cbe84b8f3c5b68befeacc886624fed094'],
+  ['.github/staging-ai-jwt/runner.mjs', 'fe7365eb46bff715bd84ed973e50b6e57b32d22b'],
+  ['.github/workflows/ai-review-hosted-staging-jwt-proof.yml', '5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2'],
+  ['.github/staging-ai-proof/census.mjs', 'a4b639ac7496093f615cbfdadbd6c2e0be80df95'],
+  ['tests/ai-review-hosted-proof-census.test.mjs', '10e3c2307c608c21fbbbd586dd0a5775f2cdb7d7'],
+  ['AGENTS.md', '1c3b95410de0010015fada83864b60db4c175f21'],
+  ['docs/NOVELIGHT-MASTER.md', '91d11fa367b7de64990b13397b13d4bb6e3c0230'],
+  ['docs/development-workflow.md', 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'],
+  ['tests/master-integrity.test.js', 'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'],
+  ['favorites.html', '05e6c3e36bea4f32d20db515e36b0225a1631f98'],
+  ['novelight-bookshelf-overview.css', '34ec82d64b9d2fd58be4e46995152b1d0f1c1c37'],
+  ['novelight-bookshelf-overview.js', '71f182d89081c1aa0b9b8b3bff2defe3891933d4'],
+  ['novelight-bookshelf.js', 'eb49a7c530d5d485ff98d681f75f180129b2802e'],
+  ['novelight-thumbnail-runtime.js', '81d5e3f101348f9bccfede97e9491d4f50bf792d']
+]);
+const OWNER_POLICY_MAIN = 'c1e3718ee209e91a804cfb879f2ba954fc9a27e2';
+const BOOKSHELF_MAIN = '39278163d1c7e2ee7dbd11dae8fc1a8173ce513f';
 const SHA = /^[0-9a-f]{40}$/u;
 const FIELDS = [
   'scope', 'mainSha', 'candidateSha', 'pr', 'migration',
@@ -89,7 +117,8 @@ export function verifyAIHostedJwtAdmission({
       pr?.number !== CANDIDATE_PR ||
       pr.state !== 'open' || pr.merged === true || pr.draft !== true ||
       pr.base?.ref !== 'main' ||
-      pr.base?.sha !== approval.mainSha ||
+      // Live main ref and full lineage are independently verified below.
+      // An immutable Draft may retain an older reported PR base.sha.
       pr.head?.repo?.full_name !== REPOSITORY ||
       pr.head?.ref !== 'codex/ai020704-staging-candidate-db-20261028' ||
       pr.head?.sha !== approval.candidateSha) {
@@ -107,15 +136,23 @@ export function verifyAIHostedJwtAdmission({
       mainLineage?.status !== 'ahead' ||
       mainLineage.behind_by !== 0 ||
       mainLineage.base_commit?.sha !== REVIEWED_BASE ||
-      mainLineage.total_commits < 1 ||
+      mainLineage.total_commits !== 9 ||
       !Array.isArray(mainLineage.commits) ||
       mainLineage.total_commits !== mainLineage.commits.length ||
+      mainLineage.commits.at(-3)?.sha !== OWNER_POLICY_MAIN ||
+      mainLineage.commits.at(-2)?.sha !== BOOKSHELF_MAIN ||
+      mainLineage.commits.at(-2)?.parents?.length !== 1 ||
+      mainLineage.commits.at(-2)?.parents?.[0]?.sha !== OWNER_POLICY_MAIN ||
       mainLineage.commits.at(-1)?.sha !== approval.mainSha ||
+      mainLineage.commits.at(-1)?.parents?.length !== 1 ||
+      mainLineage.commits.at(-1)?.parents?.[0]?.sha !== BOOKSHELF_MAIN ||
       !Array.isArray(mainLineage.files) ||
       mainLineage.files.length !== TRUSTED_PROMOTION_PATHS.size ||
       mainLineage.files.some((f) =>
         !TRUSTED_PROMOTION_PATHS.has(f.filename) ||
-        f.status !== TRUSTED_PROMOTION_PATHS.get(f.filename))) {
+        f.status !== TRUSTED_PROMOTION_PATHS.get(f.filename) ||
+        (FROZEN_REVIEWED_BLOBS.has(f.filename) &&
+          f.sha !== FROZEN_REVIEWED_BLOBS.get(f.filename)))) {
     deny('candidate or trusted-main promotion diverged from reviewed base');
   }
   if (!Array.isArray(ledgerPages) || !ledgerPages.length ||
