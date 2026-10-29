@@ -7,9 +7,7 @@ import {
   APPROVAL_PREFIX,
   verifyAIHostedJwtAdmission
 } from '../.github/staging-ai-jwt/admission.mjs';
-import {
-  assertVercelProjectProtection
-} from '../.github/staging-ai-jwt/probe.mjs';
+import * as jwtProbe from '../.github/staging-ai-jwt/probe.mjs';
 import { assertJwtGate } from '../.github/staging-ai-jwt/runner.mjs';
 
 const MAIN = 'a'.repeat(40);
@@ -265,40 +263,33 @@ test('Preview SSO must be checked with authenticated Vercel metadata', () => {
   assert.match(src, /entry\.target\[0\] !== 'preview'/u);
 });
 
-test('Vercel REST SSO requires exact protected scope', () => {
+test('Vercel REST SSO requires protected scope', () => {
+  const check = jwtProbe.assertVercelProjectProtection;
   const project = {
     id: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
     name: 'novelrise',
-    ssoProtection: {
-      deploymentType: 'all_except_custom_domains'
-    }
+    ssoProtection: { deploymentType: 'all_except_custom_domains' }
   };
-  assert.equal(assertVercelProjectProtection(project), true);
-  assert.equal(
-    assertVercelProjectProtection({
-      ...project,
-      ssoProtection: { ...project.ssoProtection, enabled: true }
-    }),
-    true
-  );
-  for (const protection of [
+  assert.equal(check(project), true);
+  const withFlag = {
+    ...project,
+    ssoProtection: { ...project.ssoProtection, enabled: true }
+  };
+  assert.equal(check(withFlag), true);
+
+  const invalidProtections = [
     null,
     {},
     [],
     { deploymentType: 'preview' },
     { deploymentType: 'all_except_custom_domains', enabled: false }
-  ]) {
-    const unprotected = { ...project, ssoProtection: protection };
-    assert.throws(() => assertVercelProjectProtection(unprotected), /DENIED/u);
+  ];
+  for (const protection of invalidProtections) {
+    const invalid = { ...project, ssoProtection: protection };
+    assert.throws(() => check(invalid), /DENIED/u);
   }
-  assert.throws(
-    () => assertVercelProjectProtection({ ...project, id: 'prj_OTHER' }),
-    /DENIED/u
-  );
-  assert.throws(
-    () => assertVercelProjectProtection({ ...project, name: 'other' }),
-    /DENIED/u
-  );
+  assert.throws(() => check({ ...project, id: 'prj_OTHER' }), /DENIED/u);
+  assert.throws(() => check({ ...project, name: 'other' }), /DENIED/u);
 });
 
 test('workflow requires OWNER and a single-use Staging ledger', () => {
