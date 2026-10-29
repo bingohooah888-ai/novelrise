@@ -10,7 +10,8 @@ import {
 import * as jwtProbe from '../.github/staging-ai-jwt/probe.mjs';
 import {
   assertJwtGate,
-  classifyCensusMismatch
+  classifyCensusMismatch,
+  syntheticMetadataReconcileSQL
 } from '../.github/staging-ai-jwt/runner.mjs';
 
 const MAIN = 'a'.repeat(40);
@@ -48,7 +49,8 @@ const FROZEN_MAIN_COMMITS = Object.freeze([
   'a46873abfd2e338954c458adb4dfdbcacf66a873',
   '769606269e824b26b7170e8ad930b8813011a13f',
   '5f61ef6df09a59409f6079148df7357568720a5d',
-  '922ee327cbae2812a440ebcdc35cb9371a072e2e'
+  '922ee327cbae2812a440ebcdc35cb9371a072e2e',
+  'e2be90d40abcd229836410cf27a358e87f3ad320'
 ]);
 const FROZEN_MAIN_FILES = Object.freeze([
   {
@@ -64,7 +66,7 @@ const FROZEN_MAIN_FILES = Object.freeze([
   {
     filename: '.github/staging-ai-jwt/runner.mjs',
     status: 'added',
-    sha: 'b1f157e3986aab812776d39ee075ad1f7a166263'
+    sha: '532bc2d81463c9c6bc892939e13c15fbf620d53a'
   },
   {
     filename: '.github/staging-ai-proof/census.mjs',
@@ -305,6 +307,7 @@ test('JWT diagnostics expose only fixed checkpoint labels', () => {
     'PREVIEW_BROWSER_CONFIG',
     'AUTH_ADMIN_READ',
     'AUTH_CREATE',
+    'AUTH_METADATA_RECONCILE',
     'NOVEL_CREATE',
     'FIXTURE_CENSUS',
     'JWT_HTTP',
@@ -780,6 +783,38 @@ test('campaign migration and commit ancestry remain pinned', () => {
   const alteredParent = sample();
   alteredParent.mainLineage.commits[25].parents[0].sha = '0'.repeat(40);
   assert.throws(() => verifyAIHostedJwtAdmission(alteredParent), /DENIED/u);
+});
+
+test('GoTrue metadata reconciliation is limited to one synthetic user', () => {
+  const sql = syntheticMetadataReconcileSQL();
+  const runner = readFileSync(
+    new URL('../.github/staging-ai-jwt/runner.mjs', import.meta.url),
+    'utf8'
+  );
+  assert.match(sql, /set local statement_timeout='12s'/u);
+  assert.match(sql, /set local lock_timeout='3s'/u);
+  assert.match(sql, /auth\.users where id='00000000-0000-4000-8000-000000000943'::uuid/u);
+  assert.match(sql, /lower\(email\)='ai-review-jwt@example\.invalid'/u);
+  assert.match(sql, /raw_app_meta_data ->> 'internal_e2e'/u);
+  assert.match(sql, /SYNTHETIC_METADATA_NOT_READY/u);
+  assert.match(sql, /SYNTHETIC_BETA_AMBIGUOUS/u);
+  assert.match(sql, /SYNTHETIC_CAMPAIGN_AMBIGUOUS/u);
+  assert.match(sql, /novelight_sync_user_participation_qualifications/u);
+  assert.match(sql, /delete from public\.scout_reward_campaign_entries/u);
+  assert.match(sql, /where user_id='00000000-0000-4000-8000-000000000943'::uuid/u);
+  assert.doesNotMatch(sql, /insert into|update auth\.users|truncate|drop table/iu);
+  assert.match(runner, /sql\(db,syntheticMetadataReconcileSQL\(\)\)/u);
+  assert.match(runner, /created\.app_metadata\?\.internal_e2e!==true/u);
+  assert.ok(
+    runner.indexOf("traceStage('AUTH_CREATE')") <
+      runner.indexOf("traceStage('AUTH_METADATA_RECONCILE')")
+  );
+  assert.ok(
+    runner.indexOf("traceStage('AUTH_METADATA_RECONCILE')") <
+      runner.indexOf("traceStage('FIXTURE_CENSUS')")
+  );
+  assert.match(runner, /audit\(db,'fixture'\)/u);
+  assert.match(runner, /auth\.admin\.deleteUser\(created\.id\)/u);
 });
 
 test('Staging side-effect census logs no raw records', () => {

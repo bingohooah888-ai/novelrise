@@ -71,7 +71,7 @@ const TRUSTED_PROMOTION_PATHS = new Map([
 ]);
 const FROZEN_REVIEWED_BLOBS = new Map([
   [".github/staging-ai-jwt/probe.mjs", "011a154cbe84b8f3c5b68befeacc886624fed094"],
-  [".github/staging-ai-jwt/runner.mjs", "b1f157e3986aab812776d39ee075ad1f7a166263"],
+  [".github/staging-ai-jwt/runner.mjs", "532bc2d81463c9c6bc892939e13c15fbf620d53a"],
   [".github/staging-ai-proof/census.mjs", "4e6f0e8bef0ae1a61495cbd90a7fae9410ff4d02"],
   [".github/workflows/ai-review-hosted-staging-jwt-proof.yml", "5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2"],
   [".github/workflows/staging-scout-campaign-exclusion-once.yml", "6e81d6683227f56de3fc2c500d34c316c6df06b6"],
@@ -115,7 +115,7 @@ const FROZEN_REVIEWED_BLOBS = new Map([
   ["supabase/migrations/20261030010000_comment_public_scout_identity.sql", "1e6c92576ceed47026fe98c8c0c4f301533a69c8"],
   ["tests/e2e/specs/comment-spoiler-display.spec.js", "62f1ff0915e655f67b5a695a5012417aafe05743"]
 ]);
-// Exact 30-commit main ancestry before this one reviewed Squash PR.
+// Exact 31-commit main ancestry before this one reviewed Squash PR.
 const FROZEN_REVIEWED_MAIN_COMMITS = Object.freeze([
   '964823fb9d8ecda77098598b58e7259243545a26',
   '78a59b87dd448f4e4a88e37c50b7abdb46e5fb0b',
@@ -146,7 +146,8 @@ const FROZEN_REVIEWED_MAIN_COMMITS = Object.freeze([
   'a46873abfd2e338954c458adb4dfdbcacf66a873',
   '769606269e824b26b7170e8ad930b8813011a13f',
   '5f61ef6df09a59409f6079148df7357568720a5d',
-  '922ee327cbae2812a440ebcdc35cb9371a072e2e'
+  '922ee327cbae2812a440ebcdc35cb9371a072e2e',
+  'e2be90d40abcd229836410cf27a358e87f3ad320'
 ]);
 const SHA = /^[0-9a-f]{40}$/u;
 const FIELDS = [
