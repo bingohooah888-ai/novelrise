@@ -214,11 +214,28 @@
     link.className = 'card nl-shelf-card';
     link.href = `novel.html?id=${encodeURIComponent(novel.id)}`;
     link.innerHTML = `
-      <span class="genre">${escapeHtml(novel.genre || '未設定')}</span>
-      <div class="title">${escapeHtml(novel.title)}</div>
-      <div class="desc" data-novelight-synopsis>${escapeHtml(novel.description || '')}</div>
-      <div class="nl-shelf-badges"></div>
+      <div class="nl-shelf-media">
+        <div class="nl-shelf-cover novel-cover-placeholder" aria-hidden="true">
+          <span class="cover-mark">✦</span>
+          <span class="cover-genre">${escapeHtml(novel.genre || 'NOVELIGHT')}</span>
+        </div>
+      </div>
+      <div class="nl-shelf-copy">
+        <span class="genre">${escapeHtml(novel.genre || '未設定')}</span>
+        <div class="title">${escapeHtml(novel.title)}</div>
+        <div class="desc" data-novelight-synopsis>${escapeHtml(novel.description || '')}</div>
+        <div class="nl-shelf-badges"></div>
+      </div>
     `;
+    if (novel.thumbnail_url) {
+      const cover = document.createElement('img');
+      cover.className = 'nl-shelf-cover novel-cover-image';
+      cover.alt = '';
+      cover.loading = 'lazy';
+      cover.decoding = 'async';
+      cover.src = String(novel.thumbnail_url);
+      link.querySelector('.nl-shelf-cover')?.replaceWith(cover);
+    }
 
     const organizer = document.createElement('div');
     organizer.className = 'nl-shelf-organizer';
@@ -296,6 +313,7 @@
     }
     void window.NovelightClient?.recordVisit?.(clientInstance);
     void window.NovelightClient?.claimAcquisition?.(clientInstance);
+    void window.NovelightBookshelfOverview?.load?.(clientInstance);
 
     const loadAll = new URLSearchParams(window.location.search).get('all') === '1';
     const initialQueryLimit = BOOKSHELF_INITIAL_LIMIT + 1;
@@ -348,7 +366,7 @@
 
     const novelsResult = await clientInstance
       .from('novels')
-      .select('id,title,genre,description,status')
+      .select('id,title,genre,description,status,thumbnail_url')
       .in('id', ids)
       .eq('status', 'published');
     if (novelsResult.error) throw novelsResult.error;
