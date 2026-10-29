@@ -207,6 +207,29 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await expect(page.locator('#novelReaderSeedSilver')).toHaveText('3 / 3');
   await expect(page.locator('#novelReaderSeedBronze')).toHaveText('2 / 2');
   await expect(stock.locator('img')).toHaveCount(3);
+  // The icons and numeric balances are larger without changing the row layout.
+  const typography = await page.evaluate(() => {
+    const icon = globalThis.document.querySelector(
+      '.light-seed-reader-inventory-tier img'
+    );
+    const tier = globalThis.document.querySelector(
+      '.light-seed-reader-inventory-tier strong'
+    );
+    const label = globalThis.document.querySelector(
+      '.light-seed-reader-inventory-tier span'
+    );
+    return {
+      iconWidth: icon.getBoundingClientRect().width,
+      countSize: Number.parseFloat(globalThis.getComputedStyle(tier).fontSize),
+      labelSize: Number.parseFloat(globalThis.getComputedStyle(label).fontSize),
+      viewport: globalThis.innerWidth
+    };
+  });
+  expect(typography.iconWidth).toBeGreaterThanOrEqual(
+    typography.viewport <= 650 ? 38 : 44
+  );
+  expect(typography.countSize).toBeGreaterThanOrEqual(16);
+  expect(typography.labelSize).toBeGreaterThanOrEqual(12);
   const sendCard = page.locator('#sendLightSeedButton');
   await expect(sendCard).toContainText(
     '対象作品を実際に読んだ記録がある場合のみ送信できます。'
@@ -263,6 +286,16 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await expect(page.locator('#receivedSeedSilver')).toHaveText('1');
   await expect(page.locator('#receivedSeedBronze')).toHaveText('0');
   await expect(page.locator('.nl-work-detail-bookmeta')).toBeVisible();
+  // The legacy header is emptied by the V2 reflow; its inline display:block
+  // must not leave a blank bordered card below LIGHT SEED.
+  const oldHeader = page.locator('#novelHeader');
+  await expect(oldHeader).toBeHidden();
+  const oldHeaderBox = await oldHeader.evaluate((node) => ({
+    display: globalThis.getComputedStyle(node).display,
+    height: node.getBoundingClientRect().height
+  }));
+  expect(oldHeaderBox.display).toBe('none');
+  expect(oldHeaderBox.height).toBe(0);
   await expect(page.locator('.nl-work-detail-toc')).toContainText('下書き');
   await expect(page.locator('.nl-work-author-episodes')).toHaveText(
     '公開1話・下書き1話'
