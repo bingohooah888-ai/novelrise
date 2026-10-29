@@ -100,9 +100,15 @@ test('OWNER 2026-10-29 quality rules remain in MASTER and agent entrypoint', () 
     '品質規則8：別チャット・別エージェントへ恒久継承'
   ];
   for (const anchor of anchors) {
-    assert.ok(master.includes(anchor), `MASTER quality rule missing: ${anchor}`);
+    assert.ok(
+      master.includes(anchor),
+      `MASTER quality rule missing: ${anchor}`
+    );
   }
-  const agents = fs.readFileSync(new URL('../AGENTS.md', import.meta.url), 'utf8');
+  const agents = fs.readFileSync(
+    new URL('../AGENTS.md', import.meta.url),
+    'utf8'
+  );
   assert.ok(agents.includes('2026-10-29 OWNER品質・承認ルール'));
   assert.ok(agents.includes('docs/NOVELIGHT-MASTER.md'));
   assert.ok(master.includes('失敗・中断を問わず再利用しない'));
