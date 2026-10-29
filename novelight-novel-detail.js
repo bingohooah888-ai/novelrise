@@ -117,6 +117,7 @@
       .nl-work-toc-draft-badge{grid-column:3;grid-row:1;justify-self:start;padding:2px 9px;border-radius:999px;background:#f5c5d7;color:#813951;font-size:11px;font-weight:800}
       .nl-work-toc-link:hover{background:#f2f5f8}.nl-work-toc-link.is-read{color:#5b6675!important}.nl-work-toc-link.is-current{background:#edf1f6;color:#15243a!important;font-weight:900;box-shadow:inset 3px 0 0 #b28a4a}.nl-work-toc-num{white-space:nowrap;color:#5f6b7a;font-size:12px;padding-top:2px}
       body.nl-work-detail-v2 #episodesPanel{display:none!important}
+      body.nl-work-detail-v2 #novelHeader[hidden]{display:none!important}
       .nl-work-character-section{padding:24px;background:#fffdfa;border:1px solid #e5ddd1;border-radius:16px;box-shadow:0 10px 32px rgba(55,43,31,.04)}
       .nl-work-character-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:15px}.nl-work-character-head p{margin:0;color:#7d746a;font-size:12px;line-height:1.6}
       .nl-work-character-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.nl-work-character-card{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;align-items:center;padding:12px;border:1px solid #e7dfd4;border-radius:12px;background:#fff}.nl-work-character-image,.nl-work-character-fallback{width:56px;height:56px;border-radius:10px;object-fit:cover;background:#efe9df;display:grid;place-items:center;color:#7a6855;font-weight:900;font-size:19px}.nl-work-character-copy strong{display:block;margin-bottom:4px;font-size:14px}.nl-work-character-copy p{margin:0;color:#786f66;font-size:11px;line-height:1.55}.nl-work-character-more{margin-top:12px;border:0;background:transparent;color:#70542d;font:inherit;font-size:12px;font-weight:900;cursor:pointer;padding:4px 0}.nl-work-character-card.is-extra{display:none}.nl-work-character-grid.is-expanded .nl-work-character-card.is-extra{display:grid}
@@ -675,6 +676,9 @@
     // Preserve the stable novelHeader element for other modules that query it.
     // Its children have been moved into the new grid, so hide the empty shell.
     header.hidden = true;
+    // The legacy renderer sets inline display:block; hiding just the attribute
+    // leaves a visible, empty bordered card between LIGHT SEED and reading.
+    header.style.display = 'none';
     header.setAttribute('aria-hidden', 'true');
     document.getElementById('nlContinueReading')?.remove();
     void mountCover(id, cover);
