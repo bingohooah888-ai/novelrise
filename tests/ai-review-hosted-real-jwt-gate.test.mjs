@@ -716,3 +716,26 @@ test('campaign migration and commit ancestry remain pinned', () => {
   alteredParent.mainLineage.commits[25].parents[0].sha = '0'.repeat(40);
   assert.throws(() => verifyAIHostedJwtAdmission(alteredParent), /DENIED/u);
 });
+
+// FORMAT_DIAG_REMOVE_BEFORE_MERGE
+test('temporary Prettier output capture', async () => {
+  const prettier = await import('prettier');
+  const filename = 'tests/ai-review-hosted-real-jwt-gate.test.mjs';
+  const ownSource = readFileSync(new URL(import.meta.url), 'utf8');
+  const marker = '// FORMAT_DIAG_REMOVE_BEFORE_MERGE';
+  const cleanSource = ownSource.slice(0, ownSource.indexOf(marker));
+  const options = (await prettier.resolveConfig(filename)) ?? {};
+  const formatted = await prettier.format(cleanSource, {
+    ...options,
+    filepath: filename
+  });
+  const encoded = Buffer.from(formatted, 'utf8').toString('base64');
+  for (let offset = 0; offset < encoded.length; offset += 400) {
+    console.log(
+      'FORMAT_RESULT_CHUNK ' +
+        String(offset / 400) +
+        ' ' +
+        encoded.slice(offset, offset + 400)
+    );
+  }
+});
