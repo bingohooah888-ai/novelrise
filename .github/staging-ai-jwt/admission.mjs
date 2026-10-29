@@ -53,8 +53,8 @@ const FROZEN_REVIEWED_BLOBS = new Map([
   ['docs/NOVELIGHT-MASTER.md', '91d11fa367b7de64990b13397b13d4bb6e3c0230'],
   ['docs/development-workflow.md', 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'],
   ['tests/master-integrity.test.js', 'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'],
-  ['favorites.html', 'f0ba354def79bf51f797e2bc6f45e796b6c306fa'],
-  ['novelight-bookshelf-overview.css', '7262456a6d5a6d9939a758a6684d2b42ccdb94d1'],
+  ['favorites.html', '171f0ae0025f09be21b8b85a9b74286dcbeb0cf6'],
+  ['novelight-bookshelf-overview.css', '50b62c78e9f8347e9c035fa8d37a6bc3f6dfdb40'],
   ['novelight-bookshelf-overview.js', '71f182d89081c1aa0b9b8b3bff2defe3891933d4'],
   ['novelight-bookshelf.js', 'eb49a7c530d5d485ff98d681f75f180129b2802e'],
   ['novelight-thumbnail-runtime.js', '81d5e3f101348f9bccfede97e9491d4f50bf792d'],
@@ -70,6 +70,7 @@ const BOOKSHELF_MAIN = '39278163d1c7e2ee7dbd11dae8fc1a8173ce513f';
 const JWT_GATE_REPAIR_MAIN = '8328a0e9de0a133fbb379ade406cd2821bb42fe4';
 const BOOKSHELF_ADJUST_MAIN = '724afa3f9bd6ebf6d8210df9f75afac611031281';
 const LIGHT_SEED_RESTORE_MAIN = 'a8d14e9fc2efd6f9d4d648b0576fb8bd836685a0';
+const BOOKSHELF_LAYOUT_MAIN = '66e552a85331c07d78188d1dcf5f5ef5969c7c4a';
 const SHA = /^[0-9a-f]{40}$/u;
 const FIELDS = [
   'scope', 'mainSha', 'candidateSha', 'pr', 'migration',
@@ -151,25 +152,28 @@ export function verifyAIHostedJwtAdmission({
       mainLineage?.status !== 'ahead' ||
       mainLineage.behind_by !== 0 ||
       mainLineage.base_commit?.sha !== REVIEWED_BASE ||
-      mainLineage.total_commits !== 12 ||
+      mainLineage.total_commits !== 13 ||
       !Array.isArray(mainLineage.commits) ||
       mainLineage.total_commits !== mainLineage.commits.length ||
-      mainLineage.commits.at(-6)?.sha !== OWNER_POLICY_MAIN ||
-      mainLineage.commits.at(-5)?.sha !== BOOKSHELF_MAIN ||
+      mainLineage.commits.at(-7)?.sha !== OWNER_POLICY_MAIN ||
+      mainLineage.commits.at(-6)?.sha !== BOOKSHELF_MAIN ||
+      mainLineage.commits.at(-6)?.parents?.length !== 1 ||
+      mainLineage.commits.at(-6)?.parents?.[0]?.sha !== OWNER_POLICY_MAIN ||
+      mainLineage.commits.at(-5)?.sha !== JWT_GATE_REPAIR_MAIN ||
       mainLineage.commits.at(-5)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-5)?.parents?.[0]?.sha !== OWNER_POLICY_MAIN ||
-      mainLineage.commits.at(-4)?.sha !== JWT_GATE_REPAIR_MAIN ||
+      mainLineage.commits.at(-5)?.parents?.[0]?.sha !== BOOKSHELF_MAIN ||
+      mainLineage.commits.at(-4)?.sha !== BOOKSHELF_ADJUST_MAIN ||
       mainLineage.commits.at(-4)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-4)?.parents?.[0]?.sha !== BOOKSHELF_MAIN ||
-      mainLineage.commits.at(-3)?.sha !== BOOKSHELF_ADJUST_MAIN ||
+      mainLineage.commits.at(-4)?.parents?.[0]?.sha !== JWT_GATE_REPAIR_MAIN ||
+      mainLineage.commits.at(-3)?.sha !== LIGHT_SEED_RESTORE_MAIN ||
       mainLineage.commits.at(-3)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-3)?.parents?.[0]?.sha !== JWT_GATE_REPAIR_MAIN ||
-      mainLineage.commits.at(-2)?.sha !== LIGHT_SEED_RESTORE_MAIN ||
+      mainLineage.commits.at(-3)?.parents?.[0]?.sha !== BOOKSHELF_ADJUST_MAIN ||
+      mainLineage.commits.at(-2)?.sha !== BOOKSHELF_LAYOUT_MAIN ||
       mainLineage.commits.at(-2)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-2)?.parents?.[0]?.sha !== BOOKSHELF_ADJUST_MAIN ||
+      mainLineage.commits.at(-2)?.parents?.[0]?.sha !== LIGHT_SEED_RESTORE_MAIN ||
       mainLineage.commits.at(-1)?.sha !== approval.mainSha ||
       mainLineage.commits.at(-1)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-1)?.parents?.[0]?.sha !== LIGHT_SEED_RESTORE_MAIN ||
+      mainLineage.commits.at(-1)?.parents?.[0]?.sha !== BOOKSHELF_LAYOUT_MAIN ||
       !Array.isArray(mainLineage.files) ||
       mainLineage.files.length !== TRUSTED_PROMOTION_PATHS.size ||
       mainLineage.files.some((f) =>
