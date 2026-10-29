@@ -96,7 +96,14 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
                       total_seed_count: 2, gold_count: 1,
                       silver_count: 1, bronze_count: 0
                     }
-                    : [],
+                    : name === 'novelight_light_seed_inventory'
+                      ? {
+                        monthly_limit: 11, remaining_this_month: 9,
+                        gold_allocated: 6, gold_remaining: 4,
+                        silver_allocated: 3, silver_remaining: 3,
+                        bronze_allocated: 2, bronze_remaining: 2
+                      }
+                      : [],
               error: null
               };
             },
@@ -192,6 +199,21 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await expect(page.locator('#lightSeedArea')).toBeVisible();
   await expect(page.locator('#lightSeedArea')).toContainText('LIGHT SEED');
   await expect(page.locator('#publicLightSeedCount')).toHaveText('2 個');
+  // This card is the *reader's remaining inventory*, not the work's tally.
+  const stock = page.locator('.light-seed-reader-inventory');
+  await expect(stock).toBeVisible();
+  await expect(page.locator('#novelReaderSeedTotal')).toHaveText('9 / 11');
+  await expect(page.locator('#novelReaderSeedGold')).toHaveText('4 / 6');
+  await expect(page.locator('#novelReaderSeedSilver')).toHaveText('3 / 3');
+  await expect(page.locator('#novelReaderSeedBronze')).toHaveText('2 / 2');
+  await expect(stock.locator('img')).toHaveCount(3);
+  if ((await page.evaluate(() => globalThis.innerWidth)) > 1120) {
+    const positions = await page.evaluate(() => ({
+      main: document.querySelector('.light-seed-content-main').getBoundingClientRect().right,
+      stock: document.querySelector('.light-seed-reader-inventory').getBoundingClientRect().left
+    }));
+    expect(positions.stock).toBeGreaterThan(positions.main);
+  }
   await expect(page.locator('.light-seed-public-summary img')).toBeVisible();
   await expect(page.locator('.light-seed-public-summary img')).toHaveJSProperty(
     'complete',
