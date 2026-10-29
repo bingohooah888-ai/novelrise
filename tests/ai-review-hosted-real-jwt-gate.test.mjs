@@ -171,10 +171,7 @@ test('census telemetry identifies only fixed nonsecret mismatch fields', () => {
     classifyCensusMismatch('fixture', { ...fixture, sideEffects: 1 }),
     'CENSUS_FIXTURE_SIDE_EFFECTS_MISMATCH'
   );
-  assert.equal(
-    classifyCensusMismatch('fixture', null),
-    'CENSUS_SHAPE_INVALID'
-  );
+  assert.equal(classifyCensusMismatch('fixture', null), 'CENSUS_SHAPE_INVALID');
   assert.equal(
     classifyCensusMismatch('final', {
       user: 0,
