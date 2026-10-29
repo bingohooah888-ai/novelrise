@@ -262,6 +262,131 @@
     actions.append(pin, hidden, reply);
   }
 
+
+  // Keep artwork aliases in sync with the existing public SCOUT RECORD display.
+  const BADGE_ARTWORK_OVERRIDES = Object.freeze({
+    reader_read_500: 'assets/scout-badges/hard_reader_read_500.png',
+    reader_silver_seed_010: 'assets/scout-badges/reader_seed_500.png',
+    reader_gold_seed_005: 'assets/scout-badges/reader_seed_250.png',
+    reader_discovery_plus2_005: 'assets/scout-badges/reader_bronze_seed_003.png',
+    reader_discovery_plus2_010: 'assets/scout-badges/reader_bronze_seed_005.png',
+    reader_discovery_plus2_050: 'assets/scout-badges/hard_reader_discovery_plus2_050.png',
+    reader_discovery_plus2_100: 'assets/scout-badges/hard_reader_discovery_plus2_100.png',
+    reader_new_author_025: 'assets/scout-badges/reader_discovery_plus2_050.png',
+    reader_new_author_050: 'assets/scout-badges/reader_discovery_plus2_100.png',
+    reader_new_author_100: 'assets/scout-badges/reader_new_author_025.png',
+    reader_genre_010: 'assets/scout-badges/reader_low_rank_010.png',
+    reader_new_work_025: 'assets/scout-badges/reader_genre_020.png',
+    reader_low_rank_025: 'assets/scout-badges/reader_new_author_050.png',
+    reader_read_200: 'assets/scout-badges/reader_read_250.png',
+    reader_read_300: 'assets/scout-badges/reader_read_500.png',
+    reader_bronze_seed_015: 'assets/scout-badges/reader_seed_1000.png',
+    reader_discovery_plus2_020: 'assets/scout-badges/reader_bronze_seed_010.png',
+    reader_discovery_plus3_001: 'assets/scout-badges/reader_silver_seed_003.png',
+    reader_discovery_plus3_005: 'assets/scout-badges/reader_silver_seed_005.png',
+    reader_discovery_plus3_010: 'assets/scout-badges/reader_silver_seed_010.png',
+    reader_discovery_plus4_001: 'assets/scout-badges/reader_gold_seed_003.png',
+    reader_discovery_plus4_002: 'assets/scout-badges/reader_gold_seed_005.png',
+    reader_discovery_plus4_005: 'assets/scout-badges/reader_gold_seed_010.png',
+    reader_nova_001: 'assets/scout-badges/reader_discovery_plus2_005.png',
+    reader_nova_003: 'assets/scout-badges/reader_discovery_plus2_010.png',
+    reader_nova_005: 'assets/scout-badges/reader_discovery_plus2_025.png',
+    reader_low_rank_050: 'assets/scout-badges/reader_new_author_100.png',
+    reader_low_rank_100: 'assets/scout-badges/reader_genre_010.png',
+    reader_new_work_050: 'assets/scout-badges/reader_genre_030.png',
+    reader_new_work_100: 'assets/scout-badges/reader_new_work_010.png',
+    reader_genre_008: 'assets/scout-badges/reader_new_work_025.png',
+    reader_long_read_005: 'assets/scout-badges/reader_low_rank_025.png',
+    reader_long_read_010: 'assets/scout-badges/reader_series_complete_001.png',
+    reader_short_read_010: 'assets/scout-badges/reader_series_complete_003.png',
+    reader_short_read_025: 'assets/scout-badges/reader_series_complete_005.png',
+    reader_read_1000: 'assets/scout-badges/hard_reader_read_1000.png',
+    reader_new_author_250: 'assets/scout-badges/hard_reader_new_author_250.png',
+    reader_low_rank_250: 'assets/scout-badges/hard_reader_low_rank_250.png',
+    reader_low_rank_500: 'assets/scout-badges/hard_reader_low_rank_500.png',
+    reader_discovery_plus3_025: 'assets/scout-badges/hard_reader_discovery_plus3_025.png',
+    reader_discovery_plus3_050: 'assets/scout-badges/hard_reader_discovery_plus3_050.png',
+    reader_discovery_plus4_010: 'assets/scout-badges/hard_reader_discovery_plus4_010.png',
+    reader_discovery_plus4_020: 'assets/scout-badges/hard_reader_discovery_plus4_020.png',
+    reader_discovery_plus5_001: 'assets/scout-badges/hard_reader_discovery_plus5_001.png',
+    reader_discovery_plus5_003: 'assets/scout-badges/hard_reader_discovery_plus5_003.png',
+    reader_discovery_plus5_010: 'assets/scout-badges/hard_reader_discovery_plus5_010.png',
+    reader_nova_010: 'assets/scout-badges/hard_reader_nova_010.png',
+    reader_nova_025: 'assets/scout-badges/hard_reader_nova_025.png',
+    reader_gold_plus5_001: 'assets/scout-badges/hard_reader_gold_plus5_001.png',
+    reader_silver_plus5_001: 'assets/scout-badges/hard_reader_silver_plus5_001.png',
+    reader_bronze_plus5_001: 'assets/scout-badges/hard_reader_bronze_plus5_001.png',
+    reader_master_scout: 'assets/scout-badges/hard_reader_master_scout.png',
+    author_chars_1m: 'assets/scout-badges/hard_author_chars_1m.png',
+    author_completed_010: 'assets/scout-badges/hard_author_completed_010.png',
+    author_unique_reader_1000: 'assets/scout-badges/hard_author_unique_reader_1000.png',
+    author_favorite_500: 'assets/scout-badges/hard_author_favorite_500.png',
+    author_discovered_plus2_005: 'assets/scout-badges/hard_author_discovered_plus2_005.png'
+  });
+  const AVATAR_OWNER_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const AVATAR_PATH_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.(webp|png|jpg|jpeg)$/i;
+
+  function commentBadgeArtworkPath(badgeId) {
+    if (!/^(?:reader|author|limited)_[a-z0-9_]+$/u.test(badgeId)) return null;
+    if (badgeId === 'limited_founding_author') return 'assets/founding-authors-badge-2026.png';
+    return BADGE_ARTWORK_OVERRIDES[badgeId] || 'assets/scout-badges/' + badgeId + '.png';
+  }
+
+  function renderPublicIdentity(state, comment) {
+    const profile = createElement('div', 'novelight-comment-profile');
+    const displayName = String(comment.display_name || '読者').trim() || '読者';
+    const avatar = createElement('span', 'novelight-comment-avatar');
+    avatar.setAttribute('aria-label', displayName + 'のアイコン');
+    const avatarFallback = createElement('span', 'novelight-comment-avatar-fallback', displayName.slice(0, 1));
+    avatar.append(avatarFallback);
+
+    // Only render public bucket objects belonging to the commenting user.
+    const userId = String(comment.user_id || '').toLowerCase();
+    const avatarPath = String(comment.avatar_path || '');
+    const match = avatarPath.match(AVATAR_PATH_PATTERN);
+    if (AVATAR_OWNER_PATTERN.test(userId) && match && match[1].toLowerCase() === userId) {
+      const url = state.client.storage?.from?.('author-avatars')?.getPublicUrl?.(avatarPath)?.data?.publicUrl;
+      if (url) {
+        const image = createElement('img', 'novelight-comment-avatar-image');
+        image.alt = '';
+        image.loading = 'lazy';
+        image.decoding = 'async';
+        image.onload = () => { avatarFallback.hidden = true; };
+        image.onerror = () => { image.remove(); avatarFallback.hidden = false; };
+        image.src = url;
+        avatar.append(image);
+      }
+    }
+    profile.append(avatar);
+
+    const level = Number(comment.scout_level);
+    if (comment.scout_level != null && Number.isInteger(level) && level >= 1 && level <= 30) {
+      profile.append(createElement('span', 'novelight-comment-level', 'SCOUT Lv.' + level));
+    }
+
+    const badgeId = String(comment.equipped_badge_id || '');
+    const badgeName = String(comment.equipped_badge_name || '').trim();
+    const badgeArtwork = commentBadgeArtworkPath(badgeId);
+    if (badgeArtwork && badgeName) {
+      const equipped = createElement('span', 'novelight-comment-equipped');
+      equipped.setAttribute('aria-label', '装備中の称号: ' + badgeName);
+      const artwork = createElement('span', 'novelight-comment-equipped-image');
+      const fallback = createElement('span', 'novelight-comment-equipped-fallback', '✦');
+      artwork.append(fallback);
+      const image = createElement('img');
+      image.src = badgeArtwork;
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      image.onload = () => { fallback.hidden = true; };
+      image.onerror = () => { image.remove(); fallback.hidden = false; };
+      artwork.append(image);
+      equipped.append(artwork, createElement('span', 'novelight-comment-equipped-name', badgeName));
+      profile.append(equipped);
+    }
+    return profile;
+  }
+
   function renderFeed(state, comments) {
     state.list.replaceChildren();
     state.count.textContent = `${comments.length}件`;
@@ -313,7 +438,9 @@
         formatDate(comment.created_at)
       );
       if (comment.created_at) time.dateTime = String(comment.created_at);
-      header.append(identity, time);
+      const commenter = createElement('div', 'novelight-comment-person');
+      commenter.append(renderPublicIdentity(state, comment), identity);
+      header.append(commenter, time);
 
       const body = createElement(
         'p',
