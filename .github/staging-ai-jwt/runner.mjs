@@ -21,17 +21,22 @@ const CENSUS_PHASE = Object.freeze({
 const CENSUS_FIELD = Object.freeze({
   user: 'USER', identities: 'IDENTITIES', sessions: 'SESSIONS',
   profile: 'PROFILE', novel: 'NOVEL', typo: 'TYPO',
+  founding: 'FOUNDING', beta: 'BETA_PARTICIPATION',
+  campaign: 'SCOUT_CAMPAIGN', follow: 'AUTHOR_FOLLOW',
+  rankState: 'NOVEL_RANK_STATE', rankEvents: 'NOVEL_RANK_EVENTS',
   sideEffects: 'SIDE_EFFECTS', other: 'OTHER'
 });
 export function classifyCensusMismatch(phase, actual) {
   const label = CENSUS_PHASE[phase];
   if (!label || !actual || typeof actual !== 'object' ||
       Array.isArray(actual)) return 'CENSUS_SHAPE_INVALID';
+  const noSideEffects = { founding:0, beta:0, campaign:0,
+    follow:0, rankState:0, rankEvents:0 };
   const expected = phase === 'fixture'
     ? {user:1,identities:1,sessions:0,profile:1,novel:1,
-       typo:1,sideEffects:0}
+       typo:1,...noSideEffects,sideEffects:0}
     : {user:0,identities:0,sessions:0,profile:0,novel:0,
-       typo:0,sideEffects:0,other:0};
+       typo:0,...noSideEffects,sideEffects:0,other:0};
   for (const [key, value] of Object.entries(expected)) {
     if (actual[key] !== value) {
       return 'CENSUS_' + label + '_' + CENSUS_FIELD[key] + '_MISMATCH';
@@ -81,6 +86,14 @@ function audit(db,phase,createdId=ID){
     "'typo',(select count(*) from public.novel_typo_report_settings where novel_id="+NOVEL+"),"+
     "'other',(select count(*) from auth.users where id='"+createdId+"'::uuid)"+
     "+(select count(*) from public.profiles where id='"+createdId+"'::uuid),"+
+    // Each bounded category is counted separately so the first failure
+    // can be classified without exposing any row or personal information.
+    "'founding',(select count(*) from public.founding_authors where author_id='"+ID+"'::uuid),"+
+    "'beta',(select count(*) from public.beta_participants where auth_user_id='"+ID+"'::uuid or email_normalized='"+EMAIL+"'),"+
+    "'campaign',(select count(*) from public.scout_reward_campaign_entries where user_id='"+ID+"'::uuid),"+
+    "'follow',(select count(*) from public.author_follow_events where author_user_id='"+ID+"'::uuid or novel_id="+NOVEL+"),"+
+    "'rankState',(select count(*) from public.novel_rank_state where novel_id_snapshot='"+NOVEL+"' or author_id_snapshot='"+ID+"'),"+
+    "'rankEvents',(select count(*) from public.novel_rank_events where novel_id_snapshot='"+NOVEL+"' or author_id_snapshot='"+ID+"'),"+
     "'sideEffects',(select count(*) from public.founding_authors where author_id='"+ID+"'::uuid)"+
     "+(select count(*) from public.beta_participants where auth_user_id='"+ID+"'::uuid or email_normalized='"+EMAIL+"')"+
     "+(select count(*) from public.scout_reward_campaign_entries where user_id='"+ID+"'::uuid)"+
