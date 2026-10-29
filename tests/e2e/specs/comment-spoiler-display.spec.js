@@ -19,6 +19,13 @@ async function mountComments(page, { session = null } = {}) {
         rpc: async (name, args) => {
           calls.push({ name, args });
 
+          if (name === 'novelight_public_author_avatar') {
+            return {
+              data: '11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.webp',
+              error: null
+            };
+          }
+
           if (name === 'novelight_novel_comment_reception_state') {
             return {
               data: { comments_enabled: true },
@@ -32,8 +39,7 @@ async function mountComments(page, { session = null } = {}) {
                 {
                   id: 'spoiler-1',
                   user_id: '11111111-1111-4111-8111-111111111111',
-                  avatar_path:
-                    '11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.webp',
+                  avatar_path: null,
                   scout_level: 10,
                   equipped_badge_id: 'reader_read_005',
                   equipped_badge_name: 'PAGEWALKER',
@@ -174,8 +180,14 @@ test('public comment identity is displayed above the pen name', async ({
   const avatarImage = profile.locator('.novelight-comment-avatar img');
   const expectedSrc = '/assets/scout-badges/reader_read_005.png';
   await expect(avatarImage).toHaveAttribute('src', expectedSrc);
+  await expect(avatarImage).toHaveJSProperty('complete', true);
   const width = await avatarImage.evaluate((image) => image.naturalWidth);
   expect(width).toBeGreaterThan(0);
+  const calls = await page.evaluate(() => globalThis.__COMMENT_CALLS__);
+  const avatarCall = calls.find(
+    (call) => call.name === 'novelight_public_author_avatar'
+  );
+  expect(avatarCall).toBeTruthy();
   await expect(profile.locator('.novelight-comment-level')).toHaveText(
     'SCOUT Lv.10'
   );
