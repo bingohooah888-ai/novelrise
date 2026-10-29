@@ -8,7 +8,8 @@ const oldSource = read(
   '../supabase/migrations/20261005112000_scout_campaign_entry_windows.sql'
 );
 const migration = read(
-  '../supabase/migrations/20261029142000_exclude_internal_scout_campaign_entries.sql'
+  '../supabase/migrations/20261029142000_' +
+    'exclude_internal_scout_campaign_entries.sql'
 );
 const fixture = read('./rls/scout-campaign-internal-exclusion.sql');
 const start =
@@ -18,7 +19,7 @@ const stop =
 const oldFunction = oldSource.split(start)[1]?.split(stop)[0];
 const newFunction = migration.split(start)[1]?.split(stop)[0];
 
-test('migration only adds an admin-controlled internal E2E exclusion to enrollment', () => {
+test('internal enrollment guard preserves the original campaign function', () => {
   assert.ok(oldFunction && newFunction);
   const guard = `begin
   -- Application metadata is admin-managed; do not enroll synthetic tests.
@@ -40,7 +41,7 @@ test('migration only adds an admin-controlled internal E2E exclusion to enrollme
   );
 });
 
-test('disposable PostgreSQL tests both synthetic exclusion and normal eligibility', () => {
+test('disposable DB tests internal exclusion and normal signup', () => {
   assert.match(fixture, /begin;/u);
   assert.match(fixture, /internal_e2e/u);
   assert.match(fixture, /ci-normal-campaign@example\.invalid/u);
