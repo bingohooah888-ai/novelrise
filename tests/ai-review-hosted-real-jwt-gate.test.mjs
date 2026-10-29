@@ -549,3 +549,18 @@ test('workflow requires OWNER and a single-use Staging ledger', () => {
   assert.match(src, /environment: staging/u);
   assert.doesNotMatch(src, /workflow_dispatch:/u);
 });
+
+test('TEMP diagnostic: get CI-locked Prettier output', async () => {
+  const prettier = await import('prettier');
+  const original = readFileSync(
+    new URL('./ai-review-hosted-real-jwt-gate.test.mjs', import.meta.url),
+    'utf8'
+  );
+  const config = await prettier.resolveConfig('tests/ai-review-hosted-real-jwt-gate.test.mjs');
+  const formatted = await prettier.format(original, {
+    ...config,
+    filepath: 'tests/ai-review-hosted-real-jwt-gate.test.mjs'
+  });
+  console.log('PRETTIER_FORMATTED_SOURCE_BASE64 ' + Buffer.from(formatted, 'utf8').toString('base64'));
+  assert.ok(formatted.includes('intervening bookshelf and LIGHT SEED'));
+});
