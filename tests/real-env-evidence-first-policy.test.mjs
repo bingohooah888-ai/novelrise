@@ -34,3 +34,18 @@ test('evidence-first policy preserves one-use approvals and failure boundaries',
   assert.match(agents, /`本番承認`/u);
   assert.match(agents, /`ステージング承認`/u);
 });
+
+test('evidence-first policy is CURRENT and loaded on every startup', () => {
+  const source = read('docs/DOCUMENT-SOURCE-OF-TRUTH.md');
+  const match = source.match(
+    /<!-- NOVELIGHT_DOCUMENT_REGISTRY_BEGIN -->[\s\S]*?```json\s*([\s\S]*?)\s*```/u
+  );
+  assert.ok(match, 'Source of Truth registry must contain JSON');
+  const registry = JSON.parse(match[1]);
+  const path = 'docs/REAL-ENV-EVIDENCE-FIRST-POLICY.md';
+  assert.ok(registry.startupRequiredCurrent.includes(path));
+  const entries = registry.documents.filter((entry) => entry.path === path);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].status, 'CURRENT');
+  assert.equal(entries[0].singletonRole, true);
+});
