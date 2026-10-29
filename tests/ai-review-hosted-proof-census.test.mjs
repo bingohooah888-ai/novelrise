@@ -9,6 +9,7 @@ import {
 function snapshot() {
   return {
     migrationCount: 1,
+    campaignExclusionMigrationCount: 1,
     candidateCount: 0,
     runtimeSafe: true,
     reservedAuthCount: 0,
@@ -17,7 +18,7 @@ function snapshot() {
     functionFingerprints: [
       {
         function: 'novelight_capture_scout_campaign_entry',
-        fingerprint: 'fcf216ef3062983bea13ff4143b92f53'
+        fingerprint: '4d52acf3a1d5f52db73456357a39d5fc'
       },
       {
         function: 'novelight_is_internal_participation_account',
@@ -51,7 +52,7 @@ function snapshot() {
       {
         table: 'users',
         count: 6,
-        fingerprint: '1a534e511428bd56bd1518ff8daad95a'
+        fingerprint: 'e20ab7dc7aee7671b476502b62e61759'
       }
     ]
   };
@@ -70,6 +71,7 @@ test('read-only census checks all four trigger families', () => {
 
 for (const field of [
   'migrationCount',
+  'campaignExclusionMigrationCount',
   'candidateCount',
   'reservedAuthCount',
   'reservedNovelCount',
@@ -77,7 +79,8 @@ for (const field of [
 ]) {
   test('census rejects nonempty or absent ' + field, () => {
     const entry = snapshot();
-    entry[field] = field === 'migrationCount' ? 0 : 1;
+    entry[field] = ['migrationCount', 'campaignExclusionMigrationCount'].includes(field)
+      ? 0 : 1;
     assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
   });
 }
@@ -114,4 +117,14 @@ test('census refuses omitted function fingerprints', () => {
   const entry = snapshot();
   entry.functionFingerprints.pop();
   assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
+});
+
+test('census refuses old campaign function and Auth trigger fingerprints', () => {
+  const oldFunction = snapshot();
+  oldFunction.functionFingerprints[0].fingerprint = 'fcf216ef3062983bea13ff4143b92f53';
+  assert.throws(() => assertPrecheck(oldFunction), /AI_HOSTED_RACE_CENSUS_DENIED/u);
+  const oldTrigger = snapshot();
+  oldTrigger.triggerFingerprints.find((row) => row.table === 'users').fingerprint =
+    '1a534e511428bd56bd1518ff8daad95a';
+  assert.throws(() => assertPrecheck(oldTrigger), /AI_HOSTED_RACE_CENSUS_DENIED/u);
 });

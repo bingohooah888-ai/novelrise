@@ -19,63 +19,124 @@ const REVIEWED_BASE = 'b725b796f5a4cd51b5181b75e247bfc0502e9568';
 // plus reviewed OWNER merges #2618, #2622, #2617, #2630 and #2627.
 // Even UI changes are pinned to exact reviewed Git blob SHAs below. All other
 // application changes remain denied.
+// Freeze each reviewed main path, status and git blob. The gate's own
+// source and own test cannot self-pin their git blob hashes.
 const TRUSTED_PROMOTION_PATHS = new Map([
-  ['.github/staging-ai-jwt/admission.mjs', 'added'],
-  ['.github/staging-ai-jwt/probe.mjs', 'added'],
-  ['.github/staging-ai-jwt/runner.mjs', 'added'],
-  ['.github/workflows/ai-review-hosted-staging-jwt-proof.yml', 'added'],
-  ['tests/ai-review-hosted-real-jwt-gate.test.mjs', 'added'],
-  ['.github/staging-ai-proof/census.mjs', 'modified'],
-  ['tests/ai-review-hosted-proof-census.test.mjs', 'modified'],
-  ['AGENTS.md', 'modified'],
-  ['docs/NOVELIGHT-MASTER.md', 'modified'],
-  ['docs/development-workflow.md', 'modified'],
-  ['tests/master-integrity.test.js', 'modified'],
-  ['favorites.html', 'modified'],
-  ['novelight-bookshelf-overview.css', 'added'],
-  ['novelight-bookshelf-overview.js', 'added'],
-  ['novelight-bookshelf.js', 'modified'],
-  ['novelight-thumbnail-runtime.js', 'modified'],
-  ['api/seo/templates/novel.html', 'modified'],
-  ['novel.html', 'modified'],
-  ['novelight-novel-poll.js', 'modified'],
-  ['tests/async-ui-state.test.mjs', 'modified'],
-  ['tests/e2e/specs/novel-owner-detail-render.spec.js', 'modified'],
-  ['tests/light-seed-auto-tier.test.mjs', 'modified']
+  [".github/staging-ai-jwt/admission.mjs", "added"],
+  [".github/staging-ai-jwt/probe.mjs", "added"],
+  [".github/staging-ai-jwt/runner.mjs", "added"],
+  [".github/staging-ai-proof/census.mjs", "modified"],
+  [".github/workflows/ai-review-hosted-staging-jwt-proof.yml", "added"],
+  [".github/workflows/staging-scout-campaign-exclusion-once.yml", "added"],
+  ["AGENTS.md", "modified"],
+  ["api/seo/templates/novel.html", "modified"],
+  ["curation-lists.html", "modified"],
+  ["curation.html", "modified"],
+  ["docs/NOVELIGHT-MASTER.md", "modified"],
+  ["docs/development-workflow.md", "modified"],
+  ["favorites.html", "modified"],
+  ["novel.html", "modified"],
+  ["novelight-bookshelf-overview.css", "added"],
+  ["novelight-bookshelf-overview.js", "added"],
+  ["novelight-bookshelf.js", "modified"],
+  ["novelight-help.js", "modified"],
+  ["novelight-novel-detail.js", "modified"],
+  ["novelight-novel-poll.js", "modified"],
+  ["novelight-scout-record.css", "modified"],
+  ["novelight-thumbnail-runtime.js", "modified"],
+  ["scout-record.html", "modified"],
+  ["scripts/compose-scout-campaign-staging.mjs", "added"],
+  ["scripts/run-rls-integration.sh", "modified"],
+  ["supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_postcheck.sql", "added"],
+  ["supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_precheck.sql", "added"],
+  ["supabase/migrations/20261029142000_exclude_internal_scout_campaign_entries.sql", "added"],
+  ["supabase/rollback/20261029142000_exclude_internal_scout_campaign_entries_rollback.sql", "added"],
+  ["tests/ai-review-hosted-proof-census.test.mjs", "modified"],
+  ["tests/ai-review-hosted-real-jwt-gate.test.mjs", "added"],
+  ["tests/async-ui-state.test.mjs", "modified"],
+  ["tests/chapter41-beta-scout-record-preview.test.mjs", "modified"],
+  ["tests/e2e/specs/novel-owner-detail-render.spec.js", "modified"],
+  ["tests/light-seed-auto-tier.test.mjs", "modified"],
+  ["tests/light-seed-inventory-received-ui.test.mjs", "modified"],
+  ["tests/master-integrity.test.js", "modified"],
+  ["tests/reader-curation-lists-contract.test.mjs", "modified"],
+  ["tests/rls/scout-campaign-internal-exclusion.sql", "added"],
+  ["tests/scout-campaign-internal-exclusion.test.mjs", "added"],
+  ["tests/scout-campaign-staging-transaction.test.mjs", "added"],
+  ["tests/work-navigation-character-surfaces.test.mjs", "modified"]
 ]);
 const FROZEN_REVIEWED_BLOBS = new Map([
-  ['.github/staging-ai-jwt/probe.mjs', '011a154cbe84b8f3c5b68befeacc886624fed094'],
-  ['.github/staging-ai-jwt/runner.mjs', '3604bb86cd7dff8db38d9755566fcb9e35d82a21'],
-  ['.github/workflows/ai-review-hosted-staging-jwt-proof.yml', '5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2'],
-  ['.github/staging-ai-proof/census.mjs', 'a4b639ac7496093f615cbfdadbd6c2e0be80df95'],
-  ['tests/ai-review-hosted-proof-census.test.mjs', '10e3c2307c608c21fbbbd586dd0a5775f2cdb7d7'],
-  ['AGENTS.md', '1c3b95410de0010015fada83864b60db4c175f21'],
-  ['docs/NOVELIGHT-MASTER.md', '91d11fa367b7de64990b13397b13d4bb6e3c0230'],
-  ['docs/development-workflow.md', 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'],
-  ['tests/master-integrity.test.js', 'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'],
-  ['favorites.html', '171f0ae0025f09be21b8b85a9b74286dcbeb0cf6'],
-  ['novelight-bookshelf-overview.css', '6d018d8e0b70ab90a96ac66a7b7e1b86fa09d3fc'],
-  ['novelight-bookshelf-overview.js', '71f182d89081c1aa0b9b8b3bff2defe3891933d4'],
-  ['novelight-bookshelf.js', 'eb49a7c530d5d485ff98d681f75f180129b2802e'],
-  ['novelight-thumbnail-runtime.js', '81d5e3f101348f9bccfede97e9491d4f50bf792d'],
-  ['api/seo/templates/novel.html', '80e9c90366516556a82dc2919077eb0fdd40dd7b'],
-  ['novel.html', '80e9c90366516556a82dc2919077eb0fdd40dd7b'],
-  ['novelight-novel-poll.js', '2d4e275f1460bc619f50d7648f239ed958ae1947'],
-  ['tests/async-ui-state.test.mjs', '912577ea4610ba77f94057c2de16151e577f5e3d'],
-  ['tests/e2e/specs/novel-owner-detail-render.spec.js', 'c77780df2cad0e1ca0ad541e11857885ba8e9c90'],
-  ['tests/light-seed-auto-tier.test.mjs', '3db0b33cc4d18c504051c99b756d88b0eeca8115']
+  [".github/staging-ai-jwt/probe.mjs", "011a154cbe84b8f3c5b68befeacc886624fed094"],
+  [".github/staging-ai-jwt/runner.mjs", "3604bb86cd7dff8db38d9755566fcb9e35d82a21"],
+  [".github/staging-ai-proof/census.mjs", "4e6f0e8bef0ae1a61495cbd90a7fae9410ff4d02"],
+  [".github/workflows/ai-review-hosted-staging-jwt-proof.yml", "5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2"],
+  [".github/workflows/staging-scout-campaign-exclusion-once.yml", "6e81d6683227f56de3fc2c500d34c316c6df06b6"],
+  ["AGENTS.md", "1c3b95410de0010015fada83864b60db4c175f21"],
+  ["api/seo/templates/novel.html", "8321c327a25487188db51b081f76efa7676be105"],
+  ["curation-lists.html", "aee060d076cecb33b31d2ec0a40eafda7dd8ff8d"],
+  ["curation.html", "5ae46e6fd02a5cd139d8030b0d00b58df45b76c4"],
+  ["docs/NOVELIGHT-MASTER.md", "91d11fa367b7de64990b13397b13d4bb6e3c0230"],
+  ["docs/development-workflow.md", "b8d95f44f4f3deccfde9fe4673a4ae77ba20f324"],
+  ["favorites.html", "01ee6f489c8c1f3f3dc0f08026297eafa41eced5"],
+  ["novel.html", "8321c327a25487188db51b081f76efa7676be105"],
+  ["novelight-bookshelf-overview.css", "aaecefa3946c7d72359a3f3e5928d089e286c741"],
+  ["novelight-bookshelf-overview.js", "71f182d89081c1aa0b9b8b3bff2defe3891933d4"],
+  ["novelight-bookshelf.js", "eb49a7c530d5d485ff98d681f75f180129b2802e"],
+  ["novelight-help.js", "9200f513ad24a33003022d57df43cee3cb80081e"],
+  ["novelight-novel-detail.js", "736b6f8e4aaec23cb717810778c7a3b1246f84fd"],
+  ["novelight-novel-poll.js", "d6c25359c10ee01eab9b0ed4e7a2d678aeee5fe6"],
+  ["novelight-scout-record.css", "594e578deec5d5c732ca4cd9729fbeb13dc55c7c"],
+  ["novelight-thumbnail-runtime.js", "81d5e3f101348f9bccfede97e9491d4f50bf792d"],
+  ["scout-record.html", "d20457889eb88bcfb96d735a98b62878f8caf3fc"],
+  ["scripts/compose-scout-campaign-staging.mjs", "742298bd5692d0562bf1a40d27ed7d535ddff6de"],
+  ["scripts/run-rls-integration.sh", "59160bfd5673f8011f6a98cb1c1f46f0d4c3f47f"],
+  ["supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_postcheck.sql", "0b54e2538761cda7a07e32908d71b200464eee97"],
+  ["supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_precheck.sql", "601f7a5e11d76f06921e845fe460a6f455971b54"],
+  ["supabase/migrations/20261029142000_exclude_internal_scout_campaign_entries.sql", "d887dc40233ef727bd74f8a6c92ea5ea252ea957"],
+  ["supabase/rollback/20261029142000_exclude_internal_scout_campaign_entries_rollback.sql", "fa00bc61da615462fa3640d16f13eebe700e2359"],
+  ["tests/ai-review-hosted-proof-census.test.mjs", "0a2e14465d22f7e011e6980b510000c9e0df47c0"],
+  ["tests/async-ui-state.test.mjs", "3ef05664be0ce1a8364efc2252cae432270ea1df"],
+  ["tests/chapter41-beta-scout-record-preview.test.mjs", "5fe4f555ad2a5171d5878742391294292b9a930b"],
+  ["tests/e2e/specs/novel-owner-detail-render.spec.js", "c490625a69d9cb30c734db2b49b4ac13ac994a0e"],
+  ["tests/light-seed-auto-tier.test.mjs", "845f5611ce243aafa3cd5d62ff0da68d7f264e9f"],
+  ["tests/light-seed-inventory-received-ui.test.mjs", "bc49d830b2184a80e9d1856852d173f81f73d757"],
+  ["tests/master-integrity.test.js", "faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832"],
+  ["tests/reader-curation-lists-contract.test.mjs", "157aed6933651d5e0ad4ea7d6ea4015766339e0c"],
+  ["tests/rls/scout-campaign-internal-exclusion.sql", "f305b0679cb62a2bab1e1678bc9ebc98ffaf2a2b"],
+  ["tests/scout-campaign-internal-exclusion.test.mjs", "2f0df253b1c90024115a1e16ae13b995b08304fd"],
+  ["tests/scout-campaign-staging-transaction.test.mjs", "10a4227c01b8a6076d55269e20c9ad2cbdfb8e1f"],
+  ["tests/work-navigation-character-surfaces.test.mjs", "b0f1ade0cd74c1121cfaa9601a668809efccb7d2"]
 ]);
-const OWNER_POLICY_MAIN = 'c1e3718ee209e91a804cfb879f2ba954fc9a27e2';
-const BOOKSHELF_MAIN = '39278163d1c7e2ee7dbd11dae8fc1a8173ce513f';
-const JWT_GATE_REPAIR_MAIN = '8328a0e9de0a133fbb379ade406cd2821bb42fe4';
-const BOOKSHELF_ADJUST_MAIN = '724afa3f9bd6ebf6d8210df9f75afac611031281';
-const LIGHT_SEED_RESTORE_MAIN = 'a8d14e9fc2efd6f9d4d648b0576fb8bd836685a0';
-const BOOKSHELF_LAYOUT_MAIN = '66e552a85331c07d78188d1dcf5f5ef5969c7c4a';
-const BOOKSHELF_LEFT_MAIN = '153841314405aa4331088ce6f2833e59d9a33aa0';
-const JWT_PROVENANCE_MAIN = 'a51f5fa479fe8f787ddb360bd8896e985433c45e';
-const BOOKSHELF_QUICK_ACTION_MAIN = '31ee9633cf3aec9890d1728aa0ac018782777806';
-const NOVEL_SEED_INVENTORY_MAIN = '841f2533deca76d809156942f1bf2536f60a069c';
-const BOOKSHELF_CENTER_MAIN = '730baa637ea4f7e56802820e4c1ef666588905c2';
+// Exact 27-commit main ancestry before this one reviewed Squash PR.
+const FROZEN_REVIEWED_MAIN_COMMITS = Object.freeze([
+  '964823fb9d8ecda77098598b58e7259243545a26',
+  '78a59b87dd448f4e4a88e37c50b7abdb46e5fb0b',
+  '695dbddca88587afad1a3db0b005f839f8cb42d6',
+  'bd068e97a722b7c13eac418d911376b9604d8a73',
+  '2bddbf18f287a3b8e34fa7ba9a3e62590b48559c',
+  '162dd2364dacd01c2c0b4e507f2cdc961e56208f',
+  'c1e3718ee209e91a804cfb879f2ba954fc9a27e2',
+  '39278163d1c7e2ee7dbd11dae8fc1a8173ce513f',
+  '8328a0e9de0a133fbb379ade406cd2821bb42fe4',
+  '724afa3f9bd6ebf6d8210df9f75afac611031281',
+  'a8d14e9fc2efd6f9d4d648b0576fb8bd836685a0',
+  '66e552a85331c07d78188d1dcf5f5ef5969c7c4a',
+  '153841314405aa4331088ce6f2833e59d9a33aa0',
+  'a51f5fa479fe8f787ddb360bd8896e985433c45e',
+  '31ee9633cf3aec9890d1728aa0ac018782777806',
+  '841f2533deca76d809156942f1bf2536f60a069c',
+  '730baa637ea4f7e56802820e4c1ef666588905c2',
+  '0ecf6cfeb6d73e50c1cbd42e9bf724ee9a8d0a70',
+  '24a8ebd5f2061eebc4cb6663d6d734782da34e13',
+  '74cb1e62049df166e7780537624c8771805330ef',
+  '84c66db5e0fc92cbe93b1da231a959a4fbb24585',
+  '3d67192b6ff62d6b40d6d9d5a754f0e96690b083',
+  'b090fa6b6e8f9aa10d8275e077af96d17e6b91de',
+  '26b0f8b50d25ea10e0893efaabca33f5e4a61b3f',
+  'f2618510d319f08e3189da0c74e2541992cac950',
+  '79f5fa7700a852f3fcf6a90c40066288f30523d1',
+  'a46873abfd2e338954c458adb4dfdbcacf66a873'
+]);
 const SHA = /^[0-9a-f]{40}$/u;
 const FIELDS = [
   'scope', 'mainSha', 'candidateSha', 'pr', 'migration',
@@ -157,43 +218,18 @@ export function verifyAIHostedJwtAdmission({
       mainLineage?.status !== 'ahead' ||
       mainLineage.behind_by !== 0 ||
       mainLineage.base_commit?.sha !== REVIEWED_BASE ||
-      mainLineage.total_commits !== 18 ||
+      mainLineage.total_commits !== FROZEN_REVIEWED_MAIN_COMMITS.length + 1 ||
       !Array.isArray(mainLineage.commits) ||
       mainLineage.total_commits !== mainLineage.commits.length ||
-      mainLineage.commits.at(-12)?.sha !== OWNER_POLICY_MAIN ||
-      mainLineage.commits.at(-11)?.sha !== BOOKSHELF_MAIN ||
-      mainLineage.commits.at(-11)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-11)?.parents?.[0]?.sha !== OWNER_POLICY_MAIN ||
-      mainLineage.commits.at(-10)?.sha !== JWT_GATE_REPAIR_MAIN ||
-      mainLineage.commits.at(-10)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-10)?.parents?.[0]?.sha !== BOOKSHELF_MAIN ||
-      mainLineage.commits.at(-9)?.sha !== BOOKSHELF_ADJUST_MAIN ||
-      mainLineage.commits.at(-9)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-9)?.parents?.[0]?.sha !== JWT_GATE_REPAIR_MAIN ||
-      mainLineage.commits.at(-8)?.sha !== LIGHT_SEED_RESTORE_MAIN ||
-      mainLineage.commits.at(-8)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-8)?.parents?.[0]?.sha !== BOOKSHELF_ADJUST_MAIN ||
-      mainLineage.commits.at(-7)?.sha !== BOOKSHELF_LAYOUT_MAIN ||
-      mainLineage.commits.at(-7)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-7)?.parents?.[0]?.sha !== LIGHT_SEED_RESTORE_MAIN ||
-      mainLineage.commits.at(-6)?.sha !== BOOKSHELF_LEFT_MAIN ||
-      mainLineage.commits.at(-6)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-6)?.parents?.[0]?.sha !== BOOKSHELF_LAYOUT_MAIN ||
-      mainLineage.commits.at(-5)?.sha !== JWT_PROVENANCE_MAIN ||
-      mainLineage.commits.at(-5)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-5)?.parents?.[0]?.sha !== BOOKSHELF_LEFT_MAIN ||
-      mainLineage.commits.at(-4)?.sha !== BOOKSHELF_QUICK_ACTION_MAIN ||
-      mainLineage.commits.at(-4)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-4)?.parents?.[0]?.sha !== JWT_PROVENANCE_MAIN ||
-      mainLineage.commits.at(-3)?.sha !== NOVEL_SEED_INVENTORY_MAIN ||
-      mainLineage.commits.at(-3)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-3)?.parents?.[0]?.sha !== BOOKSHELF_QUICK_ACTION_MAIN ||
-      mainLineage.commits.at(-2)?.sha !== BOOKSHELF_CENTER_MAIN ||
-      mainLineage.commits.at(-2)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-2)?.parents?.[0]?.sha !== NOVEL_SEED_INVENTORY_MAIN ||
+      FROZEN_REVIEWED_MAIN_COMMITS.some((sha, i) =>
+        mainLineage.commits[i]?.sha !== sha ||
+        mainLineage.commits[i]?.parents?.length !== 1 ||
+        mainLineage.commits[i]?.parents?.[0]?.sha !==
+          (i === 0 ? REVIEWED_BASE : FROZEN_REVIEWED_MAIN_COMMITS[i - 1])) ||
       mainLineage.commits.at(-1)?.sha !== approval.mainSha ||
       mainLineage.commits.at(-1)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-1)?.parents?.[0]?.sha !== BOOKSHELF_CENTER_MAIN ||
+      mainLineage.commits.at(-1)?.parents?.[0]?.sha !==
+        FROZEN_REVIEWED_MAIN_COMMITS.at(-1) ||
       !Array.isArray(mainLineage.files) ||
       mainLineage.files.length !== TRUSTED_PROMOTION_PATHS.size ||
       mainLineage.files.some((f) =>
