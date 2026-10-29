@@ -70,7 +70,7 @@ test('Vercel attestation has bounded secret-free phase diagnostics', () => {
     'ENV_ASSERT_OK'
   ]);
   for (const phase of ['DEPLOYMENT', 'PROJECT', 'ENV']) {
-    assert.ok(src.includes("assertVercelHttpOk("));
+    assert.ok(src.includes('assertVercelHttpOk('));
     assert.ok(src.includes("'" + phase + "'"));
   }
   for (const category of [
