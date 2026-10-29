@@ -15,12 +15,17 @@ const CANDIDATE_PR = 2601;
 // Frozen, already-audited common ancestor: trusted runner promotion changes
 // main while the immutable candidate/Preview must retain their original SHA.
 const REVIEWED_BASE = 'b725b796f5a4cd51b5181b75e247bfc0502e9568';
-const TRUSTED_PROMOTION_PATHS = new Set([
-  '.github/staging-ai-jwt/admission.mjs',
-  '.github/staging-ai-jwt/probe.mjs',
-  '.github/staging-ai-jwt/runner.mjs',
-  '.github/workflows/ai-review-hosted-staging-jwt-proof.yml',
-  'tests/ai-review-hosted-real-jwt-gate.test.mjs'
+// Exact allowlist for the originally approved trusted runner promotion plus
+// its narrowly reviewed newline-only Staging census repair. Existing files
+// must be modified; new runner files must stay added. No application changes.
+const TRUSTED_PROMOTION_PATHS = new Map([
+  ['.github/staging-ai-jwt/admission.mjs', 'added'],
+  ['.github/staging-ai-jwt/probe.mjs', 'added'],
+  ['.github/staging-ai-jwt/runner.mjs', 'added'],
+  ['.github/workflows/ai-review-hosted-staging-jwt-proof.yml', 'added'],
+  ['tests/ai-review-hosted-real-jwt-gate.test.mjs', 'added'],
+  ['.github/staging-ai-proof/census.mjs', 'modified'],
+  ['tests/ai-review-hosted-proof-census.test.mjs', 'modified']
 ]);
 const SHA = /^[0-9a-f]{40}$/u;
 const FIELDS = [
@@ -110,7 +115,7 @@ export function verifyAIHostedJwtAdmission({
       mainLineage.files.length !== TRUSTED_PROMOTION_PATHS.size ||
       mainLineage.files.some((f) =>
         !TRUSTED_PROMOTION_PATHS.has(f.filename) ||
-        f.status !== 'added')) {
+        f.status !== TRUSTED_PROMOTION_PATHS.get(f.filename))) {
     deny('candidate or trusted-main promotion diverged from reviewed base');
   }
   if (!Array.isArray(ledgerPages) || !ledgerPages.length ||
