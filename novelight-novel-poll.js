@@ -195,28 +195,45 @@ window.setTimeout(() => {
 
   const style = document.createElement('style');
   style.id = 'novelight-beta-auto-seed-style';
-  style.textContent =
-    '.seed-types[data-auto-tier="true"]{grid-template-columns:minmax(0,360px)}' +
-    '.seed-choice.auto-tier{min-height:58px;text-align:center;align-items:center;background:#fff;border-color:#9b89e8}' +
-    '#lightSeedArea .seed-notice{color:#182b3c;font-weight:700}' +
-    '.light-seed-public-summary{display:flex;align-items:center;gap:12px;max-width:440px;margin:14px 0 6px;padding:11px 13px;border:1px solid #e4dac9;border-radius:12px;background:#fff}' +
-    '.light-seed-public-summary img{width:54px;height:54px;object-fit:contain;flex:none;border-radius:8px}' +
-    '.light-seed-public-summary .light-seed-public-label{display:block;color:#61564d;font-size:12px;font-weight:700;line-height:1.5}' +
-    '.light-seed-public-summary strong{display:block;color:#34271e;font-size:22px;line-height:1.5}' +
-    '.light-seed-content-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,550px);gap:24px;align-items:start}' +
-    '.light-seed-content-main{min-width:0}' +
-    '.light-seed-reader-inventory{display:grid;grid-template-columns:minmax(96px,1fr) repeat(3,minmax(0,1.15fr));align-items:center;gap:8px;padding:14px 16px;border:1px solid #dfc8a5;border-radius:14px;background:#fffdfa;min-width:0;box-sizing:border-box}' +
-    '.light-seed-reader-inventory[hidden]{display:none!important}' +
-    '.light-seed-reader-inventory-heading{display:grid;gap:5px;min-width:0;color:#72501f}' +
-    '.light-seed-reader-inventory-heading span{font-size:12px;font-weight:900;letter-spacing:.03em;white-space:nowrap}' +
-    '.light-seed-reader-inventory-heading strong{font-size:19px;line-height:1.4;white-space:nowrap}' +
-    '.light-seed-reader-inventory-tier{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0}' +
-    '.light-seed-reader-inventory-tier img{display:block;flex:none;width:40px;height:40px;object-fit:contain}' +
-    '.light-seed-reader-inventory-tier div{display:grid;gap:3px;min-width:0}' +
-    '.light-seed-reader-inventory-tier span{font-size:11px;letter-spacing:.025em;line-height:1.2;color:#695340}' +
-    '.light-seed-reader-inventory-tier strong{font-size:14px;line-height:1.3;font-weight:900;white-space:nowrap;color:#27354a}' +
-    '@media(max-width:1120px){.light-seed-content-grid{grid-template-columns:minmax(0,1fr)}.light-seed-reader-inventory{max-width:550px}}' +
-    '@media(max-width:600px){.light-seed-reader-inventory{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 4px}.light-seed-reader-inventory-heading{grid-column:1/-1;display:flex;justify-content:space-between}.light-seed-reader-inventory-tier{flex-direction:column;text-align:center;gap:4px}.light-seed-reader-inventory-tier img{width:34px;height:34px}}';
+  style.textContent = `
+    .nl-work-support-stack #lightSeedArea.nl-work-seed-inline{padding:18px 10px}
+    #lightSeedArea.nl-work-seed-inline{padding-inline:10px}
+    #lightSeedArea.nl-work-seed-inline .seed-top{margin-bottom:12px}
+    #lightSeedArea .seed-notice{color:#182b3c;font-weight:700}
+    .light-seed-content-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.47fr);gap:10px;align-items:stretch;width:100%;box-sizing:border-box}
+    .light-seed-content-grid>*{min-width:0}
+    .light-seed-public-summary{display:flex;align-items:center;gap:10px;margin:0;max-width:none;min-height:116px;height:100%;box-sizing:border-box;padding:12px;border:1px solid #e4dac9;border-radius:12px;background:#fff}
+    .light-seed-public-summary img{width:50px;height:50px;object-fit:contain;flex:none;border-radius:8px}
+    .light-seed-public-summary .light-seed-public-label{display:block;color:#61564d;font-size:12px;font-weight:700;line-height:1.5}
+    .light-seed-public-summary strong{display:block;color:#34271e;font-size:22px;line-height:1.5}
+    .light-seed-content-grid #seedTypes.seed-types[data-auto-tier="true"]{display:block;align-self:stretch;margin:0;min-width:0;grid-template-columns:none}
+    .light-seed-content-grid #sendLightSeedButton.seed-choice.auto-tier{width:100%;height:100%;min-height:116px;box-sizing:border-box;padding:12px 10px;display:flex;align-items:center;justify-content:center;text-align:center;gap:6px;background:#fff;border-color:#9b89e8}
+    .light-seed-content-grid #sendLightSeedButton .seed-choice-internal-note{display:block;max-width:100%;font-size:11px;font-weight:700;line-height:1.5;color:#35495f;white-space:normal}
+    .light-seed-reader-inventory{display:grid;grid-template-columns:minmax(85px,1fr) repeat(3,minmax(0,1.15fr));align-items:center;gap:6px;padding:12px 10px;border:1px solid #dfc8a5;border-radius:12px;background:#fffdfa;min-width:0;min-height:116px;height:100%;box-sizing:border-box}
+    .light-seed-reader-inventory[hidden]{display:none!important}
+    .light-seed-reader-inventory-heading{display:grid;gap:5px;min-width:0;color:#72501f}
+    .light-seed-reader-inventory-heading span{font-size:12px;font-weight:900;letter-spacing:.03em;white-space:nowrap}
+    .light-seed-reader-inventory-heading strong{font-size:19px;line-height:1.4;white-space:nowrap}
+    .light-seed-reader-inventory-tier{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0}
+    .light-seed-reader-inventory-tier img{display:block;flex:none;width:38px;height:38px;object-fit:contain}
+    .light-seed-reader-inventory-tier div{display:grid;gap:3px;min-width:0}
+    .light-seed-reader-inventory-tier span{font-size:11px;letter-spacing:.025em;line-height:1.2;color:#695340}
+    .light-seed-reader-inventory-tier strong{font-size:14px;line-height:1.3;font-weight:900;white-space:nowrap;color:#27354a}
+    .light-seed-compat-stats{display:none!important}
+    .light-seed-content-grid:has(>.light-seed-reader-inventory[hidden]){grid-template-columns:repeat(2,minmax(0,1fr))}
+    @media(max-width:1080px){
+      .light-seed-content-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .light-seed-content-grid>.light-seed-reader-inventory{grid-column:1/-1}
+    }
+    @media(max-width:650px){
+      .light-seed-content-grid,.light-seed-content-grid:has(>.light-seed-reader-inventory[hidden]){grid-template-columns:minmax(0,1fr)}
+      .light-seed-content-grid>.light-seed-reader-inventory{grid-column:auto}
+      .light-seed-reader-inventory{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 4px}
+      .light-seed-reader-inventory-heading{grid-column:1/-1;display:flex;justify-content:space-between}
+      .light-seed-reader-inventory-tier{flex-direction:column;text-align:center;gap:4px}
+      .light-seed-reader-inventory-tier img{width:34px;height:34px}
+    }
+  `;
   document.head.appendChild(style);
 
   types.dataset.autoTier = 'true';
@@ -230,7 +247,11 @@ window.setTimeout(() => {
 
   const button = document.getElementById('sendLightSeedButton');
   const oldNotice = area.querySelector('.seed-notice');
-  if (oldNotice) oldNotice.textContent = '対象作品を実際に読んだ記録がある場合のみ送信できます。';
+  const sendNote = document.createElement('span');
+  sendNote.className = 'seed-choice-internal-note';
+  sendNote.textContent = '対象作品を実際に読んだ記録がある場合のみ送信できます。';
+  button.appendChild(sendNote);
+  oldNotice?.remove();
 
   // Public works show the received total, never their hidden Rank or tier distribution.
   // The detailed GOLD/SILVER/BRONZE inventory stays in the owner's existing panel.
@@ -245,9 +266,6 @@ window.setTimeout(() => {
   total.hidden = true;
 
   // Personal reader inventory: separate from the public work-received total.
-  const seedContent = document.createElement('div');
-  seedContent.className = 'light-seed-content-main';
-  for (const child of [...area.children]) seedContent.appendChild(child);
   const readerInventory = document.createElement('aside');
   readerInventory.className = 'light-seed-reader-inventory';
   readerInventory.setAttribute('aria-label', 'あなたのLIGHT SEED残数');
@@ -268,8 +286,18 @@ window.setTimeout(() => {
     ).join('');
   const seedLayout = document.createElement('div');
   seedLayout.className = 'light-seed-content-grid';
-  seedLayout.append(seedContent, readerInventory);
+  seedLayout.append(publicSummary, types, readerInventory);
+  area.classList.add('nl-work-seed-inline');
   area.appendChild(seedLayout);
+  // Keep legacy compatibility nodes for old consumers, never show duplicate
+  // monthly inventory numbers below the three visible cards.
+  const legacyStats = area.querySelector('.seed-stats');
+  if (legacyStats) {
+    legacyStats.classList.add('light-seed-compat-stats');
+    legacyStats.hidden = true;
+  }
+  remaining.hidden = true;
+  remaining.textContent = '';
 
   const api = window.supabase.createClient(
     'https://fiepaguycecrredwrcwx.supabase.co',
@@ -337,9 +365,7 @@ window.setTimeout(() => {
     message.hidden = value?.reason === 'own_novel';
     message.textContent = sendResultMessage || messages[value?.reason] || '現在LIGHT SEEDを利用できません。';
     sendResultMessage = '';
-    remaining.textContent = value?.monthly_limit
-      ? `今月あと ${Number(value.remaining_this_month || 0)}/${Number(value.monthly_limit)}`
-      : '';
+    remaining.textContent = '';
     const receivedCount = Math.max(0, Number(value?.total_seed_count) || 0);
     publicCount.textContent = `${receivedCount.toLocaleString('ja-JP')} 個`;
     total.textContent = `この作品のLIGHT SEED ${receivedCount}`;
