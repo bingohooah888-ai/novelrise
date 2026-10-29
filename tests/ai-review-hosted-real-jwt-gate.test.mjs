@@ -31,6 +31,7 @@ const JWT_GATE_REPAIR_MAIN = '8328a0e9de0a133fbb379ade406cd2821bb42fe4';
 const BOOKSHELF_ADJUST_MAIN = '724afa3f9bd6ebf6d8210df9f75afac611031281';
 const LIGHT_SEED_RESTORE_MAIN = 'a8d14e9fc2efd6f9d4d648b0576fb8bd836685a0';
 const BOOKSHELF_LAYOUT_MAIN = '66e552a85331c07d78188d1dcf5f5ef5969c7c4a';
+const BOOKSHELF_LEFT_MAIN = '153841314405aa4331088ce6f2833e59d9a33aa0';
 const FROZEN_BLOBS = new Map([
   [
     '.github/staging-ai-jwt/probe.mjs',
@@ -62,7 +63,7 @@ const FROZEN_BLOBS = new Map([
   ['favorites.html', '171f0ae0025f09be21b8b85a9b74286dcbeb0cf6'],
   [
     'novelight-bookshelf-overview.css',
-    '50b62c78e9f8347e9c035fa8d37a6bc3f6dfdb40'
+    '63d93c65178caecc4a93627192f7b439b8717f58'
   ],
   [
     'novelight-bookshelf-overview.js',
@@ -251,7 +252,7 @@ function sample() {
       status: 'ahead',
       behind_by: 0,
       base_commit: { sha: BASE },
-      total_commits: 13,
+      total_commits: 14,
       commits: [
         ...Array.from({ length: 6 }, () => ({ sha: 'c'.repeat(40) })),
         { sha: OWNER_POLICY_MAIN },
@@ -269,7 +270,8 @@ function sample() {
           sha: BOOKSHELF_LAYOUT_MAIN,
           parents: [{ sha: LIGHT_SEED_RESTORE_MAIN }]
         },
-        { sha: MAIN, parents: [{ sha: BOOKSHELF_LAYOUT_MAIN }] }
+        { sha: BOOKSHELF_LEFT_MAIN, parents: [{ sha: BOOKSHELF_LAYOUT_MAIN }] },
+        { sha: MAIN, parents: [{ sha: BOOKSHELF_LEFT_MAIN }] }
       ],
       files: [
         ...FILES.map((filename) => ({

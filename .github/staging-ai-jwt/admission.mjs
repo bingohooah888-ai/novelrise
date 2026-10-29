@@ -54,7 +54,7 @@ const FROZEN_REVIEWED_BLOBS = new Map([
   ['docs/development-workflow.md', 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'],
   ['tests/master-integrity.test.js', 'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'],
   ['favorites.html', '171f0ae0025f09be21b8b85a9b74286dcbeb0cf6'],
-  ['novelight-bookshelf-overview.css', '50b62c78e9f8347e9c035fa8d37a6bc3f6dfdb40'],
+  ['novelight-bookshelf-overview.css', '63d93c65178caecc4a93627192f7b439b8717f58'],
   ['novelight-bookshelf-overview.js', '71f182d89081c1aa0b9b8b3bff2defe3891933d4'],
   ['novelight-bookshelf.js', 'eb49a7c530d5d485ff98d681f75f180129b2802e'],
   ['novelight-thumbnail-runtime.js', '81d5e3f101348f9bccfede97e9491d4f50bf792d'],
@@ -71,6 +71,7 @@ const JWT_GATE_REPAIR_MAIN = '8328a0e9de0a133fbb379ade406cd2821bb42fe4';
 const BOOKSHELF_ADJUST_MAIN = '724afa3f9bd6ebf6d8210df9f75afac611031281';
 const LIGHT_SEED_RESTORE_MAIN = 'a8d14e9fc2efd6f9d4d648b0576fb8bd836685a0';
 const BOOKSHELF_LAYOUT_MAIN = '66e552a85331c07d78188d1dcf5f5ef5969c7c4a';
+const BOOKSHELF_LEFT_MAIN = '153841314405aa4331088ce6f2833e59d9a33aa0';
 const SHA = /^[0-9a-f]{40}$/u;
 const FIELDS = [
   'scope', 'mainSha', 'candidateSha', 'pr', 'migration',
@@ -152,28 +153,31 @@ export function verifyAIHostedJwtAdmission({
       mainLineage?.status !== 'ahead' ||
       mainLineage.behind_by !== 0 ||
       mainLineage.base_commit?.sha !== REVIEWED_BASE ||
-      mainLineage.total_commits !== 13 ||
+      mainLineage.total_commits !== 14 ||
       !Array.isArray(mainLineage.commits) ||
       mainLineage.total_commits !== mainLineage.commits.length ||
-      mainLineage.commits.at(-7)?.sha !== OWNER_POLICY_MAIN ||
-      mainLineage.commits.at(-6)?.sha !== BOOKSHELF_MAIN ||
+      mainLineage.commits.at(-8)?.sha !== OWNER_POLICY_MAIN ||
+      mainLineage.commits.at(-7)?.sha !== BOOKSHELF_MAIN ||
+      mainLineage.commits.at(-7)?.parents?.length !== 1 ||
+      mainLineage.commits.at(-7)?.parents?.[0]?.sha !== OWNER_POLICY_MAIN ||
+      mainLineage.commits.at(-6)?.sha !== JWT_GATE_REPAIR_MAIN ||
       mainLineage.commits.at(-6)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-6)?.parents?.[0]?.sha !== OWNER_POLICY_MAIN ||
-      mainLineage.commits.at(-5)?.sha !== JWT_GATE_REPAIR_MAIN ||
+      mainLineage.commits.at(-6)?.parents?.[0]?.sha !== BOOKSHELF_MAIN ||
+      mainLineage.commits.at(-5)?.sha !== BOOKSHELF_ADJUST_MAIN ||
       mainLineage.commits.at(-5)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-5)?.parents?.[0]?.sha !== BOOKSHELF_MAIN ||
-      mainLineage.commits.at(-4)?.sha !== BOOKSHELF_ADJUST_MAIN ||
+      mainLineage.commits.at(-5)?.parents?.[0]?.sha !== JWT_GATE_REPAIR_MAIN ||
+      mainLineage.commits.at(-4)?.sha !== LIGHT_SEED_RESTORE_MAIN ||
       mainLineage.commits.at(-4)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-4)?.parents?.[0]?.sha !== JWT_GATE_REPAIR_MAIN ||
-      mainLineage.commits.at(-3)?.sha !== LIGHT_SEED_RESTORE_MAIN ||
+      mainLineage.commits.at(-4)?.parents?.[0]?.sha !== BOOKSHELF_ADJUST_MAIN ||
+      mainLineage.commits.at(-3)?.sha !== BOOKSHELF_LAYOUT_MAIN ||
       mainLineage.commits.at(-3)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-3)?.parents?.[0]?.sha !== BOOKSHELF_ADJUST_MAIN ||
-      mainLineage.commits.at(-2)?.sha !== BOOKSHELF_LAYOUT_MAIN ||
+      mainLineage.commits.at(-3)?.parents?.[0]?.sha !== LIGHT_SEED_RESTORE_MAIN ||
+      mainLineage.commits.at(-2)?.sha !== BOOKSHELF_LEFT_MAIN ||
       mainLineage.commits.at(-2)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-2)?.parents?.[0]?.sha !== LIGHT_SEED_RESTORE_MAIN ||
+      mainLineage.commits.at(-2)?.parents?.[0]?.sha !== BOOKSHELF_LAYOUT_MAIN ||
       mainLineage.commits.at(-1)?.sha !== approval.mainSha ||
       mainLineage.commits.at(-1)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-1)?.parents?.[0]?.sha !== BOOKSHELF_LAYOUT_MAIN ||
+      mainLineage.commits.at(-1)?.parents?.[0]?.sha !== BOOKSHELF_LEFT_MAIN ||
       !Array.isArray(mainLineage.files) ||
       mainLineage.files.length !== TRUSTED_PROMOTION_PATHS.size ||
       mainLineage.files.some((f) =>
