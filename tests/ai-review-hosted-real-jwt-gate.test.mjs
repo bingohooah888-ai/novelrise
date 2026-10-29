@@ -766,8 +766,8 @@ test('Staging side-effect categories are read-only and never log raw census', ()
   ]) {
     assert.match(runner, new RegExp('count\\(\\*\\) from public\\.' + table, 'u'));
   }
-  assert.match(runner, /traceStage\\(mismatch\\)/u);
-  assert.doesNotMatch(runner, /console\\.log\\(out\\)/u);
-  assert.match(runner, /finally\\{/u);
-  assert.match(runner, /auth\\.admin\\.deleteUser/u);
+  assert.match(runner, /traceStage\(mismatch\)/u);
+  assert.doesNotMatch(runner, /console\.log\(out\)/u);
+  assert.match(runner, /finally\{/u);
+  assert.match(runner, /auth\.admin\.deleteUser/u);
 });
