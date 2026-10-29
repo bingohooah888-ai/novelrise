@@ -16,7 +16,7 @@ const CANDIDATE_PR = 2601;
 // main while the immutable candidate/Preview must retain their original SHA.
 const REVIEWED_BASE = 'b725b796f5a4cd51b5181b75e247bfc0502e9568';
 // Exact allowlist for the trusted runner and audited Staging census repair,
-// plus OWNER-approved quality policy and PRs #2618, #2622 and #2617.
+// plus reviewed OWNER merges #2618, #2622, #2617, #2630 and #2627.
 // Even UI changes are pinned to exact reviewed Git blob SHAs below. All other
 // application changes remain denied.
 const TRUSTED_PROMOTION_PATHS = new Map([
@@ -45,7 +45,7 @@ const TRUSTED_PROMOTION_PATHS = new Map([
 ]);
 const FROZEN_REVIEWED_BLOBS = new Map([
   ['.github/staging-ai-jwt/probe.mjs', '011a154cbe84b8f3c5b68befeacc886624fed094'],
-  ['.github/staging-ai-jwt/runner.mjs', 'fe7365eb46bff715bd84ed973e50b6e57b32d22b'],
+  ['.github/staging-ai-jwt/runner.mjs', '3604bb86cd7dff8db38d9755566fcb9e35d82a21'],
   ['.github/workflows/ai-review-hosted-staging-jwt-proof.yml', '5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2'],
   ['.github/staging-ai-proof/census.mjs', 'a4b639ac7496093f615cbfdadbd6c2e0be80df95'],
   ['tests/ai-review-hosted-proof-census.test.mjs', '10e3c2307c608c21fbbbd586dd0a5775f2cdb7d7'],
@@ -54,16 +54,16 @@ const FROZEN_REVIEWED_BLOBS = new Map([
   ['docs/development-workflow.md', 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'],
   ['tests/master-integrity.test.js', 'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'],
   ['favorites.html', '171f0ae0025f09be21b8b85a9b74286dcbeb0cf6'],
-  ['novelight-bookshelf-overview.css', '63d93c65178caecc4a93627192f7b439b8717f58'],
+  ['novelight-bookshelf-overview.css', '6d018d8e0b70ab90a96ac66a7b7e1b86fa09d3fc'],
   ['novelight-bookshelf-overview.js', '71f182d89081c1aa0b9b8b3bff2defe3891933d4'],
   ['novelight-bookshelf.js', 'eb49a7c530d5d485ff98d681f75f180129b2802e'],
   ['novelight-thumbnail-runtime.js', '81d5e3f101348f9bccfede97e9491d4f50bf792d'],
   ['api/seo/templates/novel.html', '80e9c90366516556a82dc2919077eb0fdd40dd7b'],
   ['novel.html', '80e9c90366516556a82dc2919077eb0fdd40dd7b'],
-  ['novelight-novel-poll.js', '9990adcbe5eb468807716fbcdb7af95582cbaf3a'],
+  ['novelight-novel-poll.js', '2d4e275f1460bc619f50d7648f239ed958ae1947'],
   ['tests/async-ui-state.test.mjs', '912577ea4610ba77f94057c2de16151e577f5e3d'],
-  ['tests/e2e/specs/novel-owner-detail-render.spec.js', 'add9399c0c5299ee999ff67335faeaf7c86d7764'],
-  ['tests/light-seed-auto-tier.test.mjs', '25419b983bd6806edad2be776bedfb57e87cd6a1']
+  ['tests/e2e/specs/novel-owner-detail-render.spec.js', 'c77780df2cad0e1ca0ad541e11857885ba8e9c90'],
+  ['tests/light-seed-auto-tier.test.mjs', '3db0b33cc4d18c504051c99b756d88b0eeca8115']
 ]);
 const OWNER_POLICY_MAIN = 'c1e3718ee209e91a804cfb879f2ba954fc9a27e2';
 const BOOKSHELF_MAIN = '39278163d1c7e2ee7dbd11dae8fc1a8173ce513f';
@@ -72,6 +72,10 @@ const BOOKSHELF_ADJUST_MAIN = '724afa3f9bd6ebf6d8210df9f75afac611031281';
 const LIGHT_SEED_RESTORE_MAIN = 'a8d14e9fc2efd6f9d4d648b0576fb8bd836685a0';
 const BOOKSHELF_LAYOUT_MAIN = '66e552a85331c07d78188d1dcf5f5ef5969c7c4a';
 const BOOKSHELF_LEFT_MAIN = '153841314405aa4331088ce6f2833e59d9a33aa0';
+const JWT_PROVENANCE_MAIN = 'a51f5fa479fe8f787ddb360bd8896e985433c45e';
+const BOOKSHELF_QUICK_ACTION_MAIN = '31ee9633cf3aec9890d1728aa0ac018782777806';
+const NOVEL_SEED_INVENTORY_MAIN = '841f2533deca76d809156942f1bf2536f60a069c';
+const BOOKSHELF_CENTER_MAIN = '730baa637ea4f7e56802820e4c1ef666588905c2';
 const SHA = /^[0-9a-f]{40}$/u;
 const FIELDS = [
   'scope', 'mainSha', 'candidateSha', 'pr', 'migration',
@@ -153,31 +157,43 @@ export function verifyAIHostedJwtAdmission({
       mainLineage?.status !== 'ahead' ||
       mainLineage.behind_by !== 0 ||
       mainLineage.base_commit?.sha !== REVIEWED_BASE ||
-      mainLineage.total_commits !== 14 ||
+      mainLineage.total_commits !== 18 ||
       !Array.isArray(mainLineage.commits) ||
       mainLineage.total_commits !== mainLineage.commits.length ||
-      mainLineage.commits.at(-8)?.sha !== OWNER_POLICY_MAIN ||
-      mainLineage.commits.at(-7)?.sha !== BOOKSHELF_MAIN ||
+      mainLineage.commits.at(-12)?.sha !== OWNER_POLICY_MAIN ||
+      mainLineage.commits.at(-11)?.sha !== BOOKSHELF_MAIN ||
+      mainLineage.commits.at(-11)?.parents?.length !== 1 ||
+      mainLineage.commits.at(-11)?.parents?.[0]?.sha !== OWNER_POLICY_MAIN ||
+      mainLineage.commits.at(-10)?.sha !== JWT_GATE_REPAIR_MAIN ||
+      mainLineage.commits.at(-10)?.parents?.length !== 1 ||
+      mainLineage.commits.at(-10)?.parents?.[0]?.sha !== BOOKSHELF_MAIN ||
+      mainLineage.commits.at(-9)?.sha !== BOOKSHELF_ADJUST_MAIN ||
+      mainLineage.commits.at(-9)?.parents?.length !== 1 ||
+      mainLineage.commits.at(-9)?.parents?.[0]?.sha !== JWT_GATE_REPAIR_MAIN ||
+      mainLineage.commits.at(-8)?.sha !== LIGHT_SEED_RESTORE_MAIN ||
+      mainLineage.commits.at(-8)?.parents?.length !== 1 ||
+      mainLineage.commits.at(-8)?.parents?.[0]?.sha !== BOOKSHELF_ADJUST_MAIN ||
+      mainLineage.commits.at(-7)?.sha !== BOOKSHELF_LAYOUT_MAIN ||
       mainLineage.commits.at(-7)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-7)?.parents?.[0]?.sha !== OWNER_POLICY_MAIN ||
-      mainLineage.commits.at(-6)?.sha !== JWT_GATE_REPAIR_MAIN ||
+      mainLineage.commits.at(-7)?.parents?.[0]?.sha !== LIGHT_SEED_RESTORE_MAIN ||
+      mainLineage.commits.at(-6)?.sha !== BOOKSHELF_LEFT_MAIN ||
       mainLineage.commits.at(-6)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-6)?.parents?.[0]?.sha !== BOOKSHELF_MAIN ||
-      mainLineage.commits.at(-5)?.sha !== BOOKSHELF_ADJUST_MAIN ||
+      mainLineage.commits.at(-6)?.parents?.[0]?.sha !== BOOKSHELF_LAYOUT_MAIN ||
+      mainLineage.commits.at(-5)?.sha !== JWT_PROVENANCE_MAIN ||
       mainLineage.commits.at(-5)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-5)?.parents?.[0]?.sha !== JWT_GATE_REPAIR_MAIN ||
-      mainLineage.commits.at(-4)?.sha !== LIGHT_SEED_RESTORE_MAIN ||
+      mainLineage.commits.at(-5)?.parents?.[0]?.sha !== BOOKSHELF_LEFT_MAIN ||
+      mainLineage.commits.at(-4)?.sha !== BOOKSHELF_QUICK_ACTION_MAIN ||
       mainLineage.commits.at(-4)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-4)?.parents?.[0]?.sha !== BOOKSHELF_ADJUST_MAIN ||
-      mainLineage.commits.at(-3)?.sha !== BOOKSHELF_LAYOUT_MAIN ||
+      mainLineage.commits.at(-4)?.parents?.[0]?.sha !== JWT_PROVENANCE_MAIN ||
+      mainLineage.commits.at(-3)?.sha !== NOVEL_SEED_INVENTORY_MAIN ||
       mainLineage.commits.at(-3)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-3)?.parents?.[0]?.sha !== LIGHT_SEED_RESTORE_MAIN ||
-      mainLineage.commits.at(-2)?.sha !== BOOKSHELF_LEFT_MAIN ||
+      mainLineage.commits.at(-3)?.parents?.[0]?.sha !== BOOKSHELF_QUICK_ACTION_MAIN ||
+      mainLineage.commits.at(-2)?.sha !== BOOKSHELF_CENTER_MAIN ||
       mainLineage.commits.at(-2)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-2)?.parents?.[0]?.sha !== BOOKSHELF_LAYOUT_MAIN ||
+      mainLineage.commits.at(-2)?.parents?.[0]?.sha !== NOVEL_SEED_INVENTORY_MAIN ||
       mainLineage.commits.at(-1)?.sha !== approval.mainSha ||
       mainLineage.commits.at(-1)?.parents?.length !== 1 ||
-      mainLineage.commits.at(-1)?.parents?.[0]?.sha !== BOOKSHELF_LEFT_MAIN ||
+      mainLineage.commits.at(-1)?.parents?.[0]?.sha !== BOOKSHELF_CENTER_MAIN ||
       !Array.isArray(mainLineage.files) ||
       mainLineage.files.length !== TRUSTED_PROMOTION_PATHS.size ||
       mainLineage.files.some((f) =>
