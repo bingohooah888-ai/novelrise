@@ -13,6 +13,32 @@ const EMAIL='ai-review-jwt@example.invalid';
 const NOVEL=998891003;
 const STAGING='https://wmlzjgvxgoyrovdhbqbg.supabase.co';
 const STAGE_REF='wmlzjgvxgoyrovdhbqbg';
+const CENSUS_PHASE = Object.freeze({
+  initial: 'INITIAL',
+  fixture: 'FIXTURE',
+  final: 'FINAL'
+});
+const CENSUS_FIELD = Object.freeze({
+  user: 'USER', identities: 'IDENTITIES', sessions: 'SESSIONS',
+  profile: 'PROFILE', novel: 'NOVEL', typo: 'TYPO',
+  sideEffects: 'SIDE_EFFECTS', other: 'OTHER'
+});
+export function classifyCensusMismatch(phase, actual) {
+  const label = CENSUS_PHASE[phase];
+  if (!label || !actual || typeof actual !== 'object' ||
+      Array.isArray(actual)) return 'CENSUS_SHAPE_INVALID';
+  const expected = phase === 'fixture'
+    ? {user:1,identities:1,sessions:0,profile:1,novel:1,
+       typo:1,sideEffects:0}
+    : {user:0,identities:0,sessions:0,profile:0,novel:0,
+       typo:0,sideEffects:0,other:0};
+  for (const [key, value] of Object.entries(expected)) {
+    if (actual[key] !== value) {
+      return 'CENSUS_' + label + '_' + CENSUS_FIELD[key] + '_MISMATCH';
+    }
+  }
+  return null;
+}
 function fail(){throw new Error('STAGING_REAL_JWT_DENIED');}
 // Fixed phase labels only. Never log HTTP bodies, tokens, SQL, or error details.
 function traceStage(label){process.stdout.write('REAL_STAGING_JWT_SAFE_PHASE: '+label+'\n');}
@@ -38,7 +64,14 @@ function sql(db,query){
 }
 function audit(db,phase,createdId=ID){
   // Existing audited trigger+function fingerprints; migration once, AI OFF/budget 0.
-  assertPrecheck(JSON.parse(sql(db,PRECHECK_SQL)),STAGE_REF);
+  const label = CENSUS_PHASE[phase];
+  if (!label) fail();
+  try {
+    assertPrecheck(JSON.parse(sql(db,PRECHECK_SQL)),STAGE_REF);
+  } catch {
+    traceStage('CENSUS_' + label + '_PRECHECK_FAILED');
+    fail();
+  }
   const q="select json_build_object("+
     "'user',(select count(*) from auth.users where id='"+ID+"'::uuid or lower(email)='"+EMAIL+"'),"+
     "'identities',(select count(*) from auth.identities where user_id='"+ID+"'::uuid),"+
@@ -54,10 +87,18 @@ function audit(db,phase,createdId=ID){
     "+(select count(*) from public.author_follow_events where author_user_id='"+ID+"'::uuid or novel_id="+NOVEL+")"+
     "+(select count(*) from public.novel_rank_state where novel_id_snapshot='"+NOVEL+"' or author_id_snapshot='"+ID+"')"+
     "+(select count(*) from public.novel_rank_events where novel_id_snapshot='"+NOVEL+"' or author_id_snapshot='"+ID+"'))";
-  const out=JSON.parse(sql(db,q));
-  const expect=phase==='fixture'?{user:1,identities:1,sessions:0,profile:1,novel:1,typo:1,sideEffects:0}:
-    {user:0,identities:0,sessions:0,profile:0,novel:0,typo:0,sideEffects:0,other:0};
-  for(const [k,v] of Object.entries(expect)) if(out[k]!==v) fail();
+  let out;
+  try {
+    out = JSON.parse(sql(db,q));
+  } catch {
+    traceStage('CENSUS_' + label + '_QUERY_FAILED');
+    fail();
+  }
+  const mismatch = classifyCensusMismatch(phase, out);
+  if (mismatch) {
+    traceStage(mismatch);
+    fail();
+  }
 }
 function fkResidue(db){
   const stmt="select format('select count(*) from %I.%I where %I %s;',n.nspname,c.relname,a.attname,"+
@@ -177,8 +218,15 @@ async function main(){
       catch{cleanupFailed=true;}
     }
     traceStage('FINAL_CENSUS');
-    try{audit(db,'final',created?.id||ID);fkResidue(db);}
-    catch{cleanupFailed=true;}
+    try {
+      audit(db,'final',created?.id||ID);
+      traceStage('FINAL_COUNTS_PASS');
+      traceStage('FINAL_FK_CENSUS');
+      fkResidue(db);
+      traceStage('FINAL_FK_CENSUS_PASS');
+    } catch {
+      cleanupFailed = true;
+    }
     if(cleanupFailed)error=new Error('JWT_CLEANUP_RESIDUE_FAILED');
   }
   if(error)throw error;
