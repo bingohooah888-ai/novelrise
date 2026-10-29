@@ -87,3 +87,23 @@ test('NOVELIGHT MASTER identifies GitHub file as the single source of truth', ()
   assert.ok(master.includes('差分追記・差分修正'));
   assert.ok(master.includes('意図しない削除'));
 });
+
+test('OWNER 2026-10-29 quality rules remain in MASTER and agent entrypoint', () => {
+  const anchors = [
+    '品質規則1：実環境の裏付けなしに「完成」と呼ばない',
+    '品質規則2：修正より先に原因・根拠を確定する',
+    '品質規則3：承認・実行前の検証を可能な範囲で一括実施する',
+    '品質規則4：秘密情報を保護した診断を設計時から備える',
+    '品質規則5：最小差分と従量費用抑制',
+    '品質規則6：承認の対象・環境・一回限りを厳密に適用',
+    '品質規則7：解消の証拠を提示する',
+    '品質規則8：別チャット・別エージェントへ恒久継承'
+  ];
+  for (const anchor of anchors) {
+    assert.ok(master.includes(anchor), `MASTER quality rule missing: ${anchor}`);
+  }
+  const agents = fs.readFileSync(new URL('../AGENTS.md', import.meta.url), 'utf8');
+  assert.ok(agents.includes('2026-10-29 OWNER品質・承認ルール'));
+  assert.ok(agents.includes('docs/NOVELIGHT-MASTER.md'));
+  assert.ok(master.includes('失敗・中断を問わず再利用しない'));
+});
