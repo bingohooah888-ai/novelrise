@@ -36,7 +36,7 @@
       points: [
         'お気に入り、コメント、作者フォロー、更新通知、読書履歴で読み続けたい作品を管理できます。',
         '自然文検索では「こんな作品が読みたい」という文章から候補を探せます。',
-        'キュレーションリストでは、自分の選書を非公開または共有URLでまとめられます。',
+        'おすすめリストでは、自分の選書を非公開または共有URLでまとめられます。',
         '本文読み上げ、LIGHT SEED、SCOUT RECORDで読書と発掘を続けやすくします。'
       ]
     },
@@ -198,10 +198,10 @@
       ]
     },
     'curation-lists': {
-      title: 'キュレーションリスト',
+      title: 'おすすめリスト',
       summary: '「この作品たちを一緒に読んでほしい」を自分の選書リストとしてまとめる読者機能です。',
       points: [
-        'リスト名・説明を設定して作成し、作品ページの「＋ キュレーション」から作品を追加できます。',
+        'リスト名・説明を設定して作成し、作品ページの「＋ おすすめリストに追加」から作品を追加できます。',
         'β版の公開範囲は「非公開」または「共有URLで公開」です。公開ディレクトリはありません。',
         '共有URLは更新でき、古い共有URLを無効にできます。',
         'リストの人気・閲覧・作品追加は、作品Rank・露出・LIGHT SEED・SCOUT・おすすめに影響しません。'
@@ -346,7 +346,7 @@
   function renderHelpCenter() {
     const root = document.getElementById('novelightHelpCenter'); if (!root || root.dataset.rendered === 'true') return; root.dataset.rendered = 'true';
     const grid = document.createElement('section'); grid.className = 'nl-help-category-grid'; grid.setAttribute('aria-label', 'ヘルプカテゴリ'); categories.forEach(([title, description, key]) => { const link = document.createElement('a'); link.className = 'nl-help-category-card'; link.href = `#${key}`; link.innerHTML = '<strong></strong><span></span><b aria-hidden="true">→</b>'; link.querySelector('strong').textContent = title; link.querySelector('span').textContent = description; grid.appendChild(link); });
-    const extra = document.createElement('section'); extra.className = 'nl-help-extra-links'; extra.innerHTML = '<h2>さらに確認する</h2>'; [['アクセス計測と不正対策','access-measurement'],['外部流入・X流入','traffic-sources'],['一括移行','bulk-import'],['自然言語検索','natural-search'],['キュレーションリスト','curation-lists'],['近況ノート','author-notes'],['交流タイムライン','community-timeline']].forEach(([label,key]) => { const link = document.createElement('a'); link.href = `#${key}`; link.textContent = label; extra.appendChild(link); });
+    const extra = document.createElement('section'); extra.className = 'nl-help-extra-links'; extra.innerHTML = '<h2>さらに確認する</h2>'; [['アクセス計測と不正対策','access-measurement'],['外部流入・X流入','traffic-sources'],['一括移行','bulk-import'],['自然言語検索','natural-search'],['おすすめリスト','curation-lists'],['近況ノート','author-notes'],['交流タイムライン','community-timeline']].forEach(([label,key]) => { const link = document.createElement('a'); link.href = `#${key}`; link.textContent = label; extra.appendChild(link); });
     const detail = document.createElement('section'); detail.id = 'novelightHelpDetail'; detail.className = 'nl-help-detail'; detail.hidden = true; root.append(grid, extra, detail);
     const renderDetail = () => { const key = decodeURIComponent(location.hash.replace(/^#/u, '')); const topic = topics[key]; if (!topic) { detail.hidden = true; return; } detail.hidden = false; detail.replaceChildren(); const kicker = document.createElement('div'); kicker.className = 'nl-help-detail-kicker'; kicker.textContent = 'NOVELIGHT HELP'; const title = document.createElement('h2'); title.textContent = topic.title; const summary = document.createElement('p'); summary.className = 'nl-help-detail-summary'; summary.textContent = topic.summary; const list = document.createElement('ul'); topic.points.forEach((point) => { const item = document.createElement('li'); item.textContent = point; list.appendChild(item); }); const back = document.createElement('a'); back.className = 'nl-help-detail-back'; back.href = '#top'; back.textContent = 'ヘルプTOPへ戻る'; detail.append(kicker, title, summary, list, back); requestAnimationFrame(() => detail.scrollIntoView({ block: 'start' })); };
     window.addEventListener('hashchange', renderDetail); renderDetail();

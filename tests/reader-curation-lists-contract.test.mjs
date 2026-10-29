@@ -10,6 +10,7 @@ const runtime = await readFile('novelight-curation.js', 'utf8');
 const manager = await readFile('curation-lists.html', 'utf8');
 const publicPage = await readFile('curation.html', 'utf8');
 const favorites = await readFile('favorites.html', 'utf8');
+const help = await readFile('novelight-help.js', 'utf8');
 const novel = await readFile('novel.html', 'utf8');
 const replay = await readFile('scripts/run-migration-replay.sh', 'utf8');
 
@@ -99,6 +100,16 @@ test('B #21 is reachable from the bookshelf and novel detail', () => {
     novel,
     /NovelightCuration\.mountNovelControl\(client,novel,session\)/u
   );
+});
+
+test('B #21 user-facing names stay おすすめリスト across entry points', () => {
+  assert.match(favorites, /おすすめリストを管理/u);
+  assert.match(manager, /<h1>おすすめリスト<\/h1>/u);
+  assert.match(publicPage, /<title>おすすめリスト/u);
+  assert.match(help, /title: 'おすすめリスト'/u);
+  for (const view of [manager, publicPage, favorites, help]) {
+    assert.doesNotMatch(view, /キュレーション/u);
+  }
 });
 
 test('B #21 stays outside evaluation, discovery, and social power systems', () => {
