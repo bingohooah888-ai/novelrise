@@ -9,7 +9,10 @@ const migrationPath = new URL(
 );
 const novelRuntimePath = new URL('../novelight-novel-poll.js', import.meta.url);
 const novelPagePath = new URL('../novel.html', import.meta.url);
-const seoNovelPagePath = new URL('../api/seo/templates/novel.html', import.meta.url);
+const seoNovelPagePath = new URL(
+  '../api/seo/templates/novel.html',
+  import.meta.url
+);
 
 const [migration, novelRuntime, novelPage, seoNovelPage] = await Promise.all([
   readFile(migrationPath, 'utf8'),
@@ -73,11 +76,14 @@ test('novel pages do not invoke the revoked manual LIGHT SEED status setup', () 
   }
 });
 
-test('public LIGHT SEED total uses lightweight artwork and does not expose the private tier', () => {
-  assert.match(novelRuntime, /id="publicLightSeedCount"/u);
-  assert.match(novelRuntime, /novelight-feature-light-seed\.webp/u);
-  assert.match(novelRuntime, /value\?\.total_seed_count/u);
-  assert.match(novelRuntime, /この作品が受け取ったLIGHT SEED/u);
-  assert.match(novelRuntime, /publicCount\.textContent = '取得できません'/u);
-  assert.doesNotMatch(novelRuntime, /light_seed_status_v2/u);
-});
+test(
+  'public LIGHT SEED total uses lightweight artwork and does not expose the private tier',
+  () => {
+    assert.match(novelRuntime, /id="publicLightSeedCount"/u);
+    assert.match(novelRuntime, /novelight-feature-light-seed\.webp/u);
+    assert.match(novelRuntime, /value\?\.total_seed_count/u);
+    assert.match(novelRuntime, /この作品が受け取ったLIGHT SEED/u);
+    assert.match(novelRuntime, /publicCount\.textContent = '取得できません'/u);
+    assert.doesNotMatch(novelRuntime, /light_seed_status_v2/u);
+  }
+);
