@@ -171,16 +171,13 @@ test('public comment identity is displayed above the pen name', async ({
     hasText: 'ネタバレ読者'
   });
   const profile = comment.locator('.novelight-comment-profile');
-  await expect(
-    profile.locator('.novelight-comment-avatar img')
-  ).toHaveAttribute('src', '/assets/scout-badges/reader_read_005.png');
-  await expect
-    .poll(() =>
-      profile.locator('.novelight-comment-avatar img').evaluate(
-        (image) => image.complete && image.naturalWidth > 0
-      )
-    )
-    .toBe(true);
+  const avatarImage = profile.locator('.novelight-comment-avatar img');
+  await expect(avatarImage).toHaveAttribute(
+    'src',
+    '/assets/scout-badges/reader_read_005.png'
+  );
+  const naturalWidth = await avatarImage.evaluate((image) => image.naturalWidth);
+  expect(naturalWidth).toBeGreaterThan(0);
   await expect(profile.locator('.novelight-comment-level')).toHaveText(
     'SCOUT Lv.10'
   );
