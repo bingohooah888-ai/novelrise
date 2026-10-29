@@ -47,3 +47,13 @@ test('staging writer is OWNER only, one-use, Staging-only and SHA bound', () => 
   assert.match(yaml, /NOVELIGHT_STAGING_CAMPAIGN_EXCLUSION_CONSUMED/u);
   assert.doesNotMatch(yaml, /workflow_dispatch:/u);
 });
+
+// TEMP diagnostic: obtain the locked CI Prettier output for this nonsecret file.
+test('TEMP exact Prettier output', async () => {
+  const prettier = await import('prettier');
+  const source = readFileSync('tests/scout-campaign-staging-transaction.test.mjs', 'utf8');
+  const config = await prettier.resolveConfig('tests/scout-campaign-staging-transaction.test.mjs');
+  const formatted = await prettier.format(source, { ...config, filepath: 'tests/scout-campaign-staging-transaction.test.mjs' });
+  console.log('CAMPAIGN_PRETTIER_BASE64 ' + Buffer.from(formatted, 'utf8').toString('base64'));
+  assert.ok(formatted.includes('staging writer is OWNER only'));
+});
