@@ -62,7 +62,7 @@ test('novel detail V2 keeps reading, chapter navigation and spoiler-safe charact
   assert.match(novelDetailV2, /nl-work-detail-toc/u);
   assert.match(novelDetailV2, /installMobileToc/u);
   assert.match(novelDetailV2, /renderCharacters/u);
-  assert.match(novelDetailV2, /novelight_novel_character_feed/u);
+  assert.match(novelDetailV2, /novelight_character_feed/u);
   assert.match(novelDetailV2, /nlNovelWorkNav/u);
 });
 
