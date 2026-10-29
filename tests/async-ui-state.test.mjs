@@ -55,7 +55,10 @@ test('novel detail renders independently of optional async work', () => {
   assert.match(novel, /void loadAuthorMeta\(\)/);
   assert.match(novel, /void loadEpisodes\(\)/);
   assert.match(novel, /void setupFavorite\(\)/);
-  assert.match(novel, /void setupSeed\(\)/);
+  // Legacy manual-tier status RPC is revoked; the auto-tier reader runtime owns status.
+  assert.doesNotMatch(novel, /void setupSeed\(\)/);
+  assert.match(novel, /void setupReceivedSeedSummary\(\)/);
+  assert.match(novel, /novelight-novel-poll\.js/);
   assert.match(novel, /void recordOpen\(\)/);
   assert.match(novel, /エピソードも読み込めません/);
 });

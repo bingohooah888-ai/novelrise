@@ -198,7 +198,11 @@ window.setTimeout(() => {
   style.textContent =
     '.seed-types[data-auto-tier="true"]{grid-template-columns:minmax(0,360px)}' +
     '.seed-choice.auto-tier{min-height:58px;text-align:center;align-items:center;background:#fff;border-color:#9b89e8}' +
-    '#lightSeedArea .seed-notice{color:#182b3c;font-weight:700}';
+    '#lightSeedArea .seed-notice{color:#182b3c;font-weight:700}' +
+    '.light-seed-public-summary{display:flex;align-items:center;gap:12px;max-width:440px;margin:14px 0 6px;padding:11px 13px;border:1px solid #e4dac9;border-radius:12px;background:#fff}' +
+    '.light-seed-public-summary img{width:54px;height:54px;object-fit:contain;flex:none;border-radius:8px}' +
+    '.light-seed-public-summary .light-seed-public-label{display:block;color:#61564d;font-size:12px;font-weight:700;line-height:1.5}' +
+    '.light-seed-public-summary strong{display:block;color:#34271e;font-size:22px;line-height:1.5}';
   document.head.appendChild(style);
 
   types.dataset.autoTier = 'true';
@@ -213,6 +217,18 @@ window.setTimeout(() => {
   const button = document.getElementById('sendLightSeedButton');
   const oldNotice = area.querySelector('.seed-notice');
   if (oldNotice) oldNotice.textContent = '対象作品を実際に読んだ記録がある場合のみ送信できます。';
+
+  // Public works show the received total, never their hidden Rank or tier distribution.
+  // The detailed GOLD/SILVER/BRONZE inventory stays in the owner's existing panel.
+  const publicSummary = document.createElement('div');
+  publicSummary.className = 'light-seed-public-summary';
+  publicSummary.innerHTML =
+    '<img src="assets/novelight-feature-light-seed.webp" alt="" width="54" height="54" loading="lazy" decoding="async">' +
+    '<div><span class="light-seed-public-label">この作品が受け取ったLIGHT SEED</span>' +
+    '<strong id="publicLightSeedCount" aria-live="polite">確認中…</strong></div>';
+  types.insertAdjacentElement('beforebegin', publicSummary);
+  const publicCount = document.getElementById('publicLightSeedCount');
+  total.hidden = true;
 
   const api = window.supabase.createClient(
     'https://fiepaguycecrredwrcwx.supabase.co',
@@ -243,7 +259,9 @@ window.setTimeout(() => {
     remaining.textContent = value?.monthly_limit
       ? `今月あと ${Number(value.remaining_this_month || 0)}/${Number(value.monthly_limit)}`
       : '';
-    total.textContent = `この作品のLIGHT SEED ${Number(value?.total_seed_count || 0)}`;
+    const receivedCount = Math.max(0, Number(value?.total_seed_count) || 0);
+    publicCount.textContent = `${receivedCount.toLocaleString('ja-JP')} 個`;
+    total.textContent = `この作品のLIGHT SEED ${receivedCount}`;
     setDisabled(!['eligible', 'login_required'].includes(value?.reason));
   }
 
@@ -301,7 +319,8 @@ window.setTimeout(() => {
       console.error('Automatic LIGHT SEED status unavailable', error);
       status = null;
       message.hidden = false;
-      message.textContent = 'LIGHT SEED新仕様の準備中です。現在は送信できません。';
+      message.textContent = 'LIGHT SEEDの状態を取得できませんでした。再読み込みしてお試しください。';
+      publicCount.textContent = '取得できません';
       remaining.textContent = '';
       total.textContent = '';
       setDisabled(true);
