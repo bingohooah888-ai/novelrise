@@ -26,6 +26,7 @@ const REPAIRED_CENSUS_FILES = [
   'tests/ai-review-hosted-proof-census.test.mjs'
 ];
 const OWNER_POLICY_MAIN = 'c1e3718ee209e91a804cfb879f2ba954fc9a27e2';
+const BOOKSHELF_MAIN = '39278163d1c7e2ee7dbd11dae8fc1a8173ce513f';
 const FROZEN_BLOBS = new Map([
   [
     '.github/staging-ai-jwt/probe.mjs',
@@ -50,13 +51,34 @@ const FROZEN_BLOBS = new Map([
   ['AGENTS.md', '1c3b95410de0010015fada83864b60db4c175f21'],
   ['docs/NOVELIGHT-MASTER.md', '91d11fa367b7de64990b13397b13d4bb6e3c0230'],
   ['docs/development-workflow.md', 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'],
-  ['tests/master-integrity.test.js', 'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832']
+  ['tests/master-integrity.test.js', 'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'],
+  ['favorites.html', '05e6c3e36bea4f32d20db515e36b0225a1631f98'],
+  [
+    'novelight-bookshelf-overview.css',
+    '34ec82d64b9d2fd58be4e46995152b1d0f1c1c37'
+  ],
+  [
+    'novelight-bookshelf-overview.js',
+    '71f182d89081c1aa0b9b8b3bff2defe3891933d4'
+  ],
+  ['novelight-bookshelf.js', 'eb49a7c530d5d485ff98d681f75f180129b2802e'],
+  [
+    'novelight-thumbnail-runtime.js',
+    '81d5e3f101348f9bccfede97e9491d4f50bf792d'
+  ]
 ]);
 const OWNER_POLICY_FILES = [
   'AGENTS.md',
   'docs/NOVELIGHT-MASTER.md',
   'docs/development-workflow.md',
   'tests/master-integrity.test.js'
+];
+const BOOKSHELF_FILES = [
+  { filename: 'favorites.html', status: 'modified' },
+  { filename: 'novelight-bookshelf-overview.css', status: 'added' },
+  { filename: 'novelight-bookshelf-overview.js', status: 'added' },
+  { filename: 'novelight-bookshelf.js', status: 'modified' },
+  { filename: 'novelight-thumbnail-runtime.js', status: 'modified' }
 ];
 
 test('JWT diagnostics expose only fixed checkpoint labels', () => {
@@ -199,11 +221,12 @@ function sample() {
       status: 'ahead',
       behind_by: 0,
       base_commit: { sha: BASE },
-      total_commits: 8,
+      total_commits: 9,
       commits: [
         ...Array.from({ length: 6 }, () => ({ sha: 'c'.repeat(40) })),
         { sha: OWNER_POLICY_MAIN },
-        { sha: MAIN, parents: [{ sha: OWNER_POLICY_MAIN }] }
+        { sha: BOOKSHELF_MAIN, parents: [{ sha: OWNER_POLICY_MAIN }] },
+        { sha: MAIN, parents: [{ sha: BOOKSHELF_MAIN }] }
       ],
       files: [
         ...FILES.map((filename) => ({
@@ -219,6 +242,11 @@ function sample() {
         ...REPAIRED_CENSUS_FILES.map((filename) => ({
           filename,
           status: 'modified',
+          sha: FROZEN_BLOBS.get(filename)
+        })),
+        ...BOOKSHELF_FILES.map(({ filename, status }) => ({
+          filename,
+          status,
           sha: FROZEN_BLOBS.get(filename)
         }))
       ]
@@ -313,6 +341,29 @@ test('unreviewed main commits and changed protected blobs stay blocked', () => {
     (file) => file.filename === '.github/staging-ai-jwt/runner.mjs'
   ).sha = 'unreviewed';
   assert.throws(() => verifyAIHostedJwtAdmission(alteredRunner), /DENIED/u);
+});
+
+test('bookcase merge is pinned and its extra edits are rejected', () => {
+  const allowed = sample();
+  assert.equal(verifyAIHostedJwtAdmission(allowed).mainSha, MAIN);
+
+  const unknownMain = sample();
+  unknownMain.mainLineage.commits.at(-2).sha = 'd'.repeat(40);
+  assert.throws(() => verifyAIHostedJwtAdmission(unknownMain), /DENIED/u);
+
+  const alteredParent = sample();
+  alteredParent.mainLineage.commits.at(-1).parents[0].sha = OWNER_POLICY_MAIN;
+  assert.throws(() => verifyAIHostedJwtAdmission(alteredParent), /DENIED/u);
+
+  const alteredBookshelf = sample();
+  alteredBookshelf.mainLineage.files.find(
+    (file) => file.filename === 'novelight-bookshelf-overview.js'
+  ).sha = 'unreviewed';
+  assert.throws(() => verifyAIHostedJwtAdmission(alteredBookshelf), /DENIED/u);
+
+  const missingBookshelf = sample();
+  missingBookshelf.mainLineage.files.pop();
+  assert.throws(() => verifyAIHostedJwtAdmission(missingBookshelf), /DENIED/u);
 });
 
 test('runner requires dedicated Staging approval and secrets', () => {
