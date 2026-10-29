@@ -27,11 +27,26 @@ const REPAIRED_CENSUS_FILES = [
 ];
 const OWNER_POLICY_MAIN = 'c1e3718ee209e91a804cfb879f2ba954fc9a27e2';
 const FROZEN_BLOBS = new Map([
-  ['.github/staging-ai-jwt/probe.mjs', '011a154cbe84b8f3c5b68befeacc886624fed094'],
-  ['.github/staging-ai-jwt/runner.mjs', 'fe7365eb46bff715bd84ed973e50b6e57b32d22b'],
-  ['.github/workflows/ai-review-hosted-staging-jwt-proof.yml', '5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2'],
-  ['.github/staging-ai-proof/census.mjs', 'a4b639ac7496093f615cbfdadbd6c2e0be80df95'],
-  ['tests/ai-review-hosted-proof-census.test.mjs', '10e3c2307c608c21fbbbd586dd0a5775f2cdb7d7'],
+  [
+    '.github/staging-ai-jwt/probe.mjs',
+    '011a154cbe84b8f3c5b68befeacc886624fed094'
+  ],
+  [
+    '.github/staging-ai-jwt/runner.mjs',
+    'fe7365eb46bff715bd84ed973e50b6e57b32d22b'
+  ],
+  [
+    '.github/workflows/ai-review-hosted-staging-jwt-proof.yml',
+    '5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2'
+  ],
+  [
+    '.github/staging-ai-proof/census.mjs',
+    'a4b639ac7496093f615cbfdadbd6c2e0be80df95'
+  ],
+  [
+    'tests/ai-review-hosted-proof-census.test.mjs',
+    '10e3c2307c608c21fbbbd586dd0a5775f2cdb7d7'
+  ],
   ['AGENTS.md', '1c3b95410de0010015fada83864b60db4c175f21'],
   ['docs/NOVELIGHT-MASTER.md', '91d11fa367b7de64990b13397b13d4bb6e3c0230'],
   ['docs/development-workflow.md', 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'],
