@@ -146,6 +146,30 @@ export function assertFrozenPreviewEnvMetadata(deployment, payload) {
   return true;
 }
 
+// Only public, fixed stage names and bounded HTTP status categories may be
+// printed. Never include response bodies, tokens, URLs or raw error messages.
+function traceVercelPhase(label) {
+  process.stdout.write('REAL_STAGING_JWT_VERCEL_PHASE: ' + label + '\n');
+}
+
+function assertVercelHttpOk(response, phase, message) {
+  if (response.status !== 200) {
+    const category =
+      response.status === 401
+        ? 'UNAUTHORIZED_401'
+        : response.status === 403
+          ? 'FORBIDDEN_403'
+          : response.status === 404
+            ? 'NOT_FOUND_404'
+            : response.status === 429
+              ? 'RATE_LIMITED_429'
+              : 'OTHER_NON_200';
+    traceVercelPhase(phase + '_' + category);
+    deny(message);
+  }
+  traceVercelPhase(phase + '_HTTP_OK');
+}
+
 export async function verifyHostedPreviewViaVercel(
   config,
   env,
@@ -156,6 +180,7 @@ export async function verifyHostedPreviewViaVercel(
     config.deploymentId +
     '?teamId=' +
     VERCEL_TEAM;
+  traceVercelPhase('DEPLOYMENT_REQUEST');
   const response = await fetcher(url, {
     headers: {
       authorization: 'Bearer ' + env.VERCEL_READONLY_API_TOKEN,
@@ -164,14 +189,14 @@ export async function verifyHostedPreviewViaVercel(
     redirect: 'manual',
     signal: AbortSignal.timeout(12000)
   });
-  if (response.status !== 200) {
-    deny('could not verify Vercel deployment metadata');
-  }
+  assertVercelHttpOk(response, 'DEPLOYMENT', 'could not verify Vercel deployment metadata');
   const deployed = await response.json();
   assertVerifiedVercelPreview(config, deployed);
+  traceVercelPhase('DEPLOYMENT_ASSERT_OK');
   // Protection is project-level and can change without rebuilding the pinned
   // deployment. Recheck the independently authenticated Vercel project API
   // immediately before any synthetic Auth identity can be created.
+  traceVercelPhase('PROJECT_REQUEST');
   const projectResponse = await fetcher(
     'https://api.vercel.com/v1/projects/' +
       VERCEL_PROJECT +
@@ -186,9 +211,7 @@ export async function verifyHostedPreviewViaVercel(
       signal: AbortSignal.timeout(12000)
     }
   );
-  if (projectResponse.status !== 200) {
-    deny('could not verify Vercel Preview protection');
-  }
+  assertVercelHttpOk(projectResponse, 'PROJECT', 'could not verify Vercel Preview protection');
   const project = await projectResponse.json();
   if (
     project?.id !== VERCEL_PROJECT ||
@@ -198,6 +221,8 @@ export async function verifyHostedPreviewViaVercel(
   ) {
     deny('pinned Preview is not protected by Vercel Authentication');
   }
+  traceVercelPhase('PROJECT_ASSERT_OK');
+  traceVercelPhase('ENV_REQUEST');
   const inventory = await fetcher(
     'https://api.vercel.com/v10/projects/' +
       VERCEL_PROJECT +
@@ -213,10 +238,9 @@ export async function verifyHostedPreviewViaVercel(
       signal: AbortSignal.timeout(12000)
     }
   );
-  if (inventory.status !== 200) {
-    deny('could not independently verify Preview env metadata');
-  }
+  assertVercelHttpOk(inventory, 'ENV', 'could not independently verify Preview env metadata');
   assertFrozenPreviewEnvMetadata(deployed, await inventory.json());
+  traceVercelPhase('ENV_ASSERT_OK');
 }
 
 async function getJson(url, headers, allowedStatus = 200) {
