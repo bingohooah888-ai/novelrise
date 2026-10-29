@@ -39,7 +39,10 @@ test('approved recommendation list name is used on reader pages', () => {
 
 test('internal curation routes and sharing safety stay unchanged', () => {
   assert.match(files['favorites.html'], /href="curation-lists\.html"/u);
-  assert.match(files['novelight-curation.js'], /novelight_manage_my_curation_lists/u);
+  assert.match(
+    files['novelight-curation.js'],
+    /novelight_manage_my_curation_lists/u,
+  );
   assert.match(files['novelight-curation.js'], /curation\.html/u);
   assert.match(files['curation.html'], /noindex,follow/u);
   assert.match(files['curation.html'], /no-referrer/u);
