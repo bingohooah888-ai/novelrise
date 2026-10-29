@@ -46,7 +46,9 @@ const FROZEN_MAIN_COMMITS = Object.freeze([
   'f2618510d319f08e3189da0c74e2541992cac950',
   '79f5fa7700a852f3fcf6a90c40066288f30523d1',
   'a46873abfd2e338954c458adb4dfdbcacf66a873',
-  '769606269e824b26b7170e8ad930b8813011a13f'
+  '769606269e824b26b7170e8ad930b8813011a13f',
+  '5f61ef6df09a59409f6079148df7357568720a5d',
+  '922ee327cbae2812a440ebcdc35cb9371a072e2e'
 ]);
 const FROZEN_MAIN_FILES = Object.freeze([
   {
@@ -62,7 +64,7 @@ const FROZEN_MAIN_FILES = Object.freeze([
   {
     filename: '.github/staging-ai-jwt/runner.mjs',
     status: 'added',
-    sha: '3604bb86cd7dff8db38d9755566fcb9e35d82a21'
+    sha: 'b1f157e3986aab812776d39ee075ad1f7a166263'
   },
   {
     filename: '.github/staging-ai-proof/census.mjs',
@@ -262,6 +264,27 @@ const FROZEN_MAIN_FILES = Object.freeze([
     filename: 'tests/work-navigation-character-surfaces.test.mjs',
     status: 'modified',
     sha: 'b0f1ade0cd74c1121cfaa9601a668809efccb7d2'
+  },
+  {
+    filename: 'novelight-comments.css',
+    status: 'modified',
+    sha: 'c2c3eff01cefd080efeff701c59aea70371218cc'
+  },
+  {
+    filename: 'novelight-comments.js',
+    status: 'modified',
+    sha: '2bbb13e9352c89a723274b388fbdaf19e8aba5c1'
+  },
+  {
+    filename:
+      'supabase/migrations/20261030010000_comment_public_scout_identity.sql',
+    status: 'added',
+    sha: '1e6c92576ceed47026fe98c8c0c4f301533a69c8'
+  },
+  {
+    filename: 'tests/e2e/specs/comment-spoiler-display.spec.js',
+    status: 'modified',
+    sha: '62f1ff0915e655f67b5a695a5012417aafe05743'
   }
 ]);
 
@@ -303,6 +326,12 @@ test('census telemetry identifies only fixed nonsecret mismatch fields', () => {
     profile: 1,
     novel: 1,
     typo: 1,
+    founding: 0,
+    beta: 0,
+    campaign: 0,
+    follow: 0,
+    rankState: 0,
+    rankEvents: 0,
     sideEffects: 0
   };
   assert.equal(classifyCensusMismatch('fixture', fixture), null);
@@ -318,6 +347,31 @@ test('census telemetry identifies only fixed nonsecret mismatch fields', () => {
     classifyCensusMismatch('fixture', { ...fixture, sideEffects: 1 }),
     'CENSUS_FIXTURE_SIDE_EFFECTS_MISMATCH'
   );
+  const breakdown = [
+    ['founding', 'CENSUS_FIXTURE_FOUNDING_MISMATCH'],
+    ['beta', 'CENSUS_FIXTURE_BETA_PARTICIPATION_MISMATCH'],
+    ['campaign', 'CENSUS_FIXTURE_SCOUT_CAMPAIGN_MISMATCH'],
+    ['follow', 'CENSUS_FIXTURE_AUTHOR_FOLLOW_MISMATCH'],
+    ['rankState', 'CENSUS_FIXTURE_NOVEL_RANK_STATE_MISMATCH'],
+    ['rankEvents', 'CENSUS_FIXTURE_NOVEL_RANK_EVENTS_MISMATCH']
+  ];
+  for (const [field, label] of breakdown) {
+    assert.equal(
+      classifyCensusMismatch('fixture', {
+        ...fixture,
+        [field]: 1,
+        sideEffects: 1
+      }),
+      label
+    );
+    assert.equal(
+      classifyCensusMismatch('fixture', {
+        ...fixture,
+        [field]: undefined
+      }),
+      label
+    );
+  }
   assert.equal(classifyCensusMismatch('fixture', null), 'CENSUS_SHAPE_INVALID');
   assert.equal(
     classifyCensusMismatch('final', {
@@ -327,6 +381,12 @@ test('census telemetry identifies only fixed nonsecret mismatch fields', () => {
       profile: 0,
       novel: 0,
       typo: 0,
+      founding: 0,
+      beta: 0,
+      campaign: 0,
+      follow: 0,
+      rankState: 0,
+      rankEvents: 0,
       sideEffects: 0,
       other: 0
     }),
@@ -720,4 +780,28 @@ test('campaign migration and commit ancestry remain pinned', () => {
   const alteredParent = sample();
   alteredParent.mainLineage.commits[25].parents[0].sha = '0'.repeat(40);
   assert.throws(() => verifyAIHostedJwtAdmission(alteredParent), /DENIED/u);
+});
+
+test('Staging side-effect census logs no raw records', () => {
+  const runner = readFileSync(
+    new URL('../.github/staging-ai-jwt/runner.mjs', import.meta.url),
+    'utf8'
+  );
+  for (const table of [
+    'founding_authors',
+    'beta_participants',
+    'scout_reward_campaign_entries',
+    'author_follow_events',
+    'novel_rank_state',
+    'novel_rank_events'
+  ]) {
+    assert.match(
+      runner,
+      new RegExp('count\\(\\*\\) from public\\.' + table, 'u')
+    );
+  }
+  assert.match(runner, /traceStage\(mismatch\)/u);
+  assert.doesNotMatch(runner, /console\.log\(out\)/u);
+  assert.match(runner, /finally\{/u);
+  assert.match(runner, /auth\.admin\.deleteUser/u);
 });
