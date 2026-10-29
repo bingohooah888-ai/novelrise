@@ -170,6 +170,26 @@ function assertVercelHttpOk(response, phase, message) {
   traceVercelPhase(phase + '_HTTP_OK');
 }
 
+// The REST project representation identifies enabled Vercel Authentication
+// by a non-null ssoProtection object with its exact deploymentType. Unlike
+// the normalized connector representation, REST does not require an
+// "enabled" flag. An explicit false flag remains a hard denial.
+export function assertVercelProjectProtection(project) {
+  const protection = project?.ssoProtection;
+  if (
+    project?.id !== VERCEL_PROJECT ||
+    project.name !== 'novelrise' ||
+    !protection ||
+    typeof protection !== 'object' ||
+    Array.isArray(protection) ||
+    protection.enabled === false ||
+    protection.deploymentType !== 'all_except_custom_domains'
+  ) {
+    deny('pinned Preview is not protected by Vercel Authentication');
+  }
+  return true;
+}
+
 export async function verifyHostedPreviewViaVercel(
   config,
   env,
@@ -213,14 +233,7 @@ export async function verifyHostedPreviewViaVercel(
   );
   assertVercelHttpOk(projectResponse, 'PROJECT', 'could not verify Vercel Preview protection');
   const project = await projectResponse.json();
-  if (
-    project?.id !== VERCEL_PROJECT ||
-    project.name !== 'novelrise' ||
-    project.ssoProtection?.enabled !== true ||
-    project.ssoProtection?.deploymentType !== 'all_except_custom_domains'
-  ) {
-    deny('pinned Preview is not protected by Vercel Authentication');
-  }
+  assertVercelProjectProtection(project);
   traceVercelPhase('PROJECT_ASSERT_OK');
   traceVercelPhase('ENV_REQUEST');
   const inventory = await fetcher(
