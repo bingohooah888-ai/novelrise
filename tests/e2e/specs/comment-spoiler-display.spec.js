@@ -180,11 +180,14 @@ test('public comment identity is displayed above the pen name', async ({
   const avatarImage = profile.locator('.novelight-comment-avatar img');
   const expectedSrc = '/assets/scout-badges/reader_read_005.png';
   await expect(avatarImage).toHaveAttribute('src', expectedSrc);
-  await expect
-    .poll(() => avatarImage.evaluate((image) => image.naturalWidth))
-    .toBeGreaterThan(0);
+  await expect(avatarImage).toHaveJSProperty('complete', true);
+  const width = await avatarImage.evaluate((image) => image.naturalWidth);
+  expect(width).toBeGreaterThan(0);
   const calls = await page.evaluate(() => globalThis.__COMMENT_CALLS__);
-  expect(calls.some((call) => call.name === 'novelight_public_author_avatar')).toBe(true);
+  const avatarCall = calls.find(
+    (call) => call.name === 'novelight_public_author_avatar'
+  );
+  expect(avatarCall).toBeTruthy();
   await expect(profile.locator('.novelight-comment-level')).toHaveText(
     'SCOUT Lv.10'
   );
