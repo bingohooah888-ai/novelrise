@@ -2,6 +2,14 @@
 
 This document defines the normal development path after the initial environment setup.
 
+## OWNER quality and approval contract (2026-10-29)
+
+Before any NOVELIGHT development work, apply the 2026-10-29 eight-rule section at the beginning of `docs/NOVELIGHT-MASTER.md` and `AGENTS.md`. Four independent status labels are mandatory: code implemented; automated tests passed; Staging live verification passed; Production reflected. Never call a feature complete on CI or CodeQL evidence alone.
+
+Diagnose with observed logs, actual external API contract/response, auth/JWT, Preview protection, environment configuration and cleanup expectations **before** changing code. Separate confirmed facts, hypotheses and unknowns. Bundle available read-only preflight across subsequent steps rather than repeating approval/failed execution cycles. Emit only sanitized diagnostic phase/status information: never expose credentials, JWTs, bypass tokens, signed URLs or personal data.
+
+Keep changes and cost proportional; retain security-relevant validation. PR `本番承認` authorizes only the reviewed PR's one-time main integration (including disclosure of any automatic Production release resulting from merge); it does **not** approve separate Production DB, Stripe, secret or redeploy actions. Supabase Staging writes, real-JWT tests, Preview creation and Staging live proof need **separate** `ステージング承認` tied to exact project/sha/scope and one attempt. An admitted attempt consumes authorization even on failure or interruption; stale approvals are never reused. When old workflow/approval bridge language appears to permit reuse, the stricter newer OWNER rule prevails and automation must fail closed on incompatibility. Check live proof and report actual evidence plus unverified risks; no implicit Production publishing.
+
 ## Standard flow
 
 1. Read `docs/NOVELIGHT-MASTER.md`, `docs/WORK-EXECUTION-PREFLIGHT.md`, and `AGENTS.md` before changing code or operating external services. The MASTER remains the higher-level authority; the execution preflight is the mandatory runtime checklist that prevents timing, automation, manual-operation, and completion gates from being skipped.
