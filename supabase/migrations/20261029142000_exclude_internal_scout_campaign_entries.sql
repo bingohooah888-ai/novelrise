@@ -106,4 +106,14 @@ $$;
 
 revoke all on function public.novelight_capture_scout_campaign_entry() from public, anon, authenticated;
 
+do $postcheck$
+begin
+  if md5(pg_catalog.pg_get_functiondef(
+    'public.novelight_capture_scout_campaign_entry()'::regprocedure
+  )) is distinct from '4d52acf3a1d5f52db73456357a39d5fc' then
+    raise exception 'Campaign exclusion function fingerprint does not match review';
+  end if;
+end
+$postcheck$;
+
 commit;
