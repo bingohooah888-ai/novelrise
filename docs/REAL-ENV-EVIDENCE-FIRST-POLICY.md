@@ -1,5 +1,7 @@
 # NOVELIGHT — 実環境証拠優先・再試験抑制ポリシー
 
+**STATUS: CURRENT**
+
 Version: 1.0 / 2026-10-29
 
 この文書は、NOVELIGHTの開発・監査・デプロイ・Staging/Preview実証・外部API連携で、**単体テストが通っただけで「完成」と宣言し、実環境の失敗が出るたびに小修正と承認を反復する事故**を防ぐための永続ポリシーである。正式なMASTERと `AGENTS.md` を上位基準とし、既存の安全・承認ゲートを緩和しない。特にAuth、RLS、Stripe、Secret、Staging/Productionで適用する。一般の低リスクFAST PATCHに一律の実環境E2Eを課さない。
