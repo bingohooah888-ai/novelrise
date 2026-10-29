@@ -473,3 +473,17 @@ test('workflow requires OWNER and a single-use Staging ledger', () => {
   assert.match(src, /environment: staging/u);
   assert.doesNotMatch(src, /workflow_dispatch:/u);
 });
+
+test('temporary: identify prettier-only formatting difference', async () => {
+  const prettier = await import('prettier');
+  const path = 'tests/ai-review-hosted-real-jwt-gate.test.mjs';
+  const input = readFileSync(new URL('./ai-review-hosted-real-jwt-gate.test.mjs', import.meta.url), 'utf8');
+  const options = await prettier.resolveConfig(path);
+  const output = await prettier.format(input, { ...options, filepath: path });
+  const left = input.split('\\n');
+  const right = output.split('\\n');
+  if (input !== output) {
+    console.log('PRETTIER_EXPECTED_FILE_BASE64 ' + Buffer.from(output, 'utf8').toString('base64'));
+  }
+  assert.ok(Array.isArray(left) && Array.isArray(right));
+});
