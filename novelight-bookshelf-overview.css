@@ -14,7 +14,7 @@ body.novelight-page-favorites main{max-width:1260px}
 .nl-shelf-seed span{display:flex;flex-direction:column;gap:2px}
 .nl-shelf-seed b{color:#62523c;font-size:11px;line-height:1}
 .nl-shelf-seed strong{color:#172637;font-size:16px;line-height:1.25;white-space:nowrap}
-.nl-shelf-actions-layout{display:grid;width:calc(100% + 332px);grid-template-columns:minmax(0,450px) minmax(0,1fr);align-items:start;gap:16px;margin:0 0 12px}
+.nl-shelf-actions-layout{display:grid;width:100%;grid-template-columns:minmax(0,275px) minmax(0,1fr);align-items:start;gap:12px;margin:0 0 12px}
 .nl-shelf-actions-group{min-width:0}
 .nl-shelf-actions-group .reading-history-link{margin-bottom:13px}
 .nl-shelf-actions-group .nl-bookshelf-tabs{margin:0}
