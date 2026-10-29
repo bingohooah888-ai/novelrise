@@ -20,6 +20,10 @@ const FILES = [
   '.github/workflows/ai-review-hosted-staging-jwt-proof.yml',
   'tests/ai-review-hosted-real-jwt-gate.test.mjs'
 ];
+const REPAIRED_CENSUS_FILES = [
+  '.github/staging-ai-proof/census.mjs',
+  'tests/ai-review-hosted-proof-census.test.mjs'
+];
 
 function sample() {
   const approval = {
@@ -76,7 +80,13 @@ function sample() {
       base_commit: { sha: BASE },
       total_commits: 1,
       commits: [{ sha: MAIN }],
-      files: FILES.map((filename) => ({ filename, status: 'added' }))
+      files: [
+        ...FILES.map((filename) => ({ filename, status: 'added' })),
+        ...REPAIRED_CENSUS_FILES.map((filename) => ({
+          filename,
+          status: 'modified'
+        }))
+      ]
     },
     ledgerPages: [[comment]]
   };
@@ -112,6 +122,26 @@ test('reject unrelated changed files on trusted main', () => {
     status: 'modified'
   });
   assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+});
+
+test('reject missing or incorrectly labeled Staging census repair', () => {
+  const input = sample();
+  input.mainLineage.files.pop();
+  assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+
+  const modifiedAsAdded = sample();
+  modifiedAsAdded.mainLineage.files.at(-1).status = 'added';
+  assert.throws(
+    () => verifyAIHostedJwtAdmission(modifiedAsAdded),
+    /DENIED/u
+  );
+
+  const originalChanged = sample();
+  originalChanged.mainLineage.files[0].status = 'modified';
+  assert.throws(
+    () => verifyAIHostedJwtAdmission(originalChanged),
+    /DENIED/u
+  );
 });
 
 test('reject candidate rebased onto new main after Preview was pinned', () => {
