@@ -68,8 +68,8 @@ const TRUSTED_PROMOTION_PATHS = new Map([
   ["novelight-comments.js", "modified"],
   ["supabase/migrations/20261030010000_comment_public_scout_identity.sql", "added"],
   ["tests/e2e/specs/comment-spoiler-display.spec.js", "modified"],
-  ["api/seo/templates/episode.html", "modified"]
-  ["episode.html", "modified"]
+  ["api/seo/templates/episode.html", "modified"],
+  ["episode.html", "modified"],
   ["tests/e2e/fixtures/comment-spoiler-display.html", "modified"]
 ]);
 const FROZEN_REVIEWED_BLOBS = new Map([
@@ -117,8 +117,8 @@ const FROZEN_REVIEWED_BLOBS = new Map([
   ["novelight-comments.js", "9ce61945174ec21b224ca91c8dab05681e004a1e"],
   ["supabase/migrations/20261030010000_comment_public_scout_identity.sql", "1e6c92576ceed47026fe98c8c0c4f301533a69c8"],
   ["tests/e2e/specs/comment-spoiler-display.spec.js", "10d60d0a63eae4ee59c1a7f9b1bf46edf057fefd"],
-  ["api/seo/templates/episode.html", "342495918b139148f63c9bebd68facfd5764a3ee"]
-  ["episode.html", "342495918b139148f63c9bebd68facfd5764a3ee"]
+  ["api/seo/templates/episode.html", "342495918b139148f63c9bebd68facfd5764a3ee"],
+  ["episode.html", "342495918b139148f63c9bebd68facfd5764a3ee"],
   ["tests/e2e/fixtures/comment-spoiler-display.html", "46dd5176305415a4b54e9b282c3cf867a2b1f797"]
 ]);
 // Exact 32-commit main ancestry before this one reviewed Squash PR.
