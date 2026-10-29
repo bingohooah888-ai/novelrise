@@ -24,6 +24,10 @@ SEARCH_CARD_COMPAT_MIGRATION="supabase/migrations/20260930210000_search_card_met
 cp supabase/migrations/20260930153337_search_card_metadata.sql "$SEARCH_CARD_COMPAT_MIGRATION"
 trap 'rm -f "$SEARCH_CARD_COMPAT_MIGRATION"' EXIT
 bash scripts/run-migration-replay.sh
+# Exercise SCOUT campaign signup on the disposable replay DB only.
+psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}" \
+  -d "${NOVELIGHT_REPLAY_DB:-novelight_migration_replay}" -v ON_ERROR_STOP=1 \
+  -f tests/rls/scout-campaign-internal-exclusion.sql
 # Phase 2 AI foundation is tested ONLY on this disposable replay database.
 echo "::group::Verify disabled AI ledger, service-only roles, and budget limits"
 AI_REPLAY=(
