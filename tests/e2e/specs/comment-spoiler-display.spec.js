@@ -176,8 +176,8 @@ test('public comment identity is displayed above the pen name', async ({
     'src',
     '/assets/scout-badges/reader_read_005.png'
   );
-  const naturalWidth = await avatarImage.evaluate((image) => image.naturalWidth);
-  expect(naturalWidth).toBeGreaterThan(0);
+  const width = await avatarImage.evaluate((image) => image.naturalWidth);
+  expect(width).toBeGreaterThan(0);
   await expect(profile.locator('.novelight-comment-level')).toHaveText(
     'SCOUT Lv.10'
   );
