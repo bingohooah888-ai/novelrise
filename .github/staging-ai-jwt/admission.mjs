@@ -67,7 +67,10 @@ const TRUSTED_PROMOTION_PATHS = new Map([
   ["novelight-comments.css", "modified"],
   ["novelight-comments.js", "modified"],
   ["supabase/migrations/20261030010000_comment_public_scout_identity.sql", "added"],
-  ["tests/e2e/specs/comment-spoiler-display.spec.js", "modified"]
+  ["tests/e2e/specs/comment-spoiler-display.spec.js", "modified"],
+  ["api/seo/templates/episode.html", "modified"]
+  ["episode.html", "modified"]
+  ["tests/e2e/fixtures/comment-spoiler-display.html", "modified"]
 ]);
 const FROZEN_REVIEWED_BLOBS = new Map([
   [".github/staging-ai-jwt/probe.mjs", "011a154cbe84b8f3c5b68befeacc886624fed094"],
@@ -110,12 +113,15 @@ const FROZEN_REVIEWED_BLOBS = new Map([
   ["tests/scout-campaign-internal-exclusion.test.mjs", "2f0df253b1c90024115a1e16ae13b995b08304fd"],
   ["tests/scout-campaign-staging-transaction.test.mjs", "10a4227c01b8a6076d55269e20c9ad2cbdfb8e1f"],
   ["tests/work-navigation-character-surfaces.test.mjs", "b0f1ade0cd74c1121cfaa9601a668809efccb7d2"],
-  ["novelight-comments.css", "c2c3eff01cefd080efeff701c59aea70371218cc"],
-  ["novelight-comments.js", "2bbb13e9352c89a723274b388fbdaf19e8aba5c1"],
+  ["novelight-comments.css", "6fd47cff0fc3126b063d8c9b4664f3de4a175838"],
+  ["novelight-comments.js", "9ce61945174ec21b224ca91c8dab05681e004a1e"],
   ["supabase/migrations/20261030010000_comment_public_scout_identity.sql", "1e6c92576ceed47026fe98c8c0c4f301533a69c8"],
-  ["tests/e2e/specs/comment-spoiler-display.spec.js", "62f1ff0915e655f67b5a695a5012417aafe05743"]
+  ["tests/e2e/specs/comment-spoiler-display.spec.js", "10d60d0a63eae4ee59c1a7f9b1bf46edf057fefd"],
+  ["api/seo/templates/episode.html", "342495918b139148f63c9bebd68facfd5764a3ee"]
+  ["episode.html", "342495918b139148f63c9bebd68facfd5764a3ee"]
+  ["tests/e2e/fixtures/comment-spoiler-display.html", "46dd5176305415a4b54e9b282c3cf867a2b1f797"]
 ]);
-// Exact 31-commit main ancestry before this one reviewed Squash PR.
+// Exact 32-commit main ancestry before this one reviewed Squash PR.
 const FROZEN_REVIEWED_MAIN_COMMITS = Object.freeze([
   '964823fb9d8ecda77098598b58e7259243545a26',
   '78a59b87dd448f4e4a88e37c50b7abdb46e5fb0b',
@@ -147,7 +153,8 @@ const FROZEN_REVIEWED_MAIN_COMMITS = Object.freeze([
   '769606269e824b26b7170e8ad930b8813011a13f',
   '5f61ef6df09a59409f6079148df7357568720a5d',
   '922ee327cbae2812a440ebcdc35cb9371a072e2e',
-  'e2be90d40abcd229836410cf27a358e87f3ad320'
+  'e2be90d40abcd229836410cf27a358e87f3ad320',
+  '7a011c2f26673b31d4853fccd78da9084ba28e9e'
 ]);
 const SHA = /^[0-9a-f]{40}$/u;
 const FIELDS = [

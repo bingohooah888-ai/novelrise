@@ -50,7 +50,8 @@ const FROZEN_MAIN_COMMITS = Object.freeze([
   '769606269e824b26b7170e8ad930b8813011a13f',
   '5f61ef6df09a59409f6079148df7357568720a5d',
   '922ee327cbae2812a440ebcdc35cb9371a072e2e',
-  'e2be90d40abcd229836410cf27a358e87f3ad320'
+  'e2be90d40abcd229836410cf27a358e87f3ad320',
+  '7a011c2f26673b31d4853fccd78da9084ba28e9e'
 ]);
 const FROZEN_MAIN_FILES = Object.freeze([
   {
@@ -270,12 +271,12 @@ const FROZEN_MAIN_FILES = Object.freeze([
   {
     filename: 'novelight-comments.css',
     status: 'modified',
-    sha: 'c2c3eff01cefd080efeff701c59aea70371218cc'
+    sha: '6fd47cff0fc3126b063d8c9b4664f3de4a175838'
   },
   {
     filename: 'novelight-comments.js',
     status: 'modified',
-    sha: '2bbb13e9352c89a723274b388fbdaf19e8aba5c1'
+    sha: '9ce61945174ec21b224ca91c8dab05681e004a1e'
   },
   {
     filename:
@@ -286,7 +287,22 @@ const FROZEN_MAIN_FILES = Object.freeze([
   {
     filename: 'tests/e2e/specs/comment-spoiler-display.spec.js',
     status: 'modified',
-    sha: '62f1ff0915e655f67b5a695a5012417aafe05743'
+    sha: '10d60d0a63eae4ee59c1a7f9b1bf46edf057fefd'
+  },
+  {
+    filename: 'api/seo/templates/episode.html',
+    status: 'modified',
+    sha: '342495918b139148f63c9bebd68facfd5764a3ee'
+  },
+  {
+    filename: 'episode.html',
+    status: 'modified',
+    sha: '342495918b139148f63c9bebd68facfd5764a3ee'
+  },
+  {
+    filename: 'tests/e2e/fixtures/comment-spoiler-display.html',
+    status: 'modified',
+    sha: '46dd5176305415a4b54e9b282c3cf867a2b1f797'
   }
 ]);
 
