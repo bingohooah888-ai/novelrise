@@ -680,6 +680,9 @@
     // leaves a visible, empty bordered card between LIGHT SEED and reading.
     header.style.display = 'none';
     header.setAttribute('aria-hidden', 'true');
+    // Retire any legacy work-navigation card that completed before V2 boot.
+    // V2 already provides the reading action, chapter TOC and characters.
+    document.getElementById('nlNovelWorkNav')?.remove();
     document.getElementById('nlContinueReading')?.remove();
     void mountCover(id, cover);
     window.dispatchEvent(new Event('novelight:page-content-ready'));
