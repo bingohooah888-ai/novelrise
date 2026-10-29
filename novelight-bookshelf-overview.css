@@ -14,11 +14,11 @@ body.novelight-page-favorites main{max-width:1260px}
 .nl-shelf-seed span{display:flex;flex-direction:column;gap:2px}
 .nl-shelf-seed b{color:#62523c;font-size:11px;line-height:1}
 .nl-shelf-seed strong{color:#172637;font-size:16px;line-height:1.25;white-space:nowrap}
-.nl-shelf-actions-layout{display:grid;width:calc(100% + 332px);grid-template-columns:minmax(0,450px) minmax(0,1fr);align-items:start;gap:16px;margin:0 0 12px}
+.nl-shelf-actions-layout{display:grid;width:100%;grid-template-columns:minmax(0,450px) minmax(0,1fr);align-items:start;gap:16px;margin:0 0 12px}
 .nl-shelf-actions-group{min-width:0}
 .nl-shelf-actions-group .reading-history-link{margin-bottom:13px}
 .nl-shelf-actions-group .nl-bookshelf-tabs{margin:0}
-.nl-shelf-aside{position:static;width:100%;min-width:0}
+.nl-shelf-aside{position:static;width:auto;min-width:0;margin-left:-170px}
 .nl-shelf-rank-card{display:block;padding:10px 14px;border:1px solid #b18d4b;border-radius:13px;color:#fff8e8!important;background:linear-gradient(145deg,#082036,#071527);box-shadow:0 8px 18px rgba(8,26,42,.14);text-decoration:none!important}
 .nl-shelf-rank-card:hover{border-color:#f0c36f;box-shadow:0 12px 35px rgba(8,26,42,.25);transform:translateY(-1px)}
 .nl-shelf-rank-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(70px,1fr) 64px;gap:10px;align-items:center;min-height:60px}
@@ -41,5 +41,5 @@ body.novelight-page-favorites .nl-shelf-card{display:grid;grid-template-columns:
 .nl-shelf-copy .title{margin-top:8px;overflow-wrap:anywhere}
 .nl-shelf-copy .desc{overflow-wrap:anywhere}
 @media(max-width:1100px){.nl-shelf-main{width:100%}.nl-shelf-actions-layout{width:100%}.nl-shelf-seeds{margin-left:0}}
-@media(max-width:820px){.nl-shelf-actions-layout{grid-template-columns:1fr}.nl-shelf-aside{max-width:410px}.nl-shelf-seeds{flex:1 1 100%;justify-content:flex-start}}
+@media(max-width:820px){.nl-shelf-actions-layout{grid-template-columns:1fr}.nl-shelf-aside{width:100%;max-width:410px;margin-left:0}.nl-shelf-seeds{flex:1 1 100%;justify-content:flex-start}}
 @media(max-width:640px){.nl-shelf-seeds{width:100%;gap:12px;padding:11px}.nl-shelf-seed-items{gap:10px}.nl-shelf-seed{min-width:72px;gap:5px}.nl-shelf-seed img{width:38px;height:38px}.nl-shelf-seed strong{font-size:14px}body.novelight-page-favorites .nl-shelf-card{grid-template-columns:88px minmax(0,1fr);gap:11px}.nl-shelf-media{width:88px}}
