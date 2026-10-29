@@ -216,8 +216,15 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await expect(page.locator('#seedRemaining')).toHaveText('');
   const geometry = await page.evaluate(() => {
     const rect = (selector) => {
-      const box = globalThis.document.querySelector(selector).getBoundingClientRect();
-      return { left: box.left, right: box.right, top: box.top, height: box.height };
+      const box = globalThis.document
+        .querySelector(selector)
+        .getBoundingClientRect();
+      return {
+        left: box.left,
+        right: box.right,
+        top: box.top,
+        height: box.height
+      };
     };
     return {
       viewport: globalThis.innerWidth,
@@ -242,7 +249,9 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   } else {
     // Narrow viewports wrap the cards rather than overflow the page.
     expect(geometry.send.left).toBeGreaterThanOrEqual(geometry.row.left);
-    expect(geometry.inventory.right).toBeLessThanOrEqual(geometry.row.right + 2);
+    expect(geometry.inventory.right).toBeLessThanOrEqual(
+      geometry.row.right + 2
+    );
   }
   await expect(page.locator('.light-seed-public-summary img')).toBeVisible();
   await expect(page.locator('.light-seed-public-summary img')).toHaveJSProperty(
