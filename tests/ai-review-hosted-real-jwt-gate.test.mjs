@@ -7,7 +7,9 @@ import {
   APPROVAL_PREFIX,
   verifyAIHostedJwtAdmission
 } from '../.github/staging-ai-jwt/admission.mjs';
-import { assertVercelProjectProtection } from '../.github/staging-ai-jwt/probe.mjs';
+import {
+  assertVercelProjectProtection
+} from '../.github/staging-ai-jwt/probe.mjs';
 import { assertJwtGate } from '../.github/staging-ai-jwt/runner.mjs';
 
 const MAIN = 'a'.repeat(40);
@@ -263,7 +265,7 @@ test('Preview SSO must be checked with authenticated Vercel metadata', () => {
   assert.match(src, /entry\.target\[0\] !== 'preview'/u);
 });
 
-test('Vercel REST SSO requires exact protected scope without enabled flag', () => {
+test('Vercel REST SSO requires exact protected scope', () => {
   const project = {
     id: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
     name: 'novelrise',
@@ -286,10 +288,8 @@ test('Vercel REST SSO requires exact protected scope without enabled flag', () =
     { deploymentType: 'preview' },
     { deploymentType: 'all_except_custom_domains', enabled: false }
   ]) {
-    assert.throws(
-      () => assertVercelProjectProtection({ ...project, ssoProtection: protection }),
-      /DENIED/u
-    );
+    const unprotected = { ...project, ssoProtection: protection };
+    assert.throws(() => assertVercelProjectProtection(unprotected), /DENIED/u);
   }
   assert.throws(
     () => assertVercelProjectProtection({ ...project, id: 'prj_OTHER' }),
