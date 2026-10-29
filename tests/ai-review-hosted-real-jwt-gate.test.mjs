@@ -334,15 +334,21 @@ test('census telemetry identifies only fixed nonsecret mismatch fields', () => {
     ['rankEvents', 'CENSUS_FIXTURE_NOVEL_RANK_EVENTS_MISMATCH']
   ];
   for (const [field, label] of breakdown) {
-    assert.equal(classifyCensusMismatch('fixture', {
-      ...fixture,
-      [field]: 1,
-      sideEffects: 1
-    }), label);
-    assert.equal(classifyCensusMismatch('fixture', {
-      ...fixture,
-      [field]: undefined
-    }), label);
+    assert.equal(
+      classifyCensusMismatch('fixture', {
+        ...fixture,
+        [field]: 1,
+        sideEffects: 1
+      }),
+      label
+    );
+    assert.equal(
+      classifyCensusMismatch('fixture', {
+        ...fixture,
+        [field]: undefined
+      }),
+      label
+    );
   }
   assert.equal(classifyCensusMismatch('fixture', null), 'CENSUS_SHAPE_INVALID');
   assert.equal(
@@ -754,17 +760,23 @@ test('campaign migration and commit ancestry remain pinned', () => {
   assert.throws(() => verifyAIHostedJwtAdmission(alteredParent), /DENIED/u);
 });
 
-test('Staging side-effect categories are read-only and never log raw census', () => {
+test('Staging side-effect census logs no raw records', () => {
   const runner = readFileSync(
     new URL('../.github/staging-ai-jwt/runner.mjs', import.meta.url),
     'utf8'
   );
   for (const table of [
-    'founding_authors', 'beta_participants',
-    'scout_reward_campaign_entries', 'author_follow_events',
-    'novel_rank_state', 'novel_rank_events'
+    'founding_authors',
+    'beta_participants',
+    'scout_reward_campaign_entries',
+    'author_follow_events',
+    'novel_rank_state',
+    'novel_rank_events'
   ]) {
-    assert.match(runner, new RegExp('count\\(\\*\\) from public\\.' + table, 'u'));
+    assert.match(
+      runner,
+      new RegExp('count\\(\\*\\) from public\\.' + table, 'u')
+    );
   }
   assert.match(runner, /traceStage\(mismatch\)/u);
   assert.doesNotMatch(runner, /console\.log\(out\)/u);
