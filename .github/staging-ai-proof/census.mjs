@@ -79,8 +79,8 @@ select json_build_object(
       select c.relname as table_name, count(*) as trigger_count,
         md5(string_agg(
           t.tgname || ':' || pg_get_triggerdef(t.oid) ||
-          E'\\n' || pg_get_functiondef(t.tgfoid),
-          E'\\n' order by t.tgname
+          chr(10) || pg_get_functiondef(t.tgfoid),
+          chr(10) order by t.tgname
         )) as fingerprint
       from pg_trigger t
       join pg_class c on c.oid = t.tgrelid
