@@ -8,11 +8,11 @@ const EXPECTED_TRIGGERS = Object.freeze({
   episodes: [7, '3dc083fec719753df2e0da09f5dc0a30'],
   novels: [9, '161076c63bc71a6f174f9699fe7aa285'],
   profiles: [3, '99d2b001caf60357f38c90dbd58fc6bc'],
-  users: [6, '1a534e511428bd56bd1518ff8daad95a']
+  users: [6, 'e20ab7dc7aee7671b476502b62e61759']
 });
 
 const EXPECTED_FUNCTIONS = Object.freeze({
-  novelight_capture_scout_campaign_entry: 'fcf216ef3062983bea13ff4143b92f53',
+  novelight_capture_scout_campaign_entry: '4d52acf3a1d5f52db73456357a39d5fc',
   novelight_is_internal_participation_account: 'aa1d87b299d789535f9e06571979b7ba',
   novelight_sync_user_participation_qualifications: '504d6dac6c932d0ed919a1e703ede89c',
   sync_auth_user_participation_after_delete: '8e67c239903d18194cabf631015f7a14'
@@ -28,6 +28,10 @@ select json_build_object(
   'migrationCount', (
     select count(*) from supabase_migrations.schema_migrations
     where version = '20261028084410'
+  ),
+  'campaignExclusionMigrationCount', (
+    select count(*) from supabase_migrations.schema_migrations
+    where version = '20261029142000'
   ),
   'candidateCount', (
     select count(*) from public.novelight_ai_review_candidates
@@ -101,6 +105,7 @@ export function assertPrecheck(snapshot, projectRef = PROJECT) {
   if (!snapshot || typeof snapshot !== 'object' ||
       Array.isArray(snapshot)) deny('missing read-only census');
   if (snapshot.migrationCount !== 1 ||
+      snapshot.campaignExclusionMigrationCount !== 1 ||
       snapshot.candidateCount !== 0 ||
       snapshot.runtimeSafe !== true ||
       snapshot.reservedAuthCount !== 0 ||
