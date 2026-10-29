@@ -8,7 +8,10 @@ import {
   verifyAIHostedJwtAdmission
 } from '../.github/staging-ai-jwt/admission.mjs';
 import * as jwtProbe from '../.github/staging-ai-jwt/probe.mjs';
-import { assertJwtGate } from '../.github/staging-ai-jwt/runner.mjs';
+import {
+  assertJwtGate,
+  classifyCensusMismatch
+} from '../.github/staging-ai-jwt/runner.mjs';
 
 const MAIN = 'a'.repeat(40);
 const CANDIDATE = 'b'.repeat(40);
@@ -32,6 +35,10 @@ const BOOKSHELF_ADJUST_MAIN = '724afa3f9bd6ebf6d8210df9f75afac611031281';
 const LIGHT_SEED_RESTORE_MAIN = 'a8d14e9fc2efd6f9d4d648b0576fb8bd836685a0';
 const BOOKSHELF_LAYOUT_MAIN = '66e552a85331c07d78188d1dcf5f5ef5969c7c4a';
 const BOOKSHELF_LEFT_MAIN = '153841314405aa4331088ce6f2833e59d9a33aa0';
+const JWT_PROVENANCE_MAIN = 'a51f5fa479fe8f787ddb360bd8896e985433c45e';
+const BOOKSHELF_QUICK_ACTION_MAIN = '31ee9633cf3aec9890d1728aa0ac018782777806';
+const NOVEL_SEED_INVENTORY_MAIN = '841f2533deca76d809156942f1bf2536f60a069c';
+const BOOKSHELF_CENTER_MAIN = '730baa637ea4f7e56802820e4c1ef666588905c2';
 const FROZEN_BLOBS = new Map([
   [
     '.github/staging-ai-jwt/probe.mjs',
@@ -39,7 +46,7 @@ const FROZEN_BLOBS = new Map([
   ],
   [
     '.github/staging-ai-jwt/runner.mjs',
-    'fe7365eb46bff715bd84ed973e50b6e57b32d22b'
+    '3604bb86cd7dff8db38d9755566fcb9e35d82a21'
   ],
   [
     '.github/workflows/ai-review-hosted-staging-jwt-proof.yml',
@@ -63,7 +70,7 @@ const FROZEN_BLOBS = new Map([
   ['favorites.html', '171f0ae0025f09be21b8b85a9b74286dcbeb0cf6'],
   [
     'novelight-bookshelf-overview.css',
-    '63d93c65178caecc4a93627192f7b439b8717f58'
+    '6d018d8e0b70ab90a96ac66a7b7e1b86fa09d3fc'
   ],
   [
     'novelight-bookshelf-overview.js',
@@ -76,15 +83,15 @@ const FROZEN_BLOBS = new Map([
   ],
   ['api/seo/templates/novel.html', '80e9c90366516556a82dc2919077eb0fdd40dd7b'],
   ['novel.html', '80e9c90366516556a82dc2919077eb0fdd40dd7b'],
-  ['novelight-novel-poll.js', '9990adcbe5eb468807716fbcdb7af95582cbaf3a'],
+  ['novelight-novel-poll.js', '2d4e275f1460bc619f50d7648f239ed958ae1947'],
   ['tests/async-ui-state.test.mjs', '912577ea4610ba77f94057c2de16151e577f5e3d'],
   [
     'tests/e2e/specs/novel-owner-detail-render.spec.js',
-    'add9399c0c5299ee999ff67335faeaf7c86d7764'
+    'c77780df2cad0e1ca0ad541e11857885ba8e9c90'
   ],
   [
     'tests/light-seed-auto-tier.test.mjs',
-    '25419b983bd6806edad2be776bedfb57e87cd6a1'
+    '3db0b33cc4d18c504051c99b756d88b0eeca8115'
   ]
 ]);
 const OWNER_POLICY_FILES = [
@@ -133,10 +140,52 @@ test('JWT diagnostics expose only fixed checkpoint labels', () => {
     'FIXTURE_CENSUS',
     'JWT_HTTP',
     'CLEANUP',
-    'FINAL_CENSUS'
+    'FINAL_CENSUS',
+    'FINAL_COUNTS_PASS',
+    'FINAL_FK_CENSUS',
+    'FINAL_FK_CENSUS_PASS'
   ]);
   assert.match(src, /REAL_STAGING_JWT_SAFE_PHASE/u);
   assert.doesNotMatch(src, /console\.error\(error/u);
+});
+
+test('census telemetry identifies only fixed nonsecret mismatch fields', () => {
+  const fixture = {
+    user: 1,
+    identities: 1,
+    sessions: 0,
+    profile: 1,
+    novel: 1,
+    typo: 1,
+    sideEffects: 0
+  };
+  assert.equal(classifyCensusMismatch('fixture', fixture), null);
+  assert.equal(
+    classifyCensusMismatch('fixture', { ...fixture, typo: 0 }),
+    'CENSUS_FIXTURE_TYPO_MISMATCH'
+  );
+  assert.equal(
+    classifyCensusMismatch('fixture', { ...fixture, profile: 0 }),
+    'CENSUS_FIXTURE_PROFILE_MISMATCH'
+  );
+  assert.equal(
+    classifyCensusMismatch('fixture', { ...fixture, sideEffects: 1 }),
+    'CENSUS_FIXTURE_SIDE_EFFECTS_MISMATCH'
+  );
+  assert.equal(classifyCensusMismatch('fixture', null), 'CENSUS_SHAPE_INVALID');
+  assert.equal(
+    classifyCensusMismatch('final', {
+      user: 0,
+      identities: 0,
+      sessions: 0,
+      profile: 0,
+      novel: 0,
+      typo: 0,
+      sideEffects: 0,
+      other: 0
+    }),
+    null
+  );
 });
 
 test('Vercel attestation has bounded secret-free phase diagnostics', () => {
@@ -252,7 +301,7 @@ function sample() {
       status: 'ahead',
       behind_by: 0,
       base_commit: { sha: BASE },
-      total_commits: 14,
+      total_commits: 18,
       commits: [
         ...Array.from({ length: 6 }, () => ({ sha: 'c'.repeat(40) })),
         { sha: OWNER_POLICY_MAIN },
@@ -271,7 +320,20 @@ function sample() {
           parents: [{ sha: LIGHT_SEED_RESTORE_MAIN }]
         },
         { sha: BOOKSHELF_LEFT_MAIN, parents: [{ sha: BOOKSHELF_LAYOUT_MAIN }] },
-        { sha: MAIN, parents: [{ sha: BOOKSHELF_LEFT_MAIN }] }
+        { sha: JWT_PROVENANCE_MAIN, parents: [{ sha: BOOKSHELF_LEFT_MAIN }] },
+        {
+          sha: BOOKSHELF_QUICK_ACTION_MAIN,
+          parents: [{ sha: JWT_PROVENANCE_MAIN }]
+        },
+        {
+          sha: NOVEL_SEED_INVENTORY_MAIN,
+          parents: [{ sha: BOOKSHELF_QUICK_ACTION_MAIN }]
+        },
+        {
+          sha: BOOKSHELF_CENTER_MAIN,
+          parents: [{ sha: NOVEL_SEED_INVENTORY_MAIN }]
+        },
+        { sha: MAIN, parents: [{ sha: BOOKSHELF_CENTER_MAIN }] }
       ],
       files: [
         ...FILES.map((filename) => ({
