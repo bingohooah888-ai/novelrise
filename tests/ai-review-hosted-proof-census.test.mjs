@@ -79,8 +79,10 @@ for (const field of [
 ]) {
   test('census rejects nonempty or absent ' + field, () => {
     const entry = snapshot();
-    entry[field] = ['migrationCount', 'campaignExclusionMigrationCount'].includes(field)
-      ? 0 : 1;
+    entry[field] = 0;
+    if (field === 'candidateCount' || field.startsWith('reserved')) {
+      entry[field] = 1;
+    }
     assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
   });
 }
@@ -121,10 +123,17 @@ test('census refuses omitted function fingerprints', () => {
 
 test('census refuses old campaign function and Auth trigger fingerprints', () => {
   const oldFunction = snapshot();
-  oldFunction.functionFingerprints[0].fingerprint = 'fcf216ef3062983bea13ff4143b92f53';
-  assert.throws(() => assertPrecheck(oldFunction), /AI_HOSTED_RACE_CENSUS_DENIED/u);
+  oldFunction.functionFingerprints[0].fingerprint =
+    'fcf216ef3062983bea13ff4143b92f53';
+  assert.throws(
+    () => assertPrecheck(oldFunction),
+    /AI_HOSTED_RACE_CENSUS_DENIED/u
+  );
   const oldTrigger = snapshot();
-  oldTrigger.triggerFingerprints.find((row) => row.table === 'users').fingerprint =
+  oldTrigger.triggerFingerprints[3].fingerprint =
     '1a534e511428bd56bd1518ff8daad95a';
-  assert.throws(() => assertPrecheck(oldTrigger), /AI_HOSTED_RACE_CENSUS_DENIED/u);
+  assert.throws(
+    () => assertPrecheck(oldTrigger),
+    /AI_HOSTED_RACE_CENSUS_DENIED/u
+  );
 });

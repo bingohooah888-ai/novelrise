@@ -17,6 +17,7 @@ const MAIN = 'a'.repeat(40);
 const CANDIDATE = 'b'.repeat(40);
 const OWNER = 'bingohooah888-ai';
 const BASE = 'b725b796f5a4cd51b5181b75e247bfc0502e9568';
+const OWNER_POLICY_MAIN = 'c1e3718ee209e91a804cfb879f2ba954fc9a27e2';
 const FROZEN_MAIN_COMMITS = Object.freeze([
   '964823fb9d8ecda77098598b58e7259243545a26',
   '78a59b87dd448f4e4a88e37c50b7abdb46e5fb0b',
@@ -47,48 +48,216 @@ const FROZEN_MAIN_COMMITS = Object.freeze([
   'a46873abfd2e338954c458adb4dfdbcacf66a873'
 ]);
 const FROZEN_MAIN_FILES = Object.freeze([
-  { filename: ".github/staging-ai-jwt/admission.mjs", status: "added", sha: "f68fa4dc5a31c9d8775763bb74c58f772d93e974" },
-  { filename: ".github/staging-ai-jwt/probe.mjs", status: "added", sha: "011a154cbe84b8f3c5b68befeacc886624fed094" },
-  { filename: ".github/staging-ai-jwt/runner.mjs", status: "added", sha: "3604bb86cd7dff8db38d9755566fcb9e35d82a21" },
-  { filename: ".github/staging-ai-proof/census.mjs", status: "modified", sha: "4e6f0e8bef0ae1a61495cbd90a7fae9410ff4d02" },
-  { filename: ".github/workflows/ai-review-hosted-staging-jwt-proof.yml", status: "added", sha: "5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2" },
-  { filename: ".github/workflows/staging-scout-campaign-exclusion-once.yml", status: "added", sha: "6e81d6683227f56de3fc2c500d34c316c6df06b6" },
-  { filename: "AGENTS.md", status: "modified", sha: "1c3b95410de0010015fada83864b60db4c175f21" },
-  { filename: "api/seo/templates/novel.html", status: "modified", sha: "8321c327a25487188db51b081f76efa7676be105" },
-  { filename: "curation-lists.html", status: "modified", sha: "aee060d076cecb33b31d2ec0a40eafda7dd8ff8d" },
-  { filename: "curation.html", status: "modified", sha: "5ae46e6fd02a5cd139d8030b0d00b58df45b76c4" },
-  { filename: "docs/NOVELIGHT-MASTER.md", status: "modified", sha: "91d11fa367b7de64990b13397b13d4bb6e3c0230" },
-  { filename: "docs/development-workflow.md", status: "modified", sha: "b8d95f44f4f3deccfde9fe4673a4ae77ba20f324" },
-  { filename: "favorites.html", status: "modified", sha: "01ee6f489c8c1f3f3dc0f08026297eafa41eced5" },
-  { filename: "novel.html", status: "modified", sha: "8321c327a25487188db51b081f76efa7676be105" },
-  { filename: "novelight-bookshelf-overview.css", status: "added", sha: "aaecefa3946c7d72359a3f3e5928d089e286c741" },
-  { filename: "novelight-bookshelf-overview.js", status: "added", sha: "71f182d89081c1aa0b9b8b3bff2defe3891933d4" },
-  { filename: "novelight-bookshelf.js", status: "modified", sha: "eb49a7c530d5d485ff98d681f75f180129b2802e" },
-  { filename: "novelight-help.js", status: "modified", sha: "9200f513ad24a33003022d57df43cee3cb80081e" },
-  { filename: "novelight-novel-detail.js", status: "modified", sha: "736b6f8e4aaec23cb717810778c7a3b1246f84fd" },
-  { filename: "novelight-novel-poll.js", status: "modified", sha: "d6c25359c10ee01eab9b0ed4e7a2d678aeee5fe6" },
-  { filename: "novelight-scout-record.css", status: "modified", sha: "594e578deec5d5c732ca4cd9729fbeb13dc55c7c" },
-  { filename: "novelight-thumbnail-runtime.js", status: "modified", sha: "81d5e3f101348f9bccfede97e9491d4f50bf792d" },
-  { filename: "scout-record.html", status: "modified", sha: "d20457889eb88bcfb96d735a98b62878f8caf3fc" },
-  { filename: "scripts/compose-scout-campaign-staging.mjs", status: "added", sha: "742298bd5692d0562bf1a40d27ed7d535ddff6de" },
-  { filename: "scripts/run-rls-integration.sh", status: "modified", sha: "59160bfd5673f8011f6a98cb1c1f46f0d4c3f47f" },
-  { filename: "supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_postcheck.sql", status: "added", sha: "0b54e2538761cda7a07e32908d71b200464eee97" },
-  { filename: "supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_precheck.sql", status: "added", sha: "601f7a5e11d76f06921e845fe460a6f455971b54" },
-  { filename: "supabase/migrations/20261029142000_exclude_internal_scout_campaign_entries.sql", status: "added", sha: "d887dc40233ef727bd74f8a6c92ea5ea252ea957" },
-  { filename: "supabase/rollback/20261029142000_exclude_internal_scout_campaign_entries_rollback.sql", status: "added", sha: "fa00bc61da615462fa3640d16f13eebe700e2359" },
-  { filename: "tests/ai-review-hosted-proof-census.test.mjs", status: "modified", sha: "0a2e14465d22f7e011e6980b510000c9e0df47c0" },
-  { filename: "tests/ai-review-hosted-real-jwt-gate.test.mjs", status: "added", sha: "24fe329ccddded0fbe35fbb78e7c755631309c6f" },
-  { filename: "tests/async-ui-state.test.mjs", status: "modified", sha: "3ef05664be0ce1a8364efc2252cae432270ea1df" },
-  { filename: "tests/chapter41-beta-scout-record-preview.test.mjs", status: "modified", sha: "5fe4f555ad2a5171d5878742391294292b9a930b" },
-  { filename: "tests/e2e/specs/novel-owner-detail-render.spec.js", status: "modified", sha: "c490625a69d9cb30c734db2b49b4ac13ac994a0e" },
-  { filename: "tests/light-seed-auto-tier.test.mjs", status: "modified", sha: "845f5611ce243aafa3cd5d62ff0da68d7f264e9f" },
-  { filename: "tests/light-seed-inventory-received-ui.test.mjs", status: "modified", sha: "bc49d830b2184a80e9d1856852d173f81f73d757" },
-  { filename: "tests/master-integrity.test.js", status: "modified", sha: "faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832" },
-  { filename: "tests/reader-curation-lists-contract.test.mjs", status: "modified", sha: "157aed6933651d5e0ad4ea7d6ea4015766339e0c" },
-  { filename: "tests/rls/scout-campaign-internal-exclusion.sql", status: "added", sha: "f305b0679cb62a2bab1e1678bc9ebc98ffaf2a2b" },
-  { filename: "tests/scout-campaign-internal-exclusion.test.mjs", status: "added", sha: "2f0df253b1c90024115a1e16ae13b995b08304fd" },
-  { filename: "tests/scout-campaign-staging-transaction.test.mjs", status: "added", sha: "10a4227c01b8a6076d55269e20c9ad2cbdfb8e1f" },
-  { filename: "tests/work-navigation-character-surfaces.test.mjs", status: "modified", sha: "b0f1ade0cd74c1121cfaa9601a668809efccb7d2" }
+  {
+    filename: '.github/staging-ai-jwt/admission.mjs',
+    status: 'added',
+    sha: 'f68fa4dc5a31c9d8775763bb74c58f772d93e974'
+  },
+  {
+    filename: '.github/staging-ai-jwt/probe.mjs',
+    status: 'added',
+    sha: '011a154cbe84b8f3c5b68befeacc886624fed094'
+  },
+  {
+    filename: '.github/staging-ai-jwt/runner.mjs',
+    status: 'added',
+    sha: '3604bb86cd7dff8db38d9755566fcb9e35d82a21'
+  },
+  {
+    filename: '.github/staging-ai-proof/census.mjs',
+    status: 'modified',
+    sha: '4e6f0e8bef0ae1a61495cbd90a7fae9410ff4d02'
+  },
+  {
+    filename: '.github/workflows/ai-review-hosted-staging-jwt-proof.yml',
+    status: 'added',
+    sha: '5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2'
+  },
+  {
+    filename: '.github/workflows/staging-scout-campaign-exclusion-once.yml',
+    status: 'added',
+    sha: '6e81d6683227f56de3fc2c500d34c316c6df06b6'
+  },
+  {
+    filename: 'AGENTS.md',
+    status: 'modified',
+    sha: '1c3b95410de0010015fada83864b60db4c175f21'
+  },
+  {
+    filename: 'api/seo/templates/novel.html',
+    status: 'modified',
+    sha: '8321c327a25487188db51b081f76efa7676be105'
+  },
+  {
+    filename: 'curation-lists.html',
+    status: 'modified',
+    sha: 'aee060d076cecb33b31d2ec0a40eafda7dd8ff8d'
+  },
+  {
+    filename: 'curation.html',
+    status: 'modified',
+    sha: '5ae46e6fd02a5cd139d8030b0d00b58df45b76c4'
+  },
+  {
+    filename: 'docs/NOVELIGHT-MASTER.md',
+    status: 'modified',
+    sha: '91d11fa367b7de64990b13397b13d4bb6e3c0230'
+  },
+  {
+    filename: 'docs/development-workflow.md',
+    status: 'modified',
+    sha: 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'
+  },
+  {
+    filename: 'favorites.html',
+    status: 'modified',
+    sha: '01ee6f489c8c1f3f3dc0f08026297eafa41eced5'
+  },
+  {
+    filename: 'novel.html',
+    status: 'modified',
+    sha: '8321c327a25487188db51b081f76efa7676be105'
+  },
+  {
+    filename: 'novelight-bookshelf-overview.css',
+    status: 'added',
+    sha: 'aaecefa3946c7d72359a3f3e5928d089e286c741'
+  },
+  {
+    filename: 'novelight-bookshelf-overview.js',
+    status: 'added',
+    sha: '71f182d89081c1aa0b9b8b3bff2defe3891933d4'
+  },
+  {
+    filename: 'novelight-bookshelf.js',
+    status: 'modified',
+    sha: 'eb49a7c530d5d485ff98d681f75f180129b2802e'
+  },
+  {
+    filename: 'novelight-help.js',
+    status: 'modified',
+    sha: '9200f513ad24a33003022d57df43cee3cb80081e'
+  },
+  {
+    filename: 'novelight-novel-detail.js',
+    status: 'modified',
+    sha: '736b6f8e4aaec23cb717810778c7a3b1246f84fd'
+  },
+  {
+    filename: 'novelight-novel-poll.js',
+    status: 'modified',
+    sha: 'd6c25359c10ee01eab9b0ed4e7a2d678aeee5fe6'
+  },
+  {
+    filename: 'novelight-scout-record.css',
+    status: 'modified',
+    sha: '594e578deec5d5c732ca4cd9729fbeb13dc55c7c'
+  },
+  {
+    filename: 'novelight-thumbnail-runtime.js',
+    status: 'modified',
+    sha: '81d5e3f101348f9bccfede97e9491d4f50bf792d'
+  },
+  {
+    filename: 'scout-record.html',
+    status: 'modified',
+    sha: 'd20457889eb88bcfb96d735a98b62878f8caf3fc'
+  },
+  {
+    filename: 'scripts/compose-scout-campaign-staging.mjs',
+    status: 'added',
+    sha: '742298bd5692d0562bf1a40d27ed7d535ddff6de'
+  },
+  {
+    filename: 'scripts/run-rls-integration.sh',
+    status: 'modified',
+    sha: '59160bfd5673f8011f6a98cb1c1f46f0d4c3f47f'
+  },
+  {
+    filename: 'supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_postcheck.sql',
+    status: 'added',
+    sha: '0b54e2538761cda7a07e32908d71b200464eee97'
+  },
+  {
+    filename: 'supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_precheck.sql',
+    status: 'added',
+    sha: '601f7a5e11d76f06921e845fe460a6f455971b54'
+  },
+  {
+    filename: 'supabase/migrations/20261029142000_exclude_internal_scout_campaign_entries.sql',
+    status: 'added',
+    sha: 'd887dc40233ef727bd74f8a6c92ea5ea252ea957'
+  },
+  {
+    filename: 'supabase/rollback/20261029142000_exclude_internal_scout_campaign_entries_rollback.sql',
+    status: 'added',
+    sha: 'fa00bc61da615462fa3640d16f13eebe700e2359'
+  },
+  {
+    filename: 'tests/ai-review-hosted-proof-census.test.mjs',
+    status: 'modified',
+    sha: '0a2e14465d22f7e011e6980b510000c9e0df47c0'
+  },
+  {
+    filename: 'tests/ai-review-hosted-real-jwt-gate.test.mjs',
+    status: 'added',
+    sha: '24fe329ccddded0fbe35fbb78e7c755631309c6f'
+  },
+  {
+    filename: 'tests/async-ui-state.test.mjs',
+    status: 'modified',
+    sha: '3ef05664be0ce1a8364efc2252cae432270ea1df'
+  },
+  {
+    filename: 'tests/chapter41-beta-scout-record-preview.test.mjs',
+    status: 'modified',
+    sha: '5fe4f555ad2a5171d5878742391294292b9a930b'
+  },
+  {
+    filename: 'tests/e2e/specs/novel-owner-detail-render.spec.js',
+    status: 'modified',
+    sha: 'c490625a69d9cb30c734db2b49b4ac13ac994a0e'
+  },
+  {
+    filename: 'tests/light-seed-auto-tier.test.mjs',
+    status: 'modified',
+    sha: '845f5611ce243aafa3cd5d62ff0da68d7f264e9f'
+  },
+  {
+    filename: 'tests/light-seed-inventory-received-ui.test.mjs',
+    status: 'modified',
+    sha: 'bc49d830b2184a80e9d1856852d173f81f73d757'
+  },
+  {
+    filename: 'tests/master-integrity.test.js',
+    status: 'modified',
+    sha: 'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'
+  },
+  {
+    filename: 'tests/reader-curation-lists-contract.test.mjs',
+    status: 'modified',
+    sha: '157aed6933651d5e0ad4ea7d6ea4015766339e0c'
+  },
+  {
+    filename: 'tests/rls/scout-campaign-internal-exclusion.sql',
+    status: 'added',
+    sha: 'f305b0679cb62a2bab1e1678bc9ebc98ffaf2a2b'
+  },
+  {
+    filename: 'tests/scout-campaign-internal-exclusion.test.mjs',
+    status: 'added',
+    sha: '2f0df253b1c90024115a1e16ae13b995b08304fd'
+  },
+  {
+    filename: 'tests/scout-campaign-staging-transaction.test.mjs',
+    status: 'added',
+    sha: '10a4227c01b8a6076d55269e20c9ad2cbdfb8e1f'
+  },
+  {
+    filename: 'tests/work-navigation-character-surfaces.test.mjs',
+    status: 'modified',
+    sha: 'b0f1ade0cd74c1121cfaa9601a668809efccb7d2'
+  }
 ]);
 
 test('JWT diagnostics expose only fixed checkpoint labels', () => {
@@ -276,7 +445,8 @@ function sample() {
       total_commits: FROZEN_MAIN_COMMITS.length + 1,
       commits: [
         ...FROZEN_MAIN_COMMITS.map((sha, i) => ({
-          sha, parents: [{ sha: i === 0 ? BASE : FROZEN_MAIN_COMMITS[i - 1] }]
+          sha,
+          parents: [{ sha: i === 0 ? BASE : FROZEN_MAIN_COMMITS[i - 1] }]
         })),
         { sha: MAIN, parents: [{ sha: FROZEN_MAIN_COMMITS.at(-1) }] }
       ],
@@ -539,10 +709,11 @@ test('workflow requires OWNER and a single-use Staging ledger', () => {
 
 test('campaign migration blob and intermediate commit ancestry remain pinned', () => {
   const altered = sample();
-  altered.mainLineage.files.find((f) => f.filename ===
-    'supabase/migrations/20261029142000_exclude_internal_scout_campaign_entries.sql'
+  altered.mainLineage.files.find((f) =>
+    f.filename.includes('20261029142000_')
   ).sha = 'tampered';
   assert.throws(() => verifyAIHostedJwtAdmission(altered), /DENIED/u);
+
   const alteredParent = sample();
   alteredParent.mainLineage.commits[25].parents[0].sha = '0'.repeat(40);
   assert.throws(() => verifyAIHostedJwtAdmission(alteredParent), /DENIED/u);
