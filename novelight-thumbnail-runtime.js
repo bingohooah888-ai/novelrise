@@ -92,6 +92,7 @@
       'body.novelight-page-ranking a.card[href*="novel.html?id="]',
       'a.work-card[href*="novel.html?id="]',
       'a.book-card[href*="novel.html?id="]',
+      'a.nl-shelf-card[href*="novel.html?id="]',
       'a.community-link[href*="novel.html?id="], a.community-link[data-community-work]',
       'a.curation-work[href*="novel.html?id="]',
       'a.zone-card[href*="novel.html?id="]',
