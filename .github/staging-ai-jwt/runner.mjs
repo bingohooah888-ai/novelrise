@@ -14,6 +14,8 @@ const NOVEL=998891003;
 const STAGING='https://wmlzjgvxgoyrovdhbqbg.supabase.co';
 const STAGE_REF='wmlzjgvxgoyrovdhbqbg';
 function fail(){throw new Error('STAGING_REAL_JWT_DENIED');}
+// Fixed phase labels only. Never log HTTP bodies, tokens, SQL, or error details.
+function traceStage(label){process.stdout.write('REAL_STAGING_JWT_SAFE_PHASE: '+label+'\n');}
 function command(name,args){
   return execFileSync(name,args,{encoding:'utf8',timeout:25000,
     maxBuffer:1048576,stdio:['ignore','pipe','pipe']}).trim();
@@ -79,7 +81,10 @@ async function main(){
     command('gh',['api','repos/bingohooah888-ai/novelrise/pulls/2601','--jq','.head.sha'])!==e.APPROVED_CANDIDATE_SHA) fail();
   const db=readFileSync(e.STAGING_DATABASE_URL_FILE,'utf8').trim();
   verifyStagingMigrationTarget({STAGING_SUPABASE_URL:STAGING,STAGING_DATABASE_URL:db,PGSSLMODE:'require'});
-  audit(db,'initial');fkResidue(db);
+  traceStage('INITIAL_CENSUS');
+  audit(db,'initial');
+  traceStage('FK_CENSUS');
+  fkResidue(db);
   const proofEnv={...e,NOVELIGHT_HOSTED_JWT_ADMITTED:'1',
     STAGING_PROJECT_REF:STAGE_REF,
     NOVELIGHT_HOSTED_TEST_USER_ID:ID,NOVELIGHT_HOSTED_TEST_USER_EMAIL:EMAIL,
@@ -89,13 +94,16 @@ async function main(){
     NOVELIGHT_HOSTED_PREVIEW_URL:'https://'+e.APPROVED_PREVIEW_HOST,
     NOVELIGHT_HOSTED_TEST_USER_PASSWORD:'preflight-placeholder-password'};
   const config=validateHostedJwtProofConfig(proofEnv);
+  traceStage('VERCEL_ATTEST');
   await verifyHostedPreviewViaVercel(config,proofEnv);
   const bypass={'x-vercel-protection-bypass':e.VERCEL_AUTOMATION_BYPASS_SECRET};
   const fetchChecked=async(path)=>{
     const r=await fetch(config.preview+path,{headers:bypass,redirect:'manual',signal:AbortSignal.timeout(12000)});
     if(r.status!==200) fail();return r.json();
   };
+  traceStage('PREVIEW_FACTS');
   const facts=await fetchChecked('/api/staging-environment-facts');
+  traceStage('PREVIEW_BROWSER_CONFIG');
   const browser=await fetchChecked('/api/staging-browser-config');
   const fingerprint=createHash('sha256').update(e.STAGING_SUPABASE_PUBLISHABLE_KEY).digest('hex');
   if(facts.vercelEnv!=='preview'||facts.commitSha!==config.revision||
@@ -106,26 +114,32 @@ async function main(){
   const admin=createClient(STAGING,e.STAGING_SUPABASE_SECRET_KEY,
     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
   // Proves admin key works at the exact staging project, without exposing user data.
+  traceStage('AUTH_ADMIN_READ');
   const read=await admin.auth.admin.listUsers({page:1,perPage:1});
   if(read.error||!Array.isArray(read.data?.users)) fail();
   let created=null,error=null;
   try{
     const password=randomBytes(32).toString('hex');
+    traceStage('AUTH_CREATE');
     const result=await admin.auth.admin.createUser({
       id:ID,email:EMAIL,password,email_confirm:true,app_metadata:{internal_e2e:true}
     });
     created=result.data?.user||null;
     if(result.error||!created||created.id!==ID||created.email!==EMAIL) fail();
+    traceStage('NOVEL_CREATE');
     sql(db,"begin; set local statement_timeout='12s'; set local lock_timeout='3s';"+
       "insert into public.novels(id,user_id,title,status) values ("+NOVEL+",'"+ID+"','Synthetic JWT read test','draft'); commit;");
+    traceStage('FIXTURE_CENSUS');
     audit(db,'fixture');
     proofEnv.NOVELIGHT_HOSTED_TEST_USER_PASSWORD=password;
+    traceStage('JWT_HTTP');
     await probeRealHostedJwt(config, proofEnv, async (jwt) => {
       const result = await admin.auth.admin.signOut(jwt, 'global');
       if (result.error) fail();
     });
   }catch{error=new Error('JWT_PROOF_FAILED');}
   finally{
+    traceStage('CLEANUP');
     let cleanupFailed=false;
     if(created){
       // Strictly scoped novel deletion, then official Auth hard-delete (revokes
@@ -139,6 +153,7 @@ async function main(){
           if(deleted.error)cleanupFailed=true;}}
       catch{cleanupFailed=true;}
     }
+    traceStage('FINAL_CENSUS');
     try{audit(db,'final',created?.id||ID);fkResidue(db);}
     catch{cleanupFailed=true;}
     if(cleanupFailed)error=new Error('JWT_CLEANUP_RESIDUE_FAILED');
