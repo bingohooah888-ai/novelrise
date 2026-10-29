@@ -35,6 +35,7 @@ test('internal E2E guard preserves campaign eligibility', () => {
     /revoke all on function public\.novelight_capture_scout_campaign_entry\(\)/u
   );
   assert.match(migration, /pg_catalog\.to_regprocedure/u);
+  assert.match(migration, /fcf216ef3062983bea13ff4143b92f53/u);
   assert.doesNotMatch(
     migration,
     /drop trigger|delete from|update public\.scout_reward_campaigns/iu
