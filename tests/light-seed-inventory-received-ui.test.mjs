@@ -5,6 +5,7 @@ import test from 'node:test';
 const scout = await readFile('scout-record.html', 'utf8');
 const scoutJs = await readFile('novelight-scout-record.js', 'utf8');
 const scoutCss = await readFile('novelight-scout-record.css', 'utf8');
+const shelfCss = await readFile('novelight-bookshelf-overview.css', 'utf8');
 const novel = await readFile('novel.html', 'utf8');
 const migrationPath =
   'supabase/migrations/20260924214000_light_seed_inventory_received_summary.sql';
@@ -51,6 +52,12 @@ test('SCOUT RECORD shows held typed LIGHT SEED inventory', () => {
   contains(scoutJs, "rpc('novelight_light_seed_inventory')");
   contains(scoutJs, 'function renderSeedInventory(inventory)');
   contains(scoutJs, 'seedInventoryLegacyNote');
+});
+
+test('bookshelf LIGHT SEED totals and labels use NOVELIGHT Mincho', () => {
+  contains(shelfCss, '.nl-shelf-seeds{');
+  contains(shelfCss, 'font-family:var(--novelight-brand-display-font)');
+  contains(shelfCss, 'font:900 19px/1.2 var(--novelight-brand-display-font)');
 });
 
 test('work owners see received typed LIGHT SEED totals', () => {
