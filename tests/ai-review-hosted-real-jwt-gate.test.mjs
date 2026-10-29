@@ -25,6 +25,24 @@ const REPAIRED_CENSUS_FILES = [
   '.github/staging-ai-proof/census.mjs',
   'tests/ai-review-hosted-proof-census.test.mjs'
 ];
+const OWNER_POLICY_MAIN = 'c1e3718ee209e91a804cfb879f2ba954fc9a27e2';
+const FROZEN_BLOBS = new Map([
+  ['.github/staging-ai-jwt/probe.mjs', '011a154cbe84b8f3c5b68befeacc886624fed094'],
+  ['.github/staging-ai-jwt/runner.mjs', 'fe7365eb46bff715bd84ed973e50b6e57b32d22b'],
+  ['.github/workflows/ai-review-hosted-staging-jwt-proof.yml', '5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2'],
+  ['.github/staging-ai-proof/census.mjs', 'a4b639ac7496093f615cbfdadbd6c2e0be80df95'],
+  ['tests/ai-review-hosted-proof-census.test.mjs', '10e3c2307c608c21fbbbd586dd0a5775f2cdb7d7'],
+  ['AGENTS.md', '1c3b95410de0010015fada83864b60db4c175f21'],
+  ['docs/NOVELIGHT-MASTER.md', '91d11fa367b7de64990b13397b13d4bb6e3c0230'],
+  ['docs/development-workflow.md', 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'],
+  ['tests/master-integrity.test.js', 'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832']
+]);
+const OWNER_POLICY_FILES = [
+  'AGENTS.md',
+  'docs/NOVELIGHT-MASTER.md',
+  'docs/development-workflow.md',
+  'tests/master-integrity.test.js'
+];
 
 test('JWT diagnostics expose only fixed checkpoint labels', () => {
   const src = readFileSync(
@@ -166,13 +184,27 @@ function sample() {
       status: 'ahead',
       behind_by: 0,
       base_commit: { sha: BASE },
-      total_commits: 1,
-      commits: [{ sha: MAIN }],
+      total_commits: 8,
+      commits: [
+        ...Array.from({ length: 6 }, () => ({ sha: 'c'.repeat(40) })),
+        { sha: OWNER_POLICY_MAIN },
+        { sha: MAIN, parents: [{ sha: OWNER_POLICY_MAIN }] }
+      ],
       files: [
-        ...FILES.map((filename) => ({ filename, status: 'added' })),
+        ...FILES.map((filename) => ({
+          filename,
+          status: 'added',
+          sha: FROZEN_BLOBS.get(filename) ?? 'reviewed-gate-repair'
+        })),
+        ...OWNER_POLICY_FILES.map((filename) => ({
+          filename,
+          status: 'modified',
+          sha: FROZEN_BLOBS.get(filename)
+        })),
         ...REPAIRED_CENSUS_FILES.map((filename) => ({
           filename,
-          status: 'modified'
+          status: 'modified',
+          sha: FROZEN_BLOBS.get(filename)
         }))
       ]
     },
@@ -236,6 +268,36 @@ test('reject a missing trusted runner main promotion', () => {
   const input = sample();
   input.mainLineage.status = 'identical';
   assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+});
+
+test('stale Draft base SHA is safe only when live main is verified', () => {
+  const input = sample();
+  input.pr.base.sha = 'd'.repeat(40);
+  assert.equal(verifyAIHostedJwtAdmission(input).mainSha, MAIN);
+  input.main.object.sha = 'd'.repeat(40);
+  assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+  input.main.object.sha = MAIN;
+  input.pr.base.ref = 'untrusted';
+  assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+});
+
+test('unreviewed main commits and changed protected blobs stay blocked', () => {
+  const extraCommit = sample();
+  extraCommit.mainLineage.total_commits += 1;
+  extraCommit.mainLineage.commits.push({ sha: MAIN });
+  assert.throws(() => verifyAIHostedJwtAdmission(extraCommit), /DENIED/u);
+
+  const alteredDocs = sample();
+  alteredDocs.mainLineage.files.find(
+    (file) => file.filename === 'docs/NOVELIGHT-MASTER.md'
+  ).sha = 'unreviewed';
+  assert.throws(() => verifyAIHostedJwtAdmission(alteredDocs), /DENIED/u);
+
+  const alteredRunner = sample();
+  alteredRunner.mainLineage.files.find(
+    (file) => file.filename === '.github/staging-ai-jwt/runner.mjs'
+  ).sha = 'unreviewed';
+  assert.throws(() => verifyAIHostedJwtAdmission(alteredRunner), /DENIED/u);
 });
 
 test('runner requires dedicated Staging approval and secrets', () => {
