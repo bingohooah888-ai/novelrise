@@ -9,7 +9,13 @@ async function mountComments(page, { session = null } = {}) {
       globalThis.__COMMENT_CALLS__ = calls;
 
       const client = {
-        storage: { from: () => ({ getPublicUrl: () => ({ data: { publicUrl: '/assets/scout-badges/reader_read_005.png' } }) }) },
+        storage: {
+          from: () => ({
+            getPublicUrl: () => ({
+              data: { publicUrl: '/assets/scout-badges/reader_read_005.png' }
+            })
+          })
+        },
         rpc: async (name, args) => {
           calls.push({ name, args });
 
@@ -26,7 +32,8 @@ async function mountComments(page, { session = null } = {}) {
                 {
                   id: 'spoiler-1',
                   user_id: '11111111-1111-4111-8111-111111111111',
-                  avatar_path: '11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.webp',
+                  avatar_path:
+                    '11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.webp',
                   scout_level: 10,
                   equipped_badge_id: 'reader_read_005',
                   equipped_badge_name: 'PAGEWALKER',
@@ -156,25 +163,45 @@ test('composer submits the reader-selected spoiler flag through the B #15 RPC', 
   });
 });
 
-test('public comment identity is displayed above the pen name', async ({ page }) => {
+test('public comment identity is displayed above the pen name', async ({
+  page
+}) => {
   await mountComments(page);
-  const comment = page.locator('.novelight-comment').filter({ hasText: 'ネタバレ読者' });
+  const comment = page.locator('.novelight-comment').filter({
+    hasText: 'ネタバレ読者'
+  });
   const profile = comment.locator('.novelight-comment-profile');
-  await expect(profile.locator('.novelight-comment-avatar-image')).toHaveAttribute(
-    'src',
-    '/assets/scout-badges/reader_read_005.png'
+  await expect(
+    profile.locator('.novelight-comment-avatar-image')
+  ).toHaveAttribute('src', '/assets/scout-badges/reader_read_005.png');
+  await expect(profile.locator('.novelight-comment-level')).toHaveText(
+    'SCOUT Lv.10'
   );
-  await expect(profile.locator('.novelight-comment-level')).toHaveText('SCOUT Lv.10');
-  await expect(profile.locator('.novelight-comment-equipped-name')).toHaveText('PAGEWALKER');
-  await expect(profile.locator('.novelight-comment-equipped-image img')).toHaveAttribute(
-    'src',
-    'assets/scout-badges/reader_read_005.png'
+  await expect(profile.locator('.novelight-comment-equipped-name')).toHaveText(
+    'PAGEWALKER'
   );
-  expect(await profile.evaluate((element) => {
-    return Boolean(element.compareDocumentPosition(element.parentElement.querySelector('.novelight-comment-identity')) & Node.DOCUMENT_POSITION_FOLLOWING);
-  })).toBe(true);
-  const unconfigured = page.locator('.novelight-comment').filter({ hasText: '通常読者' });
-  await expect(unconfigured.locator('.novelight-comment-avatar-fallback')).toHaveText('通');
+  await expect(
+    profile.locator('.novelight-comment-equipped-image img')
+  ).toHaveAttribute('src', 'assets/scout-badges/reader_read_005.png');
+
+  expect(
+    await profile.evaluate((element) => {
+      return Boolean(
+        element.compareDocumentPosition(
+          element.parentElement.querySelector('.novelight-comment-identity')
+        ) & Node.DOCUMENT_POSITION_FOLLOWING
+      );
+    })
+  ).toBe(true);
+
+  const unconfigured = page.locator('.novelight-comment').filter({
+    hasText: '通常読者'
+  });
+  await expect(
+    unconfigured.locator('.novelight-comment-avatar-fallback')
+  ).toHaveText('通');
   await expect(unconfigured.locator('.novelight-comment-level')).toHaveCount(0);
-  await expect(unconfigured.locator('.novelight-comment-equipped')).toHaveCount(0);
+  await expect(unconfigured.locator('.novelight-comment-equipped')).toHaveCount(
+    0
+  );
 });
