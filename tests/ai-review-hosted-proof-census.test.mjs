@@ -121,7 +121,7 @@ test('census refuses omitted function fingerprints', () => {
   assert.throws(() => assertPrecheck(entry), /AI_HOSTED_RACE_CENSUS_DENIED/u);
 });
 
-test('census refuses old campaign function and Auth trigger fingerprints', () => {
+test('census rejects old Auth and campaign fingerprints', () => {
   const oldFunction = snapshot();
   oldFunction.functionFingerprints[0].fingerprint =
     'fcf216ef3062983bea13ff4143b92f53';

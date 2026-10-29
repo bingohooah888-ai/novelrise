@@ -94,7 +94,7 @@ const FROZEN_REVIEWED_BLOBS = new Map([
   ["supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_precheck.sql", "601f7a5e11d76f06921e845fe460a6f455971b54"],
   ["supabase/migrations/20261029142000_exclude_internal_scout_campaign_entries.sql", "d887dc40233ef727bd74f8a6c92ea5ea252ea957"],
   ["supabase/rollback/20261029142000_exclude_internal_scout_campaign_entries_rollback.sql", "fa00bc61da615462fa3640d16f13eebe700e2359"],
-  ["tests/ai-review-hosted-proof-census.test.mjs", "0a2e14465d22f7e011e6980b510000c9e0df47c0"],
+  ["tests/ai-review-hosted-proof-census.test.mjs", "5ea8ff0b9dcf04444dc2ae785f2fb97ca1ea6749"],
   ["tests/async-ui-state.test.mjs", "3ef05664be0ce1a8364efc2252cae432270ea1df"],
   ["tests/chapter41-beta-scout-record-preview.test.mjs", "5fe4f555ad2a5171d5878742391294292b9a930b"],
   ["tests/e2e/specs/novel-owner-detail-render.spec.js", "c490625a69d9cb30c734db2b49b4ac13ac994a0e"],

@@ -196,7 +196,7 @@ const FROZEN_MAIN_FILES = Object.freeze([
   {
     filename: 'tests/ai-review-hosted-proof-census.test.mjs',
     status: 'modified',
-    sha: '0a2e14465d22f7e011e6980b510000c9e0df47c0'
+    sha: '5ea8ff0b9dcf04444dc2ae785f2fb97ca1ea6749'
   },
   {
     filename: 'tests/ai-review-hosted-real-jwt-gate.test.mjs',
@@ -707,7 +707,7 @@ test('workflow requires OWNER and a single-use Staging ledger', () => {
   assert.doesNotMatch(src, /workflow_dispatch:/u);
 });
 
-test('campaign migration blob and intermediate commit ancestry remain pinned', () => {
+test('campaign migration and commit ancestry remain pinned', () => {
   const altered = sample();
   altered.mainLineage.files.find((f) =>
     f.filename.includes('20261029142000_')
