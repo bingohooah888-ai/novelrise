@@ -793,7 +793,10 @@ test('GoTrue metadata reconciliation is limited to one synthetic user', () => {
   );
   assert.match(sql, /set local statement_timeout='12s'/u);
   assert.match(sql, /set local lock_timeout='3s'/u);
-  assert.match(sql, /auth\.users where id='00000000-0000-4000-8000-000000000943'::uuid/u);
+  assert.match(
+    sql,
+    /auth\.users where id='00000000-0000-4000-8000-000000000943'::uuid/u
+  );
   assert.match(sql, /lower\(email\)='ai-review-jwt@example\.invalid'/u);
   assert.match(sql, /raw_app_meta_data ->> 'internal_e2e'/u);
   assert.match(sql, /SYNTHETIC_METADATA_NOT_READY/u);
@@ -801,8 +804,14 @@ test('GoTrue metadata reconciliation is limited to one synthetic user', () => {
   assert.match(sql, /SYNTHETIC_CAMPAIGN_AMBIGUOUS/u);
   assert.match(sql, /novelight_sync_user_participation_qualifications/u);
   assert.match(sql, /delete from public\.scout_reward_campaign_entries/u);
-  assert.match(sql, /where user_id='00000000-0000-4000-8000-000000000943'::uuid/u);
-  assert.doesNotMatch(sql, /insert into|update auth\.users|truncate|drop table/iu);
+  assert.match(
+    sql,
+    /where user_id='00000000-0000-4000-8000-000000000943'::uuid/u
+  );
+  assert.doesNotMatch(
+    sql,
+    /insert into|update auth\.users|truncate|drop table/iu
+  );
   assert.match(runner, /sql\(db,syntheticMetadataReconcileSQL\(\)\)/u);
   assert.match(runner, /created\.app_metadata\?\.internal_e2e!==true/u);
   assert.ok(
