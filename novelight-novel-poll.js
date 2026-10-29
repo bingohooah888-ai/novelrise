@@ -202,7 +202,21 @@ window.setTimeout(() => {
     '.light-seed-public-summary{display:flex;align-items:center;gap:12px;max-width:440px;margin:14px 0 6px;padding:11px 13px;border:1px solid #e4dac9;border-radius:12px;background:#fff}' +
     '.light-seed-public-summary img{width:54px;height:54px;object-fit:contain;flex:none;border-radius:8px}' +
     '.light-seed-public-summary .light-seed-public-label{display:block;color:#61564d;font-size:12px;font-weight:700;line-height:1.5}' +
-    '.light-seed-public-summary strong{display:block;color:#34271e;font-size:22px;line-height:1.5}';
+    '.light-seed-public-summary strong{display:block;color:#34271e;font-size:22px;line-height:1.5}' +
+    '.light-seed-content-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,550px);gap:24px;align-items:start}' +
+    '.light-seed-content-main{min-width:0}' +
+    '.light-seed-reader-inventory{display:grid;grid-template-columns:minmax(96px,1fr) repeat(3,minmax(0,1.15fr));align-items:center;gap:8px;padding:14px 16px;border:1px solid #dfc8a5;border-radius:14px;background:#fffdfa;min-width:0;box-sizing:border-box}' +
+    '.light-seed-reader-inventory[hidden]{display:none!important}' +
+    '.light-seed-reader-inventory-heading{display:grid;gap:5px;min-width:0;color:#72501f}' +
+    '.light-seed-reader-inventory-heading span{font-size:12px;font-weight:900;letter-spacing:.03em;white-space:nowrap}' +
+    '.light-seed-reader-inventory-heading strong{font-size:19px;line-height:1.4;white-space:nowrap}' +
+    '.light-seed-reader-inventory-tier{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0}' +
+    '.light-seed-reader-inventory-tier img{display:block;flex:none;width:40px;height:40px;object-fit:contain}' +
+    '.light-seed-reader-inventory-tier div{display:grid;gap:3px;min-width:0}' +
+    '.light-seed-reader-inventory-tier span{font-size:11px;letter-spacing:.025em;line-height:1.2;color:#695340}' +
+    '.light-seed-reader-inventory-tier strong{font-size:14px;line-height:1.3;font-weight:900;white-space:nowrap;color:#27354a}' +
+    '@media(max-width:1120px){.light-seed-content-grid{grid-template-columns:minmax(0,1fr)}.light-seed-reader-inventory{max-width:550px}}' +
+    '@media(max-width:600px){.light-seed-reader-inventory{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 4px}.light-seed-reader-inventory-heading{grid-column:1/-1;display:flex;justify-content:space-between}.light-seed-reader-inventory-tier{flex-direction:column;text-align:center;gap:4px}.light-seed-reader-inventory-tier img{width:34px;height:34px}}';
   document.head.appendChild(style);
 
   types.dataset.autoTier = 'true';
@@ -230,6 +244,33 @@ window.setTimeout(() => {
   const publicCount = document.getElementById('publicLightSeedCount');
   total.hidden = true;
 
+  // Personal reader inventory: separate from the public work-received total.
+  const seedContent = document.createElement('div');
+  seedContent.className = 'light-seed-content-main';
+  for (const child of [...area.children]) seedContent.appendChild(child);
+  const readerInventory = document.createElement('aside');
+  readerInventory.className = 'light-seed-reader-inventory';
+  readerInventory.setAttribute('aria-label', 'あなたのLIGHT SEED残数');
+  readerInventory.hidden = true;
+  readerInventory.innerHTML =
+    '<div class="light-seed-reader-inventory-heading">' +
+      '<span>LIGHT SEED</span><strong id="novelReaderSeedTotal" aria-live="polite">確認中…</strong>' +
+    '</div>' +
+    [
+      ['Gold', 'GOLD', 'gold'],
+      ['Silver', 'SILVER', 'silver'],
+      ['Bronze', 'BRONZE', 'bronze']
+    ].map(([label, title, key]) =>
+      '<div class="light-seed-reader-inventory-tier">' +
+        '<img src="assets/scout-record/light-seed/light_seed_' + key + '.png" alt="" width="40" height="40" loading="lazy" decoding="async">' +
+        '<div><span>' + title + '</span><strong id="novelReaderSeed' + label + '">—</strong></div>' +
+      '</div>'
+    ).join('');
+  const seedLayout = document.createElement('div');
+  seedLayout.className = 'light-seed-content-grid';
+  seedLayout.append(seedContent, readerInventory);
+  area.appendChild(seedLayout);
+
   const api = window.supabase.createClient(
     'https://fiepaguycecrredwrcwx.supabase.co',
     'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
@@ -239,6 +280,46 @@ window.setTimeout(() => {
 
   function setDisabled(disabled) {
     button.disabled = Boolean(disabled);
+  }
+
+  // Use the existing authenticated/self-scoped inventory RPC (also used by the bookshelf).
+  async function refreshReaderInventory() {
+    try {
+      const auth = await api.auth.getSession();
+      if (auth.error) throw auth.error;
+      if (!auth.data?.session?.user?.id) {
+        readerInventory.hidden = true;
+        return;
+      }
+      readerInventory.hidden = false;
+      const result = await api.rpc('novelight_light_seed_inventory');
+      if (result.error) throw result.error;
+      const value = result.data;
+      const numbers = [
+        value?.remaining_this_month, value?.monthly_limit,
+        value?.gold_remaining, value?.gold_allocated,
+        value?.silver_remaining, value?.silver_allocated,
+        value?.bronze_remaining, value?.bronze_allocated
+      ];
+      if (numbers.some((number) => number === null || number === undefined || !Number.isFinite(Number(number)))) {
+        throw new Error('LIGHT SEED inventory response missing numeric fields');
+      }
+      const format = (number) => Math.max(0, Number(number)).toLocaleString('ja-JP');
+      document.getElementById('novelReaderSeedTotal').textContent =
+        format(value.remaining_this_month) + ' / ' + format(value.monthly_limit);
+      for (const [label, key] of [['Gold', 'gold'], ['Silver', 'silver'], ['Bronze', 'bronze']]) {
+        document.getElementById('novelReaderSeed' + label).textContent =
+          format(value[key + '_remaining']) + ' / ' + format(value[key + '_allocated']);
+      }
+    } catch (error) {
+      if (!readerInventory.hidden) {
+        document.getElementById('novelReaderSeedTotal').textContent = '取得できません';
+        for (const label of ['Gold', 'Silver', 'Bronze']) {
+          document.getElementById('novelReaderSeed' + label).textContent = '—';
+        }
+      }
+      console.warn('Reader LIGHT SEED inventory unavailable');
+    }
   }
 
   function renderStatus(value) {
@@ -298,6 +379,7 @@ window.setTimeout(() => {
       sendResultMessage = `${String(result.data?.seed_type || 'LIGHT SEED')}を贈りました。`;
       void window.NovelightClient?.recordJourney?.(api, 'light_seed', novelId);
       await refreshAutoSeed();
+      void refreshReaderInventory();
     } catch (error) {
       console.error('Automatic LIGHT SEED send failed', error);
       window.alert('LIGHT SEEDを贈れませんでした。作品を読んだ後、状態を確認してもう一度お試しください。');
@@ -313,6 +395,7 @@ window.setTimeout(() => {
   async function setupAutoSeed() {
     area.classList.add('visible');
     button.onclick = () => void sendAutoSeed();
+    void refreshReaderInventory();
     try {
       await refreshAutoSeed();
     } catch (error) {

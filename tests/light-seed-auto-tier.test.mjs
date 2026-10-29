@@ -84,3 +84,17 @@ test('public LIGHT SEED total uses lightweight artwork and does not expose the p
   assert.match(novelRuntime, /publicCount\.textContent = '取得できません'/u);
   assert.doesNotMatch(novelRuntime, /light_seed_status_v2/u);
 });
+
+test('work detail restores the reader-only three-tier LIGHT SEED balance card', () => {
+  assert.match(novelRuntime, /light-seed-content-grid/u);
+  assert.match(novelRuntime, /novelReaderSeedTotal/u);
+  assert.ok(novelRuntime.includes("['Gold', 'GOLD', 'gold']"));
+  assert.ok(novelRuntime.includes("['Silver', 'SILVER', 'silver']"));
+  assert.ok(novelRuntime.includes("['Bronze', 'BRONZE', 'bronze']"));
+  assert.ok(novelRuntime.includes("'novelReaderSeed' + label"));
+  assert.match(novelRuntime, /api\.rpc\('novelight_light_seed_inventory'\)/u);
+  assert.match(novelRuntime, /if \(!auth\.data\?\.session\?\.user\?\.id\)/u);
+  assert.match(novelRuntime, /readerInventory\.hidden = true/u);
+  assert.match(novelRuntime, /void refreshReaderInventory\(\)/u);
+  assert.match(novelRuntime, /publicLightSeedCount/u);
+});
