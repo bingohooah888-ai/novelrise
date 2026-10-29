@@ -276,7 +276,8 @@ const FROZEN_MAIN_FILES = Object.freeze([
     sha: '2bbb13e9352c89a723274b388fbdaf19e8aba5c1'
   },
   {
-    filename: 'supabase/migrations/20261030010000_comment_public_scout_identity.sql',
+    filename:
+      'supabase/migrations/20261030010000_comment_public_scout_identity.sql',
     status: 'added',
     sha: '1e6c92576ceed47026fe98c8c0c4f301533a69c8'
   },
