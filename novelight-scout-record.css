@@ -20,7 +20,7 @@ body.novelight-page-scout-record .workspace{
 }
 .scout-hero-copy{display:flex;flex-direction:column;justify-content:center}
 .scout-kicker{color:var(--gold);font-size:10px;font-weight:900;letter-spacing:.2em}
-.scout-rank-line{display:flex;align-items:baseline;justify-content:center;gap:14px;flex-wrap:nowrap;margin-top:8px;white-space:nowrap;font-family:var(--novelight-brand-display-font)}
+.scout-rank-line{display:flex;align-items:baseline;justify-content:center;gap:clamp(24px,3.1vw,48px);flex-wrap:nowrap;margin-top:8px;white-space:nowrap;font-family:var(--novelight-brand-display-font)}
 .scout-rank-line strong{color:#fff8e8;font-size:clamp(27px,3vw,40px)}
 .scout-rank-line span{color:#fff8e8;font-weight:700}
 .scout-rank-line strong,.scout-rank-line .scout-current-level{line-height:1.1;letter-spacing:.04em}
