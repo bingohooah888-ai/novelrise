@@ -659,3 +659,69 @@ test('Home and public pages keep the approved off-white header', async ({
     }
   }
 });
+
+test('episode commenter avatar uses the same public RPC as author profile', async ({
+  page
+}) => {
+  await page.goto('/tests/e2e/fixtures/comment-spoiler-display.html');
+  await page.evaluate(async () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const path = userId + '/22222222-2222-4222-8222-222222222222.webp';
+    const client = {
+      storage: {
+        from: () => ({
+          getPublicUrl: () => ({
+            data: { publicUrl: '/assets/scout-badges/reader_read_005.png' }
+          })
+        })
+      },
+      rpc: async (name) => {
+        if (name === 'novelight_public_author_avatar') {
+          return { data: path, error: null };
+        }
+        if (name === 'novelight_novel_comment_reception_state') {
+          return { data: { comments_enabled: true }, error: null };
+        }
+        if (name === 'novelight_comment_feed') {
+          return {
+            data: [
+              {
+                id: 'identity-1',
+                user_id: userId,
+                display_name: '読者',
+                avatar_path: null,
+                body: '読了しました。',
+                created_at: '2026-10-30T01:00:00Z',
+                scout_level: 3,
+                equipped_badge_id: 'limited_founding_author',
+                equipped_badge_name: 'Founding Author #096'
+              }
+            ],
+            error: null
+          };
+        }
+        return { data: true, error: null };
+      }
+    };
+    await globalThis.NovelightComments.mount({
+      client,
+      novel: { id: '420' },
+      session: null,
+      isAuthor: false
+    });
+  });
+  const avatar = page.locator('.novelight-comment-avatar img');
+  await expect(avatar).toHaveAttribute(
+    'src',
+    '/assets/scout-badges/reader_read_005.png'
+  );
+  await expect
+    .poll(() => avatar.evaluate((image) => image.naturalWidth))
+    .toBeGreaterThan(0);
+  await expect(page.locator('.novelight-comment-level')).toHaveText(
+    'SCOUT Lv.3'
+  );
+  await expect(page.locator('.novelight-comment-equipped-name')).toHaveText(
+    'Founding Author #096'
+  );
+});
