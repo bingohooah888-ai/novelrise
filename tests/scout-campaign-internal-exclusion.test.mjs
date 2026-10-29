@@ -16,7 +16,7 @@ test('migration only adds an admin-controlled internal E2E exclusion to enrollme
   assert.ok(oldFunction && newFunction);
   const guard = `begin
   -- Application metadata is admin-managed; do not enroll synthetic tests.
-  if pg_catalog.lower(pg_catalog.coalesce(new.raw_app_meta_data ->> 'internal_e2e', 'false'))
+  if pg_catalog.lower(coalesce(new.raw_app_meta_data ->> 'internal_e2e', 'false'))
        in ('true', '1', 'yes') then
     return new;
   end if;
