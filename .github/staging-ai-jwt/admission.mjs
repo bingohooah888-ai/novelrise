@@ -85,7 +85,7 @@ const FROZEN_REVIEWED_BLOBS = new Map([
   ["novelight-help.js", "9200f513ad24a33003022d57df43cee3cb80081e"],
   ["novelight-novel-detail.js", "736b6f8e4aaec23cb717810778c7a3b1246f84fd"],
   ["novelight-novel-poll.js", "d6c25359c10ee01eab9b0ed4e7a2d678aeee5fe6"],
-  ["novelight-scout-record.css", "594e578deec5d5c732ca4cd9729fbeb13dc55c7c"],
+  ["novelight-scout-record.css", "45cff1159684ad1c260e03d29af397e037e98c35"],
   ["novelight-thumbnail-runtime.js", "81d5e3f101348f9bccfede97e9491d4f50bf792d"],
   ["scout-record.html", "d20457889eb88bcfb96d735a98b62878f8caf3fc"],
   ["scripts/compose-scout-campaign-staging.mjs", "742298bd5692d0562bf1a40d27ed7d535ddff6de"],
@@ -135,7 +135,8 @@ const FROZEN_REVIEWED_MAIN_COMMITS = Object.freeze([
   '26b0f8b50d25ea10e0893efaabca33f5e4a61b3f',
   'f2618510d319f08e3189da0c74e2541992cac950',
   '79f5fa7700a852f3fcf6a90c40066288f30523d1',
-  'a46873abfd2e338954c458adb4dfdbcacf66a873'
+  'a46873abfd2e338954c458adb4dfdbcacf66a873',
+  '769606269e824b26b7170e8ad930b8813011a13f'
 ]);
 const SHA = /^[0-9a-f]{40}$/u;
 const FIELDS = [
