@@ -9,7 +9,7 @@ async function mountComments(page, { session = null } = {}) {
       globalThis.__COMMENT_CALLS__ = calls;
 
       const client = {
-        storage: { from: () => ({ getPublicUrl: (path) => ({ data: { publicUrl: '/public-avatar/' + path } }) }) },
+        storage: { from: () => ({ getPublicUrl: () => ({ data: { publicUrl: '/assets/scout-badges/reader_read_005.png' } }) }) },
         rpc: async (name, args) => {
           calls.push({ name, args });
 
@@ -162,7 +162,7 @@ test('public comment identity is displayed above the pen name', async ({ page })
   const profile = comment.locator('.novelight-comment-profile');
   await expect(profile.locator('.novelight-comment-avatar-image')).toHaveAttribute(
     'src',
-    '/public-avatar/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.webp'
+    '/assets/scout-badges/reader_read_005.png'
   );
   await expect(profile.locator('.novelight-comment-level')).toHaveText('SCOUT Lv.10');
   await expect(profile.locator('.novelight-comment-equipped-name')).toHaveText('PAGEWALKER');
