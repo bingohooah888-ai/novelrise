@@ -209,8 +209,12 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await expect(stock.locator('img')).toHaveCount(3);
   if ((await page.evaluate(() => globalThis.innerWidth)) > 1120) {
     const positions = await page.evaluate(() => ({
-      main: document.querySelector('.light-seed-content-main').getBoundingClientRect().right,
-      stock: document.querySelector('.light-seed-reader-inventory').getBoundingClientRect().left
+      main: globalThis.document
+        .querySelector('.light-seed-content-main')
+        .getBoundingClientRect().right,
+      stock: globalThis.document
+        .querySelector('.light-seed-reader-inventory')
+        .getBoundingClientRect().left
     }));
     expect(positions.stock).toBeGreaterThan(positions.main);
   }
