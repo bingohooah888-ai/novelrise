@@ -51,7 +51,10 @@ const FROZEN_BLOBS = new Map([
   ['AGENTS.md', '1c3b95410de0010015fada83864b60db4c175f21'],
   ['docs/NOVELIGHT-MASTER.md', '91d11fa367b7de64990b13397b13d4bb6e3c0230'],
   ['docs/development-workflow.md', 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'],
-  ['tests/master-integrity.test.js', 'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'],
+  [
+    'tests/master-integrity.test.js',
+    'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'
+  ],
   ['favorites.html', '05e6c3e36bea4f32d20db515e36b0225a1631f98'],
   [
     'novelight-bookshelf-overview.css',
@@ -62,10 +65,7 @@ const FROZEN_BLOBS = new Map([
     '71f182d89081c1aa0b9b8b3bff2defe3891933d4'
   ],
   ['novelight-bookshelf.js', 'eb49a7c530d5d485ff98d681f75f180129b2802e'],
-  [
-    'novelight-thumbnail-runtime.js',
-    '81d5e3f101348f9bccfede97e9491d4f50bf792d'
-  ]
+  ['novelight-thumbnail-runtime.js', '81d5e3f101348f9bccfede97e9491d4f50bf792d']
 ]);
 const OWNER_POLICY_FILES = [
   'AGENTS.md',
@@ -472,18 +472,4 @@ test('workflow requires OWNER and a single-use Staging ledger', () => {
   assert.match(src, /NOVELIGHT_STAGING_AI_JWT_PROOF_CONSUMED/u);
   assert.match(src, /environment: staging/u);
   assert.doesNotMatch(src, /workflow_dispatch:/u);
-});
-
-test('temporary: identify prettier-only formatting difference', async () => {
-  const prettier = await import('prettier');
-  const path = 'tests/ai-review-hosted-real-jwt-gate.test.mjs';
-  const input = readFileSync(new URL('./ai-review-hosted-real-jwt-gate.test.mjs', import.meta.url), 'utf8');
-  const options = await prettier.resolveConfig(path);
-  const output = await prettier.format(input, { ...options, filepath: path });
-  const left = input.split('\\n');
-  const right = output.split('\\n');
-  if (input !== output) {
-    console.log('PRETTIER_EXPECTED_FILE_BASE64 ' + Buffer.from(output, 'utf8').toString('base64'));
-  }
-  assert.ok(Array.isArray(left) && Array.isArray(right));
 });
