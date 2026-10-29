@@ -59,6 +59,27 @@ reader_active_days_007
   .trim()
   .split(/\s+/u);
 
+test('SCOUT RECORD: level left of rank with equal font sizes', () => {
+  assert.match(
+    scout,
+    /<div class="scout-rank-line">\s*<span id="rankLevel" class="scout-current-level"[^>]*>Lv\.—<\/span>\s*<strong id="rankName">—<\/strong>\s*<\/div>/u
+  );
+  assert.doesNotMatch(
+    scout,
+    /\.scout-hero-copy \.scout-rank-line strong\s*\{\s*width:\s*100%/u
+  );
+  assert.match(scoutJs, /setText\('rankLevel', `Lv\.\$\{n\(level\)\}`\)/u);
+  assert.match(scoutCss, /\.scout-rank-line\{[^}]*flex-wrap:nowrap/u);
+  assert.match(
+    scoutCss,
+    /html body\.novelight-theme\.novelight-page-scout-record \.scout-rank-line strong,\s*html body\.novelight-theme\.novelight-page-scout-record \.scout-rank-line > span \{\s*font-size: 50px !important/u
+  );
+  assert.match(
+    scoutCss,
+    /@media \(max-width: 640px\) \{[\s\S]*?\.scout-rank-line strong,\s*html body\.novelight-theme\.novelight-page-scout-record \.scout-rank-line > span \{\s*font-size: 36px !important/u
+  );
+});
+
 test('beta navigation links to the live SCOUT RECORD surface', () => {
   assert.match(
     mypage,

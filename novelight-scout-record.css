@@ -20,9 +20,11 @@ body.novelight-page-scout-record .workspace{
 }
 .scout-hero-copy{display:flex;flex-direction:column;justify-content:center}
 .scout-kicker{color:var(--gold);font-size:10px;font-weight:900;letter-spacing:.2em}
-.scout-rank-line{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:8px}
+.scout-rank-line{display:flex;align-items:baseline;justify-content:center;gap:14px;flex-wrap:nowrap;margin-top:8px;white-space:nowrap;font-family:var(--novelight-brand-display-font)}
 .scout-rank-line strong{color:#fff8e8;font-size:clamp(27px,3vw,40px)}
-.scout-rank-line span{color:var(--gold-bright);font-size:19px;font-weight:900}
+.scout-rank-line span{color:#fff8e8;font-weight:700}
+.scout-rank-line strong,.scout-rank-line .scout-current-level{line-height:1.1;letter-spacing:.04em}
+.scout-hero-copy .scout-current-level{font-variant-numeric:lining-nums}
 .scout-xp-meta{display:flex;justify-content:space-between;gap:12px;margin-top:20px;color:#c7d1dc;font-size:12px}
 .scout-progress,.badge-progress{
   overflow:hidden;border:1px solid rgba(226,190,92,.2);border-radius:999px;background:#020c18
@@ -537,12 +539,9 @@ html body.novelight-theme.novelight-page-scout-record .scout-modal h2 {
   font-size: 24px !important;
 }
 
-html body.novelight-theme.novelight-page-scout-record .scout-rank-line strong {
-  font-size: 50px !important;
-}
-
+html body.novelight-theme.novelight-page-scout-record .scout-rank-line strong,
 html body.novelight-theme.novelight-page-scout-record .scout-rank-line > span {
-  font-size: 26px !important;
+  font-size: 50px !important;
 }
 
 html body.novelight-theme.novelight-page-scout-record .scout-point-card strong {
@@ -571,7 +570,8 @@ html body.novelight-theme.novelight-page-scout-record .seed-inventory-copy stron
     font-size: 26px !important;
   }
 
-  html body.novelight-theme.novelight-page-scout-record .scout-rank-line strong {
+  html body.novelight-theme.novelight-page-scout-record .scout-rank-line strong,
+  html body.novelight-theme.novelight-page-scout-record .scout-rank-line > span {
     font-size: 36px !important;
   }
 

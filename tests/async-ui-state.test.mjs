@@ -7,6 +7,8 @@ const analytics = await readFile('novelight-analytics.js', 'utf8');
 const episode = await readFile('episode.html', 'utf8');
 const mypage = await readFile('mypage.html', 'utf8');
 const novel = await readFile('novel.html', 'utf8');
+const seoNovel = await readFile('api/seo/templates/novel.html', 'utf8');
+const novelDetail = await readFile('novelight-novel-detail.js', 'utf8');
 const post = await readFile('post.html', 'utf8');
 const novelEdit = await readFile('novel-edit.html', 'utf8');
 const episodePost = await readFile('episode-post.html', 'utf8');
@@ -61,6 +63,17 @@ test('novel detail renders independently of optional async work', () => {
   assert.match(novel, /novelight-novel-poll\.js/);
   assert.match(novel, /void recordOpen\(\)/);
   assert.match(novel, /エピソードも読み込めません/);
+});
+
+test('new novel detail omits obsolete duplicate reading and chapter card', () => {
+  for (const page of [novel, seoNovel]) {
+    assert.doesNotMatch(page, /void NovelightWorkNavigation\.mountNovel\(/);
+    assert.match(page, /novelight-novel-detail\.js/);
+  }
+  assert.match(novelDetail, /getElementById\('nlNovelWorkNav'\)\?\.remove\(\)/);
+  assert.match(novelDetail, /nl-work-detail-toc/u);
+  assert.match(novelDetail, /nl-work-toc-mobile-button/u);
+  assert.match(novelDetail, /nl-work-read-action/u);
 });
 
 test('author forms recover from async failures and prevent duplicate submits', () => {

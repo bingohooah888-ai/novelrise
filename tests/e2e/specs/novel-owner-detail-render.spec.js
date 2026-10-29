@@ -118,6 +118,12 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await page.goto('/novel.html?id=354', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.nl-work-detail-grid')).toBeVisible();
   await expect(page.locator('.nl-work-detail-grid')).toHaveCount(1);
+  // The V2 work detail already includes reading controls and a chapter TOC.
+  // The old standalone '続きを読む / 話数一覧を見る' card must not appear.
+  await expect(page.locator('#nlNovelWorkNav')).toHaveCount(0);
+  await expect(page.locator('.nl-work-detail-main')).toBeVisible();
+  await expect(page.locator('.nl-work-detail-toc')).toHaveCount(1);
+  await expect(page.locator('.nl-work-toc-mobile-button')).toHaveCount(1);
 
   // Desktop: the center card and table of contents extend to the left
   // column's bottom. The TOC must scroll inside its own card, never stick.
