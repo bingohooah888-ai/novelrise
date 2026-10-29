@@ -172,8 +172,15 @@ test('public comment identity is displayed above the pen name', async ({
   });
   const profile = comment.locator('.novelight-comment-profile');
   await expect(
-    profile.locator('.novelight-comment-avatar-image')
+    profile.locator('.novelight-comment-avatar img')
   ).toHaveAttribute('src', '/assets/scout-badges/reader_read_005.png');
+  await expect
+    .poll(() =>
+      profile.locator('.novelight-comment-avatar img').evaluate(
+        (image) => image.complete && image.naturalWidth > 0
+      )
+    )
+    .toBe(true);
   await expect(profile.locator('.novelight-comment-level')).toHaveText(
     'SCOUT Lv.10'
   );
@@ -198,7 +205,7 @@ test('public comment identity is displayed above the pen name', async ({
     hasText: '通常読者'
   });
   await expect(
-    unconfigured.locator('.novelight-comment-avatar-fallback')
+    unconfigured.locator('.novelight-comment-avatar')
   ).toHaveText('通');
   await expect(unconfigured.locator('.novelight-comment-level')).toHaveCount(0);
   await expect(unconfigured.locator('.novelight-comment-equipped')).toHaveCount(
