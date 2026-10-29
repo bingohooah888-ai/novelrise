@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
+const novelDetailV2 = await readFile('novelight-novel-detail.js', 'utf8');
+
 const [
   episode,
   novel,
@@ -53,16 +55,15 @@ test('current episode characters are highlighted and sorted first', () => {
   assert.match(navigation, /client\.rpc\('novelight_character_feed'/u);
 });
 
-test('novel detail exposes continue CTA and compact spoiler-safe characters', () => {
-  assert.match(novel, /novelight-work-navigation\.js/u);
-  assert.match(
-    novel,
-    /NovelightWorkNavigation\.mountNovel\(\{client,novelId:novel\.id\}\)/u
-  );
-  assert.match(navigation, /第1話から読む/u);
-  assert.match(navigation, /続きを読む/u);
-  assert.match(navigation, /もっと見る/u);
-  assert.match(navigation, /novelight_novel_character_feed/u);
+test('novel detail V2 keeps reading, chapter navigation and spoiler-safe characters without duplicate card', () => {
+  assert.match(novel, /novelight-novel-detail\.js/u);
+  assert.doesNotMatch(novel, /NovelightWorkNavigation\.mountNovel\(/u);
+  assert.match(novelDetailV2, /nl-work-read-action/u);
+  assert.match(novelDetailV2, /nl-work-detail-toc/u);
+  assert.match(novelDetailV2, /installMobileToc/u);
+  assert.match(novelDetailV2, /renderCharacters/u);
+  assert.match(novelDetailV2, /novelight_character_feed/u);
+  assert.match(novelDetailV2, /nlNovelWorkNav/u);
 });
 
 test('author editing exposes the shared character management entry and surface controls', () => {
