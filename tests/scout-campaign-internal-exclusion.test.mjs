@@ -19,7 +19,7 @@ const stop =
 const oldFunction = oldSource.split(start)[1]?.split(stop)[0];
 const newFunction = migration.split(start)[1]?.split(stop)[0];
 
-test('internal enrollment guard preserves the original campaign function', () => {
+test('internal E2E guard preserves campaign eligibility', () => {
   assert.ok(oldFunction && newFunction);
   const guard = `begin
   -- Application metadata is admin-managed; do not enroll synthetic tests.
