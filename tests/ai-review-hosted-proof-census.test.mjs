@@ -61,6 +61,10 @@ test('read-only census checks all four trigger families', () => {
   assert.equal(assertPrecheck(snapshot()), true);
   assert.match(PRECHECK_SQL, /supabase_migrations\.schema_migrations/u);
   assert.match(PRECHECK_SQL, /novelight_ai_runtime_settings/u);
+  // Postgres E'\\\\n' is a literal backslash-n in this JS template literal.
+  // This guard preserves the audited actual-newline aggregate fingerprints.
+  assert.equal(PRECHECK_SQL.match(/chr\(10\)/gu)?.length, 2);
+  assert.doesNotMatch(PRECHECK_SQL, /E'\\\\n'/u);
   assert.doesNotMatch(PRECHECK_SQL, /\b(?:insert|update|delete|drop)\b/iu);
 });
 
