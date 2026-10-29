@@ -45,6 +45,22 @@ footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:900px;
 <button class="nl-bookshelf-tab" type="button" data-bookshelf-tab="favorites" aria-pressed="false">お気に入り</button>
 <button class="nl-bookshelf-tab" type="button" data-bookshelf-tab="later" aria-pressed="false">後で読む</button>
 </nav>
+<aside class="nl-shelf-aside" aria-label="SCOUT RECORDの現在のランク">
+<a class="nl-shelf-rank-card" href="scout-record.html" aria-label="SCOUT RECORDで現在のランクと成長状況を見る">
+  <div class="nl-shelf-rank-top">
+    <div>
+      <span class="nl-shelf-rank-kicker">SCOUT RANK</span>
+      <strong class="nl-shelf-rank-name" id="nlShelfRankName">読み込み中</strong>
+      <span class="nl-shelf-rank-level" id="nlShelfRankLevel">Lv.—</span>
+    </div>
+    <img class="nl-shelf-rank-art" id="nlShelfRankImage" src="assets/scout-record/ranks/scout_rank_01_noctis.png" alt="" loading="lazy" decoding="async">
+  </div>
+  <div class="nl-shelf-rank-meta"><span>Scout XP <b id="nlShelfRankXp">—</b></span><span id="nlShelfRankNext">次Lv. —</span></div>
+  <div class="nl-shelf-rank-track" id="nlShelfRankProgressTrack" role="progressbar" aria-label="次のScoutレベルまでの進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="nlShelfRankProgressBar"></span></div>
+  <small class="nl-shelf-rank-progress" id="nlShelfRankProgress">— / — XP</small>
+  <span class="nl-shelf-rank-cta">SCOUT RECORDを見る ›</span>
+</a>
+</aside>
 <div id="bookshelfUnavailable" class="nl-bookshelf-unavailable" hidden>本棚整理機能のデータベース反映待ちです。現在はお気に入り作品のみ表示します。</div>
 <div class="nl-bookshelf-toolbar" aria-label="本棚フィルター">
 <label>読書状態
@@ -64,22 +80,7 @@ footer{padding:26px;background:#111118;color:#999}.footer-links{max-width:900px;
 </div>
 <div id="list" class="list">読み込み中...</div>
 </section>
-<aside class="nl-shelf-aside" aria-label="SCOUT RECORDの現在のランク">
-<a class="nl-shelf-rank-card" href="scout-record.html" aria-label="SCOUT RECORDで現在のランクと成長状況を見る">
-  <div class="nl-shelf-rank-top">
-    <div>
-      <span class="nl-shelf-rank-kicker">SCOUT RANK</span>
-      <strong class="nl-shelf-rank-name" id="nlShelfRankName">読み込み中</strong>
-      <span class="nl-shelf-rank-level" id="nlShelfRankLevel">Lv.—</span>
-    </div>
-    <img class="nl-shelf-rank-art" id="nlShelfRankImage" src="assets/scout-record/ranks/scout_rank_01_noctis.png" alt="" loading="lazy" decoding="async">
-  </div>
-  <div class="nl-shelf-rank-meta"><span>Scout XP <b id="nlShelfRankXp">—</b></span><span id="nlShelfRankNext">次Lv. —</span></div>
-  <div class="nl-shelf-rank-track" id="nlShelfRankProgressTrack" role="progressbar" aria-label="次のScoutレベルまでの進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="nlShelfRankProgressBar"></span></div>
-  <small class="nl-shelf-rank-progress" id="nlShelfRankProgress">— / — XP</small>
-  <span class="nl-shelf-rank-cta">SCOUT RECORDを見る ›</span>
-</a>
-</aside>
+
 </div>
 </main>
 <footer><div class="footer-links"><a href="terms.html">利用規約</a><a href="privacy.html">プライバシー</a><a href="content-guidelines.html">投稿ガイドライン</a><a href="contact.html">お問い合わせ</a></div></footer>
