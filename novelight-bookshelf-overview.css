@@ -1,7 +1,7 @@
 /* Reader bookshelf: Scout Rank, LIGHT SEED inventory and thumbnail layout. */
 body.novelight-page-favorites main{max-width:1260px}
-.nl-shelf-layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:22px;align-items:start}
-.nl-shelf-main{min-width:0}
+.nl-shelf-layout{display:block}
+.nl-shelf-main{position:relative;min-width:0;width:calc(100% - 332px)}
 .nl-shelf-heading{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
 .nl-shelf-heading h1{margin:0}
 .nl-shelf-heading .nl-help-text{margin:0}
@@ -14,7 +14,7 @@ body.novelight-page-favorites main{max-width:1260px}
 .nl-shelf-seed span{display:flex;flex-direction:column;gap:2px}
 .nl-shelf-seed b{color:#62523c;font-size:9px;line-height:1}
 .nl-shelf-seed strong{color:#172637;font-size:13px;line-height:1.25;white-space:nowrap}
-.nl-shelf-aside{min-width:0;padding-top:115px}
+.nl-shelf-aside{position:absolute;top:115px;left:calc(100% + 22px);width:310px;min-width:0}
 .nl-shelf-rank-card{display:block;padding:18px;border:1px solid #b18d4b;border-radius:17px;color:#fff8e8!important;background:linear-gradient(145deg,#082036,#071527);box-shadow:0 11px 28px rgba(8,26,42,.16);text-decoration:none!important}
 .nl-shelf-rank-card:hover{border-color:#f0c36f;box-shadow:0 12px 35px rgba(8,26,42,.25);transform:translateY(-1px)}
 .nl-shelf-rank-top{display:grid;grid-template-columns:minmax(0,1fr) 88px;gap:8px;align-items:center;min-height:102px}
@@ -36,5 +36,5 @@ body.novelight-page-favorites .nl-shelf-card{display:grid;grid-template-columns:
 .nl-shelf-copy{min-width:0}
 .nl-shelf-copy .title{margin-top:8px;overflow-wrap:anywhere}
 .nl-shelf-copy .desc{overflow-wrap:anywhere}
-@media(max-width:1100px){.nl-shelf-layout{grid-template-columns:minmax(0,1fr)}.nl-shelf-aside{padding-top:0;grid-row:1}.nl-shelf-rank-card{max-width:560px}.nl-shelf-seeds{margin-left:0}}
+@media(max-width:1100px){.nl-shelf-main{width:100%}.nl-shelf-aside{position:static;width:100%;margin:0 0 18px}.nl-shelf-rank-card{max-width:560px}.nl-shelf-seeds{margin-left:0}}
 @media(max-width:640px){.nl-shelf-seeds{width:100%;gap:7px}.nl-shelf-seed-items{gap:6px}.nl-shelf-seed img{width:29px;height:29px}body.novelight-page-favorites .nl-shelf-card{grid-template-columns:88px minmax(0,1fr);gap:11px}.nl-shelf-media{width:88px}.nl-shelf-rank-card{padding:15px}}
