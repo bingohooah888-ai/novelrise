@@ -189,7 +189,7 @@ test('public comment identity is displayed above the pen name', async ({
       return Boolean(
         element.compareDocumentPosition(
           element.parentElement.querySelector('.novelight-comment-identity')
-        ) & Node.DOCUMENT_POSITION_FOLLOWING
+        ) & 4
       );
     })
   ).toBe(true);
