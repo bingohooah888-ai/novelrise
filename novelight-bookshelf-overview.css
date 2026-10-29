@@ -18,14 +18,14 @@ body.novelight-page-favorites main{max-width:1260px}
 .nl-shelf-actions-group{min-width:0}
 .nl-shelf-actions-group .reading-history-link{margin-bottom:13px}
 .nl-shelf-actions-group .nl-bookshelf-tabs{margin:0}
-.nl-shelf-aside{position:static;width:auto;min-width:0;margin-left:-170px}
+.nl-shelf-aside{position:static;width:auto;min-width:0;margin-left:-125px}
 .nl-shelf-rank-card{display:block;padding:10px 14px;border:1px solid #b18d4b;border-radius:13px;color:#fff8e8!important;background:linear-gradient(145deg,#082036,#071527);box-shadow:0 8px 18px rgba(8,26,42,.14);text-decoration:none!important}
 .nl-shelf-rank-card:hover{border-color:#f0c36f;box-shadow:0 12px 35px rgba(8,26,42,.25);transform:translateY(-1px)}
-.nl-shelf-rank-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(70px,1fr) 64px;gap:10px;align-items:center;min-height:60px}
+.nl-shelf-rank-top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center;min-height:60px}
 .nl-shelf-rank-kicker{display:block;color:#e6bd4f;font:800 10px/1.2 Georgia,serif;letter-spacing:.14em}
 .nl-shelf-rank-name{display:block;margin-top:3px;font:700 21px/1.1 Georgia,serif;overflow-wrap:anywhere}
-.nl-shelf-rank-level{display:block;justify-self:center;align-self:center;margin:0;font-size:17px;color:#d5dfea;font-weight:800;white-space:nowrap}
-.nl-shelf-rank-art{display:block;width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 7px rgba(0,0,0,.25))}
+.nl-shelf-rank-level{display:block;justify-self:center;align-self:center;margin:0;font:700 21px/1.1 Georgia,serif;text-align:center;color:#d5dfea;white-space:nowrap}
+.nl-shelf-rank-art{display:block;justify-self:end;width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 7px rgba(0,0,0,.25))}
 .nl-shelf-rank-meta{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;margin-top:3px;color:#e2ebf4;font-size:11px}
 .nl-shelf-rank-track{height:7px;overflow:hidden;margin-top:4px;border:1px solid rgba(208,166,71,.38);border-radius:999px;background:#030c16}
 .nl-shelf-rank-track span{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#b88728,#ffe289)}
