@@ -59,6 +59,13 @@ reader_active_days_007
   .trim()
   .split(/\s+/u);
 
+test('SCOUT RECORD shows the actual current level beneath the rank name', () => {
+  assert.match(scout, /id="rankName"/u);
+  assert.match(scout, /id="rankLevel" class="scout-current-level"/u);
+  assert.match(scoutJs, /setText\('rankLevel', `Lv\.\$\{n\(level\)\}`\)/u);
+  assert.match(scoutCss, /\.scout-hero-copy \.scout-current-level\{/u);
+});
+
 test('beta navigation links to the live SCOUT RECORD surface', () => {
   assert.match(
     mypage,
