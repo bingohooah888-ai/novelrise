@@ -52,6 +52,40 @@ test('JWT diagnostics expose only fixed checkpoint labels', () => {
   assert.doesNotMatch(src, /console\.error\(error/u);
 });
 
+test('Vercel attestation has bounded secret-free phase diagnostics', () => {
+  const src = readFileSync(
+    new URL('../.github/staging-ai-jwt/probe.mjs', import.meta.url),
+    'utf8'
+  );
+  const labels = Array.from(
+    src.matchAll(/traceVercelPhase\('([A-Z_]+)'\)/gu),
+    (match) => match[1]
+  );
+  assert.deepEqual(labels, [
+    'DEPLOYMENT_REQUEST',
+    'DEPLOYMENT_ASSERT_OK',
+    'PROJECT_REQUEST',
+    'PROJECT_ASSERT_OK',
+    'ENV_REQUEST',
+    'ENV_ASSERT_OK'
+  ]);
+  for (const phase of ['DEPLOYMENT', 'PROJECT', 'ENV']) {
+    assert.ok(src.includes('assertVercelHttpOk('));
+    assert.ok(src.includes("'" + phase + "'"));
+  }
+  for (const category of [
+    'UNAUTHORIZED_401',
+    'FORBIDDEN_403',
+    'NOT_FOUND_404',
+    'RATE_LIMITED_429',
+    'OTHER_NON_200'
+  ]) {
+    assert.ok(src.includes(category));
+  }
+  assert.match(src, /REAL_STAGING_JWT_VERCEL_PHASE/u);
+  assert.doesNotMatch(src, /console\.error\(error/u);
+});
+
 function sample() {
   const approval = {
     scope: 'real-auth-jwt-preview-proof',
