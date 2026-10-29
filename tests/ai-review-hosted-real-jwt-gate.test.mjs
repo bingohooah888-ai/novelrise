@@ -47,7 +47,8 @@ const FROZEN_MAIN_COMMITS = Object.freeze([
   '79f5fa7700a852f3fcf6a90c40066288f30523d1',
   'a46873abfd2e338954c458adb4dfdbcacf66a873',
   '769606269e824b26b7170e8ad930b8813011a13f',
-  '5f61ef6df09a59409f6079148df7357568720a5d'
+  '5f61ef6df09a59409f6079148df7357568720a5d',
+  '922ee327cbae2812a440ebcdc35cb9371a072e2e'
 ]);
 const FROZEN_MAIN_FILES = Object.freeze([
   {
@@ -263,6 +264,26 @@ const FROZEN_MAIN_FILES = Object.freeze([
     filename: 'tests/work-navigation-character-surfaces.test.mjs',
     status: 'modified',
     sha: 'b0f1ade0cd74c1121cfaa9601a668809efccb7d2'
+  },
+  {
+    filename: 'novelight-comments.css',
+    status: 'modified',
+    sha: 'c2c3eff01cefd080efeff701c59aea70371218cc'
+  },
+  {
+    filename: 'novelight-comments.js',
+    status: 'modified',
+    sha: '2bbb13e9352c89a723274b388fbdaf19e8aba5c1'
+  },
+  {
+    filename: 'supabase/migrations/20261030010000_comment_public_scout_identity.sql',
+    status: 'added',
+    sha: '1e6c92576ceed47026fe98c8c0c4f301533a69c8'
+  },
+  {
+    filename: 'tests/e2e/specs/comment-spoiler-display.spec.js',
+    status: 'modified',
+    sha: '62f1ff0915e655f67b5a695a5012417aafe05743'
   }
 ]);
 
