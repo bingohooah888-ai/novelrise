@@ -113,6 +113,29 @@ function audit(db,phase,createdId=ID){
     fail();
   }
 }
+// GoTrue may set app_metadata after INSERT triggers run. Once Admin
+// createUser returns, repair only the known synthetic account's transient
+// beta/campaign enrollment. Do not modify Auth or ordinary user records.
+export function syntheticMetadataReconcileSQL(){
+  const id="'"+ID+"'::uuid";
+  const email="'"+EMAIL+"'";
+  return "begin; set local statement_timeout='12s'; set local lock_timeout='3s';"+
+    "do $synthetic$ begin "+
+    "if (select count(*) from auth.users where id="+id+
+    " and lower(email)="+email+
+    " and lower(coalesce(raw_app_meta_data ->> 'internal_e2e', 'false'))"+
+    " in ('true','1','yes')) <> 1 then "+
+    "raise exception 'SYNTHETIC_METADATA_NOT_READY'; end if; "+
+    "if (select count(*) from public.beta_participants"+
+    " where auth_user_id="+id+" or email_normalized="+email+
+    ") > 1 then raise exception 'SYNTHETIC_BETA_AMBIGUOUS'; end if; "+
+    "if (select count(*) from public.scout_reward_campaign_entries"+
+    " where user_id="+id+
+    ") > 1 then raise exception 'SYNTHETIC_CAMPAIGN_AMBIGUOUS'; end if; "+
+    "perform public.novelight_sync_user_participation_qualifications("+id+"); "+
+    "delete from public.scout_reward_campaign_entries where user_id="+
+    id+"; end $synthetic$; commit;";
+}
 function fkResidue(db){
   const stmt="select format('select count(*) from %I.%I where %I %s;',n.nspname,c.relname,a.attname,"+
     "case when k.confrelid in ('auth.users'::regclass,'public.profiles'::regclass)"+
@@ -202,7 +225,10 @@ async function main(){
       id:ID,email:EMAIL,password,email_confirm:true,app_metadata:{internal_e2e:true}
     });
     created=result.data?.user||null;
-    if(result.error||!created||created.id!==ID||created.email!==EMAIL) fail();
+    if(result.error||!created||created.id!==ID||created.email!==EMAIL||
+       created.app_metadata?.internal_e2e!==true) fail();
+    traceStage('AUTH_METADATA_RECONCILE');
+    sql(db,syntheticMetadataReconcileSQL());
     traceStage('NOVEL_CREATE');
     sql(db,"begin; set local statement_timeout='12s'; set local lock_timeout='3s';"+
       "insert into public.novels(id,user_id,title,status) values ("+NOVEL+",'"+ID+"','Synthetic JWT read test','draft'); commit;");
