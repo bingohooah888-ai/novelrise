@@ -36,6 +36,7 @@ test('internal E2E guard preserves campaign eligibility', () => {
   );
   assert.match(migration, /pg_catalog\.to_regprocedure/u);
   assert.match(migration, /fcf216ef3062983bea13ff4143b92f53/u);
+  assert.match(migration, /4d52acf3a1d5f52db73456357a39d5fc/u);
   assert.doesNotMatch(
     migration,
     /drop trigger|delete from|update public\.scout_reward_campaigns/iu
