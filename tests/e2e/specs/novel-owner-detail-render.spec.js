@@ -207,16 +207,51 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
   await expect(page.locator('#novelReaderSeedSilver')).toHaveText('3 / 3');
   await expect(page.locator('#novelReaderSeedBronze')).toHaveText('2 / 2');
   await expect(stock.locator('img')).toHaveCount(3);
-  if ((await page.evaluate(() => globalThis.innerWidth)) > 1120) {
-    const positions = await page.evaluate(() => ({
-      main: globalThis.document
-        .querySelector('.light-seed-content-main')
-        .getBoundingClientRect().right,
-      stock: globalThis.document
-        .querySelector('.light-seed-reader-inventory')
-        .getBoundingClientRect().left
-    }));
-    expect(positions.stock).toBeGreaterThan(positions.main);
+  const sendCard = page.locator('#sendLightSeedButton');
+  await expect(sendCard).toContainText(
+    '対象作品を実際に読んだ記録がある場合のみ送信できます。'
+  );
+  await expect(page.locator('#lightSeedArea .seed-notice')).toHaveCount(0);
+  await expect(page.locator('#lightSeedArea .seed-stats')).toBeHidden();
+  await expect(page.locator('#seedRemaining')).toHaveText('');
+  const geometry = await page.evaluate(() => {
+    const rect = (selector) => {
+      const box = globalThis.document
+        .querySelector(selector)
+        .getBoundingClientRect();
+      return {
+        left: box.left,
+        right: box.right,
+        top: box.top,
+        height: box.height
+      };
+    };
+    return {
+      viewport: globalThis.innerWidth,
+      row: rect('.light-seed-content-grid'),
+      received: rect('.light-seed-public-summary'),
+      send: rect('#sendLightSeedButton'),
+      inventory: rect('.light-seed-reader-inventory')
+    };
+  });
+  if (geometry.viewport > 1080) {
+    const { row, received, send, inventory } = geometry;
+    expect(received.left - row.left).toBeLessThan(2);
+    expect(row.right - inventory.right).toBeLessThan(2);
+    expect(send.left - received.right).toBeGreaterThanOrEqual(6);
+    expect(send.left - received.right).toBeLessThanOrEqual(14);
+    expect(inventory.left - send.right).toBeGreaterThanOrEqual(6);
+    expect(inventory.left - send.right).toBeLessThanOrEqual(14);
+    expect(Math.abs(received.top - send.top)).toBeLessThan(2);
+    expect(Math.abs(send.top - inventory.top)).toBeLessThan(2);
+    expect(Math.abs(received.height - send.height)).toBeLessThan(3);
+    expect(Math.abs(send.height - inventory.height)).toBeLessThan(3);
+  } else {
+    // Narrow viewports wrap the cards rather than overflow the page.
+    expect(geometry.send.left).toBeGreaterThanOrEqual(geometry.row.left);
+    expect(geometry.inventory.right).toBeLessThanOrEqual(
+      geometry.row.right + 2
+    );
   }
   await expect(page.locator('.light-seed-public-summary img')).toBeVisible();
   await expect(page.locator('.light-seed-public-summary img')).toHaveJSProperty(
