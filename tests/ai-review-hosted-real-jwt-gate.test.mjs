@@ -174,22 +174,26 @@ const FROZEN_MAIN_FILES = Object.freeze([
     sha: '59160bfd5673f8011f6a98cb1c1f46f0d4c3f47f'
   },
   {
-    filename: 'supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_postcheck.sql',
+    filename:
+      'supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_postcheck.sql',
     status: 'added',
     sha: '0b54e2538761cda7a07e32908d71b200464eee97'
   },
   {
-    filename: 'supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_precheck.sql',
+    filename:
+      'supabase/checks/20261029142000_exclude_internal_scout_campaign_entries_precheck.sql',
     status: 'added',
     sha: '601f7a5e11d76f06921e845fe460a6f455971b54'
   },
   {
-    filename: 'supabase/migrations/20261029142000_exclude_internal_scout_campaign_entries.sql',
+    filename:
+      'supabase/migrations/20261029142000_exclude_internal_scout_campaign_entries.sql',
     status: 'added',
     sha: 'd887dc40233ef727bd74f8a6c92ea5ea252ea957'
   },
   {
-    filename: 'supabase/rollback/20261029142000_exclude_internal_scout_campaign_entries_rollback.sql',
+    filename:
+      'supabase/rollback/20261029142000_exclude_internal_scout_campaign_entries_rollback.sql',
     status: 'added',
     sha: 'fa00bc61da615462fa3640d16f13eebe700e2359'
   },
@@ -715,27 +719,4 @@ test('campaign migration and commit ancestry remain pinned', () => {
   const alteredParent = sample();
   alteredParent.mainLineage.commits[25].parents[0].sha = '0'.repeat(40);
   assert.throws(() => verifyAIHostedJwtAdmission(alteredParent), /DENIED/u);
-});
-
-// FORMAT_DIAG_REMOVE_BEFORE_MERGE
-test('temporary Prettier output capture', async () => {
-  const prettier = await import('prettier');
-  const filename = 'tests/ai-review-hosted-real-jwt-gate.test.mjs';
-  const ownSource = readFileSync(new URL(import.meta.url), 'utf8');
-  const marker = '// FORMAT_DIAG_REMOVE_BEFORE_MERGE';
-  const cleanSource = ownSource.slice(0, ownSource.indexOf(marker));
-  const options = (await prettier.resolveConfig(filename)) ?? {};
-  const formatted = await prettier.format(cleanSource, {
-    ...options,
-    filepath: filename
-  });
-  const encoded = Buffer.from(formatted, 'utf8').toString('base64');
-  for (let offset = 0; offset < encoded.length; offset += 400) {
-    console.log(
-      'FORMAT_RESULT_CHUNK ' +
-        String(offset / 400) +
-        ' ' +
-        encoded.slice(offset, offset + 400)
-    );
-  }
 });
