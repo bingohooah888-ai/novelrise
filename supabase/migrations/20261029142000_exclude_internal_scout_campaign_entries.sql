@@ -27,7 +27,7 @@ declare
   v_eligibility_started_at timestamptz;
 begin
   -- Application metadata is admin-managed; do not enroll synthetic tests.
-  if pg_catalog.lower(pg_catalog.coalesce(new.raw_app_meta_data ->> 'internal_e2e', 'false'))
+  if pg_catalog.lower(coalesce(new.raw_app_meta_data ->> 'internal_e2e', 'false'))
        in ('true', '1', 'yes') then
     return new;
   end if;
@@ -94,7 +94,6 @@ begin
 end;
 $$;
 
--- Preserve the existing function's private execution permissions.
 revoke all on function public.novelight_capture_scout_campaign_entry() from public, anon, authenticated;
 
 commit;
