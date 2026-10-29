@@ -323,9 +323,7 @@
     author_favorite_500: 'assets/scout-badges/hard_author_favorite_500.png',
     author_discovered_plus2_005: 'assets/scout-badges/hard_author_discovered_plus2_005.png'
   });
-  const AVATAR_OWNER_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  const AVATAR_PATH_PATTERN = /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.(webp|png|jpg|jpeg)$/i;
-
+  // Author-owned avatar paths are validated by novelight-public-avatar.js.
   function commentBadgeArtworkPath(badgeId) {
     if (!/^(?:reader|author|limited)_[a-z0-9_]+$/u.test(badgeId)) return null;
     if (badgeId === 'limited_founding_author') return 'assets/founding-authors-badge-2026.png';
@@ -335,28 +333,8 @@
   function renderPublicIdentity(state, comment) {
     const profile = createElement('div', 'novelight-comment-profile');
     const displayName = String(comment.display_name || '読者').trim() || '読者';
-    const avatar = createElement('span', 'novelight-comment-avatar');
+    const avatar = createElement('span', 'novelight-comment-avatar', displayName.slice(0, 1));
     avatar.setAttribute('aria-label', displayName + 'のアイコン');
-    const avatarFallback = createElement('span', 'novelight-comment-avatar-fallback', displayName.slice(0, 1));
-    avatar.append(avatarFallback);
-
-    // Only render public bucket objects belonging to the commenting user.
-    const userId = String(comment.user_id || '').toLowerCase();
-    const avatarPath = String(comment.avatar_path || '');
-    const match = avatarPath.match(AVATAR_PATH_PATTERN);
-    if (AVATAR_OWNER_PATTERN.test(userId) && match && match[1].toLowerCase() === userId) {
-      const url = state.client.storage?.from?.('author-avatars')?.getPublicUrl?.(avatarPath)?.data?.publicUrl;
-      if (url) {
-        const image = createElement('img', 'novelight-comment-avatar-image');
-        image.alt = '';
-        image.loading = 'lazy';
-        image.decoding = 'async';
-        image.onload = () => { avatarFallback.hidden = true; };
-        image.onerror = () => { image.remove(); avatarFallback.hidden = false; };
-        image.src = url;
-        avatar.append(image);
-      }
-    }
     profile.append(avatar);
 
     const level = Number(comment.scout_level);
@@ -560,6 +538,16 @@
       }
 
       state.list.append(item);
+      // Paint only after attaching the holder. The shared renderer checks
+      // isConnected before replacing the initial with the loaded image.
+      // It also validates the user-owned public Storage path in one place.
+      global.NovelightPublicAvatar?.paint(
+        item.querySelector('.novelight-comment-avatar'),
+        comment.avatar_path,
+        comment.user_id,
+        comment.display_name,
+        state.client
+      );
     }
   }
 
