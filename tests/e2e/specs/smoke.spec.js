@@ -666,7 +666,8 @@ test('episode commenter avatar uses the same public RPC as author profile', asyn
   await page.goto('/tests/e2e/fixtures/comment-spoiler-display.html');
   await page.evaluate(async () => {
     const userId = '11111111-1111-4111-8111-111111111111';
-    const path = userId + '/22222222-2222-4222-8222-222222222222.webp';
+    const imageName = '22222222-2222-4222-8222-222222222222.webp';
+    const path = `${userId}/${imageName}`;
     const client = {
       storage: {
         from: () => ({
@@ -715,9 +716,9 @@ test('episode commenter avatar uses the same public RPC as author profile', asyn
     'src',
     '/assets/scout-badges/reader_read_005.png'
   );
-  await expect
-    .poll(() => avatar.evaluate((image) => image.naturalWidth))
-    .toBeGreaterThan(0);
+  await expect(avatar).toHaveJSProperty('complete', true);
+  const width = await avatar.evaluate((image) => image.naturalWidth);
+  expect(width).toBeGreaterThan(0);
   await expect(page.locator('.novelight-comment-level')).toHaveText(
     'SCOUT Lv.3'
   );
