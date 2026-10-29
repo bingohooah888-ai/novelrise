@@ -11,6 +11,16 @@ begin
      or pg_catalog.to_regclass('auth.users') is null then
     raise exception 'Internal campaign exclusion requires existing canonical Auth and campaign';
   end if;
+  if not exists (
+    select 1 from pg_catalog.pg_trigger t
+    where t.tgrelid = 'auth.users'::regclass
+      and t.tgname = 'novelight_scout_campaign_entry_on_signup'
+      and t.tgfoid =
+        'public.novelight_capture_scout_campaign_entry()'::regprocedure
+      and not t.tgisinternal
+  ) then
+    raise exception 'Required SCOUT signup campaign trigger was not installed';
+  end if;
   if (
     select md5(pg_catalog.pg_get_functiondef(p.oid))
     from pg_catalog.pg_proc p
