@@ -85,15 +85,17 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
                 }
               ] : name === 'novelight_public_profile'
                 ? [{ display_name: '作者の表示確認' }]
-                : name === 'light_seed_status_v2'
+                : name === 'light_seed_status_auto_v1'
                   ? {
                     reason: 'own_novel',
-                    monthly_limit: 3, remaining_this_month: 2,
-                    total_seed_count: 2, gold_remaining: 0,
-                    silver_remaining: 0, bronze_remaining: 0
+                    monthly_limit: 11, remaining_this_month: 11,
+                    total_seed_count: 2
                   }
                   : name === 'novelight_author_received_light_seed_summary'
-                    ? { total: 2, gold: 1, silver: 1, bronze: 0 }
+                    ? {
+                      total_seed_count: 2, gold_count: 1,
+                      silver_count: 1, bronze_count: 0
+                    }
                     : [],
               error: null
               };
@@ -189,7 +191,16 @@ test('novel owner sees title, synopsis, LIGHT SEED and received-seed panel', asy
 
   await expect(page.locator('#lightSeedArea')).toBeVisible();
   await expect(page.locator('#lightSeedArea')).toContainText('LIGHT SEED');
+  await expect(page.locator('#publicLightSeedCount')).toHaveText('2 個');
+  await expect(page.locator('.light-seed-public-summary img')).toBeVisible();
+  await expect(page.locator('.light-seed-public-summary img')).toHaveJSProperty(
+    'complete',
+    true
+  );
   await expect(page.locator('#receivedSeedArea')).toBeVisible();
+  await expect(page.locator('#receivedSeedGold')).toHaveText('1');
+  await expect(page.locator('#receivedSeedSilver')).toHaveText('1');
+  await expect(page.locator('#receivedSeedBronze')).toHaveText('0');
   await expect(page.locator('.nl-work-detail-bookmeta')).toBeVisible();
   await expect(page.locator('.nl-work-detail-toc')).toContainText('下書き');
   await expect(page.locator('.nl-work-author-episodes')).toHaveText(
