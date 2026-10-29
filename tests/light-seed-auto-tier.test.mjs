@@ -87,7 +87,10 @@ test('public LIGHT SEED total uses lightweight artwork and does not expose the p
 
 test('work detail restores the reader-only three-tier LIGHT SEED balance card', () => {
   assert.match(novelRuntime, /light-seed-content-grid/u);
-  assert.match(novelRuntime, /seedLayout\.append\(publicSummary, types, readerInventory\)/u);
+  assert.match(
+    novelRuntime,
+    /seedLayout\.append\(publicSummary, types, readerInventory\)/u
+  );
   assert.match(novelRuntime, /button\.appendChild\(sendNote\)/u);
   assert.match(novelRuntime, /oldNotice\?\.remove\(\)/u);
   assert.match(novelRuntime, /legacyStats\.hidden = true/u);
