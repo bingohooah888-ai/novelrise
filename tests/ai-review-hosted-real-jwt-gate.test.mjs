@@ -131,17 +131,11 @@ test('reject missing or incorrectly labeled Staging census repair', () => {
 
   const modifiedAsAdded = sample();
   modifiedAsAdded.mainLineage.files.at(-1).status = 'added';
-  assert.throws(
-    () => verifyAIHostedJwtAdmission(modifiedAsAdded),
-    /DENIED/u
-  );
+  assert.throws(() => verifyAIHostedJwtAdmission(modifiedAsAdded), /DENIED/u);
 
   const originalChanged = sample();
   originalChanged.mainLineage.files[0].status = 'modified';
-  assert.throws(
-    () => verifyAIHostedJwtAdmission(originalChanged),
-    /DENIED/u
-  );
+  assert.throws(() => verifyAIHostedJwtAdmission(originalChanged), /DENIED/u);
 });
 
 test('reject candidate rebased onto new main after Preview was pinned', () => {
