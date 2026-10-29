@@ -87,6 +87,32 @@ test('Vercel attestation has bounded secret-free phase diagnostics', () => {
   assert.doesNotMatch(src, /console\.error\(error/u);
 });
 
+test('protected Preview fetch failures emit only bounded status labels', () => {
+  const src = readFileSync(
+    new URL('../.github/staging-ai-jwt/runner.mjs', import.meta.url),
+    'utf8'
+  );
+  assert.match(src, /new Headers\(/u);
+  assert.match(src, /PREVIEW_BROWSER_CONFIG/u);
+  for (const category of [
+    'BYPASS_HEADER_INVALID',
+    'FETCH_FAILED',
+    'HTTP_401',
+    'HTTP_403',
+    'HTTP_404',
+    'HTTP_429',
+    'HTTP_REDIRECT',
+    'HTTP_OTHER',
+    'HTTP_OK',
+    'JSON_INVALID'
+  ]) {
+    assert.ok(src.includes(category));
+  }
+  assert.match(src, /redirect:'manual'/u);
+  assert.match(src, /AbortSignal\.timeout\(12000\)/u);
+  assert.doesNotMatch(src, /console\.error\(error/u);
+});
+
 function sample() {
   const approval = {
     scope: 'real-auth-jwt-preview-proof',
