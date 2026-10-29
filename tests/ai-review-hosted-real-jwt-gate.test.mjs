@@ -25,6 +25,61 @@ const REPAIRED_CENSUS_FILES = [
   '.github/staging-ai-proof/census.mjs',
   'tests/ai-review-hosted-proof-census.test.mjs'
 ];
+const OWNER_POLICY_MAIN = 'c1e3718ee209e91a804cfb879f2ba954fc9a27e2';
+const BOOKSHELF_MAIN = '39278163d1c7e2ee7dbd11dae8fc1a8173ce513f';
+const FROZEN_BLOBS = new Map([
+  [
+    '.github/staging-ai-jwt/probe.mjs',
+    '011a154cbe84b8f3c5b68befeacc886624fed094'
+  ],
+  [
+    '.github/staging-ai-jwt/runner.mjs',
+    'fe7365eb46bff715bd84ed973e50b6e57b32d22b'
+  ],
+  [
+    '.github/workflows/ai-review-hosted-staging-jwt-proof.yml',
+    '5c96f208f2f916b8fec0b99b5e7a1656cc6f39e2'
+  ],
+  [
+    '.github/staging-ai-proof/census.mjs',
+    'a4b639ac7496093f615cbfdadbd6c2e0be80df95'
+  ],
+  [
+    'tests/ai-review-hosted-proof-census.test.mjs',
+    '10e3c2307c608c21fbbbd586dd0a5775f2cdb7d7'
+  ],
+  ['AGENTS.md', '1c3b95410de0010015fada83864b60db4c175f21'],
+  ['docs/NOVELIGHT-MASTER.md', '91d11fa367b7de64990b13397b13d4bb6e3c0230'],
+  ['docs/development-workflow.md', 'b8d95f44f4f3deccfde9fe4673a4ae77ba20f324'],
+  [
+    'tests/master-integrity.test.js',
+    'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'
+  ],
+  ['favorites.html', '05e6c3e36bea4f32d20db515e36b0225a1631f98'],
+  [
+    'novelight-bookshelf-overview.css',
+    '34ec82d64b9d2fd58be4e46995152b1d0f1c1c37'
+  ],
+  [
+    'novelight-bookshelf-overview.js',
+    '71f182d89081c1aa0b9b8b3bff2defe3891933d4'
+  ],
+  ['novelight-bookshelf.js', 'eb49a7c530d5d485ff98d681f75f180129b2802e'],
+  ['novelight-thumbnail-runtime.js', '81d5e3f101348f9bccfede97e9491d4f50bf792d']
+]);
+const OWNER_POLICY_FILES = [
+  'AGENTS.md',
+  'docs/NOVELIGHT-MASTER.md',
+  'docs/development-workflow.md',
+  'tests/master-integrity.test.js'
+];
+const BOOKSHELF_FILES = [
+  { filename: 'favorites.html', status: 'modified' },
+  { filename: 'novelight-bookshelf-overview.css', status: 'added' },
+  { filename: 'novelight-bookshelf-overview.js', status: 'added' },
+  { filename: 'novelight-bookshelf.js', status: 'modified' },
+  { filename: 'novelight-thumbnail-runtime.js', status: 'modified' }
+];
 
 test('JWT diagnostics expose only fixed checkpoint labels', () => {
   const src = readFileSync(
@@ -166,13 +221,33 @@ function sample() {
       status: 'ahead',
       behind_by: 0,
       base_commit: { sha: BASE },
-      total_commits: 1,
-      commits: [{ sha: MAIN }],
+      total_commits: 9,
+      commits: [
+        ...Array.from({ length: 6 }, () => ({ sha: 'c'.repeat(40) })),
+        { sha: OWNER_POLICY_MAIN },
+        { sha: BOOKSHELF_MAIN, parents: [{ sha: OWNER_POLICY_MAIN }] },
+        { sha: MAIN, parents: [{ sha: BOOKSHELF_MAIN }] }
+      ],
       files: [
-        ...FILES.map((filename) => ({ filename, status: 'added' })),
+        ...FILES.map((filename) => ({
+          filename,
+          status: 'added',
+          sha: FROZEN_BLOBS.get(filename) ?? 'reviewed-gate-repair'
+        })),
+        ...OWNER_POLICY_FILES.map((filename) => ({
+          filename,
+          status: 'modified',
+          sha: FROZEN_BLOBS.get(filename)
+        })),
         ...REPAIRED_CENSUS_FILES.map((filename) => ({
           filename,
-          status: 'modified'
+          status: 'modified',
+          sha: FROZEN_BLOBS.get(filename)
+        })),
+        ...BOOKSHELF_FILES.map(({ filename, status }) => ({
+          filename,
+          status,
+          sha: FROZEN_BLOBS.get(filename)
         }))
       ]
     },
@@ -236,6 +311,59 @@ test('reject a missing trusted runner main promotion', () => {
   const input = sample();
   input.mainLineage.status = 'identical';
   assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+});
+
+test('stale Draft base SHA is safe only when live main is verified', () => {
+  const input = sample();
+  input.pr.base.sha = 'd'.repeat(40);
+  assert.equal(verifyAIHostedJwtAdmission(input).mainSha, MAIN);
+  input.main.object.sha = 'd'.repeat(40);
+  assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+  input.main.object.sha = MAIN;
+  input.pr.base.ref = 'untrusted';
+  assert.throws(() => verifyAIHostedJwtAdmission(input), /DENIED/u);
+});
+
+test('unreviewed main commits and changed protected blobs stay blocked', () => {
+  const extraCommit = sample();
+  extraCommit.mainLineage.total_commits += 1;
+  extraCommit.mainLineage.commits.push({ sha: MAIN });
+  assert.throws(() => verifyAIHostedJwtAdmission(extraCommit), /DENIED/u);
+
+  const alteredDocs = sample();
+  alteredDocs.mainLineage.files.find(
+    (file) => file.filename === 'docs/NOVELIGHT-MASTER.md'
+  ).sha = 'unreviewed';
+  assert.throws(() => verifyAIHostedJwtAdmission(alteredDocs), /DENIED/u);
+
+  const alteredRunner = sample();
+  alteredRunner.mainLineage.files.find(
+    (file) => file.filename === '.github/staging-ai-jwt/runner.mjs'
+  ).sha = 'unreviewed';
+  assert.throws(() => verifyAIHostedJwtAdmission(alteredRunner), /DENIED/u);
+});
+
+test('bookcase merge is pinned and its extra edits are rejected', () => {
+  const allowed = sample();
+  assert.equal(verifyAIHostedJwtAdmission(allowed).mainSha, MAIN);
+
+  const unknownMain = sample();
+  unknownMain.mainLineage.commits.at(-2).sha = 'd'.repeat(40);
+  assert.throws(() => verifyAIHostedJwtAdmission(unknownMain), /DENIED/u);
+
+  const alteredParent = sample();
+  alteredParent.mainLineage.commits.at(-1).parents[0].sha = OWNER_POLICY_MAIN;
+  assert.throws(() => verifyAIHostedJwtAdmission(alteredParent), /DENIED/u);
+
+  const alteredBookshelf = sample();
+  alteredBookshelf.mainLineage.files.find(
+    (file) => file.filename === 'novelight-bookshelf-overview.js'
+  ).sha = 'unreviewed';
+  assert.throws(() => verifyAIHostedJwtAdmission(alteredBookshelf), /DENIED/u);
+
+  const missingBookshelf = sample();
+  missingBookshelf.mainLineage.files.pop();
+  assert.throws(() => verifyAIHostedJwtAdmission(missingBookshelf), /DENIED/u);
 });
 
 test('runner requires dedicated Staging approval and secrets', () => {
