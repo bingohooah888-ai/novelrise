@@ -27,6 +27,9 @@ const REPAIRED_CENSUS_FILES = [
 ];
 const OWNER_POLICY_MAIN = 'c1e3718ee209e91a804cfb879f2ba954fc9a27e2';
 const BOOKSHELF_MAIN = '39278163d1c7e2ee7dbd11dae8fc1a8173ce513f';
+const JWT_GATE_REPAIR_MAIN = '8328a0e9de0a133fbb379ade406cd2821bb42fe4';
+const BOOKSHELF_ADJUST_MAIN = '724afa3f9bd6ebf6d8210df9f75afac611031281';
+const LIGHT_SEED_RESTORE_MAIN = 'a8d14e9fc2efd6f9d4d648b0576fb8bd836685a0';
 const FROZEN_BLOBS = new Map([
   [
     '.github/staging-ai-jwt/probe.mjs',
@@ -55,17 +58,29 @@ const FROZEN_BLOBS = new Map([
     'tests/master-integrity.test.js',
     'faf0e8e8fa0238ebf8693f4f26dd2ef8f695a832'
   ],
-  ['favorites.html', '05e6c3e36bea4f32d20db515e36b0225a1631f98'],
+  ['favorites.html', 'f0ba354def79bf51f797e2bc6f45e796b6c306fa'],
   [
     'novelight-bookshelf-overview.css',
-    '34ec82d64b9d2fd58be4e46995152b1d0f1c1c37'
+    '7262456a6d5a6d9939a758a6684d2b42ccdb94d1'
   ],
   [
     'novelight-bookshelf-overview.js',
     '71f182d89081c1aa0b9b8b3bff2defe3891933d4'
   ],
   ['novelight-bookshelf.js', 'eb49a7c530d5d485ff98d681f75f180129b2802e'],
-  ['novelight-thumbnail-runtime.js', '81d5e3f101348f9bccfede97e9491d4f50bf792d']
+  ['novelight-thumbnail-runtime.js', '81d5e3f101348f9bccfede97e9491d4f50bf792d'],
+  ['api/seo/templates/novel.html', '80e9c90366516556a82dc2919077eb0fdd40dd7b'],
+  ['novel.html', '80e9c90366516556a82dc2919077eb0fdd40dd7b'],
+  ['novelight-novel-poll.js', '9990adcbe5eb468807716fbcdb7af95582cbaf3a'],
+  ['tests/async-ui-state.test.mjs', '912577ea4610ba77f94057c2de16151e577f5e3d'],
+  [
+    'tests/e2e/specs/novel-owner-detail-render.spec.js',
+    'add9399c0c5299ee999ff67335faeaf7c86d7764'
+  ],
+  [
+    'tests/light-seed-auto-tier.test.mjs',
+    '25419b983bd6806edad2be776bedfb57e87cd6a1'
+  ]
 ]);
 const OWNER_POLICY_FILES = [
   'AGENTS.md',
@@ -79,6 +94,17 @@ const BOOKSHELF_FILES = [
   { filename: 'novelight-bookshelf-overview.js', status: 'added' },
   { filename: 'novelight-bookshelf.js', status: 'modified' },
   { filename: 'novelight-thumbnail-runtime.js', status: 'modified' }
+];
+const LIGHT_SEED_FILES = [
+  { filename: 'api/seo/templates/novel.html', status: 'modified' },
+  { filename: 'novel.html', status: 'modified' },
+  { filename: 'novelight-novel-poll.js', status: 'modified' },
+  { filename: 'tests/async-ui-state.test.mjs', status: 'modified' },
+  {
+    filename: 'tests/e2e/specs/novel-owner-detail-render.spec.js',
+    status: 'modified'
+  },
+  { filename: 'tests/light-seed-auto-tier.test.mjs', status: 'modified' }
 ];
 
 test('JWT diagnostics expose only fixed checkpoint labels', () => {
@@ -221,12 +247,21 @@ function sample() {
       status: 'ahead',
       behind_by: 0,
       base_commit: { sha: BASE },
-      total_commits: 9,
+      total_commits: 12,
       commits: [
         ...Array.from({ length: 6 }, () => ({ sha: 'c'.repeat(40) })),
         { sha: OWNER_POLICY_MAIN },
         { sha: BOOKSHELF_MAIN, parents: [{ sha: OWNER_POLICY_MAIN }] },
-        { sha: MAIN, parents: [{ sha: BOOKSHELF_MAIN }] }
+        { sha: JWT_GATE_REPAIR_MAIN, parents: [{ sha: BOOKSHELF_MAIN }] },
+        {
+          sha: BOOKSHELF_ADJUST_MAIN,
+          parents: [{ sha: JWT_GATE_REPAIR_MAIN }]
+        },
+        {
+          sha: LIGHT_SEED_RESTORE_MAIN,
+          parents: [{ sha: BOOKSHELF_ADJUST_MAIN }]
+        },
+        { sha: MAIN, parents: [{ sha: LIGHT_SEED_RESTORE_MAIN }] }
       ],
       files: [
         ...FILES.map((filename) => ({
@@ -245,6 +280,11 @@ function sample() {
           sha: FROZEN_BLOBS.get(filename)
         })),
         ...BOOKSHELF_FILES.map(({ filename, status }) => ({
+          filename,
+          status,
+          sha: FROZEN_BLOBS.get(filename)
+        })),
+        ...LIGHT_SEED_FILES.map(({ filename, status }) => ({
           filename,
           status,
           sha: FROZEN_BLOBS.get(filename)
@@ -364,6 +404,40 @@ test('bookcase merge is pinned and its extra edits are rejected', () => {
   const missingBookshelf = sample();
   missingBookshelf.mainLineage.files.pop();
   assert.throws(() => verifyAIHostedJwtAdmission(missingBookshelf), /DENIED/u);
+});
+
+test('intervening bookshelf and LIGHT SEED merges stay tightly pinned', () => {
+  const approved = sample();
+  assert.equal(verifyAIHostedJwtAdmission(approved).mainSha, MAIN);
+
+  const wrongSha = sample();
+  wrongSha.mainLineage.commits.at(-2).sha = 'f'.repeat(40);
+  assert.throws(() => verifyAIHostedJwtAdmission(wrongSha), /DENIED/u);
+
+  const wrongParent = sample();
+  wrongParent.mainLineage.commits.at(-3).parents[0].sha =
+    OWNER_POLICY_MAIN;
+  assert.throws(() => verifyAIHostedJwtAdmission(wrongParent), /DENIED/u);
+
+  const alteredUI = sample();
+  alteredUI.mainLineage.files.find(
+    (f) => f.filename === 'favorites.html'
+  ).sha = 'unreviewed';
+  assert.throws(() => verifyAIHostedJwtAdmission(alteredUI), /DENIED/u);
+
+  const alteredNovel = sample();
+  alteredNovel.mainLineage.files.find(
+    (f) => f.filename === 'novelight-novel-poll.js'
+  ).sha = 'unreviewed';
+  assert.throws(() => verifyAIHostedJwtAdmission(alteredNovel), /DENIED/u);
+
+  const unreviewedFile = sample();
+  unreviewedFile.mainLineage.files.push({
+    filename: 'api/unchecked-jwt.js',
+    status: 'added',
+    sha: 'unreviewed'
+  });
+  assert.throws(() => verifyAIHostedJwtAdmission(unreviewedFile), /DENIED/u);
 });
 
 test('runner requires dedicated Staging approval and secrets', () => {
