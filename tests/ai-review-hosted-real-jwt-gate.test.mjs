@@ -68,7 +68,10 @@ const FROZEN_BLOBS = new Map([
     '71f182d89081c1aa0b9b8b3bff2defe3891933d4'
   ],
   ['novelight-bookshelf.js', 'eb49a7c530d5d485ff98d681f75f180129b2802e'],
-  ['novelight-thumbnail-runtime.js', '81d5e3f101348f9bccfede97e9491d4f50bf792d'],
+  [
+    'novelight-thumbnail-runtime.js',
+    '81d5e3f101348f9bccfede97e9491d4f50bf792d'
+  ],
   ['api/seo/templates/novel.html', '80e9c90366516556a82dc2919077eb0fdd40dd7b'],
   ['novel.html', '80e9c90366516556a82dc2919077eb0fdd40dd7b'],
   ['novelight-novel-poll.js', '9990adcbe5eb468807716fbcdb7af95582cbaf3a'],
@@ -415,8 +418,7 @@ test('intervening bookshelf and LIGHT SEED merges stay tightly pinned', () => {
   assert.throws(() => verifyAIHostedJwtAdmission(wrongSha), /DENIED/u);
 
   const wrongParent = sample();
-  wrongParent.mainLineage.commits.at(-3).parents[0].sha =
-    OWNER_POLICY_MAIN;
+  wrongParent.mainLineage.commits.at(-3).parents[0].sha = OWNER_POLICY_MAIN;
   assert.throws(() => verifyAIHostedJwtAdmission(wrongParent), /DENIED/u);
 
   const alteredUI = sample();
