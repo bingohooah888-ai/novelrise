@@ -709,9 +709,7 @@ test('workflow requires OWNER and a single-use Staging ledger', () => {
 
 test('campaign migration and commit ancestry remain pinned', () => {
   const altered = sample();
-  altered.mainLineage.files.find((f) =>
-    f.filename.includes('20261029142000_')
-  ).sha = 'tampered';
+  altered.mainLineage.files[27].sha = 'tampered';
   assert.throws(() => verifyAIHostedJwtAdmission(altered), /DENIED/u);
 
   const alteredParent = sample();
