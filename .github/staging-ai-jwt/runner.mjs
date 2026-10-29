@@ -96,15 +96,38 @@ async function main(){
   const config=validateHostedJwtProofConfig(proofEnv);
   traceStage('VERCEL_ATTEST');
   await verifyHostedPreviewViaVercel(config,proofEnv);
-  const bypass={'x-vercel-protection-bypass':e.VERCEL_AUTOMATION_BYPASS_SECRET};
-  const fetchChecked=async(path)=>{
-    const r=await fetch(config.preview+path,{headers:bypass,redirect:'manual',signal:AbortSignal.timeout(12000)});
-    if(r.status!==200) fail();return r.json();
+  // Only constant stage identifiers and bounded outcome categories are logged.
+  // Never log request headers, tokens, response bodies, paths or raw exceptions.
+  const fetchChecked=async(path,phase)=>{
+    let headers;
+    try{
+      headers=new Headers({'x-vercel-protection-bypass':e.VERCEL_AUTOMATION_BYPASS_SECRET});
+    }catch{
+      traceStage(phase+'_BYPASS_HEADER_INVALID');fail();
+    }
+    let r;
+    try{
+      r=await fetch(config.preview+path,{headers,redirect:'manual',signal:AbortSignal.timeout(12000)});
+    }catch{
+      traceStage(phase+'_FETCH_FAILED');fail();
+    }
+    if(r.status!==200){
+      const category=r.status===401?'HTTP_401':r.status===403?'HTTP_403':
+        r.status===404?'HTTP_404':r.status===429?'HTTP_429':
+        r.status>=300&&r.status<400?'HTTP_REDIRECT':'HTTP_OTHER';
+      traceStage(phase+'_'+category);fail();
+    }
+    traceStage(phase+'_HTTP_OK');
+    try{
+      return await r.json();
+    }catch{
+      traceStage(phase+'_JSON_INVALID');fail();
+    }
   };
   traceStage('PREVIEW_FACTS');
-  const facts=await fetchChecked('/api/staging-environment-facts');
+  const facts=await fetchChecked('/api/staging-environment-facts','PREVIEW_FACTS');
   traceStage('PREVIEW_BROWSER_CONFIG');
-  const browser=await fetchChecked('/api/staging-browser-config');
+  const browser=await fetchChecked('/api/staging-browser-config','PREVIEW_BROWSER_CONFIG');
   const fingerprint=createHash('sha256').update(e.STAGING_SUPABASE_PUBLISHABLE_KEY).digest('hex');
   if(facts.vercelEnv!=='preview'||facts.commitSha!==config.revision||
      facts.appBaseUrl!==config.preview||facts.supabase?.url!==STAGING||
