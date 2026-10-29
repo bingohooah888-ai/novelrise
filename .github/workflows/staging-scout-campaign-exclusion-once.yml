@@ -12,6 +12,7 @@ jobs:
     if: >-
       github.event.issue.number == 294 &&
       github.event.issue.state == 'open' &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
       github.event.issue.pull_request == null &&
       github.event.issue.user.login == 'bingohooah888-ai' &&
       github.event.comment.user.login == 'bingohooah888-ai' &&
@@ -53,10 +54,12 @@ jobs:
           live="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
           test "$live" = "$approved"
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/campaign-ledger.json
-          test "$(jq '[.[][] | select(.body |
-            startswith("NOVELIGHT_STAGING_CAMPAIGN_EXCLUSION_CLAIMED ") or
-            startswith("NOVELIGHT_STAGING_CAMPAIGN_EXCLUSION_CONSUMED ")) |
-            select(.body | contains("\\"mainSha\\":\\"'"${approved}"'\\""))] | length' /tmp/campaign-ledger.json)" -eq 0
+          jq -e '
+            [.[][] | select(.body |
+              startswith("NOVELIGHT_STAGING_CAMPAIGN_EXCLUSION_CLAIMED ") or
+              startswith("NOVELIGHT_STAGING_CAMPAIGN_EXCLUSION_CONSUMED "))] |
+            length == 0
+          ' /tmp/campaign-ledger.json >/dev/null
           echo "main_sha=$approved" >> "$GITHUB_OUTPUT"
           echo "request_id=${{ github.event.comment.id }}" >> "$GITHUB_OUTPUT"
       - name: Consume approval before Staging secrets become accessible
