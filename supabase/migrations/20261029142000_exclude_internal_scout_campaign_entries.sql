@@ -11,6 +11,16 @@ begin
      or pg_catalog.to_regclass('auth.users') is null then
     raise exception 'Internal campaign exclusion requires existing canonical Auth and campaign';
   end if;
+  if (
+    select md5(pg_catalog.pg_get_functiondef(p.oid))
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'novelight_capture_scout_campaign_entry'
+      and p.pronargs = 0
+  ) is distinct from 'fcf216ef3062983bea13ff4143b92f53' then
+    raise exception 'Unreviewed pre-existing SCOUT campaign function';
+  end if;
 end
 $preflight$;
 
