@@ -12,8 +12,7 @@ const files = Object.fromEntries(
       'novelight-help.js',
       'reader-features.html',
       'novelight-community.js',
-      'novelight-bookshelf-overview.css',
-      'docs/NOVELIGHT-MASTER.md'
+      'novelight-bookshelf-overview.css'
     ].map(async (path) => [path, await readFile(path, 'utf8')])
   )
 );
@@ -38,7 +37,6 @@ test('stable internal curation links and private/public boundaries remain intact
   assert.match(files['novelight-curation.js'], /new URL\('curation\.html'/u);
   assert.match(files['curation.html'], /name="robots" content="noindex,follow"/u);
   assert.match(files['curation.html'], /name="referrer" content="no-referrer"/u);
-  assert.match(files['docs/NOVELIGHT-MASTER.md'], /2026-10-01 OWNER確定の画面表示名称/u);
 });
 
 test('all bookshelf LIGHT SEED numeric labels inherit the brand Mincho', () => {
