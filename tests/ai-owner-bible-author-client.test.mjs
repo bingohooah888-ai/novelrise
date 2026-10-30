@@ -12,29 +12,27 @@ const CONFIG = { url: URL, key: PUBLIC_KEY, id: OWNER };
 
 function fixture({ subject = OWNER, authError = null, factoryError = null } = {}) {
   const calls = [];
-  const client = {
-    auth: {
-      async getUser(token) {
-        calls.push({ action: 'getUser', token });
-        if (factoryError) throw factoryError;
-        return {
-          data: { user: { id: subject } },
-          error: authError
-        };
-      }
-    },
-    async rpc(name) {
-      calls.push({ action: 'rpc', name });
-      return { data: [], error: null };
-    }
-  };
   const createClientImpl = (url, key, options) => {
     calls.push({ action: 'createClient', url, key, options });
-    return client;
+    return {
+      auth: {
+        async getUser(token) {
+          calls.push({ action: 'getUser', token });
+          if (factoryError) throw factoryError;
+          return {
+            data: { user: { id: subject } },
+            error: authError
+          };
+        }
+      },
+      async rpc(name) {
+        calls.push({ action: 'rpc', name });
+        return { data: [], error: null };
+      }
+    };
   };
   return {
     calls,
-    client,
     make: (config = CONFIG) =>
       createOwnerNovelBibleAuthorClientFactory({ config, createClientImpl })
   };
@@ -82,9 +80,9 @@ test('rejects bad bearer or caller identity before creating a client', async () 
 });
 
 test('builds owner-JWT author RPC client from publishable key only', async () => {
-  const { make, calls, client } = fixture();
+  const { make, calls } = fixture();
   const result = await make()({ actorId: OWNER, token: TOKEN });
-  assert.equal(result, client);
+  assert.equal(typeof result.rpc, 'function');
   assert.deepEqual(
     calls.map((item) => item.action),
     ['createClient', 'getUser']
@@ -123,7 +121,7 @@ test('does not reuse a bearer or Supabase client across requests', async () => {
     actorId: OWNER,
     token: 'another-synthetic-owner-token'
   });
-  assert.equal(first, second);
+  assert.notEqual(first, second);
   assert.equal(
     calls.filter((item) => item.action === 'createClient').length,
     2
