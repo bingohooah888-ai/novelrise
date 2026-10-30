@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { createOwnerNovelBibleModelBridge } from '../api/_lib/ai/owner-novel-bible-model-bridge.js';
+import {
+  createOwnerNovelBibleModelBridge
+} from '../api/_lib/ai/owner-novel-bible-model-bridge.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
@@ -110,7 +112,7 @@ function fixture(overrides = {}) {
   return { state, make };
 }
 
-test('disabled and no external permission reject before model invocation', async () => {
+test('disabled configuration refuses model calls', async () => {
   const { state, make } = fixture();
   await assert.rejects(
     make({ enabled: false }).stage({
@@ -132,7 +134,7 @@ test('disabled and no external permission reject before model invocation', async
   assert.equal(state.modelCalls, 0);
 });
 
-test('owner mock router stage validates excerpt and hides manuscript output', async () => {
+test('owner mock stages validated excerpt without exposing manuscript', async () => {
   const { state, make } = fixture();
   const answer = await make().stage({
     token: TOKEN,
@@ -162,7 +164,7 @@ test('owner mock router stage validates excerpt and hides manuscript output', as
   assert.ok(!JSON.stringify(answer).includes(TOKEN));
 });
 
-test('other user and changed work are refused before any model invocation', async () => {
+test('other user and wrong work are rejected before provider calls', async () => {
   const outsider = fixture({ owner: OTHER });
   await assert.rejects(
     outsider.make().stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
@@ -183,7 +185,7 @@ test('other user and changed work are refused before any model invocation', asyn
   assert.equal(wrongChapter.state.modelCalls, 0);
 });
 
-test('unapproved or revoked consent prevents model or persistence', async () => {
+test('unapproved and revoked consent stop model and persistence', async () => {
   const blocked = fixture({ consent: false });
   await assert.rejects(
     blocked.make().stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
@@ -256,7 +258,7 @@ test('model evidence outside the requested chunk is blocked', async () => {
   assert.equal(state.reviewCalls, 0);
 });
 
-test('malformed token and chunk position fail before provider execution', async () => {
+test('invalid JWT and chunk position fail before model invocation', async () => {
   const { state, make } = fixture();
   for (const args of [
     { token: 'short', novelId: 41, episodeId: 11 },
@@ -281,10 +283,16 @@ test('dormant bridge is not imported by existing public API routes', () => {
     assert.doesNotMatch(source, /owner-novel-bible-model-bridge/u);
   }
   const source = readFileSync(
-    new URL('../api/_lib/ai/owner-novel-bible-model-bridge.js', import.meta.url),
+    new URL(
+      '../api/_lib/ai/owner-novel-bible-model-bridge.js',
+      import.meta.url
+    ),
     'utf8'
   );
-  assert.doesNotMatch(source, /(?:fetch\(|createOpenAiTextProvider|createGeminiTextProvider|process\.env)/u);
+  assert.doesNotMatch(
+    source,
+    /(?:fetch\(|createOpenAiTextProvider|createGeminiTextProvider|process\.env)/u
+  );
   assert.match(source, /externalProcessingApproved !== true/u);
   assert.match(source, /permissionCheck/u);
   assert.match(source, /reviewWorkflow\.stage/u);
