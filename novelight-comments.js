@@ -366,70 +366,31 @@
   }
 
 
-  // Reuse the same public, owner-validated avatar RPC as author.html.
-  // Per-page promise deduplication avoids repeated requests for one commenter.
+  // Reuse the same public avatar renderer as the author profile page.
   const publicAvatarRequests = new Map();
-  const publicAvatarUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  const publicAvatarOwnedPathPattern = /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.(webp|png|jpg|jpeg)$/i;
+  const commenterIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   async function paintCommentPublicAvatar(state, comment, avatar) {
     const userId = String(comment.user_id || '').toLowerCase();
-    if (!publicAvatarUuidPattern.test(userId)) return;
+    if (!commenterIdPattern.test(userId)) return;
     avatar.dataset.avatarStatus = 'requesting';
     let request = publicAvatarRequests.get(userId);
     if (!request) {
       request = Promise.resolve()
         .then(() => state.client.rpc('novelight_public_author_avatar', { p_user_id: userId }))
-        .then(({ data, error }) => !error && typeof data === 'string' ? data : null)
+        .then(({ data, error }) => (!error && typeof data === 'string' ? data : null))
         .catch(() => null);
       publicAvatarRequests.set(userId, request);
     }
     const path = await request;
     if (!avatar.isConnected) return;
-    const match = typeof path === 'string' ? path.match(publicAvatarOwnedPathPattern) : null;
-    if (!match || match[1].toLowerCase() !== userId) {
-      avatar.dataset.avatarStatus = 'not-available';
+    if (!global.NovelightPublicAvatar?.paint) {
+      avatar.dataset.avatarStatus = 'renderer-unavailable';
       return;
     }
-    // This is a public Storage bucket. Resolve the URL from the already
-    // configured Supabase client origin instead of relying on storage.from().
-    // Some production client builds expose RPC but not the Storage helper.
-    let url;
-    try {
-      const api = new URL(String(state.client.supabaseUrl || ''));
-      if (
-        api.protocol === 'https:' &&
-        /^[a-z0-9-]+\.supabase\.co$/i.test(api.hostname) &&
-        !api.username &&
-        !api.password &&
-        !api.port &&
-        api.pathname === '/'
-      ) {
-        const segments = path.split('/').map(encodeURIComponent);
-        url = `${api.origin}/storage/v1/object/public/author-avatars/${segments.join('/')}`;
-      }
-    } catch {
-      // Invalid or missing API origin: keep the initial rather than load a remote URL.
-    }
-    if (!url) {
-      avatar.dataset.avatarStatus = 'url-unavailable';
-      return;
-    }
-    const image = createElement('img');
-    image.alt = '';
-    image.loading = 'eager';
-    image.decoding = 'async';
-    image.onload = () => { avatar.dataset.avatarStatus = 'loaded'; };
-    image.onerror = () => {
-      image.remove();
-      avatar.dataset.avatarStatus = 'load-error';
-    };
-    // Attach the image immediately instead of waiting for onload. This is
-    // resilient to cached images and concurrent re-renders; the initial
-    // remains underneath and is revealed if the image request fails.
-    avatar.append(image);
-    avatar.dataset.avatarStatus = 'loading';
-    image.src = url;
+    global.NovelightPublicAvatar.paint(
+      avatar, path, userId, comment.display_name, state.client
+    );
   }
 
   function renderFeed(state, comments) {
