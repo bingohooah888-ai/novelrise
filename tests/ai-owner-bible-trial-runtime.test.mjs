@@ -11,8 +11,13 @@ const TOKEN = 'synthetic-token-is-not-an-auth-jwt';
 const CONTENT = '凛は青い鍵を持っていた。';
 const REQUEST = { token: TOKEN, novelId: 41, episodeId: 11 };
 
-function fixture({ actor = OWNER, enabled = true, consent = true,
-  budgetAllowed = true, onModelCall = null } = {}) {
+function fixture({
+  actor = OWNER,
+  enabled = true,
+  consent = true,
+  budgetAllowed = true,
+  onModelCall = null
+} = {}) {
   const state = {
     actor,
     consent,
@@ -36,9 +41,15 @@ function fixture({ actor = OWNER, enabled = true, consent = true,
     },
     from(table) {
       const query = {
-        select() { return this; },
-        eq() { return this; },
-        order() { return this; },
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
+        order() {
+          return this;
+        },
         limit() {
           if (table === 'novelight_ai_bible_facts') {
             return { data: [], error: null };
@@ -133,12 +144,14 @@ function fixture({ actor = OWNER, enabled = true, consent = true,
           if (onModelCall) onModelCall(state);
           return {
             text: JSON.stringify({
-              suggestions: [{
-                kind: 'character',
-                key: '凛',
-                summary: '青い鍵を持つ人物。',
-                evidence: CONTENT
-              }]
+              suggestions: [
+                {
+                  kind: 'character',
+                  key: '凛',
+                  summary: '青い鍵を持つ人物。',
+                  evidence: CONTENT
+                }
+              ]
             }),
             usage: { inputTokens: 30, outputTokens: 30 }
           };
@@ -146,13 +159,15 @@ function fixture({ actor = OWNER, enabled = true, consent = true,
       }
     },
     routes: {
-      'novel-bible': [{
-        provider: 'local',
-        model: 'offline-mock',
-        inputMicrosPerMillion: 1000000,
-        outputMicrosPerMillion: 2000000,
-        maxOutputTokens: 128
-      }]
+      'novel-bible': [
+        {
+          provider: 'local',
+          model: 'offline-mock',
+          inputMicrosPerMillion: 1000000,
+          outputMicrosPerMillion: 2000000,
+          maxOutputTokens: 128
+        }
+      ]
     }
   });
   return { runtime, state };
@@ -160,10 +175,7 @@ function fixture({ actor = OWNER, enabled = true, consent = true,
 
 test('default OFF denies before authentication and providers', async () => {
   const { runtime, state } = fixture({ enabled: false });
-  await assert.rejects(
-    runtime.stage(REQUEST),
-    /AI_TRIAL_RUNTIME_DISABLED/u
-  );
+  await assert.rejects(runtime.stage(REQUEST), /AI_TRIAL_RUNTIME_DISABLED/u);
   assert.equal(state.auth, 0);
   assert.equal(state.authorClients, 0);
   assert.equal(state.reservations, 0);
@@ -171,10 +183,7 @@ test('default OFF denies before authentication and providers', async () => {
 
 test('auth mismatch denies before opening author JWT client', async () => {
   const { runtime, state } = fixture({ actor: OTHER });
-  await assert.rejects(
-    runtime.stage(REQUEST),
-    /AI_TRIAL_RUNTIME_DENIED/u
-  );
+  await assert.rejects(runtime.stage(REQUEST), /AI_TRIAL_RUNTIME_DENIED/u);
   assert.equal(state.auth, 1);
   assert.equal(state.authorClients, 0);
   assert.equal(state.modelCalls, 0);
@@ -183,10 +192,7 @@ test('auth mismatch denies before opening author JWT client', async () => {
 
 test('consent refusal prevents atomic reserve and provider', async () => {
   const { runtime, state } = fixture({ consent: false });
-  await assert.rejects(
-    runtime.stage(REQUEST),
-    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
-  );
+  await assert.rejects(runtime.stage(REQUEST), /AI_BIBLE_MODEL_BRIDGE_DENIED/u);
   assert.equal(state.reservations, 0);
   assert.equal(state.modelCalls, 0);
   assert.equal(state.staged, 0);
@@ -227,10 +233,7 @@ test('revoked consent after model settlement never writes candidates', async () 
       current.consent = false;
     }
   });
-  await assert.rejects(
-    runtime.stage(REQUEST),
-    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
-  );
+  await assert.rejects(runtime.stage(REQUEST), /AI_BIBLE_MODEL_BRIDGE_DENIED/u);
   assert.equal(state.modelCalls, 1);
   assert.equal(state.settlements, 1);
   assert.equal(state.staged, 0);
