@@ -60,3 +60,22 @@ test('review-only consent SQL has explicit RLS, narrow grants, audit and rollbac
   assert.doesNotMatch(sql, /\\(?:connect|copy|!)/iu);
   assert.ok(sql.lastIndexOf('rollback;') > sql.lastIndexOf(dbl));
 });
+
+test('Staging metadata probe contains SELECT only and no state mutation', async () => {
+  const filename = new URL(
+    '../reports/sql/novelight_ai_consent_STAGING_METADATA_READONLY.sql',
+    import.meta.url
+  );
+  const raw = await readFile(filename, 'utf8');
+  const sql = raw
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('--'))
+    .join('\n')
+    .trim();
+  assert.match(sql, /^select\s/iu);
+  assert.equal(sql.split(';').filter((part) => part.trim()).length, 1);
+  assert.doesNotMatch(
+    sql,
+    /\b(?:insert|update|delete|create|alter|drop|truncate|grant|revoke|commit|rollback|execute|call)\b/iu
+  );
+});
