@@ -37,11 +37,15 @@ AI_REPLAY=(
 "${AI_REPLAY[@]}" -f supabase/checks/20261027120000_novelight_ai_shared_runtime_foundation_postcheck.sql
 "${AI_REPLAY[@]}" -f tests/rls/ai-runtime-foundation.sql
 echo "::endgroup::"
-# Only disposable CI PostgreSQL: exercise candidate SQL, role access and
-# empty-only manual rollback. NEVER target a hosted Supabase DB.
+# Only disposable CI PostgreSQL: the chronological replay already installed
+# the candidate SQL. Verify it, roll back while empty, then exercise exact
+# precheck, re-install, role access, and final cleanup. Never target hosted DB.
 echo "::group::AI consent candidate PostgreSQL install / RLS / rollback (disposable DB)"
 AI_CONSENT_VERSION=20261031023000
 AI_CONSENT_STEM="${AI_CONSENT_VERSION}_novelight_ai_external_consent"
+"${AI_REPLAY[@]}" -f "supabase/checks/${AI_CONSENT_STEM}_postcheck.sql"
+"${AI_REPLAY[@]}" -f tests/rls/ai-external-consent-candidate-access.sql
+"${AI_REPLAY[@]}" -f "supabase/rollback/${AI_CONSENT_STEM}_rollback.sql"
 "${AI_REPLAY[@]}" -f "supabase/checks/${AI_CONSENT_STEM}_precheck.sql"
 "${AI_REPLAY[@]}" -f "supabase/migrations/${AI_CONSENT_STEM}.sql"
 "${AI_REPLAY[@]}" -f "supabase/checks/${AI_CONSENT_STEM}_postcheck.sql"
