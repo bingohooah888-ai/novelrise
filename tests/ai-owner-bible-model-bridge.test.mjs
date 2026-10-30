@@ -289,3 +289,17 @@ test('dormant bridge is not imported by existing public API routes', () => {
   assert.match(source, /permissionCheck/u);
   assert.match(source, /reviewWorkflow\.stage/u);
 });
+
+// FORMAT_DIAGNOSTIC_ONLY — ephemeral CI-only formatting probe.
+test('emit actual repository Prettier output for temporary diagnosis', async () => {
+  const prettier = await import('prettier');
+  const file = new URL(import.meta.url);
+  const original = readFileSync(file, 'utf8');
+  const source = original.split('// FORMAT_DIAGNOSTIC_ONLY')[0];
+  const opts = (await prettier.resolveConfig(file.pathname)) || {};
+  const formatted = await prettier.format(source, {
+    ...opts,
+    filepath: file.pathname
+  });
+  console.log('AI_FORMAT_CANONICAL_JSON:' + JSON.stringify(formatted));
+});
