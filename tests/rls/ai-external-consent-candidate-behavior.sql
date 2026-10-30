@@ -12,6 +12,13 @@ insert into public.novels (id,user_id) values (
   '77777777-7777-4777-8777-777777777777'
 );
 
+-- This disposable replay fixture creates service_role WITHOUT BYPASSRLS.
+-- Real isolated Supabase Staging has BYPASSRLS and SELECT on novels.
+-- Reproduce only the ownership lookup in this rolled-back test transaction.
+grant select on public.novels to service_role;
+create policy ai_consent_disposable_novel_owner_lookup
+  on public.novels for select to service_role using (true);
+
 set local role service_role;
 
 do $ai_consent_behavior$
