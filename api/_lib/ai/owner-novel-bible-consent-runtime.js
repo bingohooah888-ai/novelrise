@@ -19,9 +19,7 @@ function denied() {
 
 function validText(value, max) {
   return (
-    typeof value === 'string' &&
-    value.trim().length > 0 &&
-    value.length <= max
+    typeof value === 'string' && value.trim().length > 0 && value.length <= max
   );
 }
 
