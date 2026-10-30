@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { createOwnerNovelBibleConsentActions } from '../api/_lib/ai/owner-novel-bible-consent-actions.js';
@@ -236,4 +237,25 @@ test('missing trusted adapters cannot create a consent workflow', () => {
     () => createOwnerNovelBibleConsentActions({ enabled: true }),
     /AI_CONSENT_ACTION_UNAVAILABLE/u
   );
+});
+
+test('consent SQL is a non-applied rollback proposal with service-only RPCs', async () => {
+  const sql = await readFile(
+    new URL(
+      '../reports/sql/novelight_ai_external_consent_PROPOSAL.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(sql, /REVIEW PROPOSAL ONLY/u);
+  assert.match(sql, /security invoker/u);
+  assert.doesNotMatch(sql, /security definer/u);
+  assert.match(sql, /novelight_ai_consent_grant/u);
+  assert.match(sql, /novelight_ai_consent_revoke/u);
+  assert.match(sql, /novelight_ai_external_consent_action_audit/u);
+  assert.match(sql, /enable row level security/u);
+  assert.match(sql, /grant execute on function public\.novelight_ai_consent_grant\(/u);
+  assert.match(sql, /grant execute on function public\.novelight_ai_consent_revoke\(/u);
+  assert.match(sql, /to service_role;/u);
+  assert.match(sql, /\nrollback;\n/u);
 });
