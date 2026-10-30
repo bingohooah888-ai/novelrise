@@ -134,7 +134,7 @@ test('disabled configuration refuses model calls', async () => {
   assert.equal(state.modelCalls, 0);
 });
 
-test('owner mock stages validated excerpt without exposing manuscript', async () => {
+test('owner mock stages a validated private excerpt', async () => {
   const { state, make } = fixture();
   const answer = await make().stage({
     token: TOKEN,
@@ -154,17 +154,14 @@ test('owner mock stages validated excerpt without exposing manuscript', async ()
   assert.equal(state.prompt.principal.id, OWNER);
   assert.equal(state.prompt.workId, 41);
   assert.match(state.prompt.revision, /^[a-f0-9]{64}$/u);
-  assert.equal(
-    JSON.parse(state.prompt.user).untrusted_excerpt,
-    CONTENT
-  );
+  assert.equal(JSON.parse(state.prompt.user).untrusted_excerpt, CONTENT);
   assert.equal(state.reviewInput.novelId, 41);
   assert.match(state.reviewInput.sourceHash, /^[a-f0-9]{64}$/u);
   assert.ok(!JSON.stringify(answer).includes(CONTENT));
   assert.ok(!JSON.stringify(answer).includes(TOKEN));
 });
 
-test('other user and wrong work are rejected before provider calls', async () => {
+test('outsiders and wrong works are rejected before provider', async () => {
   const outsider = fixture({ owner: OTHER });
   await assert.rejects(
     outsider.make().stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
@@ -258,7 +255,7 @@ test('model evidence outside the requested chunk is blocked', async () => {
   assert.equal(state.reviewCalls, 0);
 });
 
-test('invalid JWT and chunk position fail before model invocation', async () => {
+test('bad JWT and chunk reject before provider', async () => {
   const { state, make } = fixture();
   for (const args of [
     { token: 'short', novelId: 41, episodeId: 11 },
@@ -266,10 +263,7 @@ test('invalid JWT and chunk position fail before model invocation', async () => 
     { token: TOKEN, novelId: 41, episodeId: 11, chunkIndex: 64 },
     { token: TOKEN, novelId: 41, episodeId: 11, chunkIndex: 9 }
   ]) {
-    await assert.rejects(
-      make().stage(args),
-      /AI_BIBLE_MODEL_BRIDGE_DENIED/u
-    );
+    await assert.rejects(make().stage(args), /AI_BIBLE_MODEL_BRIDGE_DENIED/u);
   }
   assert.equal(state.modelCalls, 0);
 });
@@ -289,10 +283,8 @@ test('dormant bridge is not imported by existing public API routes', () => {
     ),
     'utf8'
   );
-  assert.doesNotMatch(
-    source,
-    /(?:fetch\(|createOpenAiTextProvider|createGeminiTextProvider|process\.env)/u
-  );
+  assert.doesNotMatch(source, /(?:fetch\(|process\.env)/u);
+  assert.doesNotMatch(source, /create(?:OpenAi|Gemini)TextProvider/u);
   assert.match(source, /externalProcessingApproved !== true/u);
   assert.match(source, /permissionCheck/u);
   assert.match(source, /reviewWorkflow\.stage/u);
