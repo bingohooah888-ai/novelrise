@@ -51,12 +51,21 @@ test('rejects secret keys and foreign or malformed URLs before client creation',
     { ...CONFIG, key: 'sb_secret_not_for_author_rpc' },
     { ...CONFIG, url: 'https://example.invalid' },
     { ...CONFIG, url: 'http://example.supabase.co' },
-    { ...CONFIG, id: OTHER },
     { ...CONFIG, key: 'not-a-publishable-key' }
   ];
   for (const config of bad) {
     assert.throws(() => make(config), /AI_TRIAL_AUTHOR_CLIENT_UNAVAILABLE/u);
   }
+  assert.equal(calls.length, 0);
+});
+
+test('configured trial owner is checked against caller identity', async () => {
+  const { make, calls } = fixture();
+  const foreignFactory = make({ ...CONFIG, id: OTHER });
+  await assert.rejects(
+    foreignFactory({ actorId: OWNER, token: TOKEN }),
+    /AI_TRIAL_AUTHOR_CLIENT_DENIED/u
+  );
   assert.equal(calls.length, 0);
 });
 
