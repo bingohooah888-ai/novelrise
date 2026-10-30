@@ -97,8 +97,7 @@ function fixture({ actor = OWNER, allowed = true } = {}) {
           retention: '架空の保持条件',
           internationalTransfer: '架空の国外移転説明',
           status: state.consent,
-          expiresAt:
-            state.consent === 'active' ? '2026-11-29T10:00:00Z' : null
+          expiresAt: state.consent === 'active' ? '2026-11-29T10:00:00Z' : null
         }
       ]
     };
@@ -107,7 +106,12 @@ function fixture({ actor = OWNER, allowed = true } = {}) {
     calls.push({ url, options });
     if (!allowed) return { ok: false };
     if (options.method === 'GET') {
-      return { ok: true, async json() { return view(); } };
+      return {
+        ok: true,
+        async json() {
+          return view();
+        }
+      };
     }
     assert.equal(options.method, 'POST');
     const body = JSON.parse(options.body);
