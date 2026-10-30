@@ -109,15 +109,15 @@ create or replace function public.novelight_ai_consent_grant(
 ) returns jsonb
 language plpgsql security invoker set search_path = '' as $$
 declare
-  v_now timestamptz := clock_timestamp();
-  v_expires timestamptz := v_now + interval '30 days';
+  v_now timestamptz;
+  v_expires timestamptz;
 begin
   if current_user <> 'service_role' then
     raise exception using errcode = '42501',
       message = 'AI consent service access required';
   end if;
   if p_actor_id is null or p_novel_id is null or p_novel_id < 1
-    or p_processor not in ('openai', 'gemini')
+    or p_processor is null or p_processor not in ('openai', 'gemini')
     or p_policy_revision is null
     or p_policy_revision !~ '^[a-zA-Z0-9][a-zA-Z0-9._-]{3,119}$'
 
@@ -131,6 +131,13 @@ begin
   if not found then
     raise exception using errcode = '42501', message = 'Consent owner denied';
   end if;
+  -- Serialize grant/revoke per novel and processor BEFORE setting timestamps.
+  -- A queued revoke must not inherit a pre-lock time older than a new grant.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtext('novelight-ai-consent-v1:' || p_novel_id::text || ':' || p_processor)
+  );
+  v_now := clock_timestamp();
+  v_expires := v_now + interval '30 days';
   insert into public.novelight_ai_external_processing_consents (
     actor_id, novel_id, purpose, processor, policy_revision,
     granted_at, expires_at, revoked_at, updated_at
@@ -170,7 +177,7 @@ create or replace function public.novelight_ai_consent_revoke(
 ) returns jsonb
 language plpgsql security invoker set search_path = '' as $$
 declare
-  v_now timestamptz := clock_timestamp();
+  v_now timestamptz;
   v_effective timestamptz;
   v_previous timestamptz;
   v_policy_revision text;
@@ -180,7 +187,7 @@ begin
       message = 'AI consent service access required';
   end if;
   if p_actor_id is null or p_novel_id is null or p_novel_id < 1
-    or p_processor not in ('openai', 'gemini')
+    or p_processor is null or p_processor not in ('openai', 'gemini')
   then
     raise exception using errcode = '22023',
       message = 'Invalid AI consent revoke';
