@@ -67,9 +67,7 @@ function actionBody(body) {
 }
 
 function bounded(value, max) {
-  return typeof value === 'string' &&
-    value.length > 0 &&
-    value.length <= max;
+  return typeof value === 'string' && value.length > 0 && value.length <= max;
 }
 
 function validView(data, novelId) {
@@ -145,9 +143,7 @@ export function createOwnerBibleConsentApiHandler({
       if (
         typeof req.headers?.origin !== 'string' ||
         req.headers['x-novelight-ai-consent'] !== '1' ||
-        !/^application\/json(?:\s*;|$)/i.test(
-          req.headers['content-type'] ?? ''
-        )
+        !/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] ?? '')
       ) {
         return fail(res, 403, 'FORBIDDEN');
       }
