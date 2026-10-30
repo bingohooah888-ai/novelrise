@@ -391,7 +391,26 @@
       avatar.dataset.avatarStatus = 'not-available';
       return;
     }
-    const url = state.client.storage?.from?.('author-avatars')?.getPublicUrl?.(path)?.data?.publicUrl;
+    // This is a public Storage bucket. Resolve the URL from the already
+    // configured Supabase client origin instead of relying on storage.from().
+    // Some production client builds expose RPC but not the Storage helper.
+    let url;
+    try {
+      const api = new URL(String(state.client.supabaseUrl || ''));
+      if (
+        api.protocol === 'https:' &&
+        /^[a-z0-9-]+\.supabase\.co$/i.test(api.hostname) &&
+        !api.username &&
+        !api.password &&
+        !api.port &&
+        api.pathname === '/'
+      ) {
+        const segments = path.split('/').map(encodeURIComponent);
+        url = `${api.origin}/storage/v1/object/public/author-avatars/${segments.join('/')}`;
+      }
+    } catch {
+      // Invalid or missing API origin: keep the initial rather than load a remote URL.
+    }
     if (!url) {
       avatar.dataset.avatarStatus = 'url-unavailable';
       return;
