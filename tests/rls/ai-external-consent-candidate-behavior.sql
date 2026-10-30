@@ -12,12 +12,20 @@ insert into public.novels (id,user_id) values (
   '77777777-7777-4777-8777-777777777777'
 );
 
--- This disposable replay fixture creates service_role WITHOUT BYPASSRLS.
--- Real isolated Supabase Staging has BYPASSRLS and SELECT on novels.
--- Reproduce only the ownership lookup in this rolled-back test transaction.
+-- Disposable CI service_role differs from real Supabase: it has no BYPASSRLS.
+-- Match the verified isolated Staging role inside this ROLLBACK-only transaction.
+-- No role alteration or synthetic author survives this SQL fixture.
 grant select on public.novels to service_role;
-create policy ai_consent_disposable_novel_owner_lookup
-  on public.novels for select to service_role using (true);
+alter role service_role bypassrls;
+do $ai_consent_fixture_owner$
+begin
+  if not exists (select 1 from public.novels
+    where id=876123456789001
+      and user_id='77777777-7777-4777-8777-777777777777'::uuid) then
+    raise exception 'SYNTHETIC_CONSENT_OWNER_NOT_PRESENT';
+  end if;
+end;
+$ai_consent_fixture_owner$;
 
 set local role service_role;
 
