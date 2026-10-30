@@ -166,7 +166,9 @@ function sectionParts(f) {
   const rows = section.children[2];
   const row = rows.children[0];
   const button = row.children.at(-1);
-  const checkbox = row.children.find((item) => item.tag === 'input');
+  const checkbox = row.children
+    .find((item) => item.tag === 'label')
+    ?.children.find((item) => item.tag === 'input');
   return { section, rows, row, button, checkbox };
 }
 
