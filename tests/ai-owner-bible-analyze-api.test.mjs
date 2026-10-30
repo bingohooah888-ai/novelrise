@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createOwnerBibleAnalyzeApiHandler } from '../api/ai-owner-bible-analyze.js';
+import {
+  createOwnerBibleAnalyzeApiHandler
+} from '../api/ai-owner-bible-analyze.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
@@ -71,18 +73,16 @@ function fixture({ env = ENV, actor = OWNER, stage = null } = {}) {
         async stage(args) {
           calls.stage += 1;
           assert.equal(args.token, TOKEN);
-          assert.deepEqual(
-            { novelId: args.novelId, episodeId: args.episodeId, chunkIndex: args.chunkIndex },
-            { novelId: 41, episodeId: 11, chunkIndex: 0 }
-          );
-          return stage
-            ? stage(args)
-            : {
-                novelId: 41,
-                stagedCount: 1,
-                requiresAuthorReview: true,
-                privateModelText: 'should never be returned'
-              };
+          assert.equal(args.novelId, 41);
+          assert.equal(args.episodeId, 11);
+          assert.equal(args.chunkIndex, 0);
+          if (stage) return stage(args);
+          return {
+            novelId: 41,
+            stagedCount: 1,
+            requiresAuthorReview: true,
+            privateModelText: 'should never be returned'
+          };
         }
       };
     }
@@ -96,7 +96,7 @@ function fixture({ env = ENV, actor = OWNER, stage = null } = {}) {
   return { handler, req, calls };
 }
 
-test('trial API is hidden by default without constructing privileged clients', async () => {
+test('trial API defaults to hidden without privileged clients', async () => {
   let clients = 0;
   const handler = createOwnerBibleAnalyzeApiHandler({
     env: {},
@@ -112,7 +112,7 @@ test('trial API is hidden by default without constructing privileged clients', a
   assert.equal(res.headers['X-Robots-Tag'], 'noindex, nofollow');
 });
 
-test('every independent trial and external-processing flag is required', async () => {
+test('every independent trial flag is required', async () => {
   for (const name of [
     'NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED',
     'NOVELIGHT_AI_REVIEW_ENABLED',
@@ -131,7 +131,7 @@ test('every independent trial and external-processing flag is required', async (
   }
 });
 
-test('method, Origin, CSRF header and content type reject before Auth', async () => {
+test('invalid method and CSRF headers reject before Auth', async () => {
   const { handler, req, calls } = fixture();
   const invalid = [
     [{ method: 'GET' }, 405],
@@ -151,7 +151,7 @@ test('method, Origin, CSRF header and content type reject before Auth', async ()
   assert.equal(calls.stage, 0);
 });
 
-test('only bounded chapter ID and chunk index are accepted, never provider text or consent', async () => {
+test('only bounded IDs and chunk index are accepted', async () => {
   const { handler, req, calls } = fixture();
   for (const body of [
     {},
@@ -178,7 +178,7 @@ test('only bounded chapter ID and chunk index are accepted, never provider text 
   assert.equal(calls.stage, 0);
 });
 
-test('bad admin configuration or missing server runtime fails without model calls', async () => {
+test('invalid config or missing runtime denies model calls', async () => {
   const misconfigured = fixture({
     env: { ...ENV, NOVELIGHT_AI_ADMIN_USER_ID: 'invalid' }
   });
@@ -207,7 +207,7 @@ test('bad admin configuration or missing server runtime fails without model call
   assert.equal(constructed, 0);
 });
 
-test('non-owner cannot construct trial bridge or call a provider', async () => {
+test('non-owner cannot construct trial bridge', async () => {
   const { handler, req, calls } = fixture({ actor: OTHER });
   const res = response();
   await handler(req(), res);
@@ -233,7 +233,7 @@ test('explicit owner trial returns only bounded review metadata', async () => {
   assert.ok(!JSON.stringify(res.body).includes('privateModelText'));
 });
 
-test('model, budget and revision errors never echo sensitive details', async () => {
+test('model and budget errors never echo secrets', async () => {
   for (const [code, status] of [
     ['AI_BUDGET_DENIED', 429],
     ['AI_BIBLE_MODEL_BRIDGE_DENIED', 404],
@@ -248,11 +248,15 @@ test('model, budget and revision errors never echo sensitive details', async () 
     const res = response();
     await handler(req(), res);
     assert.equal(res.statusCode, status);
-    assert.ok(!JSON.stringify(res.body).includes(code === 'provider-secret-private-error' ? code : TOKEN));
+    if (code === 'provider-secret-private-error') {
+      assert.ok(!JSON.stringify(res.body).includes(code));
+    } else {
+      assert.ok(!JSON.stringify(res.body).includes(TOKEN));
+    }
   }
 });
 
-test('untrusted runtime output is rejected instead of forwarded to browser', async () => {
+test('invalid runtime output is never forwarded', async () => {
   const { handler, req } = fixture({
     stage() {
       return {
