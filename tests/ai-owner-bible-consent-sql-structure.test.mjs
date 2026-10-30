@@ -19,11 +19,16 @@ test('consent SQL has precisely two complete dollar-quoted PL/pgSQL functions', 
   // proposal. Protect the executable boundaries, not just key phrases.
   assert.equal(sql.split(dbl).length - 1, 4);
   assert.doesNotMatch(sql, /^\s*\$;\s*$/mu);
-  const blocks = [...sql.matchAll(
-    /create or replace function public\.(novelight_ai_consent_(?:grant|revoke))\([\s\S]*?language plpgsql security invoker set search_path = '' as \$\$([\s\S]*?)\$\$;/gu
-  )];
+  const blocks = [
+    ...sql.matchAll(
+      /create or replace function public\.(novelight_ai_consent_(?:grant|revoke))\([\s\S]*?language plpgsql security invoker set search_path = '' as \$\$([\s\S]*?)\$\$;/gu
+    )
+  ];
   assert.equal(blocks.length, 2);
-  assert.deepEqual(blocks.map((block) => block[1]), functions);
+  assert.deepEqual(
+    blocks.map((block) => block[1]),
+    functions
+  );
   for (const [, , body] of blocks) {
     assert.match(body, /\bbegin\b/iu);
     assert.match(body, /\bend;\s*$/iu);
@@ -54,8 +59,14 @@ test('review-only consent SQL has explicit RLS, narrow grants, audit and rollbac
   assert.match(sql, /novelight_ai_external_consent_action_audit/u);
   assert.equal((sql.match(/enable row level security;/gu) ?? []).length, 2);
   assert.match(sql, /from public, anon, authenticated;/u);
-  assert.match(sql, /grant execute on function public\.novelight_ai_consent_grant\(/u);
-  assert.match(sql, /grant execute on function public\.novelight_ai_consent_revoke\(/u);
+  assert.match(
+    sql,
+    /grant execute on function public\.novelight_ai_consent_grant\(/u
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.novelight_ai_consent_revoke\(/u
+  );
   assert.doesNotMatch(sql, /security definer/iu);
   assert.doesNotMatch(sql, /\\(?:connect|copy|!)/iu);
   assert.ok(sql.lastIndexOf('rollback;') > sql.lastIndexOf(dbl));
