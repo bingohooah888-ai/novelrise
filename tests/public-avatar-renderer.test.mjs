@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { URL as NodeURL } from 'node:url';
 import { runInNewContext } from 'node:vm';
 
 const script = readFileSync(
-  new URL('../novelight-public-avatar.js', import.meta.url),
+  new NodeURL('../novelight-public-avatar.js', import.meta.url),
   'utf8'
 );
 const owner = '11111111-1111-4111-8111-111111111111';
@@ -39,7 +40,7 @@ function renderOn(hostname, client, storedPath = path) {
     }
   };
   const window = { location: { hostname } };
-  runInNewContext(script, { window, document, URL });
+  runInNewContext(script, { window, document, URL: NodeURL });
   window.NovelightPublicAvatar.paint(holder, storedPath, owner, '読者', client);
   return { holder, imageSrc };
 }
