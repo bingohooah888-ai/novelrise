@@ -35,6 +35,22 @@ begin
       raise exception 'AI consent postcheck: service privileges missing';
     end if;
   end loop;
+  -- Identity sequence access is not governed by the table's RLS policies.
+  if pg_catalog.to_regclass('public.novelight_ai_external_consent_action_audit_id_seq') is null then
+    raise exception 'AI consent postcheck: audit sequence missing';
+  end if;
+  foreach v_role in array array['anon','authenticated'] loop
+    if pg_catalog.has_sequence_privilege(v_role,
+        'public.novelight_ai_external_consent_action_audit_id_seq','USAGE')
+      or pg_catalog.has_sequence_privilege(v_role,
+        'public.novelight_ai_external_consent_action_audit_id_seq','SELECT') then
+      raise exception 'AI consent postcheck: browser audit sequence privilege';
+    end if;
+  end loop;
+  if not pg_catalog.has_sequence_privilege('service_role',
+      'public.novelight_ai_external_consent_action_audit_id_seq','USAGE') then
+    raise exception 'AI consent postcheck: service audit sequence privilege missing';
+  end if;
   foreach v_rpc in array array[
     'public.novelight_ai_consent_grant(uuid,bigint,text,text)',
     'public.novelight_ai_consent_revoke(uuid,bigint,text)'
