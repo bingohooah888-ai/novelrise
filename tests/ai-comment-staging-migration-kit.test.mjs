@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const base = '20261030010000_comment_public_scout_identity';
 const location = (part) => new URL(part, import.meta.url);
