@@ -75,7 +75,7 @@ create or replace function public.novelight_ai_consent_grant(
   p_processor text,
   p_policy_revision text
 ) returns jsonb
-language plpgsql security invoker set search_path = '' as $
+language plpgsql security invoker set search_path = '' as $$
 declare
   v_now timestamptz := clock_timestamp();
   v_expires timestamptz := v_now + interval '30 days';
@@ -87,18 +87,7 @@ begin
   if p_actor_id is null or p_novel_id is null or p_novel_id < 1
     or p_processor not in ('openai', 'gemini')
     or p_policy_revision is null
-    or p_policy_revision !~ '^[a-zA-Z0-9][a-zA-Z0-9._-]{3,119}
--- REQUIRED BEFORE PROMOTION:
--- 1. Obtain an OWNER-approved Staging-only migration with exact main SHA.
--- 2. Define an author-JWT-bound explicit grant/revoke flow with visible
---    processor identity, purpose, current policy revision, retention and
---    cross-border notice. Default remains no consent; revocation is durable.
--- 3. Add concurrency and revocation-race tests, consent audit/cleanup,
---    RLS privilege tests and rollback pre/postchecks.
--- 4. Bind the read gate to EXACTLY the approved AI Router provider routes.
---    Consent to the first provider is insufficient for an unapproved fallback.
--- 5. Until the real grant UI/RPC, Staging evidence, and separate model/budget
---    approval exist, leave external processing and global AI OFF / budget 0.
+    or p_policy_revision !~ '^[a-zA-Z0-9][a-zA-Z0-9._-]{3,119}$'
 
   then
     raise exception using errcode = '22023',
@@ -134,7 +123,7 @@ begin
     'policyRevision', p_policy_revision, 'expiresAt', v_expires
   );
 end;
-$;
+$$;
 revoke all on function public.novelight_ai_consent_grant(
   uuid, bigint, text, text
 ) from public, anon, authenticated;
@@ -147,7 +136,7 @@ create or replace function public.novelight_ai_consent_revoke(
   p_novel_id bigint,
   p_processor text
 ) returns jsonb
-language plpgsql security invoker set search_path = '' as $
+language plpgsql security invoker set search_path = '' as $$
 declare
   v_now timestamptz := clock_timestamp();
   v_effective timestamptz;
@@ -200,7 +189,7 @@ begin
     'revokedAt', v_effective
   );
 end;
-$;
+$$;
 revoke all on function public.novelight_ai_consent_revoke(
   uuid, bigint, text
 ) from public, anon, authenticated;
