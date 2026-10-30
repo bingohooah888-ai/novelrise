@@ -668,8 +668,8 @@ test('episode commenter avatar uses the same public RPC as author profile', asyn
     (route) =>
       route.fulfill({
         status: 200,
-        contentType: 'image/webp',
-        path: 'assets/novelight-header-logo.webp'
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"></svg>'
       })
   );
   await page.goto('/tests/e2e/fixtures/comment-spoiler-display.html');
