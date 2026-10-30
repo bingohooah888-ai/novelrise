@@ -198,6 +198,12 @@ begin
   if not found then
     raise exception using errcode = '42501', message = 'Consent owner denied';
   end if;
+  -- Same per-work, per-processor lock as grant. Capture time only after
+  -- admission to the serialized critical section.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtext('novelight-ai-consent-v1:' || p_novel_id::text || ':' || p_processor)
+  );
+  v_now := clock_timestamp();
   select c.revoked_at, c.policy_revision
     into v_previous, v_policy_revision
     from public.novelight_ai_external_processing_consents c
