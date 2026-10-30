@@ -2,9 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import {
-  createOwnerNovelBibleModelBridge
-} from '../api/_lib/ai/owner-novel-bible-model-bridge.js';
+import { createOwnerNovelBibleModelBridge } from '../api/_lib/ai/owner-novel-bible-model-bridge.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
@@ -288,18 +286,4 @@ test('dormant bridge is not imported by existing public API routes', () => {
   assert.match(source, /externalProcessingApproved !== true/u);
   assert.match(source, /permissionCheck/u);
   assert.match(source, /reviewWorkflow\.stage/u);
-});
-
-// FORMAT_DIAGNOSTIC_ONLY — ephemeral CI-only formatting probe.
-test('emit actual repository Prettier output for temporary diagnosis', async () => {
-  const prettier = await import('prettier');
-  const file = new URL(import.meta.url);
-  const original = readFileSync(file, 'utf8');
-  const source = original.split('// FORMAT_DIAGNOSTIC_ONLY')[0];
-  const opts = (await prettier.resolveConfig(file.pathname)) || {};
-  const formatted = await prettier.format(source, {
-    ...opts,
-    filepath: file.pathname
-  });
-  console.log('AI_FORMAT_CANONICAL_JSON:' + JSON.stringify(formatted));
 });
