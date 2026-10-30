@@ -74,8 +74,9 @@ test('Staging metadata probe contains SELECT only and no state mutation', async 
     .trim();
   assert.match(sql, /^select\s/iu);
   assert.equal(sql.split(';').filter((part) => part.trim()).length, 1);
+  const withoutQuotedLiterals = sql.replace(/'(?:''|[^'])*'/gu, "''");
   assert.doesNotMatch(
-    sql,
+    withoutQuotedLiterals,
     /\b(?:insert|update|delete|create|alter|drop|truncate|grant|revoke|commit|rollback|execute|call)\b/iu
   );
 });
