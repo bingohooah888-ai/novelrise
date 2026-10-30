@@ -10,7 +10,11 @@ const URL = 'https://example.supabase.co';
 const PUBLIC_KEY = 'sb_publishable_offline_test_public_key';
 const CONFIG = { url: URL, key: PUBLIC_KEY, id: OWNER };
 
-function fixture({ subject = OWNER, authError = null, factoryError = null } = {}) {
+function fixture({
+  subject = OWNER,
+  authError = null,
+  factoryError = null
+} = {}) {
   const calls = [];
   const createClientImpl = (url, key, options) => {
     calls.push({ action: 'createClient', url, key, options });
@@ -103,7 +107,10 @@ test('builds owner-JWT author RPC client from publishable key only', async () =>
     persistSession: false,
     detectSessionInUrl: false
   });
-  assert.equal(calls[0].options.global.headers.Authorization, 'Bearer ' + TOKEN);
+  assert.equal(
+    calls[0].options.global.headers.Authorization,
+    'Bearer ' + TOKEN
+  );
   assert.equal(calls[1].token, TOKEN);
 });
 
