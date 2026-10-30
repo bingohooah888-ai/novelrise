@@ -232,10 +232,18 @@ test('unknown, stale and extra-field POSTs never reach the RPC adapter', async (
   const f = fixture();
   for (const body of [
     { action: 'grant', processor: 'openai' },
-    { action: 'grant', processor: 'openai', policyRevision: REVISION,
-      acceptedExternalProcessing: false },
-    { action: 'grant', processor: 'gemini', policyRevision: 'x',
-      acceptedExternalProcessing: true },
+    {
+      action: 'grant',
+      processor: 'openai',
+      policyRevision: REVISION,
+      acceptedExternalProcessing: false
+    },
+    {
+      action: 'grant',
+      processor: 'gemini',
+      policyRevision: 'x',
+      acceptedExternalProcessing: true
+    },
     { action: 'revoke', processor: 'openai', acceptedExternalProcessing: true },
     { action: 'delete', processor: 'openai' },
     { action: 'revoke', processor: 'unapproved' }
