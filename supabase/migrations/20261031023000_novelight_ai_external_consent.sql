@@ -92,6 +92,11 @@ revoke all on table public.novelight_ai_external_consent_action_audit
   from public, anon, authenticated;
 grant select, insert on table
   public.novelight_ai_external_consent_action_audit to service_role;
+-- Lock down the generated audit identity sequence, independently of table RLS.
+revoke all on sequence public.novelight_ai_external_consent_action_audit_id_seq
+  from public, anon, authenticated;
+grant usage, select on sequence public.novelight_ai_external_consent_action_audit_id_seq
+  to service_role;
 
 -- Authenticated browser roles cannot call these RPCs or mutate the table.
 -- The future server-only caller MUST independently verify an author bearer,
