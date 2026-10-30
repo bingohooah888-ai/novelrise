@@ -50,6 +50,7 @@ function snapshot(db) {
     "'revokeMd5',md5(pg_get_functiondef('public.novelight_ai_consent_revoke(uuid,bigint,text)'::regprocedure))," +
     "'consentRls',(select relrowsecurity from pg_class where oid='public.novelight_ai_external_processing_consents'::regclass)," +
     "'auditRls',(select relrowsecurity from pg_class where oid='public.novelight_ai_external_consent_action_audit'::regclass)," +
+    "'rolesSafe',(not has_function_privilege('anon','public.novelight_ai_consent_grant(uuid,bigint,text,text)','EXECUTE') and not has_function_privilege('authenticated','public.novelight_ai_consent_grant(uuid,bigint,text,text)','EXECUTE') and not has_function_privilege('anon','public.novelight_ai_consent_revoke(uuid,bigint,text)','EXECUTE') and not has_function_privilege('authenticated','public.novelight_ai_consent_revoke(uuid,bigint,text)','EXECUTE') and has_function_privilege('service_role','public.novelight_ai_consent_grant(uuid,bigint,text,text)','EXECUTE') and has_function_privilege('service_role','public.novelight_ai_consent_revoke(uuid,bigint,text)','EXECUTE') and not has_table_privilege('anon','public.novelight_ai_external_processing_consents','SELECT') and not has_table_privilege('authenticated','public.novelight_ai_external_processing_consents','SELECT') and not has_table_privilege('anon','public.novelight_ai_external_consent_action_audit','SELECT') and not has_table_privilege('authenticated','public.novelight_ai_external_consent_action_audit','SELECT') and not has_sequence_privilege('anon','public.novelight_ai_external_consent_action_audit_id_seq','USAGE') and not has_sequence_privilege('authenticated','public.novelight_ai_external_consent_action_audit_id_seq','USAGE'))," +
     "'consent',(select count(*) from public.novelight_ai_external_processing_consents where actor_id='"+ID+"'::uuid or novel_id="+NOVEL+")," +
     "'audit',(select count(*) from public.novelight_ai_external_consent_action_audit where actor_id='"+ID+"'::uuid or novel_id="+NOVEL+")," +
     "'users',(select count(*) from auth.users where id='"+ID+"'::uuid or lower(email)='"+EMAIL+"')," +
@@ -68,7 +69,7 @@ function snapshot(db) {
   try { x=JSON.parse(sql(db,q)); } catch { fail(); }
   if(x.version!==1||x.review!==0||x.runtime!==true||
     x.grantMd5!==GRANT_MD5||x.revokeMd5!==REVOKE_MD5||
-    x.consentRls!==true||x.auditRls!==true)fail();
+    x.consentRls!==true||x.auditRls!==true||x.rolesSafe!==true)fail();
   return x;
 }
 export function assertCensus(data,stage) {
