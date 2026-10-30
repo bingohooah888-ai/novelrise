@@ -22,7 +22,10 @@ test('Staging-only precheck requires exact legacy fingerprint, candidate RLS and
   assert.match(source, /has_function_privilege\('anon'/u);
   assert.match(source, /has_function_privilege\('authenticated'/u);
   assert.match(source, /has_function_privilege\('service_role'/u);
-  assert.doesNotMatch(source, /\b(?:insert|update|delete|drop|truncate)\s+(?:into\s+|from\s+)?(?:public|supabase_migrations)\./iu);
+  assert.doesNotMatch(
+    source,
+    /\b(?:insert|update|delete|drop|truncate)\s+(?:into\s+|from\s+)?(?:public|supabase_migrations)\./iu
+  );
 });
 
 test('postcheck expects already observed Production fingerprint without changing candidates', async () => {
@@ -33,7 +36,10 @@ test('postcheck expects already observed Production fingerprint without changing
   assert.match(source, /novelight_ai_review_candidates/u);
   assert.match(source, /relrowsecurity/u);
   assert.match(source, /has_function_privilege\('anon'/u);
-  assert.doesNotMatch(source, /\b(?:insert|update|delete|drop|truncate)\s+(?:into\s+|from\s+)?(?:public|supabase_migrations)\./iu);
+  assert.doesNotMatch(
+    source,
+    /\b(?:insert|update|delete|drop|truncate)\s+(?:into\s+|from\s+)?(?:public|supabase_migrations)\./iu
+  );
 });
 
 test('recovery uses pinned exact Staging function source and never repairs ledger silently', async () => {
@@ -42,18 +48,30 @@ test('recovery uses pinned exact Staging function source and never repairs ledge
   assert.match(source, /NEVER run automatically/iu);
   assert.match(source, /92dd0172a48e9c35deb38eb8ba75f4cf/u);
   assert.match(source, /9883e151750cf28b49c30a2b4a286e9d/u);
-  assert.match(source, /CREATE OR REPLACE FUNCTION public\.novelight_comment_feed_scope\(/u);
+  assert.match(
+    source,
+    /CREATE OR REPLACE FUNCTION public\.novelight_comment_feed_scope\(/u
+  );
   assert.match(source, /SECURITY DEFINER/u);
   assert.match(source, /SET search_path TO ''/u);
-  assert.match(source, /revoke all on function public\.novelight_comment_feed_scope\(/u);
+  assert.match(
+    source,
+    /revoke all on function public\.novelight_comment_feed_scope\(/u
+  );
   assert.match(source, /^begin;$/mu);
   assert.match(source, /^commit;$/mu);
-  assert.doesNotMatch(source, /\b(?:insert|update|delete|truncate)\s+(?:into\s+|from\s+)?supabase_migrations\.schema_migrations/iu);
+  assert.doesNotMatch(
+    source,
+    /\b(?:insert|update|delete|truncate)\s+(?:into\s+|from\s+)?supabase_migrations\.schema_migrations/iu
+  );
 });
 
 test('reconciliation kit never changes the existing Production-applied migration', async () => {
   const migration = await readFile(files.migration, 'utf8');
   assert.match(migration, /^-- Surface existing opt-in public title/u);
   assert.match(migration, /security definer/u);
-  assert.match(migration, /revoke all on function public\.novelight_comment_feed_scope/u);
+  assert.match(
+    migration,
+    /revoke all on function public\.novelight_comment_feed_scope/u
+  );
 });
