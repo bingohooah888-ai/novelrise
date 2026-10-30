@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 import { createOwnerNovelBibleConsentPermissionCheck } from '../api/_lib/ai/owner-novel-bible-consent.js';
 
@@ -204,4 +206,20 @@ test('configuration rejects unknown models, processor or invalid policy', () => 
   for (const options of invalidConfigs) {
     assert.throws(() => fixture(options), /AI_CONSENT_GATE_UNAVAILABLE/u);
   }
+});
+
+test('proposed consent SQL is review-only, RLS-on and not a migration', async () => {
+  const sql = await readFile(
+    new URL(
+      '../reports/sql/novelight_ai_external_consent_PROPOSAL.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(sql, /REVIEW PROPOSAL ONLY/u);
+  assert.match(sql, /enable row level security/u);
+  assert.match(sql, /from public, anon, authenticated/u);
+  assert.match(sql, /primary key \(actor_id, novel_id, purpose, processor\)/u);
+  assert.match(sql, /rollback;/u);
+  assert.doesNotMatch(sql, /security definer/u);
 });
