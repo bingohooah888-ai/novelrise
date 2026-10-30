@@ -8,7 +8,9 @@ import {
   applyAdminSecurityHeaders,
   isSameOriginRequest
 } from './_lib/admin-auth.js';
-import { resolveOwnerNovelBiblePreviewConfig } from './_lib/ai/owner-novel-bible-preview.js';
+import {
+  resolveOwnerNovelBiblePreviewConfig
+} from './_lib/ai/owner-novel-bible-preview.js';
 
 function fail(res, status, code) {
   return res.status(status).json({ error: code });
@@ -33,9 +35,7 @@ function requestBody(body) {
   if (
     keys.length < 2 ||
     keys.length > 3 ||
-    keys.some(
-      (key) => !['novelId', 'episodeId', 'chunkIndex'].includes(key)
-    )
+    keys.some((key) => !['novelId', 'episodeId', 'chunkIndex'].includes(key))
   ) {
     return null;
   }
