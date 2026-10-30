@@ -173,8 +173,8 @@
             const label = doc.createElement('label');
             label.textContent =
               '上記の内容を確認し、この事業者への原稿送信に同意する';
+            label.appendChild(checkbox);
             row.appendChild(label);
-            row.appendChild(checkbox);
           }
 
           const button = doc.createElement('button');
