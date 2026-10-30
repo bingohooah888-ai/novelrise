@@ -663,19 +663,23 @@ test('Home and public pages keep the approved off-white header', async ({
 test('episode commenter avatar uses the same public RPC as author profile', async ({
   page
 }) => {
+  await page.route(
+    'https://avatar-ci.supabase.co/storage/v1/object/public/author-avatars/**',
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'image/png',
+        path: 'assets/scout-badges/reader_read_005.png'
+      })
+  );
   await page.goto('/tests/e2e/fixtures/comment-spoiler-display.html');
   await page.evaluate(async () => {
     const userId = '11111111-1111-4111-8111-111111111111';
     const imageName = '22222222-2222-4222-8222-222222222222.webp';
     const path = `${userId}/${imageName}`;
+    // Reproduce the production failure: RPC works but storage.from() is absent.
     const client = {
-      storage: {
-        from: () => ({
-          getPublicUrl: () => ({
-            data: { publicUrl: '/assets/scout-badges/reader_read_005.png' }
-          })
-        })
-      },
+      supabaseUrl: 'https://avatar-ci.supabase.co',
       rpc: async (name) => {
         if (name === 'novelight_public_author_avatar') {
           return { data: path, error: null };
@@ -712,9 +716,13 @@ test('episode commenter avatar uses the same public RPC as author profile', asyn
     });
   });
   const avatar = page.locator('.novelight-comment-avatar img');
-  await expect(avatar).toHaveAttribute(
-    'src',
-    '/assets/scout-badges/reader_read_005.png'
+  const imageUrl = new RegExp(
+    '^https://avatar-ci[.]supabase[.]co/storage/v1/object/public/author-avatars/'
+  );
+  await expect(avatar).toHaveAttribute('src', imageUrl);
+  await expect(page.locator('.novelight-comment-avatar')).toHaveAttribute(
+    'data-avatar-status',
+    'loaded'
   );
   await expect(avatar).toHaveJSProperty('complete', true);
   const width = await avatar.evaluate((image) => image.naturalWidth);
