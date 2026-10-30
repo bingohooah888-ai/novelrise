@@ -34,7 +34,12 @@ export function createOwnerNovelBibleConsentActions({
   }
   const owner = ownerId.toLowerCase();
 
-  async function authorize({ token, novelId, processor, explicitAuthorAction }) {
+  async function authorize({
+    token,
+    novelId,
+    processor,
+    explicitAuthorAction
+  }) {
     if (!enabled) throw new Error('AI_CONSENT_ACTION_DISABLED');
     if (
       explicitAuthorAction !== true ||
