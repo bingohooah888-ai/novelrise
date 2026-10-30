@@ -80,11 +80,7 @@ function fixture({
           if (dbError) return { data: null, error: { code: 'DB_DOWN' } };
           const row = db.get('openai');
           return {
-            data: corrupt
-              ? [row, row].filter(Boolean)
-              : row
-                ? [row]
-                : [],
+            data: corrupt ? [row, row].filter(Boolean) : row ? [row] : [],
             error: null
           };
         }
