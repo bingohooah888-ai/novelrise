@@ -1,0 +1,180 @@
+name: NOVELIGHT AI Consent Staging Real Auth JWT Proof (OWNER only)
+
+# Dormant until independently merged to trusted main, then separately approved.
+# Staging-only synthetic Auth account; no Production, manuscript or AI model calls.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Bind exact one-use OWNER consent JWT approval
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_AI_CONSENT_JWT_APPROVE ')
+    concurrency:
+      group: novelight-ai-consent-jwt-approval-294
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.verify.outputs.main_sha }}
+      candidate_sha: ${{ steps.verify.outputs.candidate_sha }}
+      request_id: ${{ steps.verify.outputs.request_id }}
+    steps:
+      - name: Checkout trusted main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Fail-closed tests before accessing any Staging secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund --quiet
+          node --test tests/ai-consent-staging-jwt-proof.test.mjs
+      - name: Validate OWNER approval, pinned candidate SQL and complete ledger
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/consent-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2686" > /tmp/consent-pr.json
+          gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/2686/files?per_page=100" > /tmp/consent-pr-files.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/consent-ledger.json
+          main="$(jq -er '.object.sha' /tmp/consent-main.json)"
+          candidate="$(jq -er '.head.sha' /tmp/consent-pr.json)"
+          base=bab154c6df3b7bd5d92c4252c681810aa2fb7d96
+          gh api "repos/$GITHUB_REPOSITORY/compare/$base...$main" > /tmp/consent-main-lineage.json
+          gh api "repos/$GITHUB_REPOSITORY/compare/$base...$candidate" > /tmp/consent-candidate-lineage.json
+          node .github/staging-ai-consent-jwt/admission.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/consent-main.json /tmp/consent-pr.json \
+            /tmp/consent-pr-files.json /tmp/consent-ledger.json \
+            /tmp/consent-main-lineage.json /tmp/consent-candidate-lineage.json \
+            > /tmp/consent-approval.json
+          test "$(git rev-parse HEAD)" = "$main"
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/consent-approval.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/consent-approval.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/consent-approval.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: CLAIM single-use approval before Staging secrets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.verify.outputs.main_sha }}
+          CANDIDATE: ${{ steps.verify.outputs.candidate_sha }}
+          REQUEST_ID: ${{ steps.verify.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" --arg mainSha "$MAIN" \
+            --arg candidateSha "$CANDIDATE" --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_AI_CONSENT_JWT_CLAIMED $payload" >/dev/null
+
+  stage:
+    name: One approved Staging synthetic Auth JWT read/grant/revoke/cleanup
+    needs: admit
+    if: needs.admit.result == 'success'
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      APPROVED_CANDIDATE_SHA: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_APPROVAL_COMMENT_ID: ${{ needs.admit.outputs.request_id }}
+      STAGING_PROJECT_REF: wmlzjgvxgoyrovdhbqbg
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-ai-consent-jwt-url
+      STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      NOVELIGHT_STAGING_AI_CONSENT_JWT_ADMITTED: '1'
+      PGSSLMODE: require
+    steps:
+      - name: Checkout exact approved trusted main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify main and PR refs and fixed Staging target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2686" --jq '.head.sha')" = "$APPROVED_CANDIDATE_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2686" --jq '.draft')" = true
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2686" --jq '.state')" = open
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+      - name: Resolve verified Staging session pooler
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/resolve-staging-session-pooler.mjs
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund --quiet
+      - name: Verify actual Auth JWT and synthetic consent with cleanup
+        shell: bash
+        run: node .github/staging-ai-consent-jwt/runner.mjs
+      - name: Remove temporary Staging database URL
+        if: always()
+        shell: bash
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
+
+  record:
+    name: Consume one-use approval even on failed staging attempt
+    needs: [admit, stage]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Record consumed result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          CANDIDATE: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST_ID: ${{ needs.admit.outputs.request_id }}
+          RESULT: ${{ needs.stage.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$RESULT" in success|failure|cancelled|skipped) ;; *) exit 1;; esac
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" --arg mainSha "$MAIN" \
+            --arg candidateSha "$CANDIDATE" --arg runId "$GITHUB_RUN_ID" \
+            --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_AI_CONSENT_JWT_CONSUMED $payload" >/dev/null
