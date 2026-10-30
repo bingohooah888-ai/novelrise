@@ -1,6 +1,6 @@
-// Dormant owner-only consent UI transport. No real consent runtime is attached.
-// Enabling flags alone cannot execute any database write or AI model call.
-// A separately reviewed server runtime must be injected after Staging proof.
+// Owner-only consent transport, dormant unless separately approved server
+// settings, valid disclosures, owner Auth and scoped DB RPCs ALL exist.
+// No manuscript inference, model entitlement or feature-publication is wired.
 import { createClient } from '@supabase/supabase-js';
 
 import {
@@ -8,6 +8,10 @@ import {
   isSameOriginRequest
 } from './_lib/admin-auth.js';
 import { resolveOwnerNovelBiblePreviewConfig } from './_lib/ai/owner-novel-bible-preview.js';
+import {
+  createOwnerNovelBibleConsentRuntime,
+  resolveOwnerNovelBibleConsentRuntimePolicy
+} from './_lib/ai/owner-novel-bible-consent-runtime.js';
 
 const PROCESSORS = new Set(['openai', 'gemini']);
 const REVISION = /^[a-z0-9][a-z0-9._-]{3,119}$/i;
@@ -168,10 +172,14 @@ export function createOwnerBibleConsentApiHandler({
     }
 
     const config = resolveOwnerNovelBiblePreviewConfig(env);
+    const approvedPolicy =
+      typeof createConsentRuntime === 'function'
+        ? null
+        : resolveOwnerNovelBibleConsentRuntimePolicy(env);
     if (
       !config ||
       !bounded(env.SUPABASE_SECRET_KEY, 2048) ||
-      typeof createConsentRuntime !== 'function'
+      (typeof createConsentRuntime !== 'function' && !approvedPolicy)
     ) {
       return fail(res, 503, 'AI_CONSENT_UNAVAILABLE');
     }
@@ -190,10 +198,19 @@ export function createOwnerBibleConsentApiHandler({
         return fail(res, 404, 'NOT_FOUND');
       }
 
-      const runtime = await createConsentRuntime({
-        ownerId: config.id,
-        serviceClient
-      });
+      const runtime =
+        typeof createConsentRuntime === 'function'
+          ? await createConsentRuntime({
+              ownerId: config.id,
+              serviceClient
+            })
+          : createOwnerNovelBibleConsentRuntime({
+              enabled: true,
+              ownerId: config.id,
+              serviceClient,
+              policyRevision: approvedPolicy.policyRevision,
+              disclosures: approvedPolicy.disclosures
+            });
       if (
         typeof runtime?.read !== 'function' ||
         typeof runtime?.grant !== 'function' ||
