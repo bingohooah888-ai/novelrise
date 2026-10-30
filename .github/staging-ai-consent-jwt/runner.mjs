@@ -134,15 +134,19 @@ async function live() {
   const publicClient=createClient(STAGING,env.STAGING_SUPABASE_PUBLISHABLE_KEY,opts);
   const read=await admin.auth.admin.listUsers({page:1,perPage:1});
   if(read.error||!Array.isArray(read.data?.users))fail();
-  let created=false,token=null,failed=false;
+  let created=false,createdId=null,token=null,failed=false;
   try {
     const password=randomBytes(32).toString('hex');
     phase('SYNTHETIC_AUTH_CREATE');
     const result=await admin.auth.admin.createUser({
       id:ID,email:EMAIL,password,email_confirm:true,app_metadata:{internal_e2e:true}
     });
-    if(result.error||result.data?.user?.id!==ID||result.data.user.email!==EMAIL||
-       result.data.user.app_metadata?.internal_e2e!==true)fail();
+    // Even if GoTrue ever ignores the requested fixed ID, clean up ONLY the
+    // newly returned synthetic identity, never an unrelated existing author.
+    const generated=result.data?.user;
+    if(generated?.email===EMAIL&&generated.app_metadata?.internal_e2e===true&&
+       /^[0-9a-f-]{36}$/i.test(generated.id||''))createdId=generated.id;
+    if(result.error||createdId!==ID)fail();
     created=true;
     sql(db,syntheticMetadataReconcileSQL());
     phase('SYNTHETIC_NOVEL_CREATE');
@@ -199,11 +203,13 @@ async function live() {
       try{sql(db,"begin;set local statement_timeout='12s';set local lock_timeout='3s';"+
         "delete from public.novels where id="+NOVEL+" and user_id='"+ID+"';commit;");}
       catch{failed=true;}
+    }
+    if(createdId){
       try{
-        const user=await admin.auth.admin.getUserById(ID);
-        if(user.error||user.data?.user?.id!==ID||user.data.user.email!==EMAIL||
+        const user=await admin.auth.admin.getUserById(createdId);
+        if(user.error||user.data?.user?.id!==createdId||user.data.user.email!==EMAIL||
            user.data.user.app_metadata?.internal_e2e!==true)failed=true;
-        else{const r=await admin.auth.admin.deleteUser(ID);if(r.error)failed=true;}
+        else{const r=await admin.auth.admin.deleteUser(createdId);if(r.error)failed=true;}
       }catch{failed=true;}
     }
     phase('FINAL_CENSUS');
@@ -211,6 +217,11 @@ async function live() {
       assertPrecheck(JSON.parse(sql(db,PRECHECK_SQL)),REF);
       assertCensus(snapshot(db),'final');
       fkResidue(db);
+      if(createdId && createdId!==ID){
+        const extra=sql(db,"select (select count(*) from public.profiles where id='"+createdId+"'::uuid)"+
+          "+(select count(*) from auth.sessions where user_id='"+createdId+"'::uuid)");
+        if(extra!=='0')fail();
+      }
       migrationParity(db);
     }catch{failed=true;}
   }
