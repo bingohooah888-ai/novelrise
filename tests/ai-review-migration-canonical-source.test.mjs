@@ -34,10 +34,7 @@ test('four source artifacts match previously reviewed Git blobs', async () => {
   for (const [path, expected] of SOURCES) {
     const bytes = await source(path);
     const prefix = Buffer.from('blob ' + bytes.length + '\0');
-    const blob = createHash('sha1')
-      .update(prefix)
-      .update(bytes)
-      .digest('hex');
+    const blob = createHash('sha1').update(prefix).update(bytes).digest('hex');
     assert.equal(blob, expected, path);
   }
 });
