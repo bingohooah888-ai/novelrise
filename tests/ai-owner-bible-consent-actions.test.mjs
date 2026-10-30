@@ -254,8 +254,14 @@ test('consent SQL is a non-applied rollback proposal with service-only RPCs', as
   assert.match(sql, /novelight_ai_consent_revoke/u);
   assert.match(sql, /novelight_ai_external_consent_action_audit/u);
   assert.match(sql, /enable row level security/u);
-  assert.match(sql, /grant execute on function public\.novelight_ai_consent_grant\(/u);
-  assert.match(sql, /grant execute on function public\.novelight_ai_consent_revoke\(/u);
+  assert.match(
+    sql,
+    /grant execute on function public\.novelight_ai_consent_grant\(/u
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.novelight_ai_consent_revoke\(/u
+  );
   assert.match(sql, /to service_role;/u);
   assert.match(sql, /\nrollback;\n/u);
 });
