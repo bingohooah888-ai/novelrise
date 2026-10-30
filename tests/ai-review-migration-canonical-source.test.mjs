@@ -23,7 +23,7 @@ const SOURCES = [
   [
     '../supabase/rollback/20261028084410_novelight_ai_review_candidates_rollback.sql',
     '325a5b9b818ee08e11b09e0336a45423c6191f32'
-  ],
+  ]
 ];
 
 async function source(path) {
