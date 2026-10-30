@@ -1,6 +1,15 @@
 import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
 async function mountComments(page, { session = null } = {}) {
+  await page.route(
+    'https://avatar-ci.supabase.co/storage/v1/object/public/author-avatars/**',
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>'
+      })
+  );
   await page.goto('/tests/e2e/fixtures/comment-spoiler-display.html');
 
   await page.evaluate(
@@ -9,13 +18,7 @@ async function mountComments(page, { session = null } = {}) {
       globalThis.__COMMENT_CALLS__ = calls;
 
       const client = {
-        storage: {
-          from: () => ({
-            getPublicUrl: () => ({
-              data: { publicUrl: '/assets/scout-badges/reader_read_005.png' }
-            })
-          })
-        },
+        supabaseUrl: 'https://avatar-ci.supabase.co',
         rpc: async (name, args) => {
           calls.push({ name, args });
 
@@ -178,8 +181,14 @@ test('public comment identity is displayed above the pen name', async ({
   });
   const profile = comment.locator('.novelight-comment-profile');
   const avatarImage = profile.locator('.novelight-comment-avatar img');
-  const expectedSrc = '/assets/scout-badges/reader_read_005.png';
+  const expectedSrc = new RegExp(
+    '^https://avatar-ci[.]supabase[.]co/storage/v1/object/public/author-avatars/'
+  );
   await expect(avatarImage).toHaveAttribute('src', expectedSrc);
+  await expect(profile.locator('.novelight-comment-avatar')).toHaveAttribute(
+    'data-avatar-status',
+    'loaded'
+  );
   await expect(avatarImage).toHaveJSProperty('complete', true);
   const width = await avatarImage.evaluate((image) => image.naturalWidth);
   expect(width).toBeGreaterThan(0);
