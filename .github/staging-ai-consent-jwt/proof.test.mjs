@@ -168,7 +168,7 @@ test('workflow is dormant and never uses Vercel Preview or paid models', () => {
   assert.doesNotMatch(yaml, /VERCEL_AUTOMATION_BYPASS_SECRET/u);
   assert.doesNotMatch(yaml, /workflow_dispatch/u);
   assert.match(script, /assertPrecheck/u);
-  assert.match(script, /deleteUser\(ID\)/u);
+  assert.match(script, /deleteUser\(createdId\)/u);
   assert.match(script, /novelight_ai_external_consent_action_audit/u);
   assert.doesNotMatch(script, /createTrialBridge|generateText|router\.invoke/u);
 });
