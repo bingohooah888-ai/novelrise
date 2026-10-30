@@ -50,6 +50,7 @@ AI_CONSENT_STEM="${AI_CONSENT_VERSION}_novelight_ai_external_consent"
 "${AI_REPLAY[@]}" -f "supabase/migrations/${AI_CONSENT_STEM}.sql"
 "${AI_REPLAY[@]}" -f "supabase/checks/${AI_CONSENT_STEM}_postcheck.sql"
 "${AI_REPLAY[@]}" -f tests/rls/ai-external-consent-candidate-access.sql
+"${AI_REPLAY[@]}" -f tests/rls/ai-external-consent-candidate-behavior.sql
 "${AI_REPLAY[@]}" -f "supabase/rollback/${AI_CONSENT_STEM}_rollback.sql"
 "${AI_REPLAY[@]}" <<'SQL'
 do $ai_consent_disposable_cleanup$
