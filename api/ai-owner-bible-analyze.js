@@ -8,9 +8,7 @@ import {
   applyAdminSecurityHeaders,
   isSameOriginRequest
 } from './_lib/admin-auth.js';
-import {
-  resolveOwnerNovelBiblePreviewConfig
-} from './_lib/ai/owner-novel-bible-preview.js';
+import { resolveOwnerNovelBiblePreviewConfig } from './_lib/ai/owner-novel-bible-preview.js';
 
 function fail(res, status, code) {
   return res.status(status).json({ error: code });
@@ -91,9 +89,7 @@ export function createOwnerBibleAnalyzeApiHandler({
       typeof req.headers?.origin !== 'string' ||
       !isSameOriginRequest(req) ||
       req.headers['x-novelight-ai-trial'] !== '1' ||
-      !/^application\/json(?:\s*;|$)/i.test(
-        req.headers['content-type'] ?? ''
-      )
+      !/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] ?? '')
     ) {
       return fail(res, 403, 'FORBIDDEN');
     }
