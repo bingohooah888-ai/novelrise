@@ -10,19 +10,19 @@ import { URL } from 'node:url';
 const SOURCES = [
   [
     '../supabase/migrations/20261028084410_novelight_ai_review_candidates.sql',
-    '8832b4ab9cd54272a5eb07f58d937f2cc14c5082',
+    '8832b4ab9cd54272a5eb07f58d937f2cc14c5082'
   ],
   [
     '../supabase/checks/20261028084410_novelight_ai_review_candidates_precheck.sql',
-    'fc8a7f543cff4b217655a821fb4756d6f955ea2b',
+    'fc8a7f543cff4b217655a821fb4756d6f955ea2b'
   ],
   [
     '../supabase/checks/20261028084410_novelight_ai_review_candidates_postcheck.sql',
-    '82a4b8392ea09ee6d4772d71e5627a160989c54c',
+    '82a4b8392ea09ee6d4772d71e5627a160989c54c'
   ],
   [
     '../supabase/rollback/20261028084410_novelight_ai_review_candidates_rollback.sql',
-    '325a5b9b818ee08e11b09e0336a45423c6191f32',
+    '325a5b9b818ee08e11b09e0336a45423c6191f32'
   ],
 ];
 
@@ -48,14 +48,14 @@ test('review candidates are service-only, RLS enabled, default OFF', async () =>
   assert.match(migration, /for all to service_role/u);
   assert.match(
     migration,
-    /revoke all on public\.novelight_ai_review_candidates/u,
+    /revoke all on public\.novelight_ai_review_candidates/u
   );
   assert.match(migration, /from public, anon, authenticated;/u);
   assert.match(migration, /security invoker/u);
   assert.match(migration, /current_user <> 'service_role'/u);
   assert.match(
     migration,
-    /comment on table public\.novelight_ai_review_candidates/u,
+    /comment on table public\.novelight_ai_review_candidates/u
   );
   assert.match(migration, /\ncommit;\s*$/u);
   assert.doesNotMatch(migration, /security definer/iu);
@@ -73,11 +73,11 @@ test('checks and recovery retain approval and no-ledger-repair gates', async () 
   assert.match(rollback, /MANUAL RECOVERY ONLY/u);
   assert.match(
     rollback,
-    /if exists \(select 1 from public\.novelight_ai_review_candidates\)/u,
+    /if exists \(select 1 from public\.novelight_ai_review_candidates\)/u
   );
   assert.doesNotMatch(
     rollback,
-    /\b(?:insert|update|delete)\s+(?:into\s+|from\s+)?supabase_migrations\./iu,
+    /\b(?:insert|update|delete)\s+(?:into\s+|from\s+)?supabase_migrations\./iu
   );
 });
 
