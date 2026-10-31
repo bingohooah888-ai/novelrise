@@ -8,10 +8,8 @@ import test from 'node:test';
 const source = readFileSync('novelight-client.js', 'utf8');
 const end = source.indexOf('\n  installPreviewSupabaseBootstrap();');
 assert.ok(end > 0, 'shared preview bootstrap must exist');
-const bootstrap = source.slice(
-  0,
-  end + '\n  installPreviewSupabaseBootstrap();'.length
-) + '\n})();';
+const suffix = '\n  installPreviewSupabaseBootstrap();';
+const bootstrap = source.slice(0, end + suffix.length).concat('\n})();');
 
 function execute({ hostname, config, status = 200 }) {
   const calls = [];
@@ -108,22 +106,20 @@ test('invalid/missing Preview config fails closed before creating any client', (
       hostname: 'novelrise-one-off-preview.vercel.app',
       ...options
     });
-    assert.throws(() =>
-      runtime.window.supabase.createClient(
-        'https://fiepaguycecrredwrcwx.supabase.co',
-        'sb_publishable_testonly'
-      ),
-    /CONFIG_DRIFT/
+    assert.throws(
+      () =>
+        runtime.window.supabase.createClient(
+          'https://fiepaguycecrredwrcwx.supabase.co',
+          'sb_publishable_testonly'
+        ),
+      /CONFIG_DRIFT/
     );
     assert.equal(runtime.calls.length, 0);
   }
 });
 
 test('Production canonical host keeps existing Production client behavior', () => {
-  const runtime = execute({
-    hostname: 'novelight.jp',
-    status: 404
-  });
+  const runtime = execute({ hostname: 'novelight.jp', status: 404 });
   const productionUrl = 'https://fiepaguycecrredwrcwx.supabase.co';
   runtime.window.supabase.createClient(productionUrl, 'sb_publishable_prod');
   assert.equal(runtime.calls[0][0], productionUrl);
