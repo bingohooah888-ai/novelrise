@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 import { createOwnerNovelBibleLiveTrialBridge } from '../api/_lib/ai/owner-novel-bible-trial-live.js';
 
