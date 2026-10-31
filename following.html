@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja" class="novelight-public-ivory">
+<head>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20261022">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>フォロワー・フォロー中 | NOVELIGHT</title>
+  <meta name="robots" content="noindex,follow">
+  <link rel="stylesheet" href="novelight-theme.css">
+  <link rel="stylesheet" href="novelight-header-light.css" data-novelight-public-header="shared">
+  <link rel="stylesheet" href="/shared/page/public-ivory.css">
+  <link rel="stylesheet" href="/shared/header/public-header.css" data-novelight-shared-header="true">
+  <link rel="stylesheet" href="novelight-accessibility.css">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:#f7f8fb;color:#252322;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}
+    a{color:inherit;text-decoration:none}
+    .follow-header{background:#fff;border-bottom:1px solid #e5e7eb}
+    .follow-header-inner{max-width:960px;margin:auto;min-height:72px;padding:12px 22px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+    .follow-brand img{display:block;width:min(200px,48vw);height:auto}
+    .follow-back{font-size:13px;color:#655133;font-weight:750}
+    main{max-width:860px;margin:auto;padding:36px 22px 80px}
+    h1{font-size:28px;line-height:1.4;margin:0 0 9px}
+    .follow-lead{font-size:14px;color:#6b6258;line-height:1.8;margin:0 0 16px}
+    .follow-navigation{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 22px}
+    .follow-navigation a{padding:9px 14px;border-radius:999px;border:1px solid #d9cbaa;background:#fffaf0;color:#6b4b22;font-size:13px;font-weight:800}
+    .follow-navigation a[aria-current="page"]{background:#3b2a1d;color:#fff;border-color:#3b2a1d}
+    .follow-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-bottom:1px solid #ddd1b8;margin:5px 0 22px}
+    .follow-tab{position:relative;border:0;background:transparent;color:#796f63;font-size:15px;font-weight:800;min-height:52px;padding:11px 8px;cursor:pointer}
+    .follow-tab[aria-selected="true"]{color:#2e261a}
+    .follow-tab[aria-selected="true"]::after{content:"";height:3px;position:absolute;inset:auto 12% -1px;background:#a97b2a;border-radius:4px}
+    .follow-tab:focus-visible{outline:3px solid #b78432;outline-offset:-4px}
+    .follow-tab-count{font-size:12px;margin-left:5px;font-weight:700;color:inherit}
+    .follow-summary{margin:0 0 14px;color:#61594e;font-size:13px}
+    .follow-list{display:grid;gap:12px}
+    .follow-card,.follow-empty{border:1px solid #e3ddd4;background:#fff;border-radius:13px;padding:19px}
+    .follow-card{display:grid;grid-template-columns:52px minmax(0,1fr);gap:13px}
+    .follow-avatar{height:52px;width:52px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:50%;background:#1e2a40;color:#f4d994;font-weight:900;font-size:22px}
+    .follow-avatar img{width:100%;height:100%;object-fit:cover}
+    .follow-name{font-size:17px;font-weight:850;line-height:1.5;overflow-wrap:anywhere}
+    .follow-name:hover{text-decoration:underline}
+    .follow-card-desc{font-size:12px;color:#777;margin:5px 0 12px}
+    .follow-controls{display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap}
+    .follow-option{font-size:13px;color:#524d47;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+    .follow-option input{accent-color:#8a642a;width:17px;height:17px}
+    .follow-unfollow,.follow-more{border:1px solid #cbbba5;border-radius:9px;padding:9px 12px;background:#fffaf0;color:#664b2c;cursor:pointer;font-size:12px;font-weight:800}
+    .follow-unfollow{margin-left:auto}
+    .follow-unfollow:hover,.follow-more:hover{background:#f7eddd}
+    button:disabled{opacity:.6;cursor:wait}
+    .follow-status{color:#65513e;font-size:12px;min-height:1em;margin:9px 0 0}
+    .follow-empty{color:#655e55;line-height:1.8}
+    .follow-empty a{color:#6c4f9a;text-decoration:underline;font-weight:750}
+    .follow-more{display:block;margin:18px auto 0;min-height:42px}
+    .follow-more[hidden]{display:none}
+    footer{background:#111118;color:#ddd;padding:24px;text-align:center;font-size:12px}
+    @media(max-width:600px){main{padding:25px 15px 60px}.follow-header-inner{padding:13px 15px}.follow-card{padding:15px;grid-template-columns:42px minmax(0,1fr)}.follow-avatar{width:42px;height:42px}.follow-unfollow{margin-left:0}}
+  </style>
+</head>
+<body class="novelight-theme novelight-public-header-page novelight-public-ivory novelight-page-following">
+  <a class="skip-link" href="#main-content">本文へスキップ</a>
+<header class="site-header">
+  <div class="header-inner public-header-inner">
+    <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
+    <nav class="site-nav desktop-nav" aria-label="メインナビ"><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="community.html">交流</a><a href="announcements.html">お知らせ</a></nav>
+    <div class="header-actions">
+      <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
+      <a class="btn btn-outline login-action" href="login.html">ログイン</a>
+      <a class="btn btn-primary signup-action" href="signup.html">会員登録</a>
+      <details class="mobile-menu">
+        <summary aria-label="メニューを開く">☰</summary>
+        <nav aria-label="モバイルナビ"><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="community.html">交流</a><a href="announcements.html">お知らせ</a><a href="login.html">ログイン</a></nav>
+      </details>
+    </div>
+  </div>
+</header>
+  <main id="main-content" tabindex="-1">
+    <h1>フォロー</h1>
+    <p class="follow-lead">あなたをフォローしている人と、あなたがフォローしている作者を確認できます。</p>
+    <nav class="follow-navigation" aria-label="関連ページ">
+      <a href="favorites.html">本棚へ</a>
+      <a href="community.html">タイムラインへ</a>
+    </nav>
+    <div class="follow-tabs" role="tablist" aria-label="フォローの種類">
+      <button class="follow-tab" id="followersTab" type="button" role="tab" aria-selected="false" aria-controls="followingList" tabindex="-1" data-follow-view="followers">フォロワー <span id="followersCount" class="follow-tab-count" aria-hidden="true">—</span></button>
+      <button class="follow-tab" id="followingTab" type="button" role="tab" aria-selected="true" aria-controls="followingList" tabindex="0" data-follow-view="following">フォロー中 <span id="followingCount" class="follow-tab-count" aria-hidden="true">—</span></button>
+    </div>
+    <p id="followingSummary" class="follow-summary" role="status">フォロー情報を読み込んでいます...</p>
+    <div id="followingList" class="follow-list" role="tabpanel" aria-labelledby="followingTab" aria-live="polite"></div>
+    <button id="followingLoadMore" class="follow-more" type="button" hidden>さらに表示</button>
+  </main>
+  <footer>© 2026 NOVELIGHT</footer>
+  <script src="/assets/vendor/supabase-js-2.112.3.js"></script>
+  <script src="novelight-client.js"></script>
+  <script src="novelight-public-avatar.js"></script>
+  <script src="novelight-following-list.js" defer></script>
+</body>
+</html>
