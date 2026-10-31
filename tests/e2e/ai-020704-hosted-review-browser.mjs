@@ -81,6 +81,10 @@ export async function runHostedOwnerReviewBrowser(env = process.env) {
       { timeout: 25000 }
     );
     await page.locator('#workTitle').waitFor({ state: 'visible', timeout: 20000 });
+    await page.waitForFunction(
+      () => document.querySelector('#workTitle')?.textContent?.includes('Synthetic consent JWT proof'),
+      { timeout: 20000 }
+    );
     if (await page.locator('.novelight-ai-bible-trial-section').count()) denied();
     const proof = await page.evaluate(async ({ owner, novelId }) => {
       // This code runs in the actual hosted page and uses the page's client.
