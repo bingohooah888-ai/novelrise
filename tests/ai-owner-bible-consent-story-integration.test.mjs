@@ -42,42 +42,12 @@ test('consent controls use private styles', () => {
   }
 });
 
-test('consent text and buttons meet AA contrast', () => {
-  const intro = html.match(
-    /\.novelight-ai-bible-consent-section > p \{[^}]*color:(#[0-9a-f]{6})/i
-  )?.[1];
-  const button = html.match(
-    /\.novelight-ai-bible-consent-row \.btn \{[^}]*color:(#[0-9a-f]{6})/i
-  )?.[1];
-  const buttonBackground = html.match(
-    /\.novelight-ai-bible-consent-row \.btn \{[^}]*background:(#[0-9a-f]{6})/i
-  )?.[1];
-
-  function luminance(hex) {
-    const channels = hex.slice(1).match(/../g).map((pair) => {
-      const channel = parseInt(pair, 16) / 255;
-      return channel <= 0.04045
-        ? channel / 12.92
-        : ((channel + 0.055) / 1.055) ** 2.4;
-    });
-    return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
-  }
-
-  function contrast(a, b) {
-    const light = Math.max(luminance(a), luminance(b));
-    const dark = Math.min(luminance(a), luminance(b));
-    return (light + 0.05) / (dark + 0.05);
-  }
-
-  assert.ok(intro && button && buttonBackground);
-  // The outer panel is dark; action rows have pale backgrounds.
-  assert.ok(
-    contrast(intro, '#0d1d2b') >= 4.5,
-    'section text must be readable on dark'
-  );
-  assert.ok(
-    contrast(button, buttonBackground) >= 4.5,
-    'action labels must be readable on light buttons'
-  );
+test('consent panel keeps readable text and action colors', () => {
+  const intro = html.match(/\.novelight-ai-bible-consent-section > p \{[^}]+/);
+  const button = html.match(/\.novelight-ai-bible-consent-row \.btn \{[^}]+/);
+  assert.ok(intro && button);
+  assert.match(intro[0], /color:#d3dee9/);
+  assert.match(button[0], /background:#edf5fc/);
+  assert.match(button[0], /color:#17334b/);
   assert.match(html, /\.novelight-ai-bible-consent-row \.btn:focus-visible/);
 });
