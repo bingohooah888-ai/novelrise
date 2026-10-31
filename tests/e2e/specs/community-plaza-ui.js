@@ -54,6 +54,15 @@ async function installIsolatedMock(page, enabled, options = {}) {
   await page.route('**/*.supabase.co/**', (route) =>
     route.abort('blockedbyclient')
   );
+  // The shared avatar renderer now builds storage URLs directly. Mock only
+  // the synthetic avatar asset while all other Supabase traffic stays blocked.
+  await page.route('**/storage/v1/object/public/author-avatars/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: decodeURIComponent(tinyAvatar.split(',')[1])
+    })
+  );
   await page.route('**/assets/vendor/supabase-js-2.112.3.js', async (route) => {
     await route.fulfill({
       status: 200,
@@ -64,6 +73,7 @@ async function installIsolatedMock(page, enabled, options = {}) {
               const feed = globalThis.__communityWithoutAvatar
                 ? {...originalFeed, author_avatar_path:null} : originalFeed;
           const client = {
+            supabaseUrl: 'https://mock-author-profile.supabase.co',
             auth: {
               getSession: async () => ({
                 data: { session: { user: { id: 'c0a00000-0000-4000-8000-000000000002' } } },
