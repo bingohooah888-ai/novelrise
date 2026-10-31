@@ -56,6 +56,7 @@ test('rollback is manual, exact-scoped and noncascading', () => {
   for (const fn of signatures) {
     assert.ok(rollback.includes('drop function public.' + fn));
   }
-  assert.doesNotMatch(rollback, /\\bcascade\\b/i);
+  const statements = rollback.replace(/^--.*$/gm, '');
+  assert.doesNotMatch(statements, /\\bcascade\\b/i);
   assert.doesNotMatch(rollback, /\\b(?:delete|truncate|drop table)\\b/i);
 });
