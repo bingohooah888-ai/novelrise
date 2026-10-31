@@ -15,18 +15,22 @@ function requireSafeEnvironment() {
   const env = process.env;
   const url = new URL(env.STAGING_SUPABASE_URL);
   const preview = new URL(env.CANONICAL_STAGING_URL);
-  if (env.NOVELIGHT_FOLLOW_STAGE_ADMITTED !== '1' ||
-      env.STAGING_SUPABASE_URL !== STAGING ||
-      env.STAGING_EXPECTED_SUPABASE_URL !== STAGING ||
-      !env.STAGING_SUPABASE_PUBLISHABLE_KEY?.startsWith('sb_publishable_') ||
-      !env.STAGING_SUPABASE_SECRET_KEY?.startsWith('sb_secret_') ||
-      !env.VERCEL_AUTOMATION_BYPASS_SECRET ||
-      !REVISION.test(env.EXPECTED_REVISION || '') ||
-      url.hostname === PRODUCTION ||
-      preview.protocol !== 'https:' ||
-      !preview.hostname.endsWith('.vercel.app') ||
-      preview.hostname === 'novelrise.vercel.app') {
-    throw new Error('FOLLOW_STAGE_PROOF_DENIED: invalid isolated Staging facts');
+  if (
+    env.NOVELIGHT_FOLLOW_STAGE_ADMITTED !== '1' ||
+    env.STAGING_SUPABASE_URL !== STAGING ||
+    env.STAGING_EXPECTED_SUPABASE_URL !== STAGING ||
+    !env.STAGING_SUPABASE_PUBLISHABLE_KEY?.startsWith('sb_publishable_') ||
+    !env.STAGING_SUPABASE_SECRET_KEY?.startsWith('sb_secret_') ||
+    !env.VERCEL_AUTOMATION_BYPASS_SECRET ||
+    !REVISION.test(env.EXPECTED_REVISION || '') ||
+    url.hostname === PRODUCTION ||
+    preview.protocol !== 'https:' ||
+    !preview.hostname.endsWith('.vercel.app') ||
+    preview.hostname === 'novelrise.vercel.app'
+  ) {
+    throw new Error(
+      'FOLLOW_STAGE_PROOF_DENIED: invalid isolated Staging facts'
+    );
   }
   return { env, preview: preview.origin };
 }
@@ -42,7 +46,9 @@ async function createSyntheticUser(admin, created) {
   const email = 'follow-proof-' + randomUUID() + '@example.invalid';
   const password = 'Test1!' + randomBytes(25).toString('base64url');
   const response = await admin.auth.admin.createUser({
-    email, password, email_confirm: true,
+    email,
+    password,
+    email_confirm: true,
     user_metadata: { display_name: 'Stage Follow Proof' }
   });
   const user = check(response, 'create synthetic user')?.user;
@@ -56,7 +62,8 @@ async function signIn(url, key, user) {
     auth: { autoRefreshToken: false, persistSession: false }
   });
   const result = await client.auth.signInWithPassword({
-    email: user.email, password: user.password
+    email: user.email,
+    password: user.password
   });
   const session = check(result, 'real JWT sign-in')?.session;
   if (!session?.access_token || session.user?.id !== user.id) {
@@ -71,11 +78,16 @@ async function checkPreviewConfig(preview, env) {
   };
   for (const [path, verify] of [
     ['/api/deployment-revision', (v) => v?.commitSha === env.EXPECTED_REVISION],
-    ['/api/staging-browser-config', (v) => v?.supabaseUrl === STAGING &&
-      String(v?.supabasePublishableKey || '').startsWith('sb_publishable_')]
+    [
+      '/api/staging-browser-config',
+      (v) =>
+        v?.supabaseUrl === STAGING &&
+        String(v?.supabasePublishableKey || '').startsWith('sb_publishable_')
+    ]
   ]) {
     const response = await fetch(preview + path, {
-      headers, signal: AbortSignal.timeout(15_000)
+      headers,
+      signal: AbortSignal.timeout(15_000)
     });
     if (response.status !== 200) {
       throw new Error('Preview fact endpoint is unavailable: ' + path);
@@ -87,21 +99,27 @@ async function checkPreviewConfig(preview, env) {
 
 async function verifyBrowser(preview, env, session, tab, expectedName) {
   const browser = await chromium.launch({
-    headless: true, channel: 'chrome'
+    headless: true,
+    channel: 'chrome'
   });
   try {
     const context = await browser.newContext();
     const key = 'sb-' + REF + '-auth-token';
-    await context.addInitScript(({ storageKey, state }) => {
-      globalThis.localStorage.setItem(storageKey, JSON.stringify(state));
-    }, { storageKey: key, state: session });
+    await context.addInitScript(
+      ({ storageKey, state }) => {
+        globalThis.localStorage.setItem(storageKey, JSON.stringify(state));
+      },
+      { storageKey: key, state: session }
+    );
 
     const previewHost = new URL(preview).hostname;
     await context.route('**/*', (route) => {
       const req = route.request();
       const url = new URL(req.url());
-      if (url.hostname === PRODUCTION ||
-          ![previewHost, REF + '.supabase.co'].includes(url.hostname)) {
+      if (
+        url.hostname === PRODUCTION ||
+        ![previewHost, REF + '.supabase.co'].includes(url.hostname)
+      ) {
         return route.abort('blockedbyclient');
       }
       if (url.hostname === previewHost) {
@@ -122,11 +140,17 @@ async function verifyBrowser(preview, env, session, tab, expectedName) {
     await page.goto(preview + '/following.html?tab=' + tab, {
       waitUntil: 'domcontentloaded'
     });
-    await page.getByRole('tab', { name: tab === 'followers'
-      ? /フォロワー/u : /フォロー中/u }).waitFor();
+    await page
+      .getByRole('tab', {
+        name: tab === 'followers' ? /フォロワー/u : /フォロー中/u
+      })
+      .waitFor();
     await page.locator('.follow-card').first().waitFor({ timeout: 15_000 });
     const html = await page.locator('.follow-card').first().textContent();
-    assert.ok(html?.includes(expectedName), 'synthetic relationship not rendered');
+    assert.ok(
+      html?.includes(expectedName),
+      'synthetic relationship not rendered'
+    );
     assert.equal(await page.locator('.follow-card').count(), 1);
     await context.close();
   } finally {
@@ -147,10 +171,14 @@ async function main() {
     const author = await createSyntheticUser(admin, created);
     const reader = await createSyntheticUser(admin, created);
     const authorAuth = await signIn(
-      STAGING, env.STAGING_SUPABASE_PUBLISHABLE_KEY, author
+      STAGING,
+      env.STAGING_SUPABASE_PUBLISHABLE_KEY,
+      author
     );
     const readerAuth = await signIn(
-      STAGING, env.STAGING_SUPABASE_PUBLISHABLE_KEY, reader
+      STAGING,
+      env.STAGING_SUPABASE_PUBLISHABLE_KEY,
+      reader
     );
     first = readerAuth;
     const empty = check(
@@ -158,33 +186,41 @@ async function main() {
       'initial counts'
     );
     assert.equal(Number(empty.following), 0);
-    check(await readerAuth.client.rpc('novelight_set_author_follow', {
-      p_author_user_id: author.id, p_following: true
-    }), 'follow author');
+    check(
+      await readerAuth.client.rpc('novelight_set_author_follow', {
+        p_author_user_id: author.id,
+        p_following: true
+      }),
+      'follow author'
+    );
 
     const following = check(
       await readerAuth.client.rpc('novelight_followed_authors', {
-        p_limit: 25, p_offset: 0
-      }), 'own following list'
+        p_limit: 25,
+        p_offset: 0
+      }),
+      'own following list'
     );
     assert.equal(following.length, 1);
     assert.equal(following[0].author_user_id, author.id);
     const followers = check(
       await authorAuth.client.rpc('novelight_followers', {
-        p_limit: 25, p_offset: 0
-      }), 'own follower list'
+        p_limit: 25,
+        p_offset: 0
+      }),
+      'own follower list'
     );
     assert.equal(followers.length, 1);
     assert.equal(followers[0].user_id, reader.id);
 
-    check(await readerAuth.client.rpc(
-      'novelight_set_author_follow_notifications',
-      {
+    check(
+      await readerAuth.client.rpc('novelight_set_author_follow_notifications', {
         p_author_user_id: author.id,
         p_notify_new_works: true,
         p_notify_updates: false
-      }
-    ), 'set notifications');
+      }),
+      'set notifications'
+    );
     const after = check(
       await authorAuth.client.rpc('novelight_follow_counts'),
       'author counts'
@@ -192,7 +228,8 @@ async function main() {
     assert.equal(Number(after.followers), 1);
 
     const anonymous = createClient(
-      STAGING, env.STAGING_SUPABASE_PUBLISHABLE_KEY,
+      STAGING,
+      env.STAGING_SUPABASE_PUBLISHABLE_KEY,
       { auth: { persistSession: false } }
     );
     const denied = await anonymous.rpc('novelight_follow_counts');
@@ -203,18 +240,36 @@ async function main() {
     if (!authorName || !readerName) {
       throw new Error('synthetic profile display names unavailable');
     }
-    await verifyBrowser(preview, env, readerAuth.session, 'following', authorName);
-    await verifyBrowser(preview, env, authorAuth.session, 'followers', readerName);
+    await verifyBrowser(
+      preview,
+      env,
+      readerAuth.session,
+      'following',
+      authorName
+    );
+    await verifyBrowser(
+      preview,
+      env,
+      authorAuth.session,
+      'followers',
+      readerName
+    );
 
-    check(await readerAuth.client.rpc('novelight_set_author_follow', {
-      p_author_user_id: author.id, p_following: false
-    }), 'unfollow');
+    check(
+      await readerAuth.client.rpc('novelight_set_author_follow', {
+        p_author_user_id: author.id,
+        p_following: false
+      }),
+      'unfollow'
+    );
     const restored = check(
       await authorAuth.client.rpc('novelight_follow_counts'),
       'unfollow counts'
     );
     assert.equal(Number(restored.followers), 0);
-    console.log('FOLLOW_STAGE_PROOF_PASS: real JWT, owner-bound RPC, Preview UI');
+    console.log(
+      'FOLLOW_STAGE_PROOF_PASS: real JWT, owner-bound RPC, Preview UI'
+    );
   } catch (error) {
     failed = error;
   } finally {
@@ -236,7 +291,8 @@ async function main() {
 
 main().catch((error) => {
   // No secret/token/identity values in exception messages or traces.
-  console.error('FOLLOW_STAGE_PROOF_FAILED: ' +
-    (error.message || 'sanitized error'));
+  console.error(
+    'FOLLOW_STAGE_PROOF_FAILED: ' + (error.message || 'sanitized error')
+  );
   process.exitCode = 1;
 });
