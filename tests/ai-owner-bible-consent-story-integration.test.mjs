@@ -41,3 +41,13 @@ test('consent controls use private styles', () => {
     assert.ok(panel.includes(name));
   }
 });
+
+test('consent panel keeps readable text and action colors', () => {
+  const intro = html.match(/\.novelight-ai-bible-consent-section > p \{[^}]+/);
+  const button = html.match(/\.novelight-ai-bible-consent-row \.btn \{[^}]+/);
+  assert.ok(intro && button);
+  assert.match(intro[0], /color:#d3dee9/);
+  assert.match(button[0], /background:#edf5fc/);
+  assert.match(button[0], /color:#17334b/);
+  assert.match(html, /\.novelight-ai-bible-consent-row \.btn:focus-visible/);
+});
