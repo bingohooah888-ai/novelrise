@@ -7,6 +7,9 @@
   <title>フォロー中の作者 | NOVELIGHT</title>
   <meta name="robots" content="noindex,follow">
   <link rel="stylesheet" href="novelight-theme.css">
+  <link rel="stylesheet" href="novelight-header-light.css" data-novelight-public-header="shared">
+  <link rel="stylesheet" href="/shared/page/public-ivory.css">
+  <link rel="stylesheet" href="/shared/header/public-header.css" data-novelight-shared-header="true">
   <link rel="stylesheet" href="novelight-accessibility.css">
   <style>
     *{box-sizing:border-box}
@@ -47,14 +50,23 @@
     @media(max-width:600px){main{padding:25px 15px 60px}.follow-header-inner{padding:13px 15px}.follow-card{padding:15px;grid-template-columns:42px minmax(0,1fr)}.follow-avatar{width:42px;height:42px}.follow-unfollow{margin-left:0}}
   </style>
 </head>
-<body class="novelight-theme novelight-page-following">
+<body class="novelight-theme novelight-public-header-page novelight-public-ivory novelight-page-following">
   <a class="skip-link" href="#main-content">本文へスキップ</a>
-  <header class="follow-header">
-    <div class="follow-header-inner">
-      <a href="index.html" class="follow-brand" aria-label="NOVELIGHTホームへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
-      <a href="favorites.html" class="follow-back">本棚に戻る</a>
+<header class="site-header">
+  <div class="header-inner public-header-inner">
+    <a class="logo" href="index.html" aria-label="NOVELIGHT トップへ"><img src="assets/novelight-header-logo.webp" alt="NOVELIGHT"></a>
+    <nav class="site-nav desktop-nav" aria-label="メインナビ"><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="community.html">交流</a><a href="announcements.html">お知らせ</a></nav>
+    <div class="header-actions">
+      <a class="header-search" href="search.html" aria-label="作品を検索"><span aria-hidden="true">⌕</span></a>
+      <a class="btn btn-outline login-action" href="login.html">ログイン</a>
+      <a class="btn btn-primary signup-action" href="signup.html">会員登録</a>
+      <details class="mobile-menu">
+        <summary aria-label="メニューを開く">☰</summary>
+        <nav aria-label="モバイルナビ"><a href="search.html">作品を探す</a><a href="ranking.html">ランキング</a><a href="community.html">交流</a><a href="announcements.html">お知らせ</a><a href="login.html">ログイン</a></nav>
+      </details>
     </div>
-  </header>
+  </div>
+</header>
   <main id="main-content" tabindex="-1">
     <h1>フォロー中の作者</h1>
     <p class="follow-lead">フォローした作者をまとめて確認できます。新作・更新通知の切り替えやフォロー解除もここから行えます。</p>
