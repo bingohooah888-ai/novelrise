@@ -85,9 +85,9 @@ async function checkPreviewConfig(preview, env) {
         String(v?.supabasePublishableKey || '').startsWith('sb_publishable_')
     ]
   ]) {
-    const response = await fetch(preview + path, {
+    const response = await globalThis.fetch(preview + path, {
       headers,
-      signal: AbortSignal.timeout(15_000)
+      signal: globalThis.AbortSignal.timeout(15_000)
     });
     if (response.status !== 200) {
       throw new Error('Preview fact endpoint is unavailable: ' + path);
