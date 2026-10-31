@@ -126,6 +126,7 @@
       if (!data || !(await current())) return false;
 
       section = doc.createElement('section');
+      section.className = 'panel novelight-ai-bible-consent-section';
       section.setAttribute(
         'aria-label',
         '外部AIによる作品カルテ解析の同意（管理人限定）'
@@ -138,8 +139,10 @@
         'この操作ではAI解析は始まりません。事業者ごとに内容を確認し、必要な場合だけ同意できます。';
       section.appendChild(intro);
       const rows = doc.createElement('div');
+      rows.className = 'novelight-ai-bible-consent-rows';
       section.appendChild(rows);
       const status = doc.createElement('p');
+      status.className = 'status';
       status.setAttribute('role', 'status');
       section.appendChild(status);
 
@@ -154,6 +157,7 @@
         status.textContent = '';
         for (const item of view.disclosures) {
           const row = doc.createElement('div');
+          row.className = 'novelight-ai-bible-consent-row';
           line(row, item.label + '／' + item.purpose);
           line(row, '送信する内容：' + item.dataSent);
           line(row, '保存・削除：' + item.retention);
@@ -171,6 +175,7 @@
           checkbox.checked = false;
           if (item.status !== 'active') {
             const label = doc.createElement('label');
+            label.className = 'novelight-ai-bible-consent-label';
             label.textContent =
               '上記の内容を確認し、この事業者への原稿送信に同意する';
             label.appendChild(checkbox);
@@ -179,6 +184,7 @@
 
           const button = doc.createElement('button');
           button.type = 'button';
+          button.className = 'btn';
           button.textContent =
             item.status === 'active' ? '同意を撤回' : '同意する';
           button.addEventListener('click', async () => {
