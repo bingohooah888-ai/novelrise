@@ -12,6 +12,8 @@ function denied() {
   throw new Error('AI_020704_BROWSER_DENIED');
 }
 
+// Keep the strict one-use fixture and browser contract stable.
+// prettier-ignore
 export async function runHostedOwnerReviewBrowser(env = process.env) {
   if (
     env.NOVELIGHT_AI_020704_HOSTED_BROWSER_ADMITTED !== '1' ||
@@ -118,6 +120,8 @@ export async function runHostedOwnerReviewBrowser(env = process.env) {
   }
 }
 
+// Keep the strict one-use fixture and browser contract stable.
+// prettier-ignore
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
