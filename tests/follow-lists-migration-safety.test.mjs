@@ -27,27 +27,27 @@ test('candidate SQL artifacts are present and precheck is read only', () => {
     assert.ok(postcheck.includes('public.' + fn));
     assert.ok(rollback.includes('public.' + fn));
   }
-  assert.doesNotMatch(precheck, /\\b(?:insert|update|delete|alter|drop)\\s+/i);
+  assert.doesNotMatch(precheck, /\b(?:insert|update|delete|alter|drop)\s+/i);
 });
 
 test('RPC migration is owner bound and restricts privileges', () => {
   assert.equal((migration.match(/security definer/g) || []).length, 3);
   assert.equal((migration.match(/set search_path = ''/g) || []).length, 3);
-  assert.equal((migration.match(/auth\\.uid\\(\\)/g) || []).length, 3);
-  assert.match(migration, /from public\\.user_blocks/);
+  assert.equal((migration.match(/auth\.uid\(\)/g) || []).length, 3);
+  assert.match(migration, /from public\.user_blocks/);
   assert.match(migration, /revoke all on function/);
   assert.match(migration, /to authenticated/);
-  assert.doesNotMatch(migration, /grant select on public\\.author_follows/i);
+  assert.doesNotMatch(migration, /grant select on public\.author_follows/i);
 });
 
 test('postcheck verifies private EXECUTE ACLs and no raw anon SELECT', () => {
-  assert.match(postcheck, /pg_catalog\\.aclexplode/);
-  assert.match(postcheck, /acl\\.grantee = 0/);
-  assert.match(postcheck, /has_function_privilege\\('anon'/);
-  assert.match(postcheck, /has_function_privilege\\('authenticated'/);
-  assert.match(postcheck, /has_table_privilege\\('anon'/);
+  assert.match(postcheck, /pg_catalog\.aclexplode/);
+  assert.match(postcheck, /acl\.grantee = 0/);
+  assert.match(postcheck, /has_function_privilege\('anon'/);
+  assert.match(postcheck, /has_function_privilege\('authenticated'/);
+  assert.match(postcheck, /has_table_privilege\('anon'/);
   assert.match(postcheck, /prosecdef/);
-  assert.doesNotMatch(postcheck, /\\b(?:insert|update|delete|alter|drop)\\s+/i);
+  assert.doesNotMatch(postcheck, /\b(?:insert|update|delete|alter|drop)\s+/i);
 });
 
 test('rollback is manual, exact-scoped and noncascading', () => {
@@ -57,6 +57,6 @@ test('rollback is manual, exact-scoped and noncascading', () => {
     assert.ok(rollback.includes('drop function public.' + fn));
   }
   const statements = rollback.replace(/^--.*$/gm, '');
-  assert.doesNotMatch(statements, /\\bcascade\\b/i);
-  assert.doesNotMatch(rollback, /\\b(?:delete|truncate|drop table)\\b/i);
+  assert.doesNotMatch(statements, /\bcascade\b/i);
+  assert.doesNotMatch(rollback, /\b(?:delete|truncate|drop table)\b/i);
 });
