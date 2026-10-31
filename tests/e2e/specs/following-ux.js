@@ -53,7 +53,8 @@ async function mountMock(page, authenticated = true) {
     "    throw Error('Unexpected RPC: ' + name);",
     '  }',
     '}) };'
-  ].join('\n')
+  ]
+    .join('\n')
     .replaceAll('__AUTHOR_ID__', authorId)
     .replaceAll('__FOLLOWER_ID__', followerId);
 
@@ -104,12 +105,14 @@ test('following list supports tab switching, notices and unfollow', async ({
   );
   await expect(followers).toContainText('1');
   const calls = await page.evaluate(() => window.__followMock.calls);
-  expect(calls.some((entry) =>
-    entry.name === 'novelight_set_author_follow_notifications'
-  )).toBeTruthy();
-  expect(calls.some((entry) =>
-    entry.name === 'novelight_set_author_follow'
-  )).toBeTruthy();
+  expect(
+    calls.some(
+      (entry) => entry.name === 'novelight_set_author_follow_notifications'
+    )
+  ).toBeTruthy();
+  expect(
+    calls.some((entry) => entry.name === 'novelight_set_author_follow')
+  ).toBeTruthy();
 });
 
 test('anonymous visitors never call private follow list RPCs', async ({
@@ -117,10 +120,12 @@ test('anonymous visitors never call private follow list RPCs', async ({
 }) => {
   await mountMock(page, false);
   await page.goto('/following.html?tab=followers');
-  await expect(page.getByText('一覧を見るにはログインが必要です。'))
-    .toBeVisible();
-  await expect(page.getByRole('link', { name: 'ログインする' }))
-    .toHaveAttribute('href', /login.html/);
+  await expect(
+    page.getByText('一覧を見るにはログインが必要です。')
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'ログインする' })
+  ).toHaveAttribute('href', /login.html/);
   const calls = await page.evaluate(() => window.__followMock.calls);
   expect(calls).toEqual([]);
 });
