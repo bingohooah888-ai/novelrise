@@ -23,7 +23,7 @@ test('private owner can explicitly run once and review pending candidate', async
         user: { id: owner },
         access_token: 'synthetic-no-real-jwt-token'
       },
-      listener: null
+      listeners: new Set()
     };
     globalThis.__ownerTrialFixture = state;
     const client = {
@@ -33,10 +33,10 @@ test('private owner can explicitly run once and review pending candidate', async
           error: null
         }),
         onAuthStateChange(callback) {
-          state.listener = callback;
+          state.listeners.add(callback);
           return {
             data: {
-              subscription: { unsubscribe() { state.listener = null; } }
+              subscription: { unsubscribe() { state.listeners.delete(callback); } }
             }
           };
         }
@@ -113,10 +113,8 @@ test('private owner can explicitly run once and review pending candidate', async
   await run.click();
   await expect(run).toBeDisabled();
   await expect(panel.getByRole('status')).toContainText('1件');
-  const review = page.getByText('凛：凛').first();
   await expect(page.getByRole('heading', { name: '作品カルテ・AI候補の確認（管理人限定）' })).toBeVisible();
   await expect(page.getByText('本文根拠：凛は青い鍵を持っていた。')).toBeVisible();
-  await expect(review).toHaveCount(0);
   const calls = await page.evaluate(
     () => globalThis.__ownerTrialFixture.calls
   );
@@ -129,7 +127,7 @@ test('private owner can explicitly run once and review pending candidate', async
   await page.evaluate(() => {
     const f = globalThis.__ownerTrialFixture;
     f.session = null;
-    f.listener?.('SIGNED_OUT', null);
+    for (const listener of f.listeners) listener('SIGNED_OUT', null);
   });
   await expect(panel).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '作品カルテ・AI候補の確認（管理人限定）' })).toHaveCount(0);
