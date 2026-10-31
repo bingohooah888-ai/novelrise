@@ -4,6 +4,10 @@ begin;
 
 do $$
 begin
+  if to_regprocedure('public.novelight_followers(integer,integer)') is not null
+     or to_regprocedure('public.novelight_follow_counts()') is not null then
+    raise exception 'Follower RPC already exists; inspect before applying';
+  end if;
   if to_regprocedure('public.novelight_followed_authors(integer,integer)') is not null then
     raise exception 'Followed authors list RPC already exists; inspect before applying';
   end if;
@@ -78,7 +82,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_uid uuid := (select auth.uid());
   v_limit integer := least(greatest(coalesce(p_limit, 25), 1), 50);
@@ -118,14 +122,14 @@ begin
 
   return v_result;
 end
-$;
+$$;
 
 create function public.novelight_follow_counts()
 returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_uid uuid := (select auth.uid());
   v_followers bigint;
@@ -158,7 +162,7 @@ begin
     'following', v_following
   );
 end
-$;
+$$;
 
 revoke all on function public.novelight_followers(integer,integer)
   from public, anon, authenticated;
