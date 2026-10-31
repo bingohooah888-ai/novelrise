@@ -139,7 +139,9 @@ test('missing DB RPC fails safely before the migration is deployed', async ({
 }) => {
   await mountMock(page, true, true);
   await page.goto('/following.html?tab=following');
-  await expect(page.getByText('データベース反映待ち', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('データベース反映待ち', { exact: true })
+  ).toBeVisible();
   await expect(
     page.getByText('フォロー一覧はデータベース反映待ちです。公開後にご利用いただけます。')
   ).toBeVisible();
