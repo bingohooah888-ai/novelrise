@@ -9,6 +9,8 @@ import { createOwnerNovelBibleTrialBridgeFactory } from './owner-novel-bible-tri
 import { resolveOwnerNovelBiblePreviewConfig } from './owner-novel-bible-preview.js';
 import { resolveOwnerNovelBibleConsentRuntimePolicy } from './owner-novel-bible-consent-runtime.js';
 
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 const REQUIRED_FLAGS = [
   'NOVELIGHT_AI_ENABLED',
   'NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED',
@@ -23,12 +25,16 @@ const PROCESSORS = new Set(['openai', 'gemini']);
 const MAX_MICROS_PER_REQUEST = 50000000; // 50 yen, not authorization to spend.
 const MAX_TRIAL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 function positiveId(value) {
   if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null;
   const id = Number(value);
   return Number.isSafeInteger(id) ? id : null;
 }
 
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 function readRoutes(raw) {
   if (typeof raw !== 'string' || raw.length > 3000) return null;
   try {
@@ -74,6 +80,8 @@ function readRoutes(raw) {
   }
 }
 
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 function quoteRequestMicros(routes) {
   let total = 0;
   for (const route of routes) {
@@ -92,6 +100,8 @@ function quoteRequestMicros(routes) {
 // Returns null while any prerequisite is absent. No model or price defaults.
 // Credential *values* are never logged, returned or sent to client code.
 // Optional factories are test-only injection seams, never HTTP arguments.
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 export function createOwnerNovelBibleLiveTrialBridge({
   env = process.env,
   now = Date.now,
