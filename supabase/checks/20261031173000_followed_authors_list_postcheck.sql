@@ -20,7 +20,7 @@ begin
       where p.oid = v_oid
         and p.prosecdef
         and p.prorettype = 'jsonb'::pg_catalog.regtype
-        and p.proconfig @> array['search_path=']::text[]
+        and p.proconfig @> array['search_path=""']::text[]
     ) then
       raise exception 'Invalid function security contract: %', v_fn;
     end if;
