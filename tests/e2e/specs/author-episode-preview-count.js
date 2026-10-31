@@ -6,6 +6,8 @@ for (const [surface, query, draftKey] of [
   ['post', 'novel_id=123', 'new:123'],
   ['edit', 'id=456', 'edit:456']
 ]) {
+  // Keep the embedded static HTML fixture's exact layout intact.
+  // prettier-ignore
   test(`episode-${surface} preview, live count and recovery work in Chromium`, async ({
     page,
     request
