@@ -143,7 +143,9 @@ test('missing DB RPC fails safely before the migration is deployed', async ({
     page.getByText('データベース反映待ち', { exact: true })
   ).toBeVisible();
   await expect(
-    page.getByText('フォロー一覧はデータベース反映待ちです。公開後にご利用いただけます。')
+    page.getByText(
+      'フォロー一覧はデータベース反映待ちです。公開後にご利用いただけます。'
+    )
   ).toBeVisible();
   await expect(page.locator('.follow-card')).toHaveCount(0);
 });
