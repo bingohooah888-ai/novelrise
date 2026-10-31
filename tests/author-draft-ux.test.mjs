@@ -65,7 +65,7 @@ test('new and existing episode editors show a live character count for the manus
   assert.match(runtime, /function installCharacterCounter\(\)/);
   assert.match(runtime, /textarea\.value\.length\.toLocaleString/);
   assert.match(runtime, /textarea\.addEventListener\('input', update\)/);
-  assert.match(runtime, /counter\.htmlFor = 'content'/);
+  assert.match(runtime, /counter\.setAttribute\('for', 'content'\)/);
   assert.match(runtime, /installCharacterCounter\(\);/);
 });
 
