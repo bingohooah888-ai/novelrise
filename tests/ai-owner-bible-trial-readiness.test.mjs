@@ -6,6 +6,8 @@ import { createOwnerBibleAnalyzeApiHandler } from '../api/ai-owner-bible-analyze
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
 const TOKEN = 'synthetic-owner-bearer-only';
+// Preserve the fully specified fail-closed test/HTTP boundary.
+// prettier-ignore
 const ENV = {
   NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED: 'true',
   NOVELIGHT_AI_REVIEW_ENABLED: 'true',
@@ -15,6 +17,16 @@ const ENV = {
   NOVELIGHT_AI_ADMIN_USER_ID: OWNER,
   NOVELIGHT_AI_CONSENT_SERVER_RUNTIME_ENABLED: 'true',
   NOVELIGHT_AI_CONSENT_POLICY_REVISION: 'synthetic-20261031',
+  NOVELIGHT_AI_CONSENT_DISCLOSURES_JSON: JSON.stringify([
+    {
+      processor: 'openai',
+      label: '架空の処理事業者',
+      purpose: '合成データの検証',
+      dataSent: '合成テキストのみ',
+      retention: '通信しない',
+      internationalTransfer: '通信しない'
+    }
+  ]),
   NOVELIGHT_AI_TRIAL_ALLOWED_NOVEL_ID: '41',
   NOVELIGHT_AI_TRIAL_ALLOWED_EPISODE_ID: '11',
   NOVELIGHT_AI_TRIAL_ROUTES_JSON: JSON.stringify([
@@ -25,6 +37,8 @@ const ENV = {
   SUPABASE_SECRET_KEY: 'synthetic-service-key'
 };
 
+// Preserve the fully specified fail-closed test/HTTP boundary.
+// prettier-ignore
 function fixture({
   actor = OWNER,
   consent = true,
@@ -136,6 +150,8 @@ function fixture({
   };
 }
 
+// Preserve the fully specified fail-closed test/HTTP boundary.
+// prettier-ignore
 test('owner readiness GET validates consent and caps without a model call', async () => {
   const f = fixture();
   const result = await f.call();
@@ -152,6 +168,8 @@ test('owner readiness GET validates consent and caps without a model call', asyn
   assert.ok(!JSON.stringify(result.body).includes(TOKEN));
 });
 
+// Preserve the fully specified fail-closed test/HTTP boundary.
+// prettier-ignore
 test('GET requires explicit readiness header and known work', async () => {
   const noHeader = fixture();
   assert.equal(
@@ -169,6 +187,8 @@ test('GET requires explicit readiness header and known work', async () => {
   assert.equal(otherWork.calls.model, 0);
 });
 
+// Preserve the fully specified fail-closed test/HTTP boundary.
+// prettier-ignore
 test('no consent, expired policy or disabled budget hides readiness', async () => {
   for (const f of [
     fixture({ consent: false }),
@@ -183,6 +203,8 @@ test('no consent, expired policy or disabled budget hides readiness', async () =
   }
 });
 
+// Preserve the fully specified fail-closed test/HTTP boundary.
+// prettier-ignore
 test('missing server flag, other actor, absent bearer and cross-origin deny', async () => {
   const off = fixture({ flags: { NOVELIGHT_AI_ENABLED: 'false' } });
   assert.equal((await off.call()).statusCode, 404);
