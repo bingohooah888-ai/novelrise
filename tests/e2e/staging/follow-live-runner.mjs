@@ -70,8 +70,7 @@ async function checkPreviewConfig(preview, env) {
     'x-vercel-protection-bypass': env.VERCEL_AUTOMATION_BYPASS_SECRET
   };
   for (const [path, verify] of [
-    ['/api/deployment-revision', (v) => v?.revision === env.EXPECTED_REVISION ||
-      v?.sha === env.EXPECTED_REVISION],
+    ['/api/deployment-revision', (v) => v?.commitSha === env.EXPECTED_REVISION],
     ['/api/staging-browser-config', (v) => v?.supabaseUrl === STAGING &&
       String(v?.supabasePublishableKey || '').startsWith('sb_publishable_')]
   ]) {
