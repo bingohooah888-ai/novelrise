@@ -6,7 +6,7 @@ import { Script } from 'node:vm';
 import test from 'node:test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const source = file => readFileSync(path.join(root, file), 'utf8');
+const source = (file) => readFileSync(path.join(root, file), 'utf8');
 const db = 'supabase/migrations/20261031173000_followed_authors_list.sql';
 
 test('both entry points open the following tab', () => {
