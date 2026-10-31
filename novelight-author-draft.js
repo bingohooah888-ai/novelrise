@@ -273,7 +273,7 @@
     const counter = document.createElement('output');
     counter.id = 'nlAuthorCharacterCount';
     counter.className = 'nl-author-character-count';
-    counter.htmlFor = 'content';
+    counter.setAttribute('for', 'content');
     counter.setAttribute('aria-live', 'off');
     label.parentElement.insertBefore(heading, label);
     heading.append(label, counter);
