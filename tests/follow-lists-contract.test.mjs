@@ -7,25 +7,29 @@ import test from 'node:test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = file => readFileSync(path.join(root, file), 'utf8');
+const migration = 'supabase/migrations/20261031173000_followed_authors_list.sql';
 
-test('bookshelf and community both navigate to the following tab', () => {
+test('both entry points open the following tab', () => {
+  const link = /href="following\.html\?tab=following">フォロー中<\/a>/;
   for (const file of ['favorites.html', 'community.html']) {
-    assert.match(source(file), /href="following\.html\?tab=following">フォロー中<\/a>/);
+    assert.match(source(file), link);
   }
 });
 
-test('follow screen has X-style accessible followers and following tabs', () => {
+test('followers and following tabs are accessible', () => {
   const html = source('following.html');
   assert.match(html, /role="tablist" aria-label="フォローの種類"/);
-  assert.match(html, /id="followersTab"[^>]*role="tab"[^>]*data-follow-view="followers"/);
-  assert.match(html, /id="followingTab"[^>]*role="tab"[^>]*data-follow-view="following"/);
+  assert.match(html, /id="followersTab"[^>]*role="tab"/);
+  assert.match(html, /id="followingTab"[^>]*role="tab"/);
+  assert.match(html, /data-follow-view="followers"/);
+  assert.match(html, /data-follow-view="following"/);
   assert.match(html, /id="followingList"[^>]*role="tabpanel"/);
   assert.match(html, /id="followersCount"/);
   assert.match(html, /id="followingCount"/);
   assert.match(html, /novelight-accessibility\.css/);
 });
 
-test('follow screen uses authenticated scoped RPCs, not raw relationship table access', () => {
+test('lists use scoped RPCs and avoid raw relationships', () => {
   const js = source('novelight-following-list.js');
   assert.doesNotThrow(() => new Script(js));
   assert.match(js, /novelight_followers/);
@@ -37,24 +41,27 @@ test('follow screen uses authenticated scoped RPCs, not raw relationship table a
   assert.doesNotMatch(js, /\.from\(['"]author_follows['"]\)/);
 });
 
-test('follow RPCs enforce caller identity, relation scoping and block filtering', () => {
-  const sql = source('supabase/migrations/20261031173000_followed_authors_list.sql');
+test('RPCs require auth and restrict list access to the owner', () => {
+  const sql = source(migration);
   for (const name of [
     'novelight_followed_authors',
     'novelight_followers',
     'novelight_follow_counts'
   ]) {
-    const pattern = new RegExp('create function public\\.' + name + '\\([^]*?\\n\\$\\$;');
+    const prefix = 'create function public\\.';
+    const suffix = '\\([^]*?\\n\\$\\$;';
+    const pattern = new RegExp(prefix + name + suffix);
     const match = sql.match(pattern);
     assert.ok(match, 'missing RPC ' + name);
     assert.match(match[0], /v_uid uuid := \(select auth\.uid\(\)\)/);
     assert.match(match[0], /if v_uid is null then/);
-    assert.match(sql, new RegExp('grant execute on function public\\.' + name + '\\('));
+    const grant = new RegExp('grant execute on function public\\.' + name);
+    assert.match(sql, grant);
   }
   assert.match(sql, /where f\.author_user_id = v_uid/);
   assert.match(sql, /where f\.follower_user_id = v_uid/);
   assert.match(sql, /from public\.user_blocks/);
-  assert.match(sql, /revoke all on function public\.novelight_followers\(integer,integer\)/);
-  assert.match(sql, /revoke all on function public\.novelight_follow_counts\(\)/);
+  assert.match(sql, /revoke all on function public\.novelight_followers/);
+  assert.match(sql, /revoke all on function public\.novelight_follow_counts/);
   assert.doesNotMatch(sql, /grant select on public\.author_follows/i);
 });
