@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  PREFIX, CLAIM, CONSUMED, verifyFollowStageApproval
+  PREFIX,
+  CLAIM,
+  CONSUMED,
+  verifyFollowStageApproval
 } from '../scripts/follow-stage-proof-admission.mjs';
 
 const mainSha = '0'.repeat(40);
@@ -25,7 +28,8 @@ function fixture() {
       issue: { number: 294 },
       sender: { login: owner },
       comment: {
-        id: 17, user: { login: owner },
+        id: 17,
+        user: { login: owner },
         author_association: 'OWNER',
         body: PREFIX + JSON.stringify(request)
       }
@@ -93,12 +97,24 @@ test('scope, project, count or SHA mismatch fails closed', () => {
 
 test('draft, base, branch, OWNER or Issue changes fail closed', () => {
   for (const change of [
-    (f) => { f.pr.draft = false; },
-    (f) => { f.pr.base.sha = 'f'.repeat(40); },
-    (f) => { f.pr.head.ref = 'feature/elsewhere'; },
-    (f) => { f.event.comment.user.login = 'other'; },
-    (f) => { f.issue.state = 'closed'; },
-    (f) => { f.compare.behind_by = 1; }
+    (f) => {
+      f.pr.draft = false;
+    },
+    (f) => {
+      f.pr.base.sha = 'f'.repeat(40);
+    },
+    (f) => {
+      f.pr.head.ref = 'feature/elsewhere';
+    },
+    (f) => {
+      f.event.comment.user.login = 'other';
+    },
+    (f) => {
+      f.issue.state = 'closed';
+    },
+    (f) => {
+      f.compare.behind_by = 1;
+    }
   ]) {
     const f = fixture();
     change(f);
@@ -110,8 +126,10 @@ test('claimed or consumed approval cannot be replayed', () => {
   for (const prefix of [CLAIM, CONSUMED]) {
     const f = fixture();
     const used = {
-      requestCommentId: '17', mainSha,
-      candidateSha: headSha, runId: '42'
+      requestCommentId: '17',
+      mainSha,
+      candidateSha: headSha,
+      runId: '42'
     };
     if (prefix === CONSUMED) used.result = 'success';
     f.pages = [[{ body: prefix + JSON.stringify(used) }]];
