@@ -152,6 +152,13 @@ async function verifyBrowser(preview, env, session, tab, expectedName) {
       'synthetic relationship not rendered'
     );
     assert.equal(await page.locator('.follow-card').count(), 1);
+    if (tab === 'following') {
+      await page.locator('.follow-option input').first().uncheck();
+      await page.getByText('通知設定を保存しました。').waitFor();
+      page.once('dialog', (dialog) => dialog.accept());
+      await page.getByRole('button', { name: 'フォロー解除' }).click();
+      await page.getByText('フォロー中の作者はいません').waitFor();
+    }
     await context.close();
   } finally {
     await browser.close();
@@ -243,16 +250,16 @@ async function main() {
     await verifyBrowser(
       preview,
       env,
-      readerAuth.session,
-      'following',
-      authorName
+      authorAuth.session,
+      'followers',
+      readerName
     );
     await verifyBrowser(
       preview,
       env,
-      authorAuth.session,
-      'followers',
-      readerName
+      readerAuth.session,
+      'following',
+      authorName
     );
 
     check(
