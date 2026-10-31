@@ -84,6 +84,7 @@ export async function checkHostedBrowserPreview(
     'deployment'
   );
   if (
+    !Number.isSafeInteger(meta.createdAt) ||
     meta.id !== config.deploymentId ||
     (meta.project?.id ?? meta.projectId) !== PROJECT ||
     meta.name !== 'novelrise' ||
@@ -138,7 +139,8 @@ export async function checkHostedBrowserPreview(
       matching[0].value !== value ||
       matching[0].type !== 'plain' ||
       matching[0].gitBranch !== BRANCH ||
-      !matching[0].target?.includes('preview') ||
+      JSON.stringify(matching[0].target) !== JSON.stringify(['preview']) ||
+      !Number.isSafeInteger(matching[0].updatedAt) ||
       matching[0].updatedAt > meta.createdAt
     ) denied();
   }
@@ -148,7 +150,8 @@ export async function checkHostedBrowserPreview(
       matches?.length !== 1 ||
       matches[0].type !== 'sensitive' ||
       matches[0].gitBranch !== BRANCH ||
-      !matches[0].target?.includes('preview') ||
+      JSON.stringify(matches[0].target) !== JSON.stringify(['preview']) ||
+      !Number.isSafeInteger(matches[0].updatedAt) ||
       matches[0].updatedAt > meta.createdAt
     ) denied();
   }
