@@ -7,7 +7,7 @@ import test from 'node:test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = file => readFileSync(path.join(root, file), 'utf8');
-const migration = 'supabase/migrations/20261031173000_followed_authors_list.sql';
+const db = 'supabase/migrations/20261031173000_followed_authors_list.sql';
 
 test('both entry points open the following tab', () => {
   const link = /href="following\.html\?tab=following">フォロー中<\/a>/;
@@ -42,7 +42,7 @@ test('lists use scoped RPCs and avoid raw relationships', () => {
 });
 
 test('RPCs require auth and restrict list access to the owner', () => {
-  const sql = source(migration);
+  const sql = source(db);
   for (const name of [
     'novelight_followed_authors',
     'novelight_followers',
