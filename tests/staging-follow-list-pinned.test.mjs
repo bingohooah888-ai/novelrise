@@ -11,7 +11,8 @@ import { unwrapCandidateSql } from '../scripts/staging-candidate-sql.mjs';
 const root = 'tests/fixtures/follow-list-pinned/';
 const artifacts = Object.fromEntries(
   Object.keys(FOLLOW_LIST_PINNED.blobs).map((kind) => [
-    kind, readFileSync(root + kind + '.sql.txt', 'utf8')
+    kind,
+    readFileSync(root + kind + '.sql.txt', 'utf8')
   ])
 );
 
@@ -72,7 +73,8 @@ test('generic SQL filter still denies SECURITY DEFINER candidates', () => {
 
 test('only the narrowly scoped workflow routes to this exception', () => {
   const workflow = readFileSync(
-    '.github/workflows/staging-candidate-db-persistent-apply.yml', 'utf8'
+    '.github/workflows/staging-candidate-db-persistent-apply.yml',
+    'utf8'
   );
   assert.match(workflow, /"\$PR_NUMBER" == '2698'/u);
   assert.match(workflow, /"\$MIGRATION" == '20261031173000'/u);
