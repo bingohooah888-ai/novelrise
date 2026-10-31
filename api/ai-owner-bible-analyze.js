@@ -9,6 +9,8 @@ import {
 } from './_lib/admin-auth.js';
 import { resolveOwnerNovelBiblePreviewConfig } from './_lib/ai/owner-novel-bible-preview.js';
 import { createOwnerNovelBibleLiveTrialBridge } from './_lib/ai/owner-novel-bible-trial-live.js';
+import { createOwnerNovelBibleConsentPermissionCheck } from './_lib/ai/owner-novel-bible-consent.js';
+import { resolveOwnerNovelBibleConsentRuntimePolicy } from './_lib/ai/owner-novel-bible-consent-runtime.js';
 
 function fail(res, status, code) {
   return res.status(status).json({ error: code });
@@ -52,6 +54,67 @@ function requestBody(body) {
   return { novelId, episodeId, chunkIndex };
 }
 
+// Read-only readiness: fresh Auth, scoped grants and durable limits.
+// It never invokes a model, reserves money or writes candidates.
+// Preserve the fully specified fail-closed test/HTTP boundary.
+// prettier-ignore
+async function ownerTrialReadiness({ env, client, ownerId, novelId }) {
+  const allowedNovel = positiveId(env.NOVELIGHT_AI_TRIAL_ALLOWED_NOVEL_ID);
+  const allowedEpisode = positiveId(env.NOVELIGHT_AI_TRIAL_ALLOWED_EPISODE_ID);
+  if (!allowedNovel || novelId !== allowedNovel || !allowedEpisode) return null;
+  try {
+    const policy = resolveOwnerNovelBibleConsentRuntimePolicy(env);
+    const selected = JSON.parse(env.NOVELIGHT_AI_TRIAL_ROUTES_JSON);
+    if (!policy || !Array.isArray(selected)) return null;
+    const permissionCheck = createOwnerNovelBibleConsentPermissionCheck({
+      enabled: true,
+      ownerId,
+      serviceClient: client,
+      routes: { 'novel-bible': selected },
+      policyRevision: policy.policyRevision
+    });
+    if (
+      (await permissionCheck({
+        actorId: ownerId,
+        novelId,
+        episodeId: allowedEpisode,
+        purpose: 'external-novel-bible-analysis'
+      })) !== true
+    ) {
+      return null;
+    }
+    // No readiness if the server-side global kill switch or any cap is zero.
+    const result = await client
+      .from('novelight_ai_runtime_settings')
+      .select(
+        'enabled,user_day_cap_micros,user_month_cap_micros,' +
+          'global_day_cap_micros,global_month_cap_micros'
+      )
+      .eq('singleton', 1)
+      .maybeSingle();
+    const row = result?.data;
+    const limits = [
+      row?.user_day_cap_micros,
+      row?.user_month_cap_micros,
+      row?.global_day_cap_micros,
+      row?.global_month_cap_micros
+    ];
+    if (
+      result?.error ||
+      row?.enabled !== true ||
+      limits.some(
+        (value) =>
+          !Number.isSafeInteger(Number(value)) || Number(value) <= 0
+      )
+    ) {
+      return null;
+    }
+    return { novelId, episodeId: allowedEpisode, chunkIndex: 0 };
+  } catch {
+    return null;
+  }
+}
+
 function bearerToken(value) {
   if (typeof value !== 'string') return null;
   const match = value.match(/^Bearer\s+(\S{16,4096})$/i);
@@ -61,6 +124,8 @@ function bearerToken(value) {
 // This is intentionally NOT a production runtime builder. An undefined
 // createTrialBridge always rejects; environment flags alone cannot make
 // real or mock AI calls reachable from the deployed app.
+// Preserve the fully specified fail-closed test/HTTP boundary.
+// prettier-ignore
 export function createOwnerBibleAnalyzeApiHandler({
   env = process.env,
   createServiceClient = createClient,
@@ -69,7 +134,7 @@ export function createOwnerBibleAnalyzeApiHandler({
   return async function ownerBibleAnalyzeApi(req, res) {
     applyAdminSecurityHeaders(res);
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-    res.setHeader('Allow', 'POST');
+    res.setHeader('Allow', 'GET, POST');
 
     if (
       env.NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED !== 'true' ||
@@ -80,31 +145,43 @@ export function createOwnerBibleAnalyzeApiHandler({
     ) {
       return fail(res, 404, 'NOT_FOUND');
     }
-    if (req.method !== 'POST') {
+    const readiness =
+      req.method === 'GET' &&
+      req.headers?.['x-novelight-ai-trial-status'] === '1';
+    if (req.method !== 'POST' && !readiness) {
       return fail(res, 405, 'METHOD_NOT_ALLOWED');
     }
-    // A real Origin and non-simple custom header are required. Do not treat
-    // an absent Origin as proof that a write request is same-origin.
+    if (!isSameOriginRequest(req)) {
+      return fail(res, 403, 'FORBIDDEN');
+    }
+    // Writes require a real Origin and a non-simple trial header.
     if (
-      typeof req.headers?.origin !== 'string' ||
-      !isSameOriginRequest(req) ||
-      req.headers['x-novelight-ai-trial'] !== '1' ||
-      !/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] ?? '')
+      !readiness &&
+      (typeof req.headers?.origin !== 'string' ||
+        req.headers['x-novelight-ai-trial'] !== '1' ||
+        !/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] ?? ''))
     ) {
       return fail(res, 403, 'FORBIDDEN');
     }
-    const token = bearerToken(req.headers.authorization);
+    const token = bearerToken(req.headers?.authorization);
     if (!token) return fail(res, 401, 'UNAUTHORIZED');
 
-    let size;
-    try {
-      size = Buffer.byteLength(JSON.stringify(req.body), 'utf8');
-    } catch {
-      return fail(res, 400, 'INVALID_REQUEST');
+    let input;
+    if (readiness) {
+      const novelId = positiveId(req.query?.novel_id);
+      if (!novelId) return fail(res, 400, 'INVALID_REQUEST');
+      input = { novelId };
+    } else {
+      let size;
+      try {
+        size = Buffer.byteLength(JSON.stringify(req.body), 'utf8');
+      } catch {
+        return fail(res, 400, 'INVALID_REQUEST');
+      }
+      if (size > 512) return fail(res, 413, 'PAYLOAD_TOO_LARGE');
+      input = requestBody(req.body);
+      if (!input) return fail(res, 400, 'INVALID_REQUEST');
     }
-    if (size > 512) return fail(res, 413, 'PAYLOAD_TOO_LARGE');
-    const input = requestBody(req.body);
-    if (!input) return fail(res, 400, 'INVALID_REQUEST');
 
     const config = resolveOwnerNovelBiblePreviewConfig(env);
     if (
@@ -134,6 +211,17 @@ export function createOwnerBibleAnalyzeApiHandler({
       }
       if (identity.data.user.id.toLowerCase() !== config.id) {
         return fail(res, 404, 'NOT_FOUND');
+      }
+
+      if (readiness) {
+        const approved = await ownerTrialReadiness({
+          env,
+          client: serviceClient,
+          ownerId: config.id,
+          novelId: input.novelId
+        });
+        if (!approved) return fail(res, 404, 'NOT_FOUND');
+        return res.status(200).json({ ...approved, trialReady: true });
       }
 
       const bridge = await createTrialBridge({

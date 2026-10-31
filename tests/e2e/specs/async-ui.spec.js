@@ -13,3 +13,4 @@ import './inquiry74-mobile-qa.js';
 import './analytics-visual-trends.spec.js';
 import './novel-owner-detail-render.spec.js';
 import './ai-owner-consent-browser.js';
+import './ai-owner-trial-browser.js';

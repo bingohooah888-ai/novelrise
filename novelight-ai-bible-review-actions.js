@@ -1,4 +1,5 @@
-// An opt-in owner-only controller. Deliberately NOT loaded by any page yet.
+// An opt-in owner-only controller. Loaded only on private Story Notes,
+// and never mounted without a successful owner-only review API response.
 // Rendering is textContent-only; no HTML, model execution or auto-acceptance.
 (function (root) {
   'use strict';
