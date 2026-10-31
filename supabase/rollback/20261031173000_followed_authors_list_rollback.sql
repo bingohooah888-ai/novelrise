@@ -15,7 +15,7 @@ begin
     if v_oid is null or not exists (
       select 1 from pg_catalog.pg_proc p
       where p.oid = v_oid and p.prosecdef
-        and p.proconfig @> array['search_path=']::text[]
+        and p.proconfig @> array['search_path=""']::text[]
     ) then
       raise exception 'Follow list rollback blocked: unexpected RPC state: %', v_fn;
     end if;
