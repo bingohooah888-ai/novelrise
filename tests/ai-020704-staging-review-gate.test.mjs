@@ -6,6 +6,8 @@ import { assertGate } from '../.github/staging-ai-02-07-04/runner.mjs';
 
 const SHA = 'a'.repeat(40);
 const STAGING = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
+// Keep this security approval fixture and assertion contract unchanged.
+// prettier-ignore
 const REQUIRED = {
   NOVELIGHT_STAGING_AI_020704_REVIEW_ADMITTED: '1',
   STAGING_PROJECT_REF: 'wmlzjgvxgoyrovdhbqbg',
@@ -17,11 +19,15 @@ const REQUIRED = {
   STAGING_SUPABASE_PUBLISHABLE_KEY: 'fake-publishable-key'
 };
 
+// Keep this security approval fixture and assertion contract unchanged.
+// prettier-ignore
 test('synthetic Staging runner defaults to no access', () => {
   assert.throws(() => assertGate({}), /STAGING_AI_020704_REVIEW_DENIED/);
   assert.equal(assertGate(REQUIRED), true);
 });
 
+// Keep this security approval fixture and assertion contract unchanged.
+// prettier-ignore
 test('dedicated Staging scope and caller approval must not be inferred', () => {
   const denied = [
     { NOVELIGHT_STAGING_AI_020704_REVIEW_ADMITTED: '0' },
@@ -49,6 +55,8 @@ test('dedicated Staging scope and caller approval must not be inferred', () => {
   }
 });
 
+// Keep this security approval fixture and assertion contract unchanged.
+// prettier-ignore
 test('one-use main-only workflow never starts on PR/push and isolates secrets', () => {
   const workflow = readFileSync(
     '.github/workflows/ai-020704-staging-review-jwt-proof.yml',
@@ -69,6 +77,8 @@ test('one-use main-only workflow never starts on PR/push and isolates secrets', 
   assert.doesNotMatch(workflow, /OPENAI_API_KEY|GEMINI_API_KEY|production\.supabase/);
 });
 
+// Keep this security approval fixture and assertion contract unchanged.
+// prettier-ignore
 test('runner uses synthetic response, real JWT and mandatory cleanup', () => {
   const src = readFileSync('.github/staging-ai-02-07-04/runner.mjs', 'utf8');
   assert.match(src, /createOwnerBibleReviewWorkflow/);
