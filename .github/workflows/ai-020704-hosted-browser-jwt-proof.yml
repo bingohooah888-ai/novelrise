@@ -1,0 +1,208 @@
+name: NOVELIGHT AI 02-07-04 Hosted Owner Browser JWT Proof (OWNER only)
+
+# Dormant until independently merged to trusted main, then separately approved.
+# Staging-only synthetic Auth account; no Production, manuscript or AI model calls.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Bind exact one-use OWNER consent JWT approval
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_AI_020704_BROWSER_APPROVE ')
+    concurrency:
+      group: novelight-ai-020704-hosted-browser-approval-294
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.verify.outputs.main_sha }}
+      candidate_sha: ${{ steps.verify.outputs.candidate_sha }}
+      request_id: ${{ steps.verify.outputs.request_id }}
+      preview_url: ${{ steps.verify.outputs.preview_url }}
+      deployment_id: ${{ steps.verify.outputs.deployment_id }}
+    steps:
+      - name: Checkout trusted main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Fail-closed tests before accessing any Staging secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund --quiet
+          node --test tests/ai-020704-hosted-browser-gate.test.mjs
+      - name: Validate exact one-use owner scope and immutable current main
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix='NOVELIGHT_STAGING_AI_020704_BROWSER_APPROVE '
+          payload="${COMMENT_BODY#"$prefix"}"
+          test "$payload" != "$COMMENT_BODY"
+          printf '%s' "$payload" | jq -e '
+            type == "object" and
+            ((keys | sort) == (["scope","mainSha","confirmation","previewUrl","previewDeploymentId"] | sort)) and
+            .scope == "synthetic-jwt-hosted-review-ui-only" and
+            .confirmation == "STAGING APPROVED" and
+            (.mainSha | type == "string" and test("^[a-f0-9]{40}$")) and
+            (.previewUrl | type == "string" and test("^https://novelrise-[a-z0-9-]+-ranobe1\\.vercel\\.app$")) and
+            (.previewDeploymentId | type == "string" and test("^dpl_[a-zA-Z0-9]+$"))
+          ' >/dev/null
+          main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$main" = "$(printf '%s' "$payload" | jq -er .mainSha)"
+          test "$(git rev-parse HEAD)" = "$main"
+          ledger="$(mktemp)"
+          trap 'rm -f "$ledger"' EXIT
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > "$ledger"
+          jq -e --argjson id "$COMMENT_ID" '
+            [ .[][] | select(.id == $id and
+              (.body | startswith("NOVELIGHT_STAGING_AI_020704_BROWSER_APPROVE "))) ]
+            | length == 1
+          ' "$ledger" >/dev/null
+          jq -e --arg id "$COMMENT_ID" '
+            [ .[][] | .body | select(
+              startswith("NOVELIGHT_STAGING_AI_020704_BROWSER_CLAIMED ") or
+              startswith("NOVELIGHT_STAGING_AI_020704_BROWSER_CONSUMED "))
+              | select(contains("\"requestCommentId\":\"" + $id + "\""))
+            ] | length == 0
+          ' "$ledger" >/dev/null
+          {
+            echo "main_sha=$main"
+            echo "candidate_sha=$main"
+            echo "request_id=$COMMENT_ID"
+            echo "preview_url=$(printf '%s' "$payload" | jq -er .previewUrl)"
+            echo "deployment_id=$(printf '%s' "$payload" | jq -er .previewDeploymentId)"
+          } >> "$GITHUB_OUTPUT"
+      - name: CLAIM single-use approval before Staging secrets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.verify.outputs.main_sha }}
+          CANDIDATE: ${{ steps.verify.outputs.candidate_sha }}
+          REQUEST_ID: ${{ steps.verify.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" --arg mainSha "$MAIN" \
+            --arg candidateSha "$CANDIDATE" --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_AI_020704_BROWSER_CLAIMED $payload" >/dev/null
+
+  stage:
+    name: One protected Preview real JWT browser decision and complete cleanup
+    needs: admit
+    if: needs.admit.result == 'success'
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      APPROVED_CANDIDATE_SHA: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_APPROVAL_COMMENT_ID: ${{ needs.admit.outputs.request_id }}
+      STAGING_PROJECT_REF: wmlzjgvxgoyrovdhbqbg
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-ai-020704-hosted-browser-staging-url
+      STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      NOVELIGHT_AI_020704_HOSTED_BROWSER_ADMITTED: '1'
+      PGSSLMODE: require
+      APPROVED_PREVIEW_SHA: ${{ needs.admit.outputs.main_sha }}
+      NOVELIGHT_HOSTED_PREVIEW_URL: ${{ needs.admit.outputs.preview_url }}
+      NOVELIGHT_HOSTED_PREVIEW_DEPLOYMENT_ID: ${{ needs.admit.outputs.deployment_id }}
+      VERCEL_READONLY_API_TOKEN: ${{ secrets.VERCEL_READONLY_API_TOKEN }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - name: Checkout exact approved trusted main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify current main, Staging-only target and one-use scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$APPROVED_CANDIDATE_SHA" = "$APPROVED_MAIN_SHA"
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+      - name: Resolve verified Staging session pooler
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/resolve-staging-session-pooler.mjs
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund --quiet
+      - name: Install isolated Chromium for real hosted browser interaction
+        run: |
+          npm --prefix tests/e2e ci --ignore-scripts --no-audit --no-fund --quiet
+          npm --prefix tests/e2e exec -- playwright install --with-deps chromium
+      - name: Verify real hosted JWT browser review and cleanup
+        shell: bash
+        run: node .github/staging-ai-02-07-04/hosted-runner.mjs
+      - name: Remove temporary Staging database URL
+        if: always()
+        shell: bash
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
+
+  record:
+    name: Consume one-use approval even on failed staging attempt
+    needs: [admit, stage]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Record consumed result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          CANDIDATE: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST_ID: ${{ needs.admit.outputs.request_id }}
+          RESULT: ${{ needs.stage.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$RESULT" in success|failure|cancelled|skipped) ;; *) exit 1;; esac
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" --arg mainSha "$MAIN" \
+            --arg candidateSha "$CANDIDATE" --arg runId "$GITHUB_RUN_ID" \
+            --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_AI_020704_BROWSER_CONSUMED $payload" >/dev/null
