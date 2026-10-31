@@ -22,6 +22,18 @@
   let offset = 0;
   let loading = false;
 
+  function isMissingFollowRpc(error) {
+    const code = String(error?.code || '');
+    const message = String(error?.message || '').toLowerCase();
+    return (
+      code === 'PGRST202' ||
+      code === '42883' ||
+      message.includes('schema cache') ||
+      message.includes('could not find the function') ||
+      message.includes('does not exist')
+    );
+  }
+
   function element(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -238,10 +250,15 @@
     } catch (error) {
       if (revision !== requestRevision) return;
       console.warn('follow list unavailable', error);
-      if (reset || offset === 0) {
-        empty('一覧を取得できませんでした。時間をおいて再度お試しください。');
+      if (isMissingFollowRpc(error)) {
+        empty('フォロー一覧はデータベース反映待ちです。公開後にご利用いただけます。');
+        summary.textContent = 'データベース反映待ち';
+      } else {
+        if (reset || offset === 0) {
+          empty('一覧を取得できませんでした。時間をおいて再度お試しください。');
+        }
+        summary.textContent = '一覧を取得できませんでした。';
       }
-      summary.textContent = '一覧を取得できませんでした。';
       more.hidden = true;
     } finally {
       if (revision === requestRevision) {
