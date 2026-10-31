@@ -25,14 +25,22 @@ begin
       raise exception 'Invalid function security contract: %', v_fn;
     end if;
     if pg_catalog.has_function_privilege('anon', v_oid, 'EXECUTE')
-      or pg_catalog.has_function_privilege('public', v_oid, 'EXECUTE')
+      or exists (
+        select 1
+        from pg_catalog.pg_proc p,
+        pg_catalog.aclexplode(
+          coalesce(p.proacl, pg_catalog.acldefault('f', p.proowner))
+        ) acl
+        where p.oid = v_oid and acl.grantee = 0
+          and acl.privilege_type = 'EXECUTE'
+      )
       or not pg_catalog.has_function_privilege('authenticated', v_oid, 'EXECUTE') then
       raise exception 'Incorrect follow list RPC execution privileges: %', v_fn;
     end if;
-    v_def := pg_catalog.pg_get_functiondef(v_oid);
-    if pg_catalog.position('auth.uid()' in v_def) = 0
-       or pg_catalog.position('v_uid is null' in v_def) = 0
-       or pg_catalog.position('user_blocks' in v_def) = 0 then
+    v_def := pg_catalog.lower(pg_catalog.pg_get_functiondef(v_oid));
+    if pg_catalog.strpos(v_def, 'auth.uid()') = 0
+       or pg_catalog.strpos(v_def, 'v_uid is null') = 0
+       or pg_catalog.strpos(v_def, 'user_blocks') = 0 then
       raise exception 'RPC owner-bound or blocked-user check absent: %', v_fn;
     end if;
   end loop;
