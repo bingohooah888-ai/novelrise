@@ -4,10 +4,11 @@ import { expect, test } from '../fixtures/diagnostic-fixture.js';
 const authorId = '00000000-0000-4000-8000-000000000001';
 const followerId = '00000000-0000-4000-8000-000000000002';
 
-async function mountMock(page, authenticated = true) {
+async function mountMock(page, authenticated = true, missingRpc = false) {
   const script = [
     'window.__followMock = {',
     '  calls: [],',
+    '  missingRpc: ' + String(missingRpc) + ',',
     '  following: [{',
     "    author_user_id: '__AUTHOR_ID__',",
     "    display_name: '小説作者',",
@@ -27,6 +28,9 @@ async function mountMock(page, authenticated = true) {
     '  rpc: async (name, args = {}) => {',
     '    const s = window.__followMock;',
     '    s.calls.push({ name, args });',
+    '    if (s.missingRpc) return {',
+    "      data: null, error: { code: 'PGRST202', message: 'schema cache' }",
+    '    };',
     "    if (name === 'novelight_follow_counts') return {",
     '      data: { followers: s.followers.length,',
     '        following: s.following.length }, error: null',
@@ -128,4 +132,16 @@ test('anonymous visitors never call private follow list RPCs', async ({
   ).toHaveAttribute('href', /login.html/);
   const calls = await page.evaluate(() => globalThis.__followMock.calls);
   expect(calls).toEqual([]);
+});
+
+test('missing DB RPC fails safely before the migration is deployed', async ({
+  page
+}) => {
+  await mountMock(page, true, true);
+  await page.goto('/following.html?tab=following');
+  await expect(page.getByText('データベース反映待ち')).toBeVisible();
+  await expect(
+    page.getByText('フォロー一覧はデータベース反映待ちです。公開後にご利用いただけます。')
+  ).toBeVisible();
+  await expect(page.locator('.follow-card')).toHaveCount(0);
 });
