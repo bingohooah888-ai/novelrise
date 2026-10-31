@@ -68,7 +68,7 @@ test('one-use main-only workflow never starts on PR/push and isolates secrets', 
   assert.match(workflow, /github\.event\.issue\.number == 294/);
   assert.match(workflow, /github\.event\.comment\.author_association == 'OWNER'/);
   assert.match(workflow, /synthetic-real-jwt-review-only/);
-  assert.match(workflow, /STAGING_APPROVED/);
+  assert.match(workflow, /STAGING APPROVED/);
   assert.match(workflow, /REVIEW_CLAIMED/);
   assert.match(workflow, /REVIEW_CONSUMED/);
   assert.match(workflow, /environment: staging/);
