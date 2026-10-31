@@ -6,6 +6,8 @@ import { createOwnerNovelBibleLiveTrialBridge } from '../api/_lib/ai/owner-novel
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const NOW = Date.parse('2026-10-31T08:00:00.000Z');
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 const FLAGS = [
   'NOVELIGHT_AI_ENABLED',
   'NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED',
@@ -17,6 +19,8 @@ const FLAGS = [
   'NOVELIGHT_AI_TRIAL_LIVE_BINDING_ENABLED'
 ];
 
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 function approvedEnv() {
   const env = Object.fromEntries(FLAGS.map((flag) => [flag, 'true']));
   return {
@@ -55,6 +59,8 @@ function approvedEnv() {
   };
 }
 
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 function build(env = approvedEnv(), options = {}) {
   let providerFactories = 0;
   const factory = createOwnerNovelBibleLiveTrialBridge({
@@ -76,6 +82,8 @@ function build(env = approvedEnv(), options = {}) {
   return { factory, providerFactories: () => providerFactories };
 }
 
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 test('live trial is OFF unless all independent activation flags are on', () => {
   const base = approvedEnv();
   assert.equal(createOwnerNovelBibleLiveTrialBridge({ env: {} }), null);
@@ -86,6 +94,8 @@ test('live trial is OFF unless all independent activation flags are on', () => {
   }
 });
 
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 test('unapproved model, consent, expiry, scope or spend fails closed', () => {
   const base = approvedEnv();
   const variants = [
@@ -135,6 +145,8 @@ test('unapproved model, consent, expiry, scope or spend fails closed', () => {
   }
 });
 
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 test('valid synthetic config binds only one work/episode for 24 hours', async () => {
   let current = NOW;
   const output = build(approvedEnv(), { now: () => current });
@@ -173,6 +185,8 @@ test('valid synthetic config binds only one work/episode for 24 hours', async ()
   );
 });
 
+// Keep the strictly scoped activation/test fixture structure stable.
+// prettier-ignore
 test('production HTTP default uses independent live activation, not direct bridge', () => {
   const source = readFileSync(
     new URL('../api/ai-owner-bible-analyze.js', import.meta.url),
