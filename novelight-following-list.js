@@ -11,6 +11,12 @@
     'sb_publishable_8CnbGjZ-P8PYPNLhJ7igAg_XVonmJRE'
   );
   void window.NovelightClient?.syncAuthHeader(client);
+  const tabs = [...document.querySelectorAll('[data-follow-view]')];
+  const followersCount = document.getElementById('followersCount');
+  const followingCount = document.getElementById('followingCount');
+  let activeView = new URLSearchParams(location.search).get('tab') === 'following'
+    ? 'following' : 'followers';
+  let requestRevision = 0;
   const PAGE_SIZE = 25;
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   let offset = 0;
@@ -110,6 +116,7 @@
         const state = Array.isArray(data) ? data[0] : data;
         if (state?.following !== false) throw new Error('Invalid unfollow receipt');
         await load(true);
+        await refreshCounts();
       } catch (error) {
         console.warn('following unfollow failed', error);
         status.textContent = 'フォローを解除できませんでした。もう一度お試しください。';
@@ -120,64 +127,157 @@
     return card;
   }
 
+
+  // The list of followers is private to the signed-in user. It does not expose
+  // another author's follower relationships or notification preferences.
+  function showFollower(row) {
+    const id = String(row.user_id || '');
+    if (!UUID.test(id)) return null;
+    const name = String(row.display_name || '名前未設定');
+    const card = element('article', 'follow-card');
+    const avatar = element('span', 'follow-avatar', name.trim().slice(0, 1) || '読');
+    avatar.setAttribute('aria-hidden', 'true');
+    window.NovelightPublicAvatar?.paint(avatar, row.avatar_path, id, name, client);
+    const content = element('div');
+    const profile = element('a', 'follow-name', name);
+    profile.href = 'author.html?id=' + encodeURIComponent(id);
+    content.append(profile, element('p', 'follow-card-desc', 'あなたをフォローしています'));
+    card.append(avatar, content);
+    return card;
+  }
+
+  async function refreshCounts() {
+    try {
+      const { data, error } = await client.rpc('novelight_follow_counts');
+      if (error) throw error;
+      if (!data || !Number.isSafeInteger(Number(data.followers))
+        || !Number.isSafeInteger(Number(data.following))) {
+        throw new Error('Invalid follow counts');
+      }
+      if (followersCount) followersCount.textContent = String(data.followers);
+      if (followingCount) followingCount.textContent = String(data.following);
+    } catch (error) {
+      console.warn('follow counts unavailable', error);
+      if (followersCount) followersCount.textContent = '—';
+      if (followingCount) followingCount.textContent = '—';
+    }
+  }
+
+  function setCurrentTab() {
+    for (const tab of tabs) {
+      const selected = tab.dataset.followView === activeView;
+      tab.setAttribute('aria-selected', String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+    }
+    root.setAttribute('aria-labelledby', activeView === 'followers'
+      ? 'followersTab' : 'followingTab');
+  }
+
+  function selectView(view, updateUrl = true) {
+    if (!['followers', 'following'].includes(view)) return;
+    activeView = view;
+    offset = 0;
+    loading = false;
+    more.hidden = true;
+    root.replaceChildren();
+    setCurrentTab();
+    if (updateUrl) {
+      const url = new URL(location.href);
+      url.searchParams.set('tab', activeView);
+      history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+    void load(true);
+  }
+
   async function load(reset = false) {
-    if (loading) return;
+    if (loading && !reset) return;
+    const revision = ++requestRevision;
+    const current = activeView;
     loading = true;
     more.disabled = true;
-    summary.textContent = 'フォロー中の作者を読み込んでいます...';
-    const nextOffset = reset ? 0 : offset;
+    if (reset) {
+      offset = 0;
+      root.replaceChildren();
+      more.hidden = true;
+    }
+    summary.textContent = current === 'followers'
+      ? 'フォロワーを読み込んでいます...'
+      : 'フォロー中の作者を読み込んでいます...';
+    const nextOffset = offset;
     try {
-      const { data, error } = await client.rpc('novelight_followed_authors', {
+      const fn = current === 'followers'
+        ? 'novelight_followers' : 'novelight_followed_authors';
+      const { data, error } = await client.rpc(fn, {
         p_limit: PAGE_SIZE,
         p_offset: nextOffset
       });
       if (error) throw error;
-      if (!Array.isArray(data)) throw new Error('Invalid following list response');
-      if (reset) {
-        root.replaceChildren();
-        offset = 0;
-      }
+      if (!Array.isArray(data)) throw new Error('Invalid follow list response');
+      // A slower response from the previously selected tab must not overwrite
+      // the currently selected tab or its pagination cursor.
+      if (revision !== requestRevision || current !== activeView) return;
       const fragment = document.createDocumentFragment();
       for (const row of data) {
-        const card = showAuthor(row);
+        const card = current === 'followers' ? showFollower(row) : showAuthor(row);
         if (card) fragment.appendChild(card);
       }
       root.appendChild(fragment);
       offset = nextOffset + data.length;
       const displayed = root.querySelectorAll('.follow-card').length;
       if (!displayed) {
-        empty('まだフォローしている作者はいません。', 'search.html', '作品を探す');
+        if (current === 'followers') {
+          empty('まだフォロワーはいません。');
+        } else {
+          empty('まだフォローしている作者はいません。', 'search.html', '作品を探す');
+        }
       }
-      summary.textContent = displayed ? 'フォロー中の作者 ' + displayed + '人を表示中' : 'フォロー中の作者は0人です';
+      summary.textContent = current === 'followers'
+        ? (displayed ? 'フォロワー ' + displayed + '人を表示中' : 'フォロワーはいません')
+        : (displayed ? 'フォロー中 ' + displayed + '人を表示中' : 'フォロー中の作者はいません');
       more.hidden = data.length < PAGE_SIZE;
     } catch (error) {
-      console.warn('following list unavailable', error);
+      if (revision !== requestRevision) return;
+      console.warn('follow list unavailable', error);
       if (reset || offset === 0) {
-        empty('フォロー一覧を取得できませんでした。時間をおいて再度お試しください。');
+        empty('一覧を取得できませんでした。時間をおいて再度お試しください。');
       }
-      summary.textContent = 'フォロー一覧を取得できませんでした。';
+      summary.textContent = '一覧を取得できませんでした。';
       more.hidden = true;
     } finally {
-      loading = false;
-      more.disabled = false;
+      if (revision === requestRevision) {
+        loading = false;
+        more.disabled = false;
+      }
     }
   }
 
+  for (const tab of tabs) {
+    tab.addEventListener('click', () => selectView(tab.dataset.followView));
+    tab.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      event.preventDefault();
+      const other = tab.dataset.followView === 'followers' ? 'following' : 'followers';
+      selectView(other);
+      tabs.find(item => item.dataset.followView === other)?.focus();
+    });
+  }
   more.addEventListener('click', () => void load(false));
   (async () => {
     try {
       const { data, error } = await client.auth.getSession();
       if (error) throw error;
       if (!data?.session?.user) {
-        summary.textContent = 'フォロー一覧を見るにはログインが必要です。';
-        empty('ログインすると、フォロー中の作者と通知設定を確認できます。',
-          'login.html?redirect=following.html', 'ログインする');
+        setCurrentTab();
+        summary.textContent = '一覧を見るにはログインが必要です。';
+        empty('ログインすると、フォロワーとフォロー中の作者を確認できます。',
+          'login.html?redirect=following.html%3Ftab%3D' + activeView, 'ログインする');
         more.hidden = true;
         return;
       }
-      await load(true);
+      void refreshCounts();
+      selectView(activeView, false);
     } catch (error) {
-      console.warn('following session unavailable', error);
+      console.warn('follow session unavailable', error);
       summary.textContent = 'ログイン状態を確認できませんでした。';
       empty('ログイン状態を確認できませんでした。再読み込みしてください。');
     }
