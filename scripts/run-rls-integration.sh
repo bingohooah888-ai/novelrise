@@ -24,6 +24,35 @@ SEARCH_CARD_COMPAT_MIGRATION="supabase/migrations/20260930210000_search_card_met
 cp supabase/migrations/20260930153337_search_card_metadata.sql "$SEARCH_CARD_COMPAT_MIGRATION"
 trap 'rm -f "$SEARCH_CARD_COMPAT_MIGRATION"' EXIT
 bash scripts/run-migration-replay.sh
+# Rehearse the unpublished follow-list SECURITY DEFINER RPCs only on
+# the disposable CI migration replay database (never hosted Supabase).
+# Actual Staging execution stays behind the OWNER staging approval gate.
+echo "::group::Follow lists private RPC install, role checks and rollback (disposable DB)"
+FOLLOW_REPLAY=(
+  psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}"
+  -d "${NOVELIGHT_REPLAY_DB:-novelight_migration_replay}" -v ON_ERROR_STOP=1
+)
+FOLLOW_VERSION=20261031173000_followed_authors_list
+"${FOLLOW_REPLAY[@]}" -f "supabase/checks/${FOLLOW_VERSION}_postcheck.sql"
+"${FOLLOW_REPLAY[@]}" -f tests/rls/follow-lists-candidate-access.sql
+"${FOLLOW_REPLAY[@]}" -f "supabase/rollback/${FOLLOW_VERSION}_rollback.sql"
+"${FOLLOW_REPLAY[@]}" -f "supabase/checks/${FOLLOW_VERSION}_precheck.sql"
+"${FOLLOW_REPLAY[@]}" -f "supabase/migrations/${FOLLOW_VERSION}.sql"
+"${FOLLOW_REPLAY[@]}" -f "supabase/checks/${FOLLOW_VERSION}_postcheck.sql"
+"${FOLLOW_REPLAY[@]}" -f tests/rls/follow-lists-candidate-access.sql
+"${FOLLOW_REPLAY[@]}" -f "supabase/rollback/${FOLLOW_VERSION}_rollback.sql"
+"${FOLLOW_REPLAY[@]}" <<'SQL'
+do $follow_list_cleanup$
+begin
+  if pg_catalog.to_regprocedure('public.novelight_followed_authors(integer,integer)') is not null
+    or pg_catalog.to_regprocedure('public.novelight_followers(integer,integer)') is not null
+    or pg_catalog.to_regprocedure('public.novelight_follow_counts()') is not null then
+    raise exception 'Disposable follow-list RPC cleanup failed';
+  end if;
+end
+$follow_list_cleanup$;
+SQL
+echo "::endgroup::"
 # Exercise SCOUT campaign signup on the disposable replay DB only.
 psql -h "${PGHOST:-127.0.0.1}" -U "${PGUSER:-postgres}" \
   -d "${NOVELIGHT_REPLAY_DB:-novelight_migration_replay}" -v ON_ERROR_STOP=1 \
