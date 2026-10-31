@@ -11,6 +11,8 @@ const OTHER = '22222222-2222-4222-8222-222222222222';
 const TOKEN = 'synthetic-token-not-an-actual-jwt';
 const CONTENT = '凛は青い鍵を持っていた。';
 const KEY = 'sb_publishable_synthetic_public_key';
+// Keep the synthetic in-memory fixture verbatim; no external data is used.
+// prettier-ignore
 const ROUTES = {
   'novel-bible': [
     {
@@ -22,6 +24,8 @@ const ROUTES = {
     }
   ]
 };
+// Keep the synthetic in-memory fixture verbatim; no external data is used.
+// prettier-ignore
 const ENV = {
   NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED: 'true',
   NOVELIGHT_AI_REVIEW_ENABLED: 'true',
@@ -34,6 +38,8 @@ const ENV = {
   SUPABASE_SECRET_KEY: 'offline-fake-secret-do-not-use'
 };
 
+// Keep the synthetic in-memory fixture verbatim; no external data is used.
+// prettier-ignore
 function response() {
   return {
     statusCode: 200,
@@ -53,6 +59,8 @@ function response() {
   };
 }
 
+// Keep the synthetic in-memory fixture verbatim; no external data is used.
+// prettier-ignore
 function fixture({
   actor = OWNER,
   consent = true,
@@ -238,6 +246,8 @@ function fixture({
   return { invoke, state };
 }
 
+// Keep the synthetic in-memory fixture verbatim; no external data is used.
+// prettier-ignore
 test('OFF-by-default binding never constructs a runtime', () => {
   assert.equal(createOwnerNovelBibleTrialBridgeFactory(), null);
   assert.equal(
@@ -249,6 +259,8 @@ test('OFF-by-default binding never constructs a runtime', () => {
   );
 });
 
+// Keep the synthetic in-memory fixture verbatim; no external data is used.
+// prettier-ignore
 test('explicit synthetic owner HTTP flow stages pending candidates', async () => {
   const { invoke, state } = fixture();
   const result = await invoke();
@@ -267,6 +279,8 @@ test('explicit synthetic owner HTTP flow stages pending candidates', async () =>
   assert.ok(!JSON.stringify(result).includes(TOKEN));
 });
 
+// Keep the synthetic in-memory fixture verbatim; no external data is used.
+// prettier-ignore
 test('absent grant blocks provider and budget before model invocation', async () => {
   const { invoke, state } = fixture({ consent: false });
   const result = await invoke();
@@ -276,6 +290,8 @@ test('absent grant blocks provider and budget before model invocation', async ()
   assert.equal(state.stageCalls, 0);
 });
 
+// Keep the synthetic in-memory fixture verbatim; no external data is used.
+// prettier-ignore
 test('zero budget blocks provider and persistence', async () => {
   const { invoke, state } = fixture({ budget: false });
   const result = await invoke();
@@ -285,6 +301,8 @@ test('zero budget blocks provider and persistence', async () => {
   assert.equal(state.stageCalls, 0);
 });
 
+// Keep the synthetic in-memory fixture verbatim; no external data is used.
+// prettier-ignore
 test('other user is denied before client or provider creation', async () => {
   const { invoke, state } = fixture({ actor: OTHER });
   const result = await invoke();
@@ -293,6 +311,8 @@ test('other user is denied before client or provider creation', async () => {
   assert.equal(state.modelCalls, 0);
 });
 
+// Keep the synthetic in-memory fixture verbatim; no external data is used.
+// prettier-ignore
 test('missing policy or approved routes fail closed', () => {
   const options = {
     enabled: true,
