@@ -57,3 +57,26 @@ test('existing atomic episode publication remains the publication path', () => {
   assert.match(post, /client\.rpc\('novelight_publish_episode_atomic',args\)/);
   assert.match(post, /status\.textContent='公開しています\.\.\.'/);
 });
+
+test('new and existing episode editors show a live character count for the manuscript', () => {
+  for (const html of [post, edit]) {
+    assert.match(html, /<textarea id="content" maxlength="100000"/);
+  }
+  assert.match(runtime, /function installCharacterCounter\(\)/);
+  assert.match(runtime, /textarea\.value\.length\.toLocaleString/);
+  assert.match(runtime, /textarea\.addEventListener\('input', update\)/);
+  assert.match(runtime, /counter\.setAttribute\('for', 'content'\)/);
+  assert.match(runtime, /installCharacterCounter\(\);/);
+});
+
+test('shared preview button is visible in the main editor toolbar without publishing', () => {
+  for (const html of [post, edit]) {
+    assert.match(html, /class="editor-tools"/);
+    assert.match(html, /id="publish"|id="save"/);
+  }
+  assert.match(runtime, /function installToolbarPreview\(\)/);
+  assert.match(runtime, /document\.querySelector\('\.editor-tools'\)/);
+  assert.match(runtime, /toolbar\.insertBefore\(preview, primary\)/);
+  assert.match(runtime, /preview\.addEventListener\('click', previewCurrent\)/);
+  assert.match(runtime, /installToolbarPreview\(\);/);
+});
