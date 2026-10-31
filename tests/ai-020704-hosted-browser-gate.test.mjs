@@ -150,6 +150,9 @@ test('all eight Preview attestations pass without login or AI execution', async 
 test('preview mismatches, protection changes and AI activation deny', async () => {
   const variants = [
     (rows) => { rows[0].target = 'production'; },
+    (rows) => { rows[0].createdAt = undefined; },
+    (rows) => { rows[2].envs.find(x => x.key === 'SUPABASE_URL').target = ['production','preview']; },
+    (rows) => { rows[2].envs.find(x => x.key === 'SUPABASE_SECRET_KEY').updatedAt = undefined; },
     (rows) => { rows[0].meta.githubCommitSha = 'a'.repeat(40); },
     (rows) => { rows[0].meta.githubCommitRef = 'main'; },
     (rows) => { rows[1].ssoProtection = null; },
