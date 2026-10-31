@@ -1,7 +1,6 @@
 // Phase 02-07-04: owner-only AI trial entrypoint, fail-closed by default.
-// No real provider, budget adapter, external consent grant or trial runtime is
-// attached. A separately approved server-only integration must supply all of
-// these before this route can execute any inference or write any candidates.
+// The live bridge is null unless separately approved and tightly scoped.
+// Importing this route does not enable models, budgets or external processing.
 import { createClient } from '@supabase/supabase-js';
 
 import {
@@ -9,6 +8,7 @@ import {
   isSameOriginRequest
 } from './_lib/admin-auth.js';
 import { resolveOwnerNovelBiblePreviewConfig } from './_lib/ai/owner-novel-bible-preview.js';
+import { createOwnerNovelBibleLiveTrialBridge } from './_lib/ai/owner-novel-bible-trial-live.js';
 
 function fail(res, status, code) {
   return res.status(status).json({ error: code });
@@ -189,4 +189,8 @@ export function createOwnerBibleAnalyzeApiHandler({
   };
 }
 
-export default createOwnerBibleAnalyzeApiHandler();
+// No flags, policies, scope, provider keys or approved spend => null bridge.
+// This declaration does NOT grant consent or change the database kill switch.
+export default createOwnerBibleAnalyzeApiHandler({
+  createTrialBridge: createOwnerNovelBibleLiveTrialBridge()
+});
