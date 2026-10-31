@@ -56,6 +56,8 @@ function requestBody(body) {
 
 // Read-only readiness: fresh Auth, scoped grants and durable limits.
 // It never invokes a model, reserves money or writes candidates.
+// Preserve the fully specified fail-closed test/HTTP boundary.
+// prettier-ignore
 async function ownerTrialReadiness({ env, client, ownerId, novelId }) {
   const allowedNovel = positiveId(env.NOVELIGHT_AI_TRIAL_ALLOWED_NOVEL_ID);
   const allowedEpisode = positiveId(env.NOVELIGHT_AI_TRIAL_ALLOWED_EPISODE_ID);
@@ -122,6 +124,8 @@ function bearerToken(value) {
 // This is intentionally NOT a production runtime builder. An undefined
 // createTrialBridge always rejects; environment flags alone cannot make
 // real or mock AI calls reachable from the deployed app.
+// Preserve the fully specified fail-closed test/HTTP boundary.
+// prettier-ignore
 export function createOwnerBibleAnalyzeApiHandler({
   env = process.env,
   createServiceClient = createClient,
