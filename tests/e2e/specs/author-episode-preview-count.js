@@ -13,7 +13,7 @@ for (const [surface, query, draftKey] of [
     const response = await request.get(`/episode-${surface}.html`);
     expect(response.ok()).toBeTruthy();
     const original = await response.text();
-    const css = original.match(/<style>([\\s\\S]*?)<\\/style>/u)?.[1];
+    const css = original.match(/<style>([\s\S]*?)<\/style>/u)?.[1];
     expect(css).toBeTruthy();
 
     const submitId = surface === 'post' ? 'publish' : 'save';
@@ -46,7 +46,6 @@ for (const [surface, query, draftKey] of [
         </body>
       </html>`;
 
-    let submitted = false;
     await page.route(`**/episode-${surface}.html*`, (route) =>
       route.fulfill({
         status: 200,
@@ -67,7 +66,7 @@ for (const [surface, query, draftKey] of [
     await expect(counter).toHaveText('0 / 100,000文字');
     await expect(previewButton).toBeVisible();
 
-    const content = '玲《アキラ》と《《大事》》\\n次の行';
+    const content = '玲《アキラ》と《《大事》》\n次の行';
     await page.locator('#content').fill(content);
     await expect(counter).toHaveText(
       `${content.length.toLocaleString('ja-JP')} / 100,000文字`
