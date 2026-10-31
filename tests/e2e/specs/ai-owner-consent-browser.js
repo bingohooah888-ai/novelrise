@@ -2,6 +2,8 @@
 // No hosted Staging, Production DB, Auth user, external model, or paid call.
 import { expect, test } from '../fixtures/diagnostic-fixture.js';
 
+// Preserve the intentional network-denial fixture as written.
+// prettier-ignore
 async function openIsolatedNotes(page) {
   // Explicitly deny every real Supabase and consent API request.
   await page.route('**/*.supabase.co/**', (route) =>
@@ -13,6 +15,8 @@ async function openIsolatedNotes(page) {
   await page.goto('/story-notes.html', { waitUntil: 'domcontentloaded' });
 }
 
+// The in-page synthetic Auth/HTTP fixture must remain fully isolated.
+// prettier-ignore
 test('private consent UI grants, revokes, and hides on sign-out', async ({
   page
 }) => {
@@ -124,6 +128,9 @@ test('private consent UI grants, revokes, and hides on sign-out', async ({
     page.evaluate(() => globalThis.__consentBrowserFixture.requests.length)
   ).toBe(3);
   await button.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(button).toBeFocused();
   await expect(button).toHaveCSS('outline-style', 'solid');
 
   await button.click();
@@ -156,6 +163,7 @@ test('private consent UI grants, revokes, and hides on sign-out', async ({
   await expect(panel).toHaveCount(0);
 });
 
+// prettier-ignore
 test('server denial keeps the consent controls off-DOM', async ({ page }) => {
   await openIsolatedNotes(page);
   const mounted = await page.evaluate(async () => {
