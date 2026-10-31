@@ -2,7 +2,6 @@ import { expect, test } from '../fixtures/diagnostic-fixture.js';
 // Local mock only; runs on CI desktop/mobile Chromium without Staging traffic.
 import './community-plaza-ui.js';
 import './community-plaza-board.js';
-import './author-episode-preview-count.js';
 
 const publicPages = [
   ['home', '/index.html'],
