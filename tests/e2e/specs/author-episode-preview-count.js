@@ -57,7 +57,7 @@ for (const [surface, query, draftKey] of [
     await page.locator('#form').evaluate((form) => {
       form.addEventListener('submit', (event) => {
         event.preventDefault();
-        window.__testSubmitted = true;
+        globalThis.__testSubmitted = true;
       });
     });
 
@@ -72,7 +72,7 @@ for (const [surface, query, draftKey] of [
       `${content.length.toLocaleString('ja-JP')} / 100,000文字`
     );
 
-    await page.waitForFunction(() => Boolean(window.NovelightProse));
+    await page.waitForFunction(() => Boolean(globalThis.NovelightProse));
     await previewButton.click();
     await expect(page.locator('.nl-preview-modal')).toBeVisible();
     await expect(page.locator('.nl-preview-content ruby rt')).toHaveText(
@@ -82,7 +82,7 @@ for (const [surface, query, draftKey] of [
       page.locator('.nl-preview-content .nl-prose-emphasis')
     ).toHaveText('大事');
     await expect(page.locator('.nl-preview-content')).toContainText('次の行');
-    expect(await page.evaluate(() => Boolean(window.__testSubmitted))).toBe(
+    expect(await page.evaluate(() => Boolean(globalThis.__testSubmitted))).toBe(
       false
     );
     await page.keyboard.press('Escape');
@@ -91,7 +91,7 @@ for (const [surface, query, draftKey] of [
     const localKey = `novelight:episode-draft:v1:${draftKey}`;
     await expect.poll(async () => {
       const local = await page.evaluate(
-        (key) => window.localStorage.getItem(key),
+        (key) => globalThis.localStorage.getItem(key),
         localKey
       );
       return local ? JSON.parse(local).content : null;
