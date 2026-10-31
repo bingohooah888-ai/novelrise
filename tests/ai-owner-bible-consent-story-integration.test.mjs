@@ -42,7 +42,7 @@ test('consent controls use private styles', () => {
   }
 });
 
-test('consent disclosures and buttons keep readable light/dark contrast', () => {
+test('consent text and buttons meet AA contrast', () => {
   const intro = html.match(
     /\.novelight-ai-bible-consent-section > p \{[^}]*color:(#[0-9a-f]{6})/i
   )?.[1];
@@ -70,8 +70,11 @@ test('consent disclosures and buttons keep readable light/dark contrast', () => 
   }
 
   assert.ok(intro && button && buttonBackground);
-  // The section inherits the dark .panel surface; consent rows use a pale surface.
-  assert.ok(contrast(intro, '#0d1d2b') >= 4.5, 'section text must be readable on dark');
+  // The outer panel is dark; action rows have pale backgrounds.
+  assert.ok(
+    contrast(intro, '#0d1d2b') >= 4.5,
+    'section text must be readable on dark'
+  );
   assert.ok(
     contrast(button, buttonBackground) >= 4.5,
     'action labels must be readable on light buttons'
