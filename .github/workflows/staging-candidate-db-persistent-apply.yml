@@ -171,8 +171,16 @@ jobs:
           done < /tmp/candidate-sql-file-list
           test "$(wc -l </tmp/candidate-sql-file-list | tr -d ' ')" = 4
           filename="$(jq -er '.artifacts.migration.path | split("/") | last' /tmp/candidate-pinned-manifest.json)"
-          node scripts/staging-candidate-persist-sql.mjs compose "$root" "$MIGRATION" "$filename" \
-            > /tmp/novelight-staging-candidate-persist.sql
+          if [[ "$PR_NUMBER" == '2698' && "$MIGRATION" == '20261031173000' ]]; then
+            # Independently reviewed pinned exception: four immutable Git blobs.
+            # Do not change the generic compiler or its SECURITY DEFINER ban.
+            node scripts/staging-follow-list-pinned-sql.mjs compose \
+              "$root" "$MIGRATION" "$filename" "$PR_NUMBER" \
+              > /tmp/novelight-staging-candidate-persist.sql
+          else
+            node scripts/staging-candidate-persist-sql.mjs compose "$root" "$MIGRATION" "$filename" \
+              > /tmp/novelight-staging-candidate-persist.sql
+          fi
           echo 'Compiled reviewed migration and atomic ledger transaction only; never execute PR scripts or workflows.'
 
       - name: Establish and verify dedicated Staging connection
