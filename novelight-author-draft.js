@@ -91,6 +91,9 @@
       .nl-draft-actions{display:flex;gap:8px;flex-wrap:wrap}
       .nl-draft-button{min-height:38px;padding:8px 12px;border:1px solid #d6cab7;border-radius:8px;background:#fff;color:#4b3928;font:inherit;font-size:12px;font-weight:900;cursor:pointer}
       .nl-draft-button.preview{background:#3d2d20;color:#fff;border-color:#3d2d20}
+      .nl-author-body-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px}
+      .nl-author-body-heading .body-label{margin-bottom:0}
+      .nl-author-character-count{color:#766f65;font-size:12px;font-weight:800;letter-spacing:.02em;font-variant-numeric:tabular-nums}
       .nl-draft-prose-help{flex:1 0 100%;padding-top:9px;border-top:1px solid #eadfce;color:#756753;font-size:12px;line-height:1.7}
       .nl-draft-prose-help code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#4a3826;background:#f7f0e5;padding:1px 4px;border-radius:4px}
       .nl-draft-restore{margin:0 0 18px;padding:14px 15px;border:1px solid #d8bb7c;border-radius:10px;background:#fff8e8;color:#5c4727;font-size:13px;line-height:1.7}
@@ -260,6 +263,43 @@
     return state;
   }
 
+  function installCharacterCounter() {
+    const textarea = document.getElementById('content');
+    const label = textarea?.closest('.body-field')?.querySelector('.body-label');
+    if (!textarea || !label || document.getElementById('nlAuthorCharacterCount')) return;
+
+    const heading = document.createElement('div');
+    heading.className = 'nl-author-body-heading';
+    const counter = document.createElement('output');
+    counter.id = 'nlAuthorCharacterCount';
+    counter.className = 'nl-author-character-count';
+    counter.setAttribute('for', 'content');
+    counter.setAttribute('aria-live', 'off');
+    label.parentElement.insertBefore(heading, label);
+    heading.append(label, counter);
+
+    const update = () => {
+      const limit = textarea.maxLength > 0 ? textarea.maxLength : 100000;
+      counter.textContent = `${textarea.value.length.toLocaleString('ja-JP')} / ${limit.toLocaleString('ja-JP')}文字`;
+    };
+    textarea.addEventListener('input', update);
+    update();
+  }
+
+  function installToolbarPreview() {
+    const toolbar = document.querySelector('.editor-tools');
+    const primary = toolbar?.querySelector('#publish, #save');
+    if (!primary || document.getElementById('nlAuthorPreviewButton')) return;
+
+    const preview = document.createElement('button');
+    preview.type = 'button';
+    preview.id = 'nlAuthorPreviewButton';
+    preview.className = 'tool-button';
+    preview.textContent = 'プレビュー';
+    preview.addEventListener('click', previewCurrent);
+    toolbar.insertBefore(preview, primary);
+  }
+
   function installDesktopSchedulePicker() {
     const scheduleAt = document.getElementById('scheduleAt');
     const scheduleButton = document.getElementById('openScheduleSettings');
@@ -381,6 +421,8 @@
     installStyles();
     installDesktopSchedulePicker();
     ensureProseRenderer();
+    installCharacterCounter();
+    installToolbarPreview();
     const stored = readDraft(key);
     insertRestorePrompt(key, stored);
     const state = installTools(key);
