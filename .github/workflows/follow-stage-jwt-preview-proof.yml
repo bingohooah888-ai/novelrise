@@ -1,0 +1,193 @@
+name: NOVELIGHT Follow List Staging JWT and Preview Proof
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+jobs:
+  admit:
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_FOLLOW_STAGE_PROOF_APPROVE ')
+    concurrency:
+      group: novelight-follow-stage-proof-294
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.bind.outputs.main_sha }}
+      candidate_sha: ${{ steps.bind.outputs.candidate_sha }}
+      request_id: ${{ steps.bind.outputs.request_id }}
+      candidate_ref: ${{ steps.bind.outputs.candidate_ref }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Verify approval contracts before secret access
+        run: node --test tests/follow-stage-proof-admission.test.mjs
+      - name: Bind exact OWNER scope and unused ledger entry
+        id: bind
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/follow-main.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/294" > /tmp/follow-issue.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2698" > /tmp/follow-pr.json
+          main="$(jq -er '.object.sha' /tmp/follow-main.json)"
+          head="$(jq -er '.head.sha' /tmp/follow-pr.json)"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/follow-compare.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/follow-ledger.json
+          node scripts/follow-stage-proof-admission.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/follow-main.json /tmp/follow-pr.json \
+            /tmp/follow-compare.json /tmp/follow-issue.json \
+            /tmp/follow-ledger.json > /tmp/follow-decision.json
+          test "$(git rev-parse HEAD)" = "$main"
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/follow-decision.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/follow-decision.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/follow-decision.json)"
+            echo "candidate_ref=$(jq -er '.branch' /tmp/follow-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Claim approval exactly once before Staging cost
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.bind.outputs.main_sha }}
+          HEAD: ${{ steps.bind.outputs.candidate_sha }}
+          REQUEST: ${{ steps.bind.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          body="$(jq -cn --arg requestCommentId "$REQUEST" \
+            --arg mainSha "$MAIN" --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_FOLLOW_STAGE_PROOF_CLAIMED $body" >/dev/null
+  stage:
+    needs: admit
+    if: needs.admit.result == 'success'
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      EXPECTED_REVISION: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_PREVIEW_REF: ${{ needs.admit.outputs.candidate_ref }}
+      STAGING_TRIGGER: approval_comment
+      NOVELIGHT_FOLLOW_STAGE_ADMITTED: '1'
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-follow-proof-db-url
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      STAGING_REQUIRE_WRITE_CONFIG: 'true'
+      VERCEL_PROJECT_NAME: novelrise
+      GITHUB_REPOSITORY_ID: '1335499017'
+      PGSSLMODE: require
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+      - name: Verify unchanged main and candidate and isolated Staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2698" --jq '.head.sha')" = "$EXPECTED_REVISION"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2698" --jq '.draft')" = true
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+          test -n "$STAGING_SUPABASE_SECRET_KEY"
+          test -n "$STAGING_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$VERCEL_API_TOKEN"
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
+      - name: Verify installed migration on Staging only
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/resolve-staging-session-pooler.mjs
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          test "$(psql "$STAGING_DATABASE_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c "SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version = '20261031173000'")" = 1
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            --single-transaction \
+            -f tests/fixtures/follow-list-pinned/postcheck.sql.txt
+      - name: Install locked browser dependencies and Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix tests/e2e ci --ignore-scripts --no-audit --no-fund --quiet
+          cd tests/e2e
+          npx playwright install chrome
+      - name: Recheck SHA before cost-bearing Preview creation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2698" --jq '.head.sha')" = "$EXPECTED_REVISION"
+      - name: Create ONE candidate Preview from exact SHA
+        run: node scripts/vercel-preview-deployment.mjs
+      - name: Verify protected Preview matches Staging
+        run: node scripts/verify-staging-deployment.mjs
+      - name: Verify actual synthetic Auth JWT and Preview UI, then cleanup
+        run: node tests/e2e/staging/follow-live-runner.mjs
+      - name: Erase temporary Staging database URL
+        if: always()
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
+  record:
+    needs: [admit, stage]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Consume one-time approval even on failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          HEAD: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST: ${{ needs.admit.outputs.request_id }}
+          RESULT: ${{ needs.stage.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$RESULT" in success|failure|cancelled|skipped) ;; *) exit 1;; esac
+          body="$(jq -cn --arg requestCommentId "$REQUEST" \
+            --arg mainSha "$MAIN" --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_FOLLOW_STAGE_PROOF_CONSUMED $body" >/dev/null
