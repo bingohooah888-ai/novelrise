@@ -1,7 +1,8 @@
+/* global client, document */
 // One-use protected Preview browser proof, launched ONLY from trusted Staging
 // runner after Vercel metadata attestation and synthetic fixture creation.
 // No screenshots, traces, raw HTTP output, real AI calls or token logging.
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, URL } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const STAGING_HOST = 'wmlzjgvxgoyrovdhbqbg.supabase.co';
