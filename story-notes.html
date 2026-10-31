@@ -23,6 +23,8 @@
     .novelight-ai-bible-consent-row { border:1px solid #d5dce5; border-radius:12px; background:#f8fafc; color:#182b3c; padding:18px; }
     .novelight-ai-bible-consent-row p { overflow-wrap:anywhere; line-height:1.75; margin:9px 0; }
     .novelight-ai-bible-consent-row .btn { background:#edf5fc; color:#17334b; border-color:#365778; }
+    /* Preserve readable consent action text against late author-theme overrides. */
+    #main-content .novelight-ai-bible-consent-row .btn { color:#17334b !important; -webkit-text-fill-color:#17334b !important; }
     .novelight-ai-bible-consent-row .btn:hover:not(:disabled) { background:#dcebf8; }
     .novelight-ai-bible-consent-row .btn:focus-visible { outline:3px solid #1d5a86; outline-offset:2px; }
     .novelight-ai-bible-consent-label { display:flex; align-items:flex-start; gap:10px; line-height:1.7; margin:14px 0; }
