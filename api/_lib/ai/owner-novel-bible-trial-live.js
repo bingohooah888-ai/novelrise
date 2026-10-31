@@ -114,6 +114,7 @@ export function createOwnerNovelBibleLiveTrialBridge({
       ? Date.parse(expiresRaw)
       : NaN;
   const current = now();
+  const projectedMicros = routes ? quoteRequestMicros(routes) : null;
   const activeProviders = routes && new Set(routes.map((route) => route.provider));
   const disclosed = policy && new Set(policy.disclosures.map((item) => item.processor));
   if (
@@ -131,7 +132,9 @@ export function createOwnerNovelBibleLiveTrialBridge({
     expiresAt - current > MAX_TRIAL_WINDOW_MS ||
     disclosed.size !== activeProviders.size ||
     [...activeProviders].some((provider) => !disclosed.has(provider)) ||
-    quoteRequestMicros(routes) > approvedCap
+    !Number.isSafeInteger(projectedMicros) ||
+    projectedMicros < 1 ||
+    projectedMicros > approvedCap
   ) {
     return null;
   }
