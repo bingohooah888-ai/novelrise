@@ -11,6 +11,8 @@ const PREVIEW = 'https://novelrise-synthetic-abc-ranobe1.vercel.app';
 const DEPLOY = 'dpl_SyntheticOnly987';
 const STAGING = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
 const BRANCH = 'staging/ai-02-07-04-owner-ui-proof-20261101';
+// Keep the strict one-use fixture and browser contract stable.
+// prettier-ignore
 const config = {
   NOVELIGHT_AI_020704_HOSTED_BROWSER_ADMITTED: '1',
   STAGING_PROJECT_REF: 'wmlzjgvxgoyrovdhbqbg',
@@ -24,6 +26,8 @@ const config = {
   VERCEL_AUTOMATION_BYPASS_SECRET: 'synthetic-protection-token'
 };
 
+// Keep the strict one-use fixture and browser contract stable.
+// prettier-ignore
 function previewResponses() {
   const envs = Object.entries({
     SUPABASE_URL: STAGING,
@@ -78,6 +82,8 @@ function previewResponses() {
   ];
 }
 
+// Keep the strict one-use fixture and browser contract stable.
+// prettier-ignore
 function fetchResponses(data, reviewStatus = 401, aiStatus = 404) {
   let cursor = 0;
   const calls = [];
@@ -94,6 +100,8 @@ function fetchResponses(data, reviewStatus = 401, aiStatus = 404) {
   return { fetcher, calls };
 }
 
+// Keep the strict one-use fixture and browser contract stable.
+// prettier-ignore
 test('no approval or stale SHA refuses all hosted execution', () => {
   assert.throws(() => validateHostedBrowserProof({}), /DENIED/);
   assert.equal(validateHostedBrowserProof(config).sha, MAIN);
@@ -118,6 +126,8 @@ test('no approval or stale SHA refuses all hosted execution', () => {
   }
 });
 
+// Keep the strict one-use fixture and browser contract stable.
+// prettier-ignore
 test('all eight Preview attestations pass without login or AI execution', async () => {
   const { fetcher, calls } = fetchResponses(previewResponses());
   assert.equal(
@@ -135,6 +145,8 @@ test('all eight Preview attestations pass without login or AI execution', async 
   );
 });
 
+// Keep the strict one-use fixture and browser contract stable.
+// prettier-ignore
 test('preview mismatches, protection changes and AI activation deny', async () => {
   const variants = [
     (rows) => { rows[0].target = 'production'; },
@@ -165,6 +177,8 @@ test('preview mismatches, protection changes and AI activation deny', async () =
   }
 });
 
+// Keep the strict one-use fixture and browser contract stable.
+// prettier-ignore
 test('one-use OWNER workflow, mandatory cleanup, no external provider', () => {
   const workflow = readFileSync(
     '.github/workflows/ai-020704-hosted-browser-jwt-proof.yml',
