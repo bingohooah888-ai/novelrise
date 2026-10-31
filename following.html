@@ -4,7 +4,7 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20261022">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>フォロー中の作者 | NOVELIGHT</title>
+  <title>フォロワー・フォロー中 | NOVELIGHT</title>
   <meta name="robots" content="noindex,follow">
   <link rel="stylesheet" href="novelight-theme.css">
   <link rel="stylesheet" href="novelight-header-light.css" data-novelight-public-header="shared">
@@ -25,6 +25,12 @@
     .follow-navigation{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 22px}
     .follow-navigation a{padding:9px 14px;border-radius:999px;border:1px solid #d9cbaa;background:#fffaf0;color:#6b4b22;font-size:13px;font-weight:800}
     .follow-navigation a[aria-current="page"]{background:#3b2a1d;color:#fff;border-color:#3b2a1d}
+    .follow-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-bottom:1px solid #ddd1b8;margin:5px 0 22px}
+    .follow-tab{position:relative;border:0;background:transparent;color:#796f63;font-size:15px;font-weight:800;min-height:52px;padding:11px 8px;cursor:pointer}
+    .follow-tab[aria-selected="true"]{color:#2e261a}
+    .follow-tab[aria-selected="true"]::after{content:"";height:3px;position:absolute;inset:auto 12% -1px;background:#a97b2a;border-radius:4px}
+    .follow-tab:focus-visible{outline:3px solid #b78432;outline-offset:-4px}
+    .follow-tab-count{font-size:12px;margin-left:5px;font-weight:700;color:inherit}
     .follow-summary{margin:0 0 14px;color:#61594e;font-size:13px}
     .follow-list{display:grid;gap:12px}
     .follow-card,.follow-empty{border:1px solid #e3ddd4;background:#fff;border-radius:13px;padding:19px}
@@ -68,15 +74,18 @@
   </div>
 </header>
   <main id="main-content" tabindex="-1">
-    <h1>フォロー中の作者</h1>
-    <p class="follow-lead">フォローした作者をまとめて確認できます。新作・更新通知の切り替えやフォロー解除もここから行えます。</p>
+    <h1>フォロー</h1>
+    <p class="follow-lead">あなたをフォローしている人と、あなたがフォローしている作者を確認できます。</p>
     <nav class="follow-navigation" aria-label="関連ページ">
-      <a href="favorites.html">本棚</a>
-      <a href="following.html" aria-current="page">フォロー中</a>
-      <a href="community.html">タイムライン</a>
+      <a href="favorites.html">本棚へ</a>
+      <a href="community.html">タイムラインへ</a>
     </nav>
-    <p id="followingSummary" class="follow-summary" role="status">フォロー中の作者を読み込んでいます...</p>
-    <div id="followingList" class="follow-list" aria-live="polite"></div>
+    <div class="follow-tabs" role="tablist" aria-label="フォローの種類">
+      <button class="follow-tab" id="followersTab" type="button" role="tab" aria-selected="false" aria-controls="followingList" tabindex="-1" data-follow-view="followers">フォロワー <span id="followersCount" class="follow-tab-count" aria-hidden="true">—</span></button>
+      <button class="follow-tab" id="followingTab" type="button" role="tab" aria-selected="true" aria-controls="followingList" tabindex="0" data-follow-view="following">フォロー中 <span id="followingCount" class="follow-tab-count" aria-hidden="true">—</span></button>
+    </div>
+    <p id="followingSummary" class="follow-summary" role="status">フォロー情報を読み込んでいます...</p>
+    <div id="followingList" class="follow-list" role="tabpanel" aria-labelledby="followingTab" aria-live="polite"></div>
     <button id="followingLoadMore" class="follow-more" type="button" hidden>さらに表示</button>
   </main>
   <footer>© 2026 NOVELIGHT</footer>
