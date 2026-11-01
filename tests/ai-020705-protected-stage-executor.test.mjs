@@ -204,6 +204,26 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
       };
     },
     proofs,
+    readIndependentWatchdogArm: async (scope) => {
+      actions.push('watchdog-arm');
+      return {
+        ...scope,
+        kind: 'independent-controller-armed',
+        protectedEnvironment: 'staging',
+        controllerKind: 'external-independent-supervisor',
+        controllerRunId: 3001,
+        controllerIsRunner: false,
+        killAuthorityVerified: true,
+        stagingDisableVerified: true,
+        sessionRevocationVerified: true,
+        syntheticCleanupVerified: true,
+        zeroCensusVerified: true,
+        noPaidRetry: true,
+        observedAtMs: NOW,
+        heartbeatAtMs: NOW,
+        expiresAtMs: NOW + 15000
+      };
+    },
     now: () => NOW
   };
   return { options, actions, calls: () => modelCalls, comments };
@@ -218,6 +238,7 @@ test('preflight, one paid attempt, stop, cleanup, census, consume in strict orde
   assert.equal(calls(), 1);
   assert.equal(actions[0], 'verifyCurrentMain');
   assert.equal(actions[5], 'verifyProviderBillingLimit');
+  assert.ok(actions.indexOf('watchdog-arm') < actions.indexOf('github-claim'));
   assert.ok(actions.indexOf('github-claim') < actions.indexOf('db-claim'));
   assert.ok(actions.indexOf('db-claim') < actions.indexOf('model'));
   assert.ok(actions.indexOf('model') < actions.indexOf('stop-db'));
@@ -294,4 +315,29 @@ test('offline workflow remains unwired: no paid stage, secrets or mutations', ()
   assert.doesNotMatch(workflow, /protected-stage-executor\.mjs/u);
   assert.doesNotMatch(workflow, /secrets\./u);
   assert.doesNotMatch(workflow, /issues: write/u);
+});
+
+// prettier-ignore
+test('missing or failed external watchdog arm cannot claim or call model', async () => {
+  for (const mode of ['missing', 'null', 'throws', 'wrongScope']) {
+    const { options, actions, calls } = setup();
+    if (mode === 'missing') delete options.readIndependentWatchdogArm;
+    if (mode === 'null') options.readIndependentWatchdogArm = async () => null;
+    if (mode === 'throws') options.readIndependentWatchdogArm = async () => {
+      throw new Error('PRIVATE_CONTROLLER_SECRET');
+    };
+    if (mode === 'wrongScope') options.readIndependentWatchdogArm = async () => ({
+      kind: 'independent-controller-armed', mainSha: 'b'.repeat(40)
+    });
+    if (mode === 'missing') {
+      assert.throws(() => create020705ProtectedStageExecutor(options),
+        /AI_020705_PROTECTED_STAGE_DENIED/u);
+    } else {
+      await assert.rejects(create020705ProtectedStageExecutor(options).run(),
+        e => e.message === 'AI_020705_PROTECTED_STAGE_DENIED');
+    }
+    assert.equal(actions.includes('github-claim'), false);
+    assert.equal(actions.includes('db-claim'), false);
+    assert.equal(calls(), 0);
+  }
 });
