@@ -35,6 +35,7 @@ export async function runHostedOwnerReviewBrowser(env = process.env) {
   let context;
   let page;
   const apiPosts = [];
+  let phase = 'BOOTSTRAP';
   try {
     context = await browser.newContext({ locale: 'ja-JP' });
     page = await context.newPage();
@@ -65,28 +66,42 @@ export async function runHostedOwnerReviewBrowser(env = process.env) {
         apiPosts.push(url.pathname);
       }
     });
-    const url =
-      origin +
-      '/login.html?redirect=' +
-      encodeURIComponent('story-notes.html?novel_id=' + WORK_ID);
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    // story-notes.html is NOT in the shared login redirect allowlist.
+    // Authenticate through an existing allowed author route, then navigate
+    // explicitly to the private notes page with the same real JWT session.
+    phase = 'LOGIN_PAGE';
+    const loginUrl =
+      origin + '/login.html?redirect=' +
+      encodeURIComponent('my-novels.html');
+    await page.goto(loginUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 25000
+    });
     if (new URL(page.url()).origin !== origin) denied();
+    phase = 'LOGIN_FORM';
     await page.locator('#email').fill(env.NOVELIGHT_HOSTED_TEST_EMAIL);
     await page.locator('#password').fill(env.NOVELIGHT_HOSTED_TEST_PASSWORD);
     await page.locator('#loginButton').click();
+    phase = 'LOGIN_REDIRECT';
     await page.waitForURL(
       (value) =>
-        value.origin === origin &&
-        value.pathname.endsWith('/story-notes.html') &&
-        value.searchParams.get('novel_id') === String(WORK_ID),
+        value.origin === origin && value.pathname.endsWith('/my-novels.html'),
       { timeout: 25000 }
     );
+    phase = 'STORY_PAGE';
+    await page.goto(origin + '/story-notes.html?novel_id=' + WORK_ID, {
+      waitUntil: 'domcontentloaded',
+      timeout: 25000
+    });
+    if (new URL(page.url()).origin !== origin) denied();
+    phase = 'OWNER_LOADED';
     await page.locator('#workTitle').waitFor({ state: 'visible', timeout: 20000 });
     await page.waitForFunction(
       () => document.querySelector('#workTitle')?.textContent?.includes('Synthetic consent JWT proof'),
       { timeout: 20000 }
     );
     if (await page.locator('.novelight-ai-bible-trial-section').count()) denied();
+    phase = 'REVIEW_ATTACH';
     const proof = await page.evaluate(async ({ owner, novelId }) => {
       // This code runs in the actual hosted page and uses the page's client.
       if (typeof client !== 'object' ||
@@ -106,19 +121,28 @@ export async function runHostedOwnerReviewBrowser(env = process.env) {
       name: '作品カルテ・AI候補の確認（管理人限定）'
     });
     await title.waitFor({ state: 'visible', timeout: 15000 });
+    phase = 'CANDIDATE';
     const evidence = page.getByText('本文根拠：凛は青い鍵を持っていた。');
     await evidence.waitFor({ state: 'visible', timeout: 15000 });
     const accept = page.getByRole('button', { name: '採用（要確認）' });
     if (await accept.count() !== 1) denied();
+    phase = 'ACCEPT';
     await accept.click();
     await evidence.waitFor({ state: 'detached', timeout: 15000 });
+    phase = 'VERIFY';
     if (apiPosts.length !== 1 ||
         apiPosts[0] !== '/api/ai-owner-bible-review') denied();
 
+    phase = 'SIGNOUT';
     await page.evaluate(async () => {
       if (typeof client === 'object') await client.auth.signOut();
     });
     return true;
+  } catch {
+    // Emit ONLY a fixed phase label; never the error, credentials, URL
+    // parameters, JWT, response text, or unpublished synthetic content.
+    process.stderr.write('AI_020704_BROWSER_FAILURE_PHASE:' + phase + '\n');
+    denied();
   } finally {
     await context?.close().catch(() => {});
     await browser.close().catch(() => {});
