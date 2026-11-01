@@ -9,6 +9,7 @@ import { reviewNovelBibleInference } from '../api/_lib/ai/novel-bible-inference-
 
 // Price snapshots verified from provider documentation on 2026-11-01.
 // NOT runtime price authorization or a guarantee of current billing.
+// prettier-ignore
 const CANDIDATES = [
   {
     provider: 'openai',
@@ -26,6 +27,7 @@ const CANDIDATES = [
   }
 ];
 
+// prettier-ignore
 test('02-07-05 single-model official-price snapshot stays under proposed cap', () => {
   for (const candidate of CANDIDATES) {
     const plan = quoteAiProviderCeiling({
@@ -48,6 +50,7 @@ test('02-07-05 single-model official-price snapshot stays under proposed cap', (
   }
 });
 
+// prettier-ignore
 test('02-07-05 selected model adapter keeps synthetic request private', async () => {
   let calls = 0;
   const provider = createOpenAiTextProvider({
@@ -93,6 +96,7 @@ test('02-07-05 selected model adapter keeps synthetic request private', async ()
   assert.ok(!JSON.stringify(result).includes('synthetic-placeholder'));
 });
 
+// prettier-ignore
 test('02-07-05 quote-backed evidence does not prove semantic truth', () => {
   const episode = {
     id: 19,
