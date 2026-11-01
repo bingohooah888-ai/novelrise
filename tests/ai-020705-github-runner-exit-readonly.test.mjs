@@ -40,7 +40,13 @@ function fixture(opts = {}) {
     if (opts.fail) throw new Error('TOKEN_OR_PRIVATE_CONTENT');
     const isJobs = url.includes('/jobs?');
     const n = calls.filter(x => !x.url.includes('/jobs?')).length;
-    const response = isJobs ? {total_count: jobs.length, jobs} :
+    const jobsReadCount = calls.filter(x => x.url.includes('/jobs?')).length;
+    const jobRows = isJobs && jobsReadCount > 1 && opts.recheckedJobs
+      ? jobs.map((job, index) => (
+        index === 0 ? {...job, ...opts.recheckedJobs} : job
+      ))
+      : jobs;
+    const response = isJobs ? {total_count: jobs.length, jobs: jobRows} :
       n > 1 && opts.recheckedRun ? {...run, ...opts.recheckedRun} : run;
     return {status: opts.httpStatus ?? 200, json: async () => response};
   };
@@ -63,7 +69,7 @@ test('GET-only verified terminal workflow run; no paid, cleanup or heartbeat aut
   assert.equal(result.authorizesPaidCall, false);
   assert.equal(result.authorizesMutation, false);
   assert.equal(result.noPaidRetry, true);
-  assert.deepEqual(calls.map(c => c.request.method), ['GET', 'GET', 'GET']);
+  assert.deepEqual(calls.map(c => c.request.method), ['GET', 'GET', 'GET', 'GET']);
   assert.ok(calls.every(c => c.request.redirect === 'error'));
   assert.ok(calls.every(c => c.url.startsWith('https://api.github.com/repos/' + SCOPE.repository + '/actions/runs/1001')));
   assert.equal(JSON.stringify(result).includes('synthetic-only-readable-token'), false);
@@ -144,6 +150,23 @@ test('incomplete jobs page, bad credentials and underlying GitHub errors are san
   await assert.rejects(read020705GithubRunnerExit({
     token: 'short', scope: SCOPE, fetchImpl: okay, now: () => NOW
   }), /AI_020705_GITHUB_RUNNER_EXIT_DENIED/u);
+});
+
+// prettier-ignore
+test('job status changes between first and second GET fail closed', async () => {
+  for (const changed of [
+    {status: 'in_progress', conclusion: null, completed_at: null},
+    {id: 2999},
+    {completed_at: '2026-11-01T08:56:30Z'},
+    {run_attempt: 2}
+  ]) {
+    const {fetchImpl, calls} = fixture({recheckedJobs: changed});
+    await assert.rejects(read020705GithubRunnerExit({
+      token: 'synthetic-only-readable-token', scope: SCOPE,
+      fetchImpl, now: () => NOW
+    }), /AI_020705_GITHUB_RUNNER_EXIT_DENIED/u);
+    assert.deepEqual(calls.map(c => c.request.method), ['GET', 'GET', 'GET']);
+  }
 });
 
 // prettier-ignore

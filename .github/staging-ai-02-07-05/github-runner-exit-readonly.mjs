@@ -138,17 +138,40 @@ export async function read020705GithubRunnerExit({
       jobs.push(...result.jobs);
     }
 
+    // Check the complete job list twice. The first run re-read alone
+    // cannot detect a job that changes status after page collection.
+    // Preserve identity, ordering, status, conclusion, and timestamps.
+    const jobFingerprint = (job) => JSON.stringify([
+      job.id, job.run_id, job.run_attempt, job.head_sha,
+      job.status, job.conclusion, job.started_at, job.completed_at
+    ]);
+    const seen = new Set();
+    for (const job of jobs) {
+      if (!jobValid(job, scope, run) || seen.has(job.id)) deny();
+      seen.add(job.id);
+    }
+
+    const secondJobs = [];
+    for (let page = 1; page <= pages; page++) {
+      const result = await get(jobsBase + page);
+      const expectedLength = Math.min(PAGE_SIZE, count - (page - 1) * PAGE_SIZE);
+      if (result?.total_count !== count ||
+          !Array.isArray(result.jobs) ||
+          result.jobs.length !== expectedLength) deny();
+      secondJobs.push(...result.jobs);
+    }
+    if (secondJobs.length !== jobs.length ||
+        secondJobs.some((job, i) =>
+          !jobValid(job, scope, run) ||
+          jobFingerprint(job) !== jobFingerprint(jobs[i]))) deny();
+
+    // Re-read the run LAST, after both complete job snapshots, to
+    // reject transitions observed while the job pages were fetched.
     rechecked = await get(runUrl);
     if (!validRun(rechecked, scope) ||
         rechecked.status !== run.status ||
         rechecked.conclusion !== run.conclusion ||
-        rechecked.updated_at !== run.updated_at ||
-        jobs.length !== count) deny();
-    const ids = new Set();
-    for (const job of jobs) {
-      if (!jobValid(job, scope, run) || ids.has(job.id)) deny();
-      ids.add(job.id);
-    }
+        rechecked.updated_at !== run.updated_at) deny();
     const ended = now();
     if (!Number.isFinite(ended) || ended < started ||
         ended - started > 30000) deny();
