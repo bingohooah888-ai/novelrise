@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { generateKeyPairSync, sign } from 'node:crypto';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
@@ -14,6 +15,42 @@ const OWNER_ID = '11111111-1111-4111-8111-111111111111';
 const SHA = 'a'.repeat(40);
 const PREVIEW = 'dpl_test123';
 const STAGING_URL = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
+const WATCHDOG_DOMAIN = 'NOVELIGHT_AI_020705_WATCHDOG_ARM_V1';
+const WATCHDOG_KEY_ID = 'synthetic-controller-key-01';
+const WATCHDOG_NONCE = 'A'.repeat(44);
+const WATCHDOG_KEYS = generateKeyPairSync('ed25519');
+
+// Synthetic signing fixture. Does not establish external controller identity.
+// prettier-ignore
+function signedArm(scope, key = WATCHDOG_KEYS.privateKey) {
+  const receipt = {
+    ...scope,
+    kind: 'independent-controller-armed',
+    protectedEnvironment: 'staging',
+    controllerKind: 'external-independent-supervisor',
+    controllerRunId: 3001,
+    controllerIsRunner: false,
+    killAuthorityVerified: true,
+    stagingDisableVerified: true,
+    sessionRevocationVerified: true,
+    syntheticCleanupVerified: true,
+    zeroCensusVerified: true,
+    noPaidRetry: true,
+    observedAtMs: NOW,
+    heartbeatAtMs: NOW,
+    expiresAtMs: NOW + 15000
+  };
+  const signature = sign(null, Buffer.from(JSON.stringify([
+    WATCHDOG_DOMAIN, WATCHDOG_KEY_ID, WATCHDOG_NONCE, receipt
+  ]), 'utf8'), key).toString('base64url');
+  return {
+    domain: WATCHDOG_DOMAIN,
+    keyId: WATCHDOG_KEY_ID,
+    challengeNonce: WATCHDOG_NONCE,
+    receipt,
+    signature
+  };
+}
 // prettier-ignore
 const ZERO = [
   'users', 'identities', 'sessions', 'profiles', 'novels', 'episodes',
@@ -50,6 +87,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
   }];
   let modelCalls = 0;
   let dbClaimed = false;
+  let watchdogConsumed = false;
   function dbChain() {
     const chain = {
       eq() { return chain; },
@@ -204,25 +242,21 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
       };
     },
     proofs,
+    trustedControllerPublicKey: WATCHDOG_KEYS.publicKey,
+    trustedControllerKeyId: WATCHDOG_KEY_ID,
+    expectedChallengeNonce: WATCHDOG_NONCE,
+    consumeWatchdogChallengeOnce: async (binding) => {
+      actions.push('watchdog-one-use');
+      if (binding.mainSha !== SHA || binding.nonce !== WATCHDOG_NONCE ||
+          binding.approvalCommentId !== approvalCommentId || watchdogConsumed) {
+        return false;
+      }
+      watchdogConsumed = true;
+      return true;
+    },
     readIndependentWatchdogArm: async (scope) => {
       actions.push('watchdog-arm');
-      return {
-        ...scope,
-        kind: 'independent-controller-armed',
-        protectedEnvironment: 'staging',
-        controllerKind: 'external-independent-supervisor',
-        controllerRunId: 3001,
-        controllerIsRunner: false,
-        killAuthorityVerified: true,
-        stagingDisableVerified: true,
-        sessionRevocationVerified: true,
-        syntheticCleanupVerified: true,
-        zeroCensusVerified: true,
-        noPaidRetry: true,
-        observedAtMs: NOW,
-        heartbeatAtMs: NOW,
-        expiresAtMs: NOW + 15000
-      };
+      return signedArm(scope);
     },
     now: () => NOW
   };
@@ -238,7 +272,8 @@ test('preflight, one paid attempt, stop, cleanup, census, consume in strict orde
   assert.equal(calls(), 1);
   assert.equal(actions[0], 'verifyCurrentMain');
   assert.equal(actions[5], 'verifyProviderBillingLimit');
-  assert.ok(actions.indexOf('watchdog-arm') < actions.indexOf('github-claim'));
+  assert.ok(actions.indexOf('watchdog-arm') < actions.indexOf('watchdog-one-use'));
+  assert.ok(actions.indexOf('watchdog-one-use') < actions.indexOf('github-claim'));
   assert.ok(actions.indexOf('github-claim') < actions.indexOf('db-claim'));
   assert.ok(actions.indexOf('db-claim') < actions.indexOf('model'));
   assert.ok(actions.indexOf('model') < actions.indexOf('stop-db'));
@@ -340,4 +375,46 @@ test('missing or failed external watchdog arm cannot claim or call model', async
     assert.equal(actions.includes('db-claim'), false);
     assert.equal(calls(), 0);
   }
+});
+
+// prettier-ignore
+test('forged signature, wrong trusted key or nonce, and non-atomic consumer deny before CLAIM', async () => {
+  const attacker = generateKeyPairSync('ed25519');
+  for (const mode of [
+    'forged', 'wrong-key', 'wrong-nonce',
+    'denied-consumer', 'throwing-consumer', 'missing-consumer'
+  ]) {
+    const { options, actions, calls } = setup();
+    if (mode === 'forged') options.readIndependentWatchdogArm = async (scope) =>
+      signedArm(scope, attacker.privateKey);
+    if (mode === 'wrong-key') options.trustedControllerKeyId = 'attacker-key-id';
+    if (mode === 'wrong-nonce') options.expectedChallengeNonce = 'B'.repeat(44);
+    if (mode === 'denied-consumer') options.consumeWatchdogChallengeOnce =
+      async () => false;
+    if (mode === 'throwing-consumer') options.consumeWatchdogChallengeOnce =
+      async () => { throw new Error('SENSITIVE_DO_NOT_ECHO'); };
+    if (mode === 'missing-consumer') delete options.consumeWatchdogChallengeOnce;
+    if (mode === 'missing-consumer') {
+      assert.throws(() => create020705ProtectedStageExecutor(options),
+        /AI_020705_PROTECTED_STAGE_DENIED/u);
+    } else {
+      await assert.rejects(create020705ProtectedStageExecutor(options).run(),
+        /AI_020705_PROTECTED_STAGE_DENIED/u);
+    }
+    assert.equal(actions.includes('github-claim'), false);
+    assert.equal(actions.includes('db-claim'), false);
+    assert.equal(calls(), 0);
+  }
+});
+
+// prettier-ignore
+test('fresh executor cannot re-consume the same signed arm challenge', async () => {
+  const { options, actions, calls } = setup();
+  const first = await create020705ProtectedStageExecutor(options).run();
+  assert.equal(first.outcome, 'one_call_succeeded_and_cleanup_verified');
+  await assert.rejects(create020705ProtectedStageExecutor(options).run(),
+    /AI_020705_PROTECTED_STAGE_DENIED/u);
+  assert.equal(actions.filter((x) => x === 'watchdog-one-use').length, 2);
+  assert.equal(actions.filter((x) => x === 'github-claim').length, 1);
+  assert.equal(calls(), 1);
 });
