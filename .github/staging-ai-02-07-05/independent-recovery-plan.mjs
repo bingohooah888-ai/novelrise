@@ -9,7 +9,8 @@ function deny() {
   throw new Error('AI_020705_RECOVERY_EVIDENCE_DENIED');
 }
 
-export function plan020705IndependentRecovery({ scope, evidence, now = Date.now() } = {}) {
+export function plan020705IndependentRecovery({ scope, evidence, now = Date.now } = {}) {
+  const current = typeof now === 'function' ? now() : NaN;
   if (
     scope?.projectRef !== STAGING ||
     !SHA.test(scope?.mainSha ?? '') ||
@@ -23,10 +24,10 @@ export function plan020705IndependentRecovery({ scope, evidence, now = Date.now(
     evidence?.previewDeploymentId !== scope.previewDeploymentId ||
     evidence?.approvalCommentId !== scope.approvalCommentId ||
     evidence?.runId !== scope.runId ||
-    !Number.isFinite(now) ||
+    !Number.isFinite(current) ||
     !Number.isFinite(evidence?.observedAtMs) ||
-    evidence.observedAtMs > now ||
-    now - evidence.observedAtMs > 300000 ||
+    evidence.observedAtMs > current ||
+    current - evidence.observedAtMs > 300000 ||
     typeof evidence.claimed !== 'boolean' ||
     typeof evidence.consumed !== 'boolean' ||
     typeof evidence.stagingRuntimeOffZero !== 'boolean' ||
