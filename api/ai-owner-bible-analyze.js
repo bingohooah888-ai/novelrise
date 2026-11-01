@@ -8,7 +8,7 @@ import {
   isSameOriginRequest
 } from './_lib/admin-auth.js';
 import { resolveOwnerNovelBiblePreviewConfig } from './_lib/ai/owner-novel-bible-preview.js';
-import { createOwnerNovelBibleLiveTrialBridge } from './_lib/ai/owner-novel-bible-trial-live.js';
+import { createOwnerNovelBible020705GuardedLiveTrialBridge } from './_lib/ai/owner-novel-bible-020705-guarded-live.js';
 import { createOwnerNovelBibleConsentPermissionCheck } from './_lib/ai/owner-novel-bible-consent.js';
 import { resolveOwnerNovelBibleConsentRuntimePolicy } from './_lib/ai/owner-novel-bible-consent-runtime.js';
 
@@ -280,5 +280,5 @@ export function createOwnerBibleAnalyzeApiHandler({
 // No flags, policies, scope, provider keys or approved spend => null bridge.
 // This declaration does NOT grant consent or change the database kill switch.
 export default createOwnerBibleAnalyzeApiHandler({
-  createTrialBridge: createOwnerNovelBibleLiveTrialBridge()
+  createTrialBridge: createOwnerNovelBible020705GuardedLiveTrialBridge()
 });

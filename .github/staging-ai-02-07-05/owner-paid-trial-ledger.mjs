@@ -171,3 +171,56 @@ export async function consume020705OwnerApproval({
       JSON.stringify({ approvalCommentId, runId, result })
   );
 }
+
+/**
+ * Read-only verification for the HTTP admission boundary. The protected
+ * workflow has already written CLAIMED. Never trust an environment flag
+ * claiming to be a GitHub approval.
+ */
+export function verify020705ClaimedOwnerApproval({
+  comments,
+  approvalCommentId,
+  expected,
+  runId,
+  now
+} = {}) {
+  if (!Number.isSafeInteger(runId) || runId < 1 ||
+      !Array.isArray(comments)) deny();
+  const approvalOnly = comments.filter(
+    (comment) => comment?.id === approvalCommentId
+  );
+  const snapshot = inspect020705OwnerLedger({
+    comments: approvalOnly, approvalCommentId, expected, now
+  });
+  const claims = comments.filter((comment) =>
+    typeof comment?.body === 'string' &&
+    comment.body.startsWith(PREFIX + 'CLAIMED ')
+  );
+  const consumed = comments.filter((comment) =>
+    typeof comment?.body === 'string' &&
+    comment.body.startsWith(PREFIX + 'CONSUMED ')
+  );
+  // A malformed claim/consumed marker can obscure an attempted replay.
+  for (const comment of [...claims, ...consumed]) {
+    const stage = comment.body.startsWith(PREFIX + 'CLAIMED ')
+      ? 'CLAIMED' : 'CONSUMED';
+    const data = payload(comment.body, stage);
+    if (!Number.isSafeInteger(data?.approvalCommentId)) deny();
+    if (data.approvalCommentId === approvalCommentId && stage === 'CONSUMED') {
+      deny();
+    }
+  }
+  const matches = claims.filter((comment) => {
+    const data = payload(comment.body, 'CLAIMED');
+    return data.approvalCommentId === approvalCommentId;
+  });
+  if (
+    matches.length !== 1 ||
+    matches[0].user?.login !== 'github-actions[bot]' ||
+    payload(matches[0].body, 'CLAIMED')?.runId !== runId ||
+    payload(matches[0].body, 'CLAIMED')?.mainSha !== snapshot.mainSha ||
+    payload(matches[0].body, 'CLAIMED')?.previewDeploymentId !==
+      snapshot.previewDeploymentId
+  ) deny();
+  return Object.freeze({ ...snapshot, ownerLedgerClaimed: true });
+}
