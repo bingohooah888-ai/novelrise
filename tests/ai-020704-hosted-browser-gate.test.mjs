@@ -255,6 +255,8 @@ test('one-use OWNER workflow, mandatory cleanup, no external provider', () => {
   assert.doesNotMatch(browser, /createOpenAiTextProvider|createGeminiTextProvider/);
 });
 
+// Keep the existing fixed-geometry gate-test formatting unchanged.
+// prettier-ignore
 test('local sign-out and DB proof before runner JWT', () => {
   const browser = readFileSync(
     'tests/e2e/ai-020704-hosted-review-browser.mjs',
