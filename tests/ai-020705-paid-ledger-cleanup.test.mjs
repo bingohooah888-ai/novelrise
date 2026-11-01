@@ -95,6 +95,7 @@ function runtime({ failModel = false } = {}) {
     },
     now: () => NOW,
     serviceClient: {
+      supabaseUrl: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
       async rpc() {
         log.push('claim');
         if (claimed) return { data: false };
