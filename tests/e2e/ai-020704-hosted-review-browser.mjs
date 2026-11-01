@@ -31,7 +31,8 @@ export async function runHostedOwnerReviewBrowser(env = process.env) {
   ) denied();
   const origin = env.NOVELIGHT_HOSTED_PREVIEW_ORIGIN;
   const target = new URL(origin).hostname;
-  const browser = await chromium.launch({ headless: true });
+  // CI's ubuntu-latest runner provides Chrome; no Playwright download is needed.
+  const browser = await chromium.launch({ headless: true, channel: 'chrome' });
   let context;
   let page;
   const apiPosts = [];
