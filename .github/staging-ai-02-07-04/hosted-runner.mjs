@@ -246,7 +246,14 @@ async function live() {
           NOVELIGHT_HOSTED_TEST_PASSWORD:password
         }
       });
-    } catch { fail(); }
+    } catch (error) {
+      // Print only an allowlisted stage ID; never browser stderr or secrets.
+      const match=String(error?.stderr||'').match(
+        /AI_020704_BROWSER_FAILURE_PHASE:(LOGIN_PAGE|LOGIN_FORM|LOGIN_REDIRECT|STORY_PAGE|OWNER_LOADED|REVIEW_ATTACH|CANDIDATE|ACCEPT|VERIFY|SIGNOUT|BOOTSTRAP)/
+      );
+      if(match)process.stderr.write('STAGING_AI_020704_BROWSER_FAILURE_PHASE:'+match[1]+'\n');
+      fail();
+    }
     if((await workflow.list({token,novelId:NOVEL})).candidates.length!==0)fail();
     const stored=JSON.parse(sql(db,"select json_build_object("+
       "'accepted',(select count(*) from public.novelight_ai_review_candidates where novel_id="+NOVEL+" and status='accepted'),"+
