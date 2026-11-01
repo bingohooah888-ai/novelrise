@@ -1,10 +1,25 @@
 import assert from 'node:assert/strict';
+import { generateKeyPairSync, sign } from 'node:crypto';
 import test from 'node:test';
 // prettier-ignore
 import { create020705DetachedRecoveryOffline } from
   '../.github/staging-ai-02-07-05/detached-recovery-offline.mjs';
 
 const NOW = Date.parse('2026-11-02T00:00:00Z');
+const DOMAIN = 'NOVELIGHT_AI_020705_DETACHED_DEATH_V1';
+const KEY_ID = 'synthetic-independent-key-01';
+const NONCE = 'A'.repeat(44);
+const KEYS = generateKeyPairSync('ed25519');
+// prettier-ignore
+function signed(proof, signer = KEYS.privateKey, nonce = NONCE) {
+  const signature = sign(null, Buffer.from(JSON.stringify([
+    DOMAIN, KEY_ID, nonce, proof
+  ]), 'utf8'), signer).toString('base64url');
+  return {
+    domain: DOMAIN, keyId: KEY_ID, challengeNonce: nonce,
+    proof, signature
+  };
+}
 // prettier-ignore
 const scope = Object.freeze({
   repository: 'bingohooah888-ai/novelrise',
@@ -31,7 +46,8 @@ function fixture({dead = true, stale = false, broken = null, invalidCensus = fal
     runnerConfirmedDead: dead, controllerIsRunner: false,
     controllerRunId: 3001,
     observedAtMs: NOW - 10,
-    runnerHeartbeatAtMs: NOW - (stale ? 16000 : 1000)
+    runnerHeartbeatAtMs: NOW - (stale ? 16000 : 1000),
+    expiresAtMs: NOW + 10000
   };
   const mark = (name) => async () => {
     actions.push(name);
@@ -41,10 +57,16 @@ function fixture({dead = true, stale = false, broken = null, invalidCensus = fal
   const options = {
     mode: 'offline-synthetic-only',
     scope, now: () => NOW,
-    readIndependentDeathProof: async () => deathProof,
-    claimRecoveryOnce: async () => {
+    readIndependentDeathProof: async () => signed(deathProof),
+    trustedControllerPublicKey: KEYS.publicKey,
+    trustedControllerKeyId: KEY_ID,
+    expectedChallengeNonce: NONCE,
+    claimRecoveryOnce: async (binding) => {
       actions.push('claim');
-      if (consumed) return false;
+      if (binding.contract !== 'NOVELIGHT_AI_020705_RECOVERY_ONE_USE_V1' ||
+          binding.controllerKeyId !== KEY_ID || binding.nonce !== NONCE ||
+          binding.runId !== scope.runId || binding.mainSha !== scope.mainSha ||
+          consumed) return false;
       consumed = true;
       return true;
     },
@@ -63,7 +85,7 @@ function fixture({dead = true, stale = false, broken = null, invalidCensus = fal
       };
     }
   };
-  return {options, actions};
+  return {options, actions, deathProof};
 }
 
 // prettier-ignore
@@ -87,12 +109,12 @@ test('healthy, stale, incorrect scope or untrusted caller cannot claim or stop',
       dead: kind !== 'alive', stale: kind === 'stale'
     });
     if (kind === 'other-sha') {
-      options.readIndependentDeathProof = async () => ({
+      options.readIndependentDeathProof = async () => signed({
         ...scope, mainSha: 'b'.repeat(40),
         kind: 'detached-controller-runner-death',
         runnerConfirmedDead: true, controllerIsRunner: false,
         controllerRunId: 3001, observedAtMs: NOW - 10,
-        runnerHeartbeatAtMs: NOW - 1000
+        runnerHeartbeatAtMs: NOW - 1000, expiresAtMs: NOW + 10000
       });
     }
     if (kind === 'wrong-mode') options.mode = 'staging-live';
@@ -151,4 +173,69 @@ test('cleanup or zero census failure consumes recovery and does not report succe
     assert.equal(actions.includes('model-stop'), true);
     assert.equal(actions.includes('independent-census'), true);
   }
+});
+
+// prettier-ignore
+test('forged death signature, wrong trust, nonce and tampering never claim recovery', async () => {
+  const attacker = generateKeyPairSync('ed25519');
+  for (const kind of ['forged', 'wrong-key', 'wrong-nonce', 'tampered',
+    'unsigned', 'expired', 'missing-key']) {
+    const {options, actions, deathProof} = fixture();
+    if (kind === 'forged') options.readIndependentDeathProof =
+      async () => signed(deathProof, attacker.privateKey);
+    if (kind === 'wrong-key') options.trustedControllerPublicKey =
+      attacker.publicKey;
+    if (kind === 'wrong-nonce') options.expectedChallengeNonce = 'B'.repeat(44);
+    if (kind === 'tampered') options.readIndependentDeathProof = async () => ({
+      ...signed(deathProof), proof: {...deathProof, runnerConfirmedDead: false}
+    });
+    if (kind === 'unsigned') options.readIndependentDeathProof =
+      async () => deathProof;
+    if (kind === 'expired') options.readIndependentDeathProof =
+      async () => signed({...deathProof, expiresAtMs: NOW - 1});
+    if (kind === 'missing-key') delete options.trustedControllerPublicKey;
+    if (kind === 'missing-key') {
+      assert.throws(() => create020705DetachedRecoveryOffline(options),
+        /AI_020705_DETACHED_RECOVERY_OFFLINE_DENIED/u);
+    } else {
+      await assert.rejects(create020705DetachedRecoveryOffline(options).recover(),
+        /AI_020705_DETACHED_RECOVERY_OFFLINE_DENIED/u);
+    }
+    assert.equal(actions.includes('claim'), false);
+    assert.equal(actions.includes('model-stop'), false);
+    assert.equal(actions.includes('independent-census'), false);
+  }
+});
+
+// prettier-ignore
+test('slow observer and expired evidence are denied using post-read clock', async () => {
+  const {options, actions, deathProof} = fixture();
+  let clock = NOW;
+  options.now = () => clock;
+  options.readIndependentDeathProof = async () => {
+    clock = NOW + 15001;
+    return signed(deathProof);
+  };
+  await assert.rejects(create020705DetachedRecoveryOffline(options).recover(),
+    /AI_020705_DETACHED_RECOVERY_OFFLINE_DENIED/u);
+  assert.equal(actions.includes('claim'), false);
+});
+
+// prettier-ignore
+test('slow recovery claim remains spent and never initiates a stop after lease expiry', async () => {
+  const {options, actions} = fixture();
+  let clock = NOW;
+  options.now = () => clock;
+  const original = options.claimRecoveryOnce;
+  options.claimRecoveryOnce = async (binding) => {
+    const spent = await original(binding);
+    clock = NOW + 15001;
+    return spent;
+  };
+  const recovery = create020705DetachedRecoveryOffline(options);
+  await assert.rejects(recovery.recover(),
+    /AI_020705_DETACHED_RECOVERY_OFFLINE_DENIED/u);
+  assert.deepEqual(actions, ['claim']);
+  await assert.rejects(recovery.recover(),
+    /AI_020705_DETACHED_RECOVERY_OFFLINE_DENIED/u);
 });
