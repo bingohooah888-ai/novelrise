@@ -104,10 +104,12 @@ export async function read020705GithubRunnerExit({
 
   try {
     async function get(url) {
-      if (url !== runUrl &&
-          !new RegExp('^' +
-            jobsBase.replace(/[.*+?^$\{\}()|[\]\\]/gu, '\\$&') +
-            '[1-9][0-9]*$','u').test(url)) deny();
+      // Permit only this one run and its bounded, integer page numbers.
+      const pageText = url.startsWith(jobsBase)
+        ? url.slice(jobsBase.length) : '';
+      const validJobPage = /^[1-9][0-9]*$/u.test(pageText) &&
+        Number(pageText) <= Math.ceil(MAX_JOBS / PAGE_SIZE);
+      if (url !== runUrl && !validJobPage) deny();
       const response = await fetchImpl(url, {
         method: 'GET', redirect: 'error',
         headers: { ...HEADERS, Authorization: 'Bearer ' + token }
