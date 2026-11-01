@@ -20,6 +20,7 @@ export function create020705StagingCleanup({
   authAdmin,
   synthetic,
   disableTrialEnvironment,
+  revokeSyntheticSessions,
   independentCensus
 } = {}) {
   if (
@@ -37,6 +38,7 @@ export function create020705StagingCleanup({
     typeof authAdmin?.getUserById !== 'function' ||
     typeof authAdmin?.deleteUser !== 'function' ||
     typeof disableTrialEnvironment !== 'function' ||
+    typeof revokeSyntheticSessions !== 'function' ||
     typeof independentCensus !== 'function'
   ) {
     deny();
@@ -89,6 +91,11 @@ export function create020705StagingCleanup({
         typeof user.email !== 'string' ||
         !user.email.startsWith('novelight-ai-020705-')
       ) {
+        deny();
+      }
+      // A valid synthetic JWT must be revoked before account deletion.
+      // The protected runner supplies an independently approved revoker.
+      if ((await revokeSyntheticSessions(synthetic.userId)) !== true) {
         deny();
       }
       const novelResult = await serviceClient
