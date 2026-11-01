@@ -131,7 +131,35 @@ export async function runHostedOwnerReviewBrowser(env = process.env) {
     const accept = page.getByRole('button', { name: '採用（要確認）' });
     if (await accept.count() !== 1) denied();
     phase = 'ACCEPT';
+    // Register the response listener BEFORE the click. A disappearing row
+    // alone is not proof of success: the UI also removes stale private data.
+    const responsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.hostname === target &&
+        url.pathname === '/api/ai-owner-bible-review' &&
+        response.request().method() === 'POST';
+    }, { timeout: 15000 });
     await accept.click();
+    phase = 'POST_RESPONSE';
+    const response = await responsePromise;
+    const status = response.status();
+    if (status !== 200) {
+      // Only emit fixed classifications, never headers, response body or JWT.
+      const category = [401, 403, 404].includes(status) ? 'AUTH_SCOPE' :
+        status === 409 ? 'STALE_SOURCE' :
+          status >= 500 ? 'SERVER_UNAVAILABLE' : 'OTHER_HTTP';
+      process.stderr.write('AI_020704_BROWSER_HTTP_CLASS:' + category + '\n');
+      denied();
+    }
+    const decision = await response.json();
+    if (!decision ||
+        !Number.isSafeInteger(decision.candidateId) ||
+        decision.candidateId < 1 ||
+        decision.novelId !== WORK_ID ||
+        decision.status !== 'accepted' ||
+        decision.revision !== 2 ||
+        decision.canonModified !== false) denied();
+    phase = 'DOM_ACCEPT';
     await evidence.waitFor({ state: 'detached', timeout: 15000 });
     phase = 'VERIFY';
     if (apiPosts.length !== 1 ||
