@@ -10,6 +10,7 @@ import {
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const NOW = Date.parse('2026-11-01T08:00:00Z');
 const SHA = 'a'.repeat(40);
+// prettier-ignore
 const APPROVED = {
   commentId: 901,
   ownerId: OWNER,
@@ -28,6 +29,7 @@ const APPROVED = {
   ownerLedgerClaimed: true,
   exactScopeVerified: true
 };
+// prettier-ignore
 const DEPLOYMENT = {
   projectRef: 'wmlzjgvxgoyrovdhbqbg',
   supabaseUrl: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
@@ -38,6 +40,7 @@ const DEPLOYMENT = {
 };
 const REQUEST = { model: 'gpt-5.6-luna', system: 'offline', user: 'synthetic' };
 
+// prettier-ignore
 function fixture({ changes = {}, deployment = {}, rpcReply, providerError } = {}) {
   let rpcCalls = 0;
   let modelCalls = 0;
@@ -72,6 +75,7 @@ function fixture({ changes = {}, deployment = {}, rpcReply, providerError } = {}
   return { provider, counts: () => ({ rpcCalls, modelCalls }) };
 }
 
+// prettier-ignore
 test('atomic claim is consumed once before a paid provider call', async () => {
   const { provider, counts } = fixture();
   assert.equal(isPaidTrialOneShotGuardedProvider(provider), true);
@@ -84,6 +88,7 @@ test('atomic claim is consumed once before a paid provider call', async () => {
   assert.deepEqual(counts(), { rpcCalls: 2, modelCalls: 1 });
 });
 
+// prettier-ignore
 test('concurrent requests with the same claim never invoke the model twice', async () => {
   const { provider, counts } = fixture();
   const results = await Promise.allSettled([
@@ -96,6 +101,7 @@ test('concurrent requests with the same claim never invoke the model twice', asy
   assert.equal(counts().modelCalls, 1);
 });
 
+// prettier-ignore
 test('network failure consumes the single use and never retries provider', async () => {
   const { provider, counts } = fixture({
     providerError: Object.assign(new Error('offline timeout'), {
@@ -110,6 +116,7 @@ test('network failure consumes the single use and never retries provider', async
   assert.equal(counts().modelCalls, 1);
 });
 
+// prettier-ignore
 test('database outage and duplicate claims never reach network', async () => {
   for (const rpcReply of [
     { data: false, error: null },
@@ -125,6 +132,7 @@ test('database outage and duplicate claims never reach network', async () => {
   }
 });
 
+// prettier-ignore
 test('wrong deployment, budget, scope, expiry, model and claim fail closed', () => {
   const cases = [
     { changes: { ownerLedgerClaimed: false } },
@@ -150,6 +158,7 @@ test('wrong deployment, budget, scope, expiry, model and claim fail closed', () 
   }
 });
 
+// prettier-ignore
 test('a model mismatch is rejected before any DB or network access', async () => {
   const { provider, counts } = fixture();
   await assert.rejects(
@@ -159,6 +168,7 @@ test('a model mismatch is rejected before any DB or network access', async () =>
   assert.deepEqual(counts(), { rpcCalls: 0, modelCalls: 0 });
 });
 
+// prettier-ignore
 test('migration is private service-only, immutable and atomically unique', () => {
   const sql = readFileSync(
     new URL(
