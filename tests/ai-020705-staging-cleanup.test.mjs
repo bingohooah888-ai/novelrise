@@ -99,6 +99,10 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false } 
       calls.push({ action: 'disableExternal' });
       return !failedDisable;
     },
+    revokeSyntheticSessions: async (id) => {
+      calls.push({ action: 'revokeSessions', id });
+      return id === USER;
+    },
     independentCensus: async () =>
       badCensus ? { ...census, sessions: 1 } : census
   });
@@ -149,6 +153,9 @@ test('cleanup deletes only synthetic usage rows and the validated novel/user', a
     c.table === 'novelight_ai_external_consent_action_audit'
   ));
   assert.ok(calls.some((c) => c.action === 'deleteAuth'));
+  assert.ok(calls.some((c) => c.action === 'revokeSessions'));
+  assert.ok(calls.findIndex((c) => c.action === 'revokeSessions') < calls.findIndex((c) => c.action === 'deleteAuth'));
+
 });
 
 // prettier-ignore
