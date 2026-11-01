@@ -214,14 +214,14 @@ test('one-use OWNER workflow, mandatory cleanup, no external provider', () => {
   // Login redirect allowlist does not include story-notes. The browser
   // authenticates using an allowlisted author route before opening notes.
   const redirectSource = readFileSync('auth-reader-context.js', 'utf8');
-  assert.match(redirectSource, /'\\/my-novels\\.html'/);
-  assert.match(browser, /encodeURIComponent\\('my-novels\\.html'\\)/);
+  assert.ok(redirectSource.includes("'/my-novels.html'"));
+  assert.ok(browser.includes("encodeURIComponent('my-novels.html')"));
   assert.match(browser, /phase = 'LOGIN_REDIRECT'/);
   assert.match(browser, /phase = 'STORY_PAGE'/);
   assert.match(browser, /phase = 'SIGNOUT'/);
   assert.match(runner, /STAGING_AI_020704_BROWSER_FAILURE_PHASE/);
   assert.match(browser, /AI_020704_BROWSER_FAILURE_PHASE/);
-  assert.match(browser, /await accept\\.click\\(\\)/);
-  assert.match(browser, /apiPosts\\.length !== 1/);
+  assert.ok(browser.includes('await accept.click()'));
+  assert.ok(browser.includes('apiPosts.length !== 1'));
   assert.doesNotMatch(browser, /createOpenAiTextProvider|createGeminiTextProvider/);
 });
