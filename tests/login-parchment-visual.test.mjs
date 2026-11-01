@@ -21,6 +21,12 @@ test('login keeps auth wiring', () => {
   assert.ok(authReaderContext.includes("url.pathname.replace(/^\\//, '')"));
 });
 
+test('login enables the final parchment appearance before client scripts run', () => {
+  const initialBody = login.match(/<body class="([^"]+)"/u)?.[1] || '';
+  assert.ok(initialBody.split(' ').includes('novelight-page-login'));
+  assert.ok(initialBody.split(' ').includes('novelight-public-header-page'));
+});
+
 test('login loads the parchment visual layer', () => {
   assert.ok(headerCss.includes('novelight-login-parchment.css'));
   assert.ok(css.includes('#f1e5c9'));
