@@ -27,6 +27,7 @@ const scope = {
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg'
 };
 
+// prettier-ignore
 function makeComment(id, body, bot = false) {
   const date = new Date(NOW - 60000 + (id - 700) * 1000).toISOString();
   return {
@@ -68,6 +69,7 @@ function records() {
 }
 
 // prettier-ignore
+// prettier-ignore
 function snapshot(rows = records()) {
   return {
     repository: scope.repository,
@@ -84,11 +86,13 @@ function snapshot(rows = records()) {
     )
   };
 }
+// prettier-ignore
 function inspect(rows, opts = {}) {
   return inspect020705ReadOnlyOwnerLedger({
     snapshot: snapshot(rows), scope: opts.scope ?? scope, now: opts.now ?? NOW
   });
 }
+// prettier-ignore
 function denied(rows, opts) {
   assert.throws(() => inspect(rows, opts),
     /AI_020705_READONLY_OWNER_LEDGER_DENIED/u);
