@@ -124,7 +124,7 @@ function denied(args) {
 
 // prettier-ignore
 test('GitHub terminal alone is insufficient for cleanup: missing independent heartbeat', () => {
-  const x = handoff('claimed', {}, undefined);
+  const x = handoff('claimed', {}, null);
   assert.equal(x.status, 'INDEPENDENT_HEARTBEAT_MISSING');
   assert.deepEqual(x.proposedActions, []);
   assert.equal(x.authorizesMutation, false);
