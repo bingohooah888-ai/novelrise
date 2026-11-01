@@ -10,6 +10,7 @@ const scope = {
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg',
   mainSha: SHA, branch: 'staging/ai-02-07-05-owner-20261101'
 };
+// prettier-ignore
 const main = {repository: scope.repository, sha: SHA};
 // prettier-ignore
 test('missing new preview never permits creation or execution', () => {
