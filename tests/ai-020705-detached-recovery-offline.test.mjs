@@ -14,6 +14,7 @@ const scope = Object.freeze({
   actorId: '11111111-1111-4111-8111-111111111111',
   runId: 1001, approvalCommentId: 777, novelId: 41, episodeId: 11
 });
+// prettier-ignore
 const COUNTS = [
   'users', 'identities', 'sessions', 'profiles',
   'novels', 'episodes', 'facts', 'analysis',
