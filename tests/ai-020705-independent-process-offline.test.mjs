@@ -6,12 +6,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
+// prettier-ignore
 const fixture = new URL('./fixtures/ai-020705-independent-process-offline.mjs', import.meta.url);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const get = async (file) => JSON.parse(await readFile(file, 'utf8'));
+// prettier-ignore
 const alive = (processHandle) => processHandle.exitCode === null &&
   processHandle.signalCode === null;
 
+// prettier-ignore
 async function until(predicate, label, timeoutMs = 5000) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
@@ -21,6 +24,7 @@ async function until(predicate, label, timeoutMs = 5000) {
   throw new Error('Synthetic process fixture timed out: ' + label);
 }
 
+// prettier-ignore
 function child(role, directory) {
   return spawn(process.execPath, [fixture.pathname, role, directory], {
     env: {...process.env, NOVELIGHT_AI_020705_OFFLINE_ONLY: '1'},
@@ -28,6 +32,7 @@ function child(role, directory) {
   });
 }
 
+// prettier-ignore
 test('independent watchdog survives SIGKILL of runner, stops separate model and verifies synthetic zero census',
   {timeout: 12000, skip: process.platform === 'win32'}, async () => {
     const directory = await mkdtemp(join(tmpdir(), 'novelight-ai-020705-offline-'));
