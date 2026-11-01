@@ -54,6 +54,7 @@ function fixture({dead = true, stale = false, broken = null, invalidCensus = fal
     cleanupSyntheticFixture: mark('cleanup'),
     independentZeroCensus: async () => {
       actions.push('independent-census');
+      if (broken === 'independent-census') throw new Error('SENSITIVE_RAW_ERROR');
       return {
         runtimeDisabledZero: !invalidCensus,
         approvalTombstoneCount: 1,
