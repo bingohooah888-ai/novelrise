@@ -1,16 +1,26 @@
+// prettier-ignore
 import assert from 'node:assert/strict';
+// prettier-ignore
 import { readFileSync } from 'node:fs';
+// prettier-ignore
 import test from 'node:test';
+// prettier-ignore
 import { URL } from 'node:url';
 
+// prettier-ignore
 import {
   inspect020705WorkflowAdmission
 } from '../.github/staging-ai-02-07-05/offline-workflow-admission.mjs';
 
+// prettier-ignore
 const NOW = Date.parse('2026-11-01T08:00:00Z');
+// prettier-ignore
 const SHA = 'a'.repeat(40);
+// prettier-ignore
 const ID = 7123;
+// prettier-ignore
 const PREVIEW = 'dpl_synthetic123';
+// prettier-ignore
 function signedApproval() {
   return [{
     id: ID,
@@ -34,6 +44,7 @@ function signedApproval() {
       })
   }];
 }
+// prettier-ignore
 function args() {
   return {
     actor: 'bingohooah888-ai',
@@ -47,6 +58,7 @@ function args() {
   };
 }
 
+// prettier-ignore
 test('OWNER exact SHA can only reach read-only offline admission', async () => {
   const r = await inspect020705WorkflowAdmission(args());
   assert.equal(r.state, 'OFFLINE_PREFLIGHT_ONLY');
@@ -55,6 +67,7 @@ test('OWNER exact SHA can only reach read-only offline admission', async () => {
   assert.equal(r.allowedToUseSecrets, false);
 });
 
+// prettier-ignore
 test('non-owner, drift, replay, wrong Preview and expired scope fail', async () => {
   const mutations = [
     { actor: 'other-user' },
@@ -73,6 +86,7 @@ test('non-owner, drift, replay, wrong Preview and expired scope fail', async () 
   }
 });
 
+// prettier-ignore
 test('the Staging workflow never has a live execution job or secret access', () => {
   const yaml = readFileSync(
     new URL(
