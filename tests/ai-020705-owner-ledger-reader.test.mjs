@@ -55,7 +55,8 @@ function fixture() {
   return {issue, comments};
 }
 // prettier-ignore
-function mockAPI({changeCount = false, fail = false} = {}) {
+function mockAPI({changeCount = false, changeSecondPage = false,
+  changeSecondAuthor = false, changeSecondId = false, fail = false} = {}) {
   const {issue, comments} = fixture();
   const calls = [];
   const fetchImpl = async (url, options) => {
@@ -67,7 +68,19 @@ function mockAPI({changeCount = false, fail = false} = {}) {
         count === 2 && changeCount ? {...issue, comments: 3} : issue
       )};
     }
-    return {status: 200, json: async () => comments};
+    const pageReads = calls.filter(c => c.url.includes('/comments?')).length;
+    const rows = pageReads > 1 && (changeSecondPage ||
+      changeSecondAuthor || changeSecondId)
+      ? comments.map((comment, i) => i === 1 ? {
+        ...comment,
+        ...(changeSecondPage ? {body: comment.body + ' altered'} : {}),
+        ...(changeSecondAuthor ? {
+          user: {...comment.user, id: 999999}
+        } : {}),
+        ...(changeSecondId ? {id: comment.id + 100} : {})
+      } : comment)
+      : comments;
+    return {status: 200, json: async () => rows};
   };
   return {calls, fetchImpl};
 }
@@ -82,9 +95,9 @@ test('reader performs GET-only fixed-host API calls and returns no paid authorit
   assert.equal(status.status, 'CLAIMED');
   assert.equal(status.authorizesPaidCall, false);
   assert.equal(status.noPaidRetry, true);
-  assert.equal(calls.length, 3);
-  assert.deepEqual(calls.map(c => c.options.method), ['GET', 'GET', 'GET']);
-  assert.deepEqual(calls.map(c => c.options.redirect), ['error', 'error', 'error']);
+  assert.equal(calls.length, 4);
+  assert.deepEqual(calls.map(c => c.options.method), ['GET', 'GET', 'GET', 'GET']);
+  assert.deepEqual(calls.map(c => c.options.redirect), ['error', 'error', 'error', 'error']);
   assert.ok(calls.every(c => c.url.startsWith('https://api.github.com/repos/bingohooah888-ai/novelrise/issues/294')));
   assert.ok(!JSON.stringify(status).includes('synthetic-readable-token'));
 });
@@ -96,6 +109,23 @@ test('an issue count race fails closed without returning a ledger status', async
     token: 'synthetic-readable-token-123',
     scope: SCOPE, fetchImpl, now: () => NOW
   }), /AI_020705_READONLY_GITHUB_API_DENIED/u);
+});
+
+// prettier-ignore
+test('same-count comment, author and ID changes on second page scan fail closed', async () => {
+  for (const change of [
+    {changeSecondPage: true},
+    {changeSecondAuthor: true},
+    {changeSecondId: true}
+  ]) {
+    const {fetchImpl, calls} = mockAPI(change);
+    await assert.rejects(read020705OwnerLedgerFromGithub({
+      token: 'synthetic-readable-token-123',
+      scope: SCOPE, fetchImpl, now: () => NOW
+    }), /AI_020705_READONLY_GITHUB_API_DENIED/u);
+    assert.equal(calls.length, 3);
+    assert.deepEqual(calls.map(c => c.options.method), ['GET', 'GET', 'GET']);
+  }
 });
 
 // prettier-ignore
