@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { URL } from 'node:url';
 
 const runtime = readFileSync(
   new URL('../novelight-client.js', import.meta.url),
