@@ -9,7 +9,7 @@ const NOW = Date.parse('2026-11-01T08:00:00Z');
 const DOMAIN = 'NOVELIGHT_AI_020705_WATCHDOG_ARM_V1';
 const NONCE = 'A'.repeat(44);
 const KEY_ID = 'synthetic-controller-key-01';
-const {publicKey, privateKey} = generateKeyPairSync('ed25519');
+const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const attacker = generateKeyPairSync('ed25519');
 // prettier-ignore
 const scope = Object.freeze({
@@ -61,18 +61,21 @@ function run(consumeChallengeOnce, changes = {}) {
   });
 }
 
+// prettier-ignore
 test('signed synthetic arm admits exactly once under an atomic mock', async () => {
   const ledger = atomicMock();
   assert.equal(await run(ledger), true);
   assert.equal(await run(ledger), false);
 });
 
+// prettier-ignore
 test('20 concurrent admissions of a single challenge admit only one', async () => {
   const ledger = atomicMock();
   const results = await Promise.all(Array.from({length: 20}, () => run(ledger)));
   assert.equal(results.filter(Boolean).length, 1);
 });
 
+// prettier-ignore
 test('untrusted signature and wrong scope never consume the challenge', async () => {
   const ledger = atomicMock();
   let writes = 0;
@@ -88,6 +91,7 @@ test('untrusted signature and wrong scope never consume the challenge', async ()
   assert.equal(writes, 1);
 });
 
+// prettier-ignore
 test('missing, throwing, or nonboolean consumer is fail-closed', async () => {
   assert.equal(await run(undefined), false);
   assert.equal(await run(async () => {throw new Error('SECRET_DO_NOT_ECHO');}), false);
@@ -95,6 +99,7 @@ test('missing, throwing, or nonboolean consumer is fail-closed', async () => {
   assert.equal(await run(async () => ({claimed: true})), false);
 });
 
+// prettier-ignore
 test('valid arm spent during slow consume cannot be used after expiration', async () => {
   let clock = NOW;
   const ledger = atomicMock();
@@ -108,6 +113,7 @@ test('valid arm spent during slow consume cannot be used after expiration', asyn
   assert.equal(await run(ledger, {now: () => clock}), false);
 });
 
+// prettier-ignore
 test('clock rollback, stale receipt and other controller key fail closed', async () => {
   const ledger = atomicMock();
   let calls = 0;
