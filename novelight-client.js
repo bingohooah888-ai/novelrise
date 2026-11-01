@@ -145,6 +145,7 @@
     return validateStagingBrowserConfig(config);
   }
 
+  let activeStagingBrowserConfig = null;
   let previewSupabaseBootstrapInstalled = false;
 
   function installPreviewSupabaseBootstrap() {
@@ -163,6 +164,7 @@
 
     window.supabase.createClient = function (...args) {
       if (!cachedConfig) cachedConfig = loadStagingBrowserConfigSync();
+      activeStagingBrowserConfig = cachedConfig;
       return originalCreateClient(
         cachedConfig.supabaseUrl,
         cachedConfig.supabasePublishableKey,
@@ -173,6 +175,54 @@
   }
 
   installPreviewSupabaseBootstrap();
+
+  // Canonical two-argument public clients share one auth state per page.
+  // This is independent of SCOUT title notifications and does not cache
+  // custom options, other projects, or privileged clients.
+  const sharedPublicAuthClients = new Map();
+
+  function installSharedPublicAuthClientFactory() {
+    if (typeof window.supabase?.createClient !== 'function') return;
+    const createClient = window.supabase.createClient.bind(window.supabase);
+    window.supabase.createClient = function (...args) {
+      const [url, key] = args;
+      if (
+        args.length !== 2 ||
+        url !== `https://${PRODUCTION_SUPABASE_HOST}` ||
+        typeof key !== 'string' ||
+        !key.startsWith('sb_publishable_')
+      ) {
+        return createClient(...args);
+      }
+
+      const cacheKey = url + '\\0' + key;
+      if (sharedPublicAuthClients.has(cacheKey)) {
+        return sharedPublicAuthClients.get(cacheKey);
+      }
+
+      // On Preview, the preceding fail-closed bootstrap must redirect this
+      // factory to the verified Staging project before any client is cached.
+      const client = createClient(...args);
+      const clientUrl = String(client?.supabaseUrl || '');
+      const clientKey = String(client?.supabaseKey || '');
+      if (isVercelPreviewHost()) {
+        if (
+          !activeStagingBrowserConfig ||
+          clientUrl !== activeStagingBrowserConfig.supabaseUrl ||
+          clientKey !== activeStagingBrowserConfig.supabasePublishableKey
+        ) {
+          throw new Error('CONFIG_DRIFT: Refusing unsafe Preview auth client.');
+        }
+      }
+      if (typeof client?.auth?.getSession !== 'function') {
+        throw new Error('CONFIG_DRIFT: Public auth client is unavailable.');
+      }
+      sharedPublicAuthClients.set(cacheKey, client);
+      return client;
+    };
+  }
+
+  installSharedPublicAuthClientFactory();
 
   function createAuthClient(...args) {
     if (isVercelPreviewHost() && !previewSupabaseBootstrapInstalled) {
@@ -665,6 +715,10 @@
 
     void syncAuthHeader(client);
 
+    // Preview analytics is intentionally disabled until a dedicated, approved
+    // Staging fingerprint secret and validation workflow are available.
+    if (isVercelPreviewHost()) return;
+
     const touch = currentTouch();
     let stored = getStoredTouch();
     if (!stored) {
@@ -695,6 +749,12 @@
   }
 
   async function analyticsEvent(client, payload) {
+    // Do not send events to an unconfigured Preview analytics endpoint.
+    // Production and the canonical Vercel Production alias remain unchanged.
+    if (isVercelPreviewHost()) {
+      return { accepted: false, recorded_count: 0, disabled: 'preview' };
+    }
+
     const headers = { 'Content-Type': 'application/json' };
     try {
       const { data } = await client.auth.getSession();
@@ -916,11 +976,13 @@
       const createClient = window.supabase.createClient.bind(window.supabase);
       window.supabase.createClient = function (...args) {
         const client = createClient(...args);
-        window.__novelightScoutTitleToastPendingClients.push(client);
-        if (
-          typeof window.__novelightAttachScoutTitleToastWatcher === 'function'
-        ) {
-          window.__novelightAttachScoutTitleToastWatcher(client);
+        if (!window.__novelightScoutTitleToastPendingClients.includes(client)) {
+          window.__novelightScoutTitleToastPendingClients.push(client);
+          if (
+            typeof window.__novelightAttachScoutTitleToastWatcher === 'function'
+          ) {
+            window.__novelightAttachScoutTitleToastWatcher(client);
+          }
         }
         return client;
       };
