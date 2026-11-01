@@ -16,6 +16,7 @@ const SYNTHETIC = {
 function fixture({ realUser = false, badCensus = false, failedDisable = false } = {}) {
   const calls = [];
   const serviceClient = {
+    supabaseUrl: SYNTHETIC.supabaseUrl,
     from(table) {
       const action = { table, operation: null, scopes: [], payload: null };
       const query = {
