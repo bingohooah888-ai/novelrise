@@ -665,6 +665,10 @@
 
     void syncAuthHeader(client);
 
+    // Preview analytics is intentionally disabled until a dedicated, approved
+    // Staging fingerprint secret and validation workflow are available.
+    if (isVercelPreviewHost()) return;
+
     const touch = currentTouch();
     let stored = getStoredTouch();
     if (!stored) {
@@ -695,6 +699,12 @@
   }
 
   async function analyticsEvent(client, payload) {
+    // Do not send events to an unconfigured Preview analytics endpoint.
+    // Production and the canonical Vercel Production alias remain unchanged.
+    if (isVercelPreviewHost()) {
+      return { accepted: false, recorded_count: 0, disabled: 'preview' };
+    }
+
     const headers = { 'Content-Type': 'application/json' };
     try {
       const { data } = await client.auth.getSession();
