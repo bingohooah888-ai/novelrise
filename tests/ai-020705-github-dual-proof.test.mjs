@@ -116,7 +116,8 @@ test('GitHub CLAIMED and terminal record remain NO-GO without independent eviden
   assert.equal(result.authorizesPaidCall, false);
   assert.equal(result.noPaidRetry, true);
   assert.deepEqual(result.proposedActions, []);
-  assert.equal(calls.length, 7);
+  // Issue GET, twice-scanned comments, Issue recheck, then Actions run/jobs.
+  assert.equal(calls.length, 8);
   assert.ok(calls.every(c => c.options.method === 'GET'));
   assert.ok(calls.every(c => c.options.redirect === 'error'));
   assert.ok(calls.every(c => c.url.startsWith('https://api.github.com/repos/bingohooah888-ai/novelrise/')));
