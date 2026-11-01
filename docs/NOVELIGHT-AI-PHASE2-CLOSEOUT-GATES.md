@@ -33,3 +33,10 @@ Staging project `wmlzjgvxgoyrovdhbqbg` で読み取り専用SQLによりAI OFF�
 任意の証拠が欠落・期限切れ・対象SHA不一致・資格情報不明・本人同意なし・費用上限不明・本番接続の疑い・中断時watchdog不能・clean-upの検証不能の場合は即NO-GO。SECRET/JWT/原稿/PIIはPR・報告・Actionsに記録しない。
 
 **合成テストや読み取り結果を「工程2完成」「有料AI稼働可能」とは表示しない。** PR統合による通常のProduction自動デプロイ以外の操作権限を推定しない。
+
+## 2026-11-01 次工程一括準備（PR #2736候補・未統合）
+- Previewは現行main `fc1a23f3386933db311ce9d87fb3625e4d1ba886` と一致する承認済みの**新規**Stagingブランチから作成する。旧branchに紐づく既存9環境変数は自動継承の証拠ではなく、値の復号・複製は未実施。
+- `preview-precreation-readonly.mjs` でSHA・ブランチ・Staging分離・環境変数名を読み取り専用で点検。必要なPreview作成・変数登録には別々の対象限定承認。
+- `protected-runner-offline-drill.mjs` は既存6証拠ゲートを合成試験で再利用。全て成立しても実資格・課金上限の実証ではなく、実行権限は付与しない。
+- `detached-supervisor-offline-drill.mjs` はGitHub台帳、runner、Staging Census、独立Heartbeatの照合をオフライン合成検証。外部controllerの実稼働・kill/cleanupの権限は現段階では**未実装・未検証**。
+- 次の別承認前に必ず、Protected Environment/Runner・Preview保護・機密値scope・Provider利用資格/請求・synthetic consent・失敗時外部停止を**一括**して確定する。外部変更の個別承認を実装済みコードだけで代替しない。
