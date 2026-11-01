@@ -20,6 +20,7 @@ const SCOPE = {
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg'
 };
 
+// prettier-ignore
 function comment(id, kind, body, isBot = false) {
   const time = new Date(NOW - 60000 + (id - 700) * 1000).toISOString();
   return {
@@ -64,6 +65,7 @@ function ledger(phase = 'consumed') {
     pages: [{number: 1, comments}]
   };
 }
+// prettier-ignore
 function stage(overrides = {}) {
   return {
     projectRef: SCOPE.stagingProjectRef, mainSha: SHA,
@@ -75,12 +77,14 @@ function stage(overrides = {}) {
     ...overrides
   };
 }
+// prettier-ignore
 function audit(phase = 'consumed', overrides = {}) {
   return audit020705RecoveryReadOnly({
     ledgerSnapshot: ledger(phase), scope: SCOPE,
     stagingEvidence: stage(overrides), now: () => NOW
   });
 }
+// prettier-ignore
 function denied(opts) {
   assert.throws(() => audit020705RecoveryReadOnly({
     ledgerSnapshot: opts.ledgerSnapshot ?? ledger('consumed'),
