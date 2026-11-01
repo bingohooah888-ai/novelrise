@@ -254,3 +254,39 @@ test('one-use OWNER workflow, mandatory cleanup, no external provider', () => {
   assert.match(browser, /phase = 'DOM_ACCEPT'/);
   assert.doesNotMatch(browser, /createOpenAiTextProvider|createGeminiTextProvider/);
 });
+
+// Keep the existing fixed-geometry gate-test formatting unchanged.
+// prettier-ignore
+test('local sign-out and DB proof before runner JWT', () => {
+  const browser = readFileSync(
+    'tests/e2e/ai-020704-hosted-review-browser.mjs',
+    'utf8'
+  );
+  const runner = readFileSync(
+    '.github/staging-ai-02-07-04/hosted-runner.mjs',
+    'utf8'
+  );
+  assert.match(browser, /client\.auth\.signOut\(\{ scope: 'local' \}\)/);
+  assert.doesNotMatch(browser, /client\.auth\.signOut\(\)/);
+  assert.match(browser, /if \(!locallySignedOut\) denied\(\)/);
+  assert.match(runner, /auth\.getUser\(token\)/);
+  assert.match(runner, /stored\.total!==1/);
+  assert.match(runner, /stored\.pending!==0/);
+  assert.match(runner, /stored\.accepted!==1/);
+  assert.match(runner, /stored\.canon!==0/);
+  assert.match(runner, /POST_BROWSER_PERSISTENCE_MISMATCH/);
+  assert.match(runner, /POST_BROWSER_RUNNER_JWT_FAILED/);
+  assert.match(runner, /POST_BROWSER_CANDIDATE_LIST_FAILED/);
+  assert.match(runner, /POST_BROWSER_PENDING_REMAINS/);
+  const sequence = [
+    "phase('HOSTED_BROWSER_CHILD_PASS')",
+    "phase('POST_BROWSER_PERSISTENCE_CHECK')",
+    "phase('POST_BROWSER_PERSISTENCE_PASS')",
+    "phase('POST_BROWSER_RUNNER_JWT_CHECK')",
+    "phase('POST_BROWSER_CANDIDATE_CHECK')",
+    "phase('REVIEW_CANDIDATE_PERSISTENCE_PASS')"
+  ];
+  const positions = sequence.map((stage) => runner.indexOf(stage));
+  assert.ok(positions.every((value) => value >= 0));
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+});
