@@ -11,6 +11,7 @@ const NOW = Date.parse('2026-11-01T08:00:00Z');
 const SHA = 'a'.repeat(40);
 const REF = 'wmlzjgvxgoyrovdhbqbg';
 const PREVIEW = 'dpl_synthetic123';
+// prettier-ignore
 const APPROVED = {
   repository: 'bingohooah888-ai/novelrise',
   stagingProjectRef: REF,
@@ -27,6 +28,7 @@ const APPROVED = {
   capMicros: 10000000,
   expiresAt: new Date(NOW + 1800000).toISOString()
 };
+// prettier-ignore
 const SCOPE = {
   repository: APPROVED.repository,
   stagingProjectRef: REF,
@@ -79,6 +81,7 @@ function fixtures() {
   return {x, calls, observers};
 }
 
+// prettier-ignore
 test('all six offline proof observations match one exact scoped Staging trial', async () => {
   const {observers, calls} = fixtures();
   const p = create020705ReadOnlyStageProofs({
@@ -92,6 +95,7 @@ test('all six offline proof observations match one exact scoped Staging trial', 
   assert.equal(calls.length, 6);
 });
 
+// prettier-ignore
 test('mismatched scope fails without reading external observations', async () => {
   const {observers, calls} = fixtures();
   const p = create020705ReadOnlyStageProofs({
@@ -101,6 +105,7 @@ test('mismatched scope fails without reading external observations', async () =>
   assert.equal(calls.length, 0);
 });
 
+// prettier-ignore
 test('untrusted production preview, unprotected run, migration and price soft cap fail closed', async () => {
   const cases = [
     ['readMain', 'branch', 'other', 'verifyCurrentMain'],
@@ -122,6 +127,7 @@ test('untrusted production preview, unprotected run, migration and price soft ca
   }
 });
 
+// prettier-ignore
 test('read-only observer outages and expired approval produce only false', async () => {
   const {observers} = fixtures();
   observers.readMain = async () => { throw new Error('SENSITIVE_LOG_CONTENT'); };
@@ -135,6 +141,7 @@ test('read-only observer outages and expired approval produce only false', async
   assert.equal(await q.verifyAtomicMigration(SCOPE), false);
 });
 
+// prettier-ignore
 test('missing observer cannot silently be treated as ready', () => {
   const {observers} = fixtures();
   delete observers.readBillingProtection;
@@ -143,6 +150,7 @@ test('missing observer cannot silently be treated as ready', () => {
   }), /AI_020705_PROOF_CONFIG_DENIED/u);
 });
 
+// prettier-ignore
 const RECOVERY_SCOPE = {
   projectRef: REF, mainSha: SHA,
   previewDeploymentId: PREVIEW, approvalCommentId: 700, runId: 1001
@@ -161,6 +169,7 @@ function recoveryEvidence(overrides = {}) {
   };
 }
 
+// prettier-ignore
 test('orphan CLAIM emits stop/delete/census/CONSUMED plan but NEVER paid retry', () => {
   const plan = plan020705IndependentRecovery({
     scope: RECOVERY_SCOPE, evidence: recoveryEvidence(), now: () => NOW
@@ -177,6 +186,7 @@ test('orphan CLAIM emits stop/delete/census/CONSUMED plan but NEVER paid retry',
   ]);
 });
 
+// prettier-ignore
 test('terminal consumed with complete zero census is a true no-op', () => {
   const plan = plan020705IndependentRecovery({
     scope: RECOVERY_SCOPE,
@@ -190,6 +200,7 @@ test('terminal consumed with complete zero census is a true no-op', () => {
   assert.deepEqual(plan.actions, []);
 });
 
+// prettier-ignore
 test('already CONSUMED but residual data requires cleanup, not another marker', () => {
   const plan = plan020705IndependentRecovery({
     scope: RECOVERY_SCOPE,
@@ -201,6 +212,7 @@ test('already CONSUMED but residual data requires cleanup, not another marker', 
   assert.equal(plan.noPaidRetry, true);
 });
 
+// prettier-ignore
 test('unclaimed recovery does not authorize cleanup, paid execution or mutation', () => {
   const plan = plan020705IndependentRecovery({
     scope: RECOVERY_SCOPE,
@@ -210,6 +222,7 @@ test('unclaimed recovery does not authorize cleanup, paid execution or mutation'
   assert.deepEqual(plan.actions, []);
 });
 
+// prettier-ignore
 test('wrong project, stale evidence and inconsistent ledger are denied', () => {
   for (const changed of [
     {projectRef: 'fiepaguycecrredwrcwx'},
