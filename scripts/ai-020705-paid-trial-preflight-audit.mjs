@@ -69,7 +69,8 @@ export function auditAi020705PaidTrialPlan(evidence = {}) {
       e.approvalScopedToExactTarget === true &&
       e.dedicatedLedgerImplemented === true &&
       e.atomicClaimBeforeSecretsProven === true &&
-      e.replayAndParallelRunDenied === true,
+      e.replayAndParallelRunDenied === true &&
+      e.serverSideSingleProviderCallEnforced === true,
     abort_and_cleanup:
       e.killSwitchAndBudgetResetPlanVerified === true &&
       e.cleanupIncludesUsageAndConsentAudit === true &&
