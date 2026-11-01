@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+// prettier-ignore
 import { inspect020705WatchdogAdmission } from
   '../.github/staging-ai-02-07-05/watchdog-admission-core.mjs';
 
@@ -172,7 +173,7 @@ test('cross-project, actor, SHA, run and Preview snapshots fail closed', () => {
     {runAttempt: 2},
     {readOnlySnapshotVerified: false}
   ]) denied({r: runner(changes)});
-  denied({s: {...SCOPE, projectRef: 'fiepaguycecrredwrcwx'}});
+  denied({s: {...SCOPE, stagingProjectRef: 'fiepaguycecrredwrcwx'}});
 });
 
 // prettier-ignore
