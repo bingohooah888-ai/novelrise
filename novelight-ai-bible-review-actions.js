@@ -113,6 +113,15 @@
       subscription?.unsubscribe();
     }
 
+    // A failed/ambiguous POST must never look like an accepted candidate.
+    // Hide unpublished candidate details, keep only a fixed neutral notice,
+    // and require a reload rather than automatically retrying a decision.
+    function decisionUnconfirmed() {
+      disposed = true;
+      list.textContent =
+        '採用結果を確認できませんでした。ページを再読み込みしてください。';
+    }
+
     function button(label, action, item, row) {
       const element = doc.createElement('button');
       element.type = 'button';
@@ -140,8 +149,12 @@
               action
             })
           });
-          if (!response.ok || !(await currentSession())) {
+          if (!(await currentSession())) {
             clear();
+            return;
+          }
+          if (!response.ok) {
+            decisionUnconfirmed();
             return;
           }
           const updated = await response.json();
@@ -150,15 +163,16 @@
             updated?.novelId !== id ||
             updated?.status !==
               (action === 'accept' ? 'accepted' : 'rejected') ||
-            updated?.canonModified !== false
+            updated?.canonModified !== false ||
+            updated?.revision !== item.revision + 1
           ) {
-            clear();
+            decisionUnconfirmed();
             return;
           }
           // Never perform a second POST automatically.
           row.remove();
         } catch {
-          clear();
+          decisionUnconfirmed();
         } finally {
           busy = false;
         }
