@@ -2,6 +2,7 @@
 // endpoint. Never grants permission, sets budgets or generates credentials.
 // The separately approved caller must first verify GitHub OWNER ledger,
 // Preview identity, source consent and Auth; all are required input evidence.
+const GUARDED_PROVIDERS = new WeakSet();
 const STAGING_REF = 'wmlzjgvxgoyrovdhbqbg';
 const STAGING_URL = 'https://' + STAGING_REF + '.supabase.co';
 const SHA = /^[a-f0-9]{40}$/u;
@@ -60,7 +61,7 @@ export function createPaidTrialOneShotOpenAiProvider({
   ) {
     deny();
   }
-  return Object.freeze({
+  const guarded = Object.freeze({
     async generate(args) {
       // This is a guard immediately BEFORE a potentially billable network
       // request, after the outer Router's atomic budget reservation.
@@ -94,4 +95,10 @@ export function createPaidTrialOneShotOpenAiProvider({
       return underlyingProvider.generate(args);
     }
   });
+  GUARDED_PROVIDERS.add(guarded);
+  return guarded;
+}
+
+export function isPaidTrialOneShotGuardedProvider(provider) {
+  return GUARDED_PROVIDERS.has(provider);
 }
