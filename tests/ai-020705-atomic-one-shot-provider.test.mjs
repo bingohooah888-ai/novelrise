@@ -47,6 +47,7 @@ function fixture({ changes = {}, deployment = {}, rpcReply, providerError } = {}
     deployment: { ...DEPLOYMENT, ...deployment },
     now: () => NOW,
     serviceClient: {
+      supabaseUrl: DEPLOYMENT.supabaseUrl,
       async rpc(name, args) {
         rpcCalls += 1;
         assert.equal(name, 'novelight_ai_020705_claim_once');
