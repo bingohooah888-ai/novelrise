@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 // prettier-ignore
 import { create020705ProtectedStageExecutor } from
   '../.github/staging-ai-02-07-05/protected-stage-executor.mjs';
