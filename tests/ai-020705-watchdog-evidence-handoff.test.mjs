@@ -111,6 +111,7 @@ function handoff(phase = 'claimed', githubChanges = {},
     now: () => NOW
   });
 }
+// prettier-ignore
 function denied(args) {
   assert.throws(() => assess020705WatchdogHandoff({
     scope: args.scope ?? SCOPE,
