@@ -32,7 +32,7 @@ function validScope(s) {
     s.stagingProjectRef === STAGE &&
     SHA.test(s.mainSha ?? '') &&
     PREVIEW.test(s.previewDeploymentId ?? '') &&
-    /^[0-9a-f]{8}-[0-9a-f-]{27,}$/iu.test(s.actorId ?? '') &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(s.actorId ?? '') &&
     ['runId', 'approvalCommentId', 'novelId', 'episodeId'].every((key) =>
       Number.isSafeInteger(s[key]) && s[key] > 0);
 }
