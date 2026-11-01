@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const runtime = readFileSync(new URL('../novelight-client.js', import.meta.url), 'utf8');
+const runtime = readFileSync(
+  new URL('../novelight-client.js', import.meta.url),
+  'utf8'
+);
 
 function sourceBetween(start, end) {
   const a = runtime.indexOf(start);
@@ -11,13 +14,26 @@ function sourceBetween(start, end) {
   return runtime.slice(a, b);
 }
 
-const hostSource = sourceBetween('  function isVercelPreviewHost() {', '  function validateStagingBrowserConfig(');
-const analyticsSource = sourceBetween('  async function analyticsEvent(client, payload) {', '  async function recordVisit(');
-const acquisitionSource = sourceBetween('  async function captureAcquisition(client) {', '  function storedSource() {');
+const hostSource = sourceBetween(
+  '  function isVercelPreviewHost() {',
+  '  function validateStagingBrowserConfig('
+);
+const analyticsSource = sourceBetween(
+  '  async function analyticsEvent(client, payload) {',
+  '  async function recordVisit('
+);
+const acquisitionSource = sourceBetween(
+  '  async function captureAcquisition(client) {',
+  '  function storedSource() {'
+);
 
 function isPreviewFor(hostname) {
   const scope = { location: { hostname } };
-  return new Function('window', 'VERCEL_INTERNAL_PRODUCTION_HOST', hostSource + '; return isVercelPreviewHost();')(scope, 'novelrise.vercel.app');
+  return new Function(
+    'window',
+    'VERCEL_INTERNAL_PRODUCTION_HOST',
+    hostSource + '; return isVercelPreviewHost();'
+  )(scope, 'novelrise.vercel.app');
 }
 
 function analyticsFixture(hostname) {
@@ -41,7 +57,16 @@ function analyticsFixture(hostname) {
     'console',
     analyticsSource + '; return analyticsEvent;'
   )(() => isPreviewFor(hostname), send, console);
-  return { client, analytics, get requests() { return requests; }, get sessionReads() { return sessionReads; } };
+  return {
+    client,
+    analytics,
+    get requests() {
+      return requests;
+    },
+    get sessionReads() {
+      return sessionReads;
+    }
+  };
 }
 
 test('a Preview never POSTs analytics or reads auth tokens for telemetry', async () => {
@@ -56,7 +81,10 @@ test('a Preview never POSTs analytics or reads auth tokens for telemetry', async
 });
 test('Production custom domain continues to POST analytics', async () => {
   const f = analyticsFixture('novelight.jp');
-  assert.equal((await f.analytics(f.client, { action: 'visit' })).accepted, true);
+  assert.equal(
+    (await f.analytics(f.client, { action: 'visit' })).accepted,
+    true
+  );
   assert.equal(f.requests, 1);
   assert.equal(f.sessionReads, 1);
 });
@@ -88,12 +116,22 @@ test('a Preview acquisition preserves auth header without writing fake attributi
     acquisitionSource + '; return captureAcquisition;'
   )(
     () => true,
-    () => { headerSynced++; },
-    () => { touches++; return {}; },
+    () => {
+      headerSynced++;
+    },
+    () => {
+      touches++;
+      return {};
+    },
     () => null,
-    () => { storageWrites++; },
+    () => {
+      storageWrites++;
+    },
     { localStorage: {}, sessionStorage: {} },
-    'test-traffic', 'test-session', async () => ({}), console
+    'test-traffic',
+    'test-session',
+    async () => ({}),
+    console
   );
   await acquisition({});
   assert.equal(headerSynced, 1);
@@ -101,5 +139,8 @@ test('a Preview acquisition preserves auth header without writing fake attributi
   assert.equal(storageWrites, 0);
 });
 test('Preview suppression remains limited to the common analytics client', () => {
-  assert.match(runtime, /if \(isVercelPreviewHost\(\)\) \{\s+return \{ accepted: false, recorded_count: 0, disabled: 'preview' \};/);
+  assert.match(
+    runtime,
+    /if \(isVercelPreviewHost\(\)\) \{\s+return \{ accepted: false, recorded_count: 0, disabled: 'preview' \};/
+  );
 });
