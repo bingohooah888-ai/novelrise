@@ -90,7 +90,8 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"docs/exposure-allocation-beta.md","status":"SUPERSEDED","role":"exposure-allocation-current","singletonRole":false,"classification":"SUPERSEDED_CANDIDATE","supersededBy":"docs/exposure-allocation-beta-v2.md","historicalReferences":[]},
     {"path":"docs/legal-beta-review.md","status":"CURRENT","role":"legal-beta-current-status","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":["docs/BETA-RELEASE-DECISION-2026-08-28.md","docs/LEGAL-REVIEW-PACKET-2026-08-26.md"]},
     {"path":"docs/main-branch-protection.md","status":"CURRENT","role":"main-branch-protection","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
-    {"path":"docs/master-management.md","status":"CURRENT","role":"master-management","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]}
+    {"path":"docs/master-management.md","status":"CURRENT","role":"master-management","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
+    {"path":"docs/ai-review-hosted-jwt-preview-proof-plan.md","status":"CURRENT","role":"ai-hosted-jwt-proof-preparation","singletonRole":false,"classification":"CURRENT_CANDIDATE","historicalReferences":[]}
   ]
 }
 ```
