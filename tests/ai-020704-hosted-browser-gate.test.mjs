@@ -244,5 +244,13 @@ test('one-use OWNER workflow, mandatory cleanup, no external provider', () => {
   assert.doesNotMatch(runner, /console\.error\(error\)|console\.log\(error\)/);
   assert.ok(browser.includes('await accept.click()'));
   assert.ok(browser.includes('apiPosts.length !== 1'));
+  assert.match(browser, /page\.waitForResponse/);
+  assert.match(browser, /response\.status\(\)/);
+  assert.match(browser, /status !== 200/);
+  assert.match(browser, /decision\.status !== 'accepted'/);
+  assert.match(browser, /decision\.canonModified !== false/);
+  assert.match(browser, /decision\.revision !== 2/);
+  assert.match(browser, /phase = 'POST_RESPONSE'/);
+  assert.match(browser, /phase = 'DOM_ACCEPT'/);
   assert.doesNotMatch(browser, /createOpenAiTextProvider|createGeminiTextProvider/);
 });
