@@ -52,7 +52,7 @@ const expected = {
 
 // prettier-ignore
 function ledger() {
-  const comments = [structuredClone(approval)];
+  const comments = [globalThis.structuredClone(approval)];
   return {
     comments,
     readComments: async () => comments,
