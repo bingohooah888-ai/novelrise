@@ -67,6 +67,25 @@ export async function read020705OwnerLedgerFromGithub({
       if (!Array.isArray(comments)) deny();
       pages.push({number: i, comments});
     }
+    // GitHub Issue count alone cannot expose edits or same-count changes
+    // that occur while pages are read. Compare the complete paginated
+    // sequence twice before returning an independently reviewed snapshot.
+    const identity = (comment) => JSON.stringify([
+      comment?.id, comment?.body,
+      comment?.created_at, comment?.updated_at,
+      comment?.user?.id, comment?.user?.login, comment?.user?.type,
+      comment?.author_association
+    ]);
+    for (let i = 1; i <= pageCount; i++) {
+      const secondPass = await getJson(COMMENTS_URL + i);
+      const original = pages[i - 1].comments;
+      if (!Array.isArray(secondPass) ||
+          secondPass.length !== original.length ||
+          secondPass.some((comment, index) =>
+            identity(comment) !== identity(original[index]))) deny();
+    }
+
+    // Fetch the issue again only after both comment scans have completed.
     const recheckedIssue = await getJson(ISSUE_URL);
     if (recheckedIssue?.number !== 294 ||
         recheckedIssue?.title !== issue.title ||
