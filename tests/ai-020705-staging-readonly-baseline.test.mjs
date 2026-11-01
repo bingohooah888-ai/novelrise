@@ -38,6 +38,7 @@ function setup(changes = {}, resultChanges = {}) {
   return {calls, queryReadOnly};
 }
 
+// prettier-ignore
 test('fixed SQL contains SELECT and no destructive operation', () => {
   assert.match(AI_020705_STAGING_BASELINE_SQL, /^SELECT\s/u);
   assert.doesNotMatch(AI_020705_STAGING_BASELINE_SQL,
