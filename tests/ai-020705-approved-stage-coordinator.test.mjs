@@ -1,16 +1,26 @@
+// prettier-ignore
 import assert from 'node:assert/strict';
+// prettier-ignore
 import test from 'node:test';
+// prettier-ignore
 import { coordinate020705ProtectedStagingTrial } from
   '../.github/staging-ai-02-07-05/approved-stage-coordinator.mjs';
+// prettier-ignore
 import { createPaidTrialOneShotOpenAiProvider } from
   '../api/_lib/ai/paid-trial-one-shot-provider.js';
 
+// prettier-ignore
 const NOW = Date.parse('2026-11-01T08:00:00Z');
+// prettier-ignore
 const SHA = 'a'.repeat(40);
+// prettier-ignore
 const OWNER = '11111111-1111-4111-8111-111111111111';
+// prettier-ignore
 const PREVIEW = 'dpl_synthetic123';
+// prettier-ignore
 const COMMENT_ID = 701;
 
+// prettier-ignore
 function setup({ fail = false, census = true } = {}) {
   const actions = [];
   const comments = [{
@@ -112,6 +122,7 @@ function setup({ fail = false, census = true } = {}) {
   return { inputs, actions, calls: () => providerCalls };
 }
 
+// prettier-ignore
 test('the OWNER claim, DB claim and one provider attempt precede cleanup', async () => {
   const { inputs, actions, calls } = setup();
   const result = await coordinate020705ProtectedStagingTrial(inputs);
@@ -128,6 +139,7 @@ test('the OWNER claim, DB claim and one provider attempt precede cleanup', async
   assert.equal(calls(), 1);
 });
 
+// prettier-ignore
 test('timeout is consumed, never retried, and still performs cleanup', async () => {
   const { inputs, actions, calls } = setup({ fail: true });
   await assert.rejects(
@@ -141,6 +153,7 @@ test('timeout is consumed, never retried, and still performs cleanup', async () 
   ]);
 });
 
+// prettier-ignore
 test('zero-census failure remains fatal even after one successful model call', async () => {
   const { inputs, actions, calls } = setup({ census: false });
   await assert.rejects(
