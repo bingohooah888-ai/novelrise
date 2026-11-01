@@ -145,6 +145,8 @@
     return validateStagingBrowserConfig(config);
   }
 
+  let previewSupabaseBootstrapInstalled = false;
+
   function installPreviewSupabaseBootstrap() {
     if (!isVercelPreviewHost()) return;
     if (
@@ -167,9 +169,17 @@
         ...args.slice(2)
       );
     };
+    previewSupabaseBootstrapInstalled = true;
   }
 
   installPreviewSupabaseBootstrap();
+
+  function createAuthClient(...args) {
+    if (isVercelPreviewHost() && !previewSupabaseBootstrapInstalled) {
+      throw new Error('AUTH_PREVIEW_BOOTSTRAP_MISSING');
+    }
+    return window.supabase.createClient(...args);
+  }
 
   function currentPageSlug() {
     const file = window.location.pathname.split('/').pop() || 'index.html';
@@ -929,6 +939,7 @@
   installScoutTitleToastRuntime();
 
   window.NovelightClient = {
+    createAuthClient,
     getVisitorToken,
     captureAcquisition,
     recordVisit,
