@@ -25,7 +25,13 @@ function element(tag) {
   };
 }
 
-function mock({ userId = OWNER, allow = true } = {}) {
+function mock({
+  userId = OWNER,
+  allow = true,
+  postStatus = 200,
+  postPayload = null,
+  postThrows = false
+} = {}) {
   const host = element('main');
   let listener;
   const requests = [];
@@ -51,9 +57,11 @@ function mock({ userId = OWNER, allow = true } = {}) {
     requests.push(options);
     if (!allow) return { ok: false };
     if (options.method === 'POST') {
+      if (postThrows) throw new Error('offline POST failure');
       return {
-        ok: true,
+        ok: postStatus === 200,
         async json() {
+          if (postPayload !== null) return postPayload;
           return {
             novelId: 354,
             candidateId: 7,
@@ -185,4 +193,67 @@ test('logout clears and removes private candidates', async () => {
   f.logout();
   assert.equal(section.removed, true);
   assert.equal(list.textContent, '');
+});
+
+test('failed POST cannot be mistaken for accepted review or trigger retries', async () => {
+  const f = mock({ postStatus: 503 });
+  assert.equal(
+    await attach({
+      client: f.client,
+      novelId: 354,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher
+    }),
+    true
+  );
+  const section = f.host.children[0];
+  const list = section.children[1];
+  const row = list.children[0];
+  await row.children[1].listeners.click();
+  assert.equal(f.requests.filter((req) => req.method === 'POST').length, 1);
+  assert.equal(row.removed, false);
+  assert.equal(section.removed, false);
+  assert.equal(
+    list.textContent,
+    '採用結果を確認できませんでした。ページを再読み込みしてください。'
+  );
+  await row.children[1].listeners.click();
+  assert.equal(f.requests.filter((req) => req.method === 'POST').length, 1);
+  f.logout();
+  assert.equal(section.removed, true);
+  assert.equal(list.textContent, '');
+});
+
+test('invalid decision receipt or network failure never reports acceptance', async () => {
+  for (const options of [
+    {
+      postPayload: {
+        novelId: 354,
+        candidateId: 7,
+        status: 'accepted',
+        revision: 1,
+        canonModified: false
+      }
+    },
+    { postThrows: true }
+  ]) {
+    const f = mock(options);
+    await attach({
+      client: f.client,
+      novelId: 354,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher
+    });
+    const list = f.host.children[0].children[1];
+    const row = list.children[0];
+    await row.children[1].listeners.click();
+    assert.equal(row.removed, false);
+    assert.equal(
+      list.textContent,
+      '採用結果を確認できませんでした。ページを再読み込みしてください。'
+    );
+    assert.equal(f.requests.filter((req) => req.method === 'POST').length, 1);
+  }
 });
