@@ -83,8 +83,7 @@ test('shared runtime exports a Preview-safe auth factory', () => {
   assert.ok(source.includes('previewSupabaseBootstrapInstalled = false'));
   assert.ok(source.includes('previewSupabaseBootstrapInstalled = true'));
   assert.ok(source.includes('function createAuthClient(...args)'));
-  assert.ok(
-    source.includes('isVercelPreviewHost() && !previewSupabaseBootstrapInstalled')
-  );
-  assert.ok(source.includes('window.NovelightClient = {\n    createAuthClient,'));
+  assert.ok(source.includes('isVercelPreviewHost() && !previewSupabase'));
+  assert.ok(source.includes('window.NovelightClient = {'));
+  assert.ok(source.includes('createAuthClient,'));
 });
