@@ -79,7 +79,13 @@ test('one-use claim, replay protection or strict call count must not be skipped'
   ]) {
     const result = auditAi020705PaidTrialPlan({ ...evidence, ...change });
     assert.equal(result.status, 'NO_GO');
-    assert.ok(result.missingChecks.some((key) => key.includes('one_')));
+    assert.ok(
+      result.missingChecks.some(
+        (key) =>
+          key === 'separate_single_use_authorization' ||
+          key === 'one_provider_one_call'
+      )
+    );
     assert.equal(result.authorizesExecution, false);
   }
 });
