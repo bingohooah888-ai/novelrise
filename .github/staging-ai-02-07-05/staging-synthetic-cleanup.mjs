@@ -32,7 +32,8 @@ export function create020705StagingCleanup({
     synthetic.novelId <= 0 ||
     !Number.isSafeInteger(synthetic?.approvalCommentId) ||
     synthetic.approvalCommentId <= 0 ||
-    !serviceClient?.from ||
+    serviceClient?.supabaseUrl !== STAGING ||
+    typeof serviceClient?.from !== 'function' ||
     typeof authAdmin?.getUserById !== 'function' ||
     typeof authAdmin?.deleteUser !== 'function' ||
     typeof disableTrialEnvironment !== 'function' ||
