@@ -203,6 +203,15 @@ test('one-use OWNER workflow, mandatory cleanup, no external provider', () => {
   assert.match(workflow, /BROWSER_CLAIMED/);
   assert.match(workflow, /BROWSER_CONSUMED/);
   assert.match(workflow, /environment: staging/);
+  assert.match(workflow, /node-version: 24/);
+  assert.match(workflow, /Install browser test dependencies for runner Chrome/);
+  const downloadCommand = workflow.split('\n').some((line) =>
+    line.trimStart().startsWith('npm --prefix tests/e2e exec -- playwright install')
+  );
+  assert.equal(downloadCommand, false);
+  assert.ok(
+    browser.includes("chromium.launch({ headless: true, channel: 'chrome' })")
+  );
   assert.doesNotMatch(workflow, /workflow_dispatch:|OPENAI_API_KEY|GEMINI_API_KEY/);
   assert.match(runner, /checkHostedBrowserPreview\(hosted,env\)/);
   assert.match(runner, /HOSTED_BROWSER_REVIEW_DECISION/);
