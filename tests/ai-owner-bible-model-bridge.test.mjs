@@ -288,3 +288,42 @@ test('dormant bridge is not imported by existing public API routes', () => {
   assert.match(source, /permissionCheck/u);
   assert.match(source, /reviewWorkflow\.stage/u);
 });
+
+test('02-07-05 post-model session change refuses candidate persistence', async () => {
+  const { state, make } = fixture();
+  const bridge = make({
+    aiRouter: {
+      async run() {
+        state.modelCalls += 1;
+        state.owner = OTHER;
+        return { text: '{"suggestions":[]}' };
+      }
+    }
+  });
+  await assert.rejects(
+    bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.reviewCalls, 0);
+  assert.equal(state.authCalls, 2);
+});
+
+test('02-07-05 post-model episode transfer refuses stale candidate', async () => {
+  const { state, make } = fixture();
+  const bridge = make({
+    aiRouter: {
+      async run() {
+        state.modelCalls += 1;
+        state.episodeId = 12;
+        return { text: '{"suggestions":[]}' };
+      }
+    }
+  });
+  await assert.rejects(
+    bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.reviewCalls, 0);
+});
