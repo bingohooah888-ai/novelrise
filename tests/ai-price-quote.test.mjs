@@ -132,3 +132,28 @@ test('02-07-05 pessimistic quote includes every route and is monotonic', () => {
   assert.ok(high.quoteMicrosJPY >= low.quoteMicrosJPY);
   assert.ok(high.quoteMicrosJPY > 0);
 });
+
+test('02-07-05 synthetic ten-yen gate rejects expensive fallback plans', () => {
+  const second = {
+    provider: 'openai',
+    model: 'synthetic-offline',
+    inputUsdMicrosPerMillion: 750000,
+    outputUsdMicrosPerMillion: 4500000,
+    maxOutputTokens: 1500
+  };
+  const options = {
+    maxInputTokens: 36000,
+    fxYenPerUsdCeiling: 200,
+    riskBufferBps: 30000
+  };
+  const oneRoute = quote({ ...options, routes: [flash] });
+  const twoRoutes = quote({ ...options, routes: [flash, second] });
+  const proposedTrialCapMicros = 10000000;
+  assert.ok(oneRoute.quoteMicrosJPY > 0);
+  assert.ok(oneRoute.quoteMicrosJPY <= proposedTrialCapMicros);
+  assert.ok(twoRoutes.quoteMicrosJPY > proposedTrialCapMicros);
+  assert.equal(
+    twoRoutes.quoteMicrosJPY,
+    twoRoutes.routes.reduce((sum, route) => sum + route.ceilingMicros, 0)
+  );
+});
