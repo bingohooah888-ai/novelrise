@@ -1,0 +1,77 @@
+name: NOVELIGHT AI 02-07-05 OWNER Staging Paid Trial (OFFLINE preflight only)
+
+# Dormant until merged. Manual only. This workflow NEVER calls paid AI,
+# creates a Preview, claims an approval, uses Secrets or writes Staging DB.
+# A distinct reviewed/approved PR is required to wire any live executor.
+on:
+  workflow_dispatch:
+    inputs:
+      approval_comment_id:
+        description: Exact OWNER approval comment ID on protected Issue 294
+        required: true
+        type: string
+      expected_main_sha:
+        description: Approved exact 40-hex current main SHA
+        required: true
+        type: string
+      preview_deployment_id:
+        description: Independently approved and existing Staging Preview deployment
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: novelight-ai-020705-owner-staging-paid-trial
+  cancel-in-progress: false
+
+jobs:
+  verify-only:
+    name: OWNER read-only approval preflight (no stage execution)
+    if: >-
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout current trusted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Configure locked Node runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Verify exact current main and scope (read only)
+        shell: bash
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_MAIN_SHA"
+          test "$GITHUB_REF_NAME" = main
+      - name: Run offline single-call and owner-ledger unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund --quiet
+          node --test tests/ai-020705-guarded-http-default.test.mjs tests/ai-020705-atomic-one-shot-provider.test.mjs tests/ai-020705-paid-ledger-cleanup.test.mjs tests/ai-020705-staging-cleanup.test.mjs tests/ai-020705-stage-workflow.test.mjs
+      - name: Recheck OWNER approval comment using public GitHub read API
+        shell: bash
+        env:
+          STAGING_APPROVAL_COMMENT_ID: ${{ inputs.approval_comment_id }}
+          APPROVED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          APPROVED_PREVIEW_DEPLOYMENT_ID: ${{ inputs.preview_deployment_id }}
+        run: |
+          set -euo pipefail
+          node .github/staging-ai-02-07-05/offline-workflow-admission.mjs
+      - name: Confirm live Staging execution remains disabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'AI_020705_LIVE_EXECUTION_NOT_WIRED: NO DB mutation, secrets, JWT or paid provider call.'
