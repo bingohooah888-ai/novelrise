@@ -2,7 +2,7 @@
 // No CLI, workflow trigger, network client, credential, Preview or paid call.
 // Only a separately approved protected workflow may supply real adapters.
 import { coordinate020705ProtectedStagingTrial } from './approved-stage-coordinator.mjs';
-import { matches020705WatchdogArm } from './independent-watchdog-arm.mjs';
+import { admit020705SignedWatchdogArmOnce } from './watchdog-arm-one-use.mjs';
 import { create020705StagingCleanup } from './staging-synthetic-cleanup.mjs';
 import { matchesPaidTrialOneShotGuardedProviderScope } from
   '../../api/_lib/ai/paid-trial-one-shot-provider.js';
@@ -42,6 +42,10 @@ export function create020705ProtectedStageExecutor({
   revokeSyntheticSessions,
   independentCensus,
   readIndependentWatchdogArm,
+  trustedControllerPublicKey,
+  trustedControllerKeyId,
+  expectedChallengeNonce,
+  consumeWatchdogChallengeOnce,
   proofs,
   now = Date.now
 } = {}) {
@@ -92,6 +96,10 @@ export function create020705ProtectedStageExecutor({
     typeof writeComment !== 'function' ||
     typeof now !== 'function' ||
     typeof readIndependentWatchdogArm !== 'function' ||
+    !trustedControllerPublicKey ||
+    typeof trustedControllerKeyId !== 'string' ||
+    typeof expectedChallengeNonce !== 'string' ||
+    typeof consumeWatchdogChallengeOnce !== 'function' ||
     !proofs ||
     READ_ONLY_PROOFS.some((name) => typeof proofs[name] !== 'function')
   ) {
@@ -137,18 +145,25 @@ export function create020705ProtectedStageExecutor({
         }
         if (verified !== true) deny();
       }
-      // A distinct external supervisor must be armed before OWNER CLAIM.
-      // The injected observer's authenticity is NOT established here; the
-      // future protected runner must authenticate its independent channel.
-      let receipt;
+      // Require a signed and atomically spent external-controller arm BEFORE
+      // OWNER CLAIM or DB/model access. The injected trust key, challenge and
+      // durable consumer are NOT authenticated by this dormant module.
+      // Real independent watchdog/kill/cleanup need separate OWNER approvals.
+      let envelope;
       try {
-        receipt = await readIndependentWatchdogArm(proofScope);
+        envelope = await readIndependentWatchdogArm(proofScope);
       } catch {
         deny();
       }
-      if (!matches020705WatchdogArm({
-        scope: proofScope, receipt, now
-      })) deny();
+      if (!(await admit020705SignedWatchdogArmOnce({
+        scope: proofScope,
+        envelope,
+        trustedControllerPublicKey,
+        trustedControllerKeyId,
+        expectedChallengeNonce,
+        consumeChallengeOnce: consumeWatchdogChallengeOnce,
+        now
+      }))) deny();
       return coordinate020705ProtectedStagingTrial({
         readComments,
         writeComment,
