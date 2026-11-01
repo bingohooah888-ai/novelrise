@@ -4,6 +4,7 @@ import test from 'node:test';
 import { create020705StagingCleanup } from '../.github/staging-ai-02-07-05/staging-synthetic-cleanup.mjs';
 
 const USER = '11111111-1111-4111-8111-111111111111';
+// prettier-ignore
 const SYNTHETIC = {
   supabaseUrl: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
   projectRef: 'wmlzjgvxgoyrovdhbqbg',
@@ -13,6 +14,7 @@ const SYNTHETIC = {
   approvalCommentId: 901
 };
 
+// prettier-ignore
 function fixture({ realUser = false, badCensus = false, failedDisable = false } = {}) {
   const calls = [];
   const serviceClient = {
@@ -103,6 +105,7 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false } 
   return { cleanup, calls };
 }
 
+// prettier-ignore
 test('stop attempts both Staging switch reset and external kill switch', async () => {
   const { cleanup, calls } = fixture();
   assert.equal(await cleanup.stop(), true);
@@ -121,12 +124,14 @@ test('stop attempts both Staging switch reset and external kill switch', async (
   assert.ok(calls.some((call) => call.action === 'disableExternal'));
 });
 
+// prettier-ignore
 test('external kill switch failure is reported even when DB reset succeeds', async () => {
   const { cleanup, calls } = fixture({ failedDisable: true });
   assert.equal(await cleanup.stop(), false);
   assert.ok(calls.some((call) => call.table === 'novelight_ai_runtime_settings'));
 });
 
+// prettier-ignore
 test('cleanup deletes only synthetic usage rows and the validated novel/user', async () => {
   const { cleanup, calls } = fixture();
   assert.equal(await cleanup.cleanup(), true);
@@ -146,6 +151,7 @@ test('cleanup deletes only synthetic usage rows and the validated novel/user', a
   assert.ok(calls.some((c) => c.action === 'deleteAuth'));
 });
 
+// prettier-ignore
 test('real users are refused before any deletion', async () => {
   const { cleanup, calls } = fixture({ realUser: true });
   await assert.rejects(
@@ -155,6 +161,7 @@ test('real users are refused before any deletion', async () => {
   assert.ok(!calls.some((c) => c.operation === 'delete'));
 });
 
+// prettier-ignore
 test('Production URL is refused and final census is independently mandatory', async () => {
   assert.throws(
     () => create020705StagingCleanup({
