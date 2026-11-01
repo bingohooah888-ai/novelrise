@@ -5,6 +5,8 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { setTimeout } from 'node:timers';
+import { URL } from 'node:url';
 
 // prettier-ignore
 const fixture = new URL('./fixtures/ai-020705-independent-process-offline.mjs', import.meta.url);
