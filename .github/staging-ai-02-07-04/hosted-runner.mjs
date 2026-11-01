@@ -231,7 +231,7 @@ async function live() {
     // actual protected Preview, and explicitly clicks the candidate button.
     // No production endpoint, external AI or screenshot is reachable.
     try {
-      execFileSync('node',['tests/e2e/ai-020704-hosted-review-browser.mjs'],{
+      const childOutput=execFileSync('node',['tests/e2e/ai-020704-hosted-review-browser.mjs'],{
         encoding:'utf8',
         timeout:90000,
         maxBuffer:32768,
@@ -246,15 +246,22 @@ async function live() {
           NOVELIGHT_HOSTED_TEST_PASSWORD:password
         }
       });
+      // Child output is not logged: accept only a fixed, non-secret success marker.
+      if(!childOutput.trim().endsWith('AI_020704_HOSTED_REAL_BROWSER_REVIEW_PASS'))fail();
+      phase('HOSTED_BROWSER_CHILD_PASS');
     } catch (error) {
-      // Print only an allowlisted stage ID; never browser stderr or secrets.
-      const match=String(error?.stderr||'').match(
-        /AI_020704_BROWSER_FAILURE_PHASE:(LOGIN_PAGE|LOGIN_FORM|LOGIN_REDIRECT|STORY_PAGE|OWNER_LOADED|REVIEW_ATTACH|CANDIDATE|ACCEPT|VERIFY|SIGNOUT|BOOTSTRAP)/
+      // Never log raw stdout, stderr, HTTP messages, tokens or manuscript data.
+      // Only the exact allowlisted failure phase may escape the child process.
+      const childMarkers=[error?.stderr,error?.stdout].filter(Boolean).map(String).join('\n');
+      const match=childMarkers.match(
+        /AI_020704_BROWSER_FAILURE_PHASE:(CHROME_LAUNCH|BROWSER_CONTEXT|LOGIN_PAGE|LOGIN_FORM|LOGIN_REDIRECT|STORY_PAGE|OWNER_LOADED|REVIEW_ATTACH|CANDIDATE|ACCEPT|VERIFY|SIGNOUT|BOOTSTRAP)/
       );
-      if(match)process.stderr.write('STAGING_AI_020704_BROWSER_FAILURE_PHASE:'+match[1]+'\n');
+      process.stderr.write('STAGING_AI_020704_BROWSER_FAILURE_PHASE:'+(match?.[1]||'UNCLASSIFIED')+'\n');
       fail();
     }
+    phase('POST_BROWSER_CANDIDATE_CHECK');
     if((await workflow.list({token,novelId:NOVEL})).candidates.length!==0)fail();
+    phase('POST_BROWSER_PERSISTENCE_CHECK');
     const stored=JSON.parse(sql(db,"select json_build_object("+
       "'accepted',(select count(*) from public.novelight_ai_review_candidates where novel_id="+NOVEL+" and status='accepted'),"+
       "'canon',(select count(*) from public.novelight_ai_bible_facts where novel_id="+NOVEL+"))"));
@@ -271,7 +278,10 @@ async function live() {
       "'revokes',(select count(*) from public.novelight_ai_external_consent_action_audit where novel_id="+NOVEL+" and action='revoked'))"));
     if(counts.consents!==1||counts.grants!==1||counts.revokes!==1)fail();
     phase('SYNTHETIC_PROOF_PASS');
-  } catch { failed=true; }
+  } catch {
+    failed=true;
+    phase('SYNTHETIC_FLOW_FAILED');
+  }
   finally {
     phase('SYNTHETIC_CLEANUP');
     if(token)try{const r=await admin.auth.admin.signOut(token,'global');if(r.error)failed=true;}
@@ -300,7 +310,11 @@ async function live() {
         if(extra!=='0')fail();
       }
       migrationParity(db);
-    }catch{failed=true;}
+      phase('FINAL_CENSUS_PASS');
+    }catch{
+      failed=true;
+      phase('FINAL_CENSUS_FAILED');
+    }
   }
   if(failed)fail();
   process.stdout.write('STAGING_AI_020704_HOSTED_BROWSER_REVIEW_PASS: synthetic-only, no residue\n');
