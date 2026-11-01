@@ -1,17 +1,28 @@
+// prettier-ignore
 import assert from 'node:assert/strict';
+// prettier-ignore
 import test from 'node:test';
+// prettier-ignore
 import { readFileSync } from 'node:fs';
+// prettier-ignore
 import { URL } from 'node:url';
+// prettier-ignore
 import {
   createOwnerNovelBible020705GuardedLiveTrialBridge,
   resolve020705GuardedTrialScope
 } from '../api/_lib/ai/owner-novel-bible-020705-guarded-live.js';
 
+// prettier-ignore
 const NOW = Date.parse('2026-11-01T08:00:00Z');
+// prettier-ignore
 const SHA = 'a'.repeat(40);
+// prettier-ignore
 const OWNER = '11111111-1111-4111-8111-111111111111';
+// prettier-ignore
 const PREVIEW = 'dpl_synthetic123';
+// prettier-ignore
 const COMMENT_ID = 777;
+// prettier-ignore
 const RUN_ID = 1001;
 
 // prettier-ignore
@@ -24,6 +35,7 @@ const FLAGS = [
   'NOVELIGHT_AI_TRIAL_LIVE_BINDING_ENABLED'
 ];
 
+// prettier-ignore
 function config() {
   return {
     ...Object.fromEntries(FLAGS.map((name) => [name, 'true'])),
@@ -64,6 +76,7 @@ function config() {
   };
 }
 
+// prettier-ignore
 function comments({ consumed = false, claimed = true } = {}) {
   const payload = {
     actorId: OWNER,
@@ -110,6 +123,7 @@ function comments({ consumed = false, claimed = true } = {}) {
   return result;
 }
 
+// prettier-ignore
 function client() {
   return {
     supabaseUrl: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
@@ -119,6 +133,7 @@ function client() {
   };
 }
 
+// prettier-ignore
 test('production HTTP default is the guarded bridge, never legacy', () => {
   const s = readFileSync(
     new URL('../api/ai-owner-bible-analyze.js', import.meta.url),
@@ -129,6 +144,7 @@ test('production HTTP default is the guarded bridge, never legacy', () => {
   assert.equal(createOwnerNovelBible020705GuardedLiveTrialBridge({ env: {} }), null);
 });
 
+// prettier-ignore
 test('Staging and exact Preview must match, old flags cannot bypass guard', () => {
   const base = config();
   const bad = [
@@ -163,6 +179,7 @@ test('Staging and exact Preview must match, old flags cannot bypass guard', () =
   assert.ok(resolve020705GuardedTrialScope(base, NOW));
 });
 
+// prettier-ignore
 test('verified OWNER and claimed GitHub ledger bind one guarded author bridge', async () => {
   let providerCreated = 0;
   const factory = createOwnerNovelBible020705GuardedLiveTrialBridge({
@@ -191,6 +208,7 @@ test('verified OWNER and claimed GitHub ledger bind one guarded author bridge', 
   );
 });
 
+// prettier-ignore
 test('no owner claim, consumed claim, mismatched owner or GitHub outage deny', async () => {
   for (const item of [
     { readComments: async () => comments({ claimed: false }) },
@@ -220,6 +238,7 @@ test('no owner claim, consumed claim, mismatched owner or GitHub outage deny', a
   }
 });
 
+// prettier-ignore
 test('wrong client, wrong owner and expired proof deny before model creation', async () => {
   const factory = createOwnerNovelBible020705GuardedLiveTrialBridge({
     env: config(), now: () => NOW,
