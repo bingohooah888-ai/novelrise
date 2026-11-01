@@ -197,6 +197,7 @@ test('production HTTP default uses independent live activation, not direct bridg
   assert.match(source, /createTrialBridge: createOwnerNovelBibleLiveTrialBridge/);
 });
 
+// prettier-ignore
 test('02-07-05 fallback needs both consent and combined cost admission', () => {
   const base = approvedEnv();
   const first = {
@@ -237,6 +238,7 @@ test('02-07-05 fallback needs both consent and combined cost admission', () => {
   assert.equal(bothDisclosed.providerFactories(), 0);
 });
 
+// prettier-ignore
 test('02-07-05 trial ceiling and one-hour expiry require explicit config', () => {
   const base = approvedEnv();
   const bounded = build({
