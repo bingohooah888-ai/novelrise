@@ -259,13 +259,41 @@ async function live() {
       process.stderr.write('STAGING_AI_020704_BROWSER_FAILURE_PHASE:'+(match?.[1]||'UNCLASSIFIED')+'\n');
       fail();
     }
-    phase('POST_BROWSER_CANDIDATE_CHECK');
-    if((await workflow.list({token,novelId:NOVEL})).candidates.length!==0)fail();
+    // Check persisted state BEFORE relying on the runner's separate JWT.
+    // This makes a session failure distinguishable from a missing DB write.
     phase('POST_BROWSER_PERSISTENCE_CHECK');
     const stored=JSON.parse(sql(db,"select json_build_object("+
-      "'accepted',(select count(*) from public.novelight_ai_review_candidates where novel_id="+NOVEL+" and status='accepted'),"+
+      "'total',(select count(*) from public.novelight_ai_review_candidates where novel_id="+NOVEL+"),"+
+      "'accepted',(select count(*) from public.novelight_ai_review_candidates where novel_id="+NOVEL+" and status='accepted' and revision=2),"+
+      "'pending',(select count(*) from public.novelight_ai_review_candidates where novel_id="+NOVEL+" and status='pending'),"+
       "'canon',(select count(*) from public.novelight_ai_bible_facts where novel_id="+NOVEL+"))"));
-    if(stored.accepted!==1||stored.canon!==0)fail();
+    if(stored.total!==1||stored.accepted!==1||
+       stored.pending!==0||stored.canon!==0){
+      phase('POST_BROWSER_PERSISTENCE_MISMATCH');
+      fail();
+    }
+    phase('POST_BROWSER_PERSISTENCE_PASS');
+    phase('POST_BROWSER_RUNNER_JWT_CHECK');
+    let authOk=false;
+    try{
+      const auth=await admin.auth.getUser(token);
+      authOk=!auth.error&&auth.data?.user?.id===ID;
+    }catch{}
+    if(!authOk){
+      phase('POST_BROWSER_RUNNER_JWT_FAILED');
+      fail();
+    }
+    phase('POST_BROWSER_CANDIDATE_CHECK');
+    let pending;
+    try{pending=await workflow.list({token,novelId:NOVEL});}
+    catch{
+      phase('POST_BROWSER_CANDIDATE_LIST_FAILED');
+      fail();
+    }
+    if(pending.novelId!==NOVEL||pending.candidates.length!==0){
+      phase('POST_BROWSER_PENDING_REMAINS');
+      fail();
+    }
     phase('REVIEW_CANDIDATE_PERSISTENCE_PASS');
     phase('SYNTHETIC_REVOKE');
     const revoked=await runtime.revoke({token,novelId:NOVEL,processor:'openai',
