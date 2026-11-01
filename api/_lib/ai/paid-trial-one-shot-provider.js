@@ -2,7 +2,7 @@
 // endpoint. Never grants permission, sets budgets or generates credentials.
 // The separately approved caller must first verify GitHub OWNER ledger,
 // Preview identity, source consent and Auth; all are required input evidence.
-const GUARDED_PROVIDERS = new WeakSet();
+const GUARDED_PROVIDERS = new WeakMap();
 const STAGING_REF = 'wmlzjgvxgoyrovdhbqbg';
 const STAGING_URL = 'https://' + STAGING_REF + '.supabase.co';
 const SHA = /^[a-f0-9]{40}$/u;
@@ -96,10 +96,25 @@ export function createPaidTrialOneShotOpenAiProvider({
       return underlyingProvider.generate(args);
     }
   });
-  GUARDED_PROVIDERS.add(guarded);
+  GUARDED_PROVIDERS.set(guarded, Object.freeze({
+    approvalCommentId: approved.commentId,
+    actorId: approved.ownerId,
+    novelId: approved.novelId,
+    episodeId: approved.episodeId,
+    mainSha: approved.mainSha,
+    previewDeploymentId: approved.previewDeploymentId,
+    capMicros: approved.capMicros
+  }));
   return guarded;
 }
 
 export function isPaidTrialOneShotGuardedProvider(provider) {
   return GUARDED_PROVIDERS.has(provider);
+}
+
+export function matchesPaidTrialOneShotGuardedProviderScope(provider, scope) {
+  const claim = GUARDED_PROVIDERS.get(provider);
+  if (!claim || !scope || typeof scope !== 'object') return false;
+  return Object.keys(claim).every((key) => claim[key] === scope[key]) &&
+    Object.keys(scope).length === Object.keys(claim).length;
 }
