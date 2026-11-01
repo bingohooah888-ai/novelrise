@@ -371,3 +371,45 @@ test('providers parse usage without touching the live network', async () => {
   assert.equal(output.text, 'yes');
   assert.equal(output.usage.outputTokens, 7);
 });
+
+test('02-07-05 failed attempt plus unknown usage settles full fallback ceiling once', async () => {
+  const routes = ['first', 'second'].map((provider) => ({
+    provider,
+    model: 'synthetic-offline',
+    inputMicrosPerMillion: 1000000,
+    outputMicrosPerMillion: 2000000,
+    maxOutputTokens: 128
+  }));
+  const { router, state } = fakeRouter({
+    routes: { light: routes },
+    providers: {
+      first: {
+        async generate() {
+          state.calls += 1;
+          throw Object.assign(new Error('synthetic timeout'), {
+            retryable: true
+          });
+        }
+      },
+      second: {
+        async generate() {
+          state.calls += 1;
+          return { text: 'synthetic result', usage: null };
+        }
+      }
+    }
+  });
+  const response = await router.run(REQUEST);
+  assert.equal(response.provider, 'second');
+  assert.equal(state.calls, 2);
+  assert.equal(state.reserves.length, 1);
+  assert.equal(state.settlements.length, 1);
+  assert.equal(state.audits.length, 1);
+  assert.equal(
+    state.settlements[0].chargedMicros,
+    state.reserves[0].ceilingMicros
+  );
+  assert.equal(state.audits[0].chargedMicros, state.reserves[0].ceilingMicros);
+  assert.equal(state.audits[0].outcome, 'success');
+  assert.ok(!JSON.stringify(state.audits).includes(REQUEST.user));
+});
