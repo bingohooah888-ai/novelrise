@@ -31,13 +31,16 @@ export async function runHostedOwnerReviewBrowser(env = process.env) {
   ) denied();
   const origin = env.NOVELIGHT_HOSTED_PREVIEW_ORIGIN;
   const target = new URL(origin).hostname;
-  // CI's ubuntu-latest runner provides Chrome; no Playwright download is needed.
-  const browser = await chromium.launch({ headless: true, channel: 'chrome' });
+  let browser;
   let context;
   let page;
   const apiPosts = [];
-  let phase = 'BOOTSTRAP';
+  let phase = 'CHROME_LAUNCH';
   try {
+    // CI's ubuntu-latest runner provides Chrome; no Playwright download is needed.
+    // Launch must be within the sanitized phase handler.
+    browser = await chromium.launch({ headless: true, channel: 'chrome' });
+    phase = 'BROWSER_CONTEXT';
     context = await browser.newContext({ locale: 'ja-JP' });
     page = await context.newPage();
     // Vercel bypass credential must ONLY be delivered to the pinned Preview.
@@ -146,7 +149,7 @@ export async function runHostedOwnerReviewBrowser(env = process.env) {
     denied();
   } finally {
     await context?.close().catch(() => {});
-    await browser.close().catch(() => {});
+    await browser?.close().catch(() => {});
   }
 }
 
