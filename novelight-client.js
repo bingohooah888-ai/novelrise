@@ -213,8 +213,6 @@
         ) {
           throw new Error('CONFIG_DRIFT: Refusing unsafe Preview auth client.');
         }
-      } else if (clientUrl !== url || clientKey !== key) {
-        throw new Error('CONFIG_DRIFT: Public auth client scope mismatch.');
       }
       if (typeof client?.auth?.getSession !== 'function') {
         throw new Error('CONFIG_DRIFT: Public auth client is unavailable.');

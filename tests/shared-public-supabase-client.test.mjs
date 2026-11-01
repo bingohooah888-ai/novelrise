@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-const runtime = readFileSync(new URL('../novelight-client.js', import.meta.url), 'utf8');
+const runtime = readFileSync(
+  new URL('../novelight-client.js', import.meta.url),
+  'utf8'
+);
 const from = runtime.indexOf('  const sharedPublicAuthClients = new Map();');
 const until = runtime.indexOf('  function createAuthClient(...args)', from);
 assert.ok(from !== -1 && until > from, 'shared client factory must be present');
@@ -14,7 +17,11 @@ const stage = {
   supabasePublishableKey: 'sb_publishable_STAGING_TEST_ONLY'
 };
 
-function fixture({ preview = false, activeConfig = null, brokenClient = false } = {}) {
+function fixture({
+  preview = false,
+  activeConfig = null,
+  brokenClient = false
+} = {}) {
   let creations = 0;
   const actual = [];
   const scope = {
@@ -39,7 +46,13 @@ function fixture({ preview = false, activeConfig = null, brokenClient = false } 
     'activeStagingBrowserConfig',
     source
   )(scope, 'fiepaguycecrredwrcwx.supabase.co', () => preview, activeConfig);
-  return { scope, actual, get creations() { return creations; } };
+  return {
+    scope,
+    actual,
+    get creations() {
+      return creations;
+    }
+  };
 }
 
 test('same public project and key share one GoTrue client', () => {
@@ -68,7 +81,10 @@ test('custom auth options are never cached or conflated', () => {
 test('other Supabase projects remain isolated', () => {
   const f = fixture();
   const x = 'https://other.supabase.co';
-  assert.notEqual(f.scope.supabase.createClient(x, key), f.scope.supabase.createClient(x, key));
+  assert.notEqual(
+    f.scope.supabase.createClient(x, key),
+    f.scope.supabase.createClient(x, key)
+  );
   assert.equal(f.creations, 2);
 });
 test('Preview caches only clients from validated Staging bootstrap', () => {
@@ -87,12 +103,19 @@ test('Preview refuses missing bootstrap and never caches unsafe client', () => {
   assert.equal(f.creations, 1);
 });
 test('Preview refuses Production credential fallback even with a declared Staging config', () => {
-  const f = fixture({ preview: true, activeConfig: stage, brokenClient: true });
+  const f = fixture({
+    preview: true,
+    activeConfig: stage,
+    brokenClient: true
+  });
   assert.throws(
     () => f.scope.supabase.createClient(productionUrl, key),
     /unsafe Preview auth client/
   );
 });
 test('Scout notification capture deduplicates shared client registrations', () => {
-  assert.match(runtime, /!window\.__novelightScoutTitleToastPendingClients\.includes\(client\)/);
+  assert.match(
+    runtime,
+    /!window\.__novelightScoutTitleToastPendingClients\.includes\(client\)/
+  );
 });
