@@ -64,6 +64,7 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"docs/NOCTER-VISUAL-GUIDE.md","status":"CURRENT","role":"nocter-visual-guide","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NOVELIGHT-ADMIN.md","status":"CURRENT","role":"admin-guide","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NOVELIGHT-AI-OWNER-TRIAL-RUNBOOK.md","status":"CURRENT","role":"novelight-ai-owner-trial-readonly-runbook","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
+    {"path":"docs/NOVELIGHT-AI-PHASE2-CLOSEOUT-GATES.md","status":"CURRENT","role":"novelight-ai-phase2-closeout-gates","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NOVELIGHT-COMMANDER-GITHUB-BRIDGE.md","status":"CURRENT","role":"novelight-commander-github-bridge","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NOVELIGHT-MASTER.md","status":"CURRENT","role":"master","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/NLO-GSC-INDEX-INSPECTION.md","status":"CURRENT","role":"nlo-gsc-readonly-url-inspection-guide","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
