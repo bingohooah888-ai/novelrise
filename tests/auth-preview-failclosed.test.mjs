@@ -18,7 +18,7 @@ function clientInitializer(file) {
       : 'const isPreviewAuthHost =';
   const start = html.indexOf(startMarker);
   const end = html.indexOf('const form=', start);
-  assert.ok(start !== -1 && end > start, file + ': auth initializer is present');
+  assert.ok(start !== -1 && end > start);
   return html.slice(start, end);
 }
 
@@ -44,12 +44,13 @@ function executeInitializer(file, hostname, createAuthClient) {
       }
     }
   };
-  const run = () => runInNewContext(clientInitializer(file), scope, { timeout: 1000 });
+  const run = () =>
+    runInNewContext(clientInitializer(file), scope, { timeout: 1000 });
   return { calls, run };
 }
 
 for (const file of AUTH_PAGES) {
-  test(file + ': Preview blocks auth when shared bootstrap is missing', () => {
+  test(`${file}: Preview blocks missing bootstrap`, () => {
     const { calls, run } = executeInitializer(
       file,
       'novelrise-isyvg7cnr-ranobe1.vercel.app'
@@ -58,7 +59,7 @@ for (const file of AUTH_PAGES) {
     assert.equal(calls.length, 0);
   });
 
-  test(file + ': Preview requires guarded factory, never direct Production client', () => {
+  test(`${file}: Preview uses guarded factory`, () => {
     const { calls, run } = executeInitializer(
       file,
       'novelrise-isyvg7cnr-ranobe1.vercel.app',
@@ -68,7 +69,7 @@ for (const file of AUTH_PAGES) {
     assert.deepEqual(calls.map((call) => call.route), ['guarded']);
   });
 
-  test(file + ': failed Staging configuration does not fall back to Production', () => {
+  test(`${file}: Staging failure cannot fall back`, () => {
     const { calls, run } = executeInitializer(
       file,
       'novelrise-isyvg7cnr-ranobe1.vercel.app',
@@ -80,18 +81,21 @@ for (const file of AUTH_PAGES) {
     assert.deepEqual(calls.map((call) => call.route), ['guarded']);
   });
 
-  test(file + ': Production retains existing client when common runtime is absent', () => {
+  test(`${file}: Production fallback is preserved`, () => {
     const { calls, run } = executeInitializer(file, 'novelight.jp');
     assert.doesNotThrow(run);
     assert.deepEqual(calls.map((call) => call.route), ['direct']);
   });
 }
 
-test('shared runtime exports explicit Preview-safe auth factory after bootstrap', () => {
+test('shared runtime exports Preview-safe auth factory', () => {
   const source = readFileSync('novelight-client.js', 'utf8');
   assert.match(source, /previewSupabaseBootstrapInstalled = false/);
   assert.match(source, /previewSupabaseBootstrapInstalled = true/);
   assert.match(source, /function createAuthClient\(\.\.\.args\)/);
-  assert.match(source, /isVercelPreviewHost\(\) && !previewSupabaseBootstrapInstalled/);
+  assert.match(
+    source,
+    /isVercelPreviewHost\(\) && !previewSupabaseBootstrapInstalled/
+  );
   assert.match(source, /window\.NovelightClient = \{\s*createAuthClient,/);
 });
