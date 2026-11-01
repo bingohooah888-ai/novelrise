@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+// prettier-ignore
 import { create020705ProtectedStageExecutor } from
   '../.github/staging-ai-02-07-05/protected-stage-executor.mjs';
+// prettier-ignore
 import { createPaidTrialOneShotOpenAiProvider } from
   '../api/_lib/ai/paid-trial-one-shot-provider.js';
 
@@ -10,13 +12,15 @@ const NOW = Date.parse('2026-11-01T08:00:00Z');
 const OWNER_ID = '11111111-1111-4111-8111-111111111111';
 const SHA = 'a'.repeat(40);
 const PREVIEW = 'dpl_test123';
-const URL = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
+const STAGING_URL = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
+// prettier-ignore
 const ZERO = [
   'users', 'identities', 'sessions', 'profiles', 'novels', 'episodes',
   'facts', 'analysis', 'reviewCandidates', 'consents', 'consentAudit',
   'usageRequests', 'usageAudit'
 ];
 
+// prettier-ignore
 function setup({ failedModel = false, failedStop = false, failedCensus = false } = {}) {
   const actions = [];
   const approvalCommentId = 777;
@@ -57,7 +61,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
     return chain;
   }
   const serviceClient = {
-    supabaseUrl: URL,
+    supabaseUrl: STAGING_URL,
     async rpc() {
       actions.push('db-claim');
       if (dbClaimed) return { error: null, data: false };
@@ -74,7 +78,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
   };
   const synthetic = {
     verifiedSynthetic: true,
-    supabaseUrl: URL,
+    supabaseUrl: STAGING_URL,
     projectRef: 'wmlzjgvxgoyrovdhbqbg',
     userId: OWNER_ID,
     novelId: 41,
@@ -116,7 +120,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
     },
     deployment: {
       projectRef: synthetic.projectRef,
-      supabaseUrl: URL,
+      supabaseUrl: STAGING_URL,
       isProduction: false,
       ready: true,
       sha: SHA,
@@ -139,7 +143,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
     trustedRef: 'refs/heads/main',
     vercelTarget: 'preview',
     projectRef: synthetic.projectRef,
-    supabaseUrl: URL,
+    supabaseUrl: STAGING_URL,
     mainSha: SHA,
     previewDeploymentId: PREVIEW,
     approvalCommentId,
@@ -204,6 +208,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
   return { options, actions, calls: () => modelCalls, comments };
 }
 
+// prettier-ignore
 test('preflight, one paid attempt, stop, cleanup, census, consume in strict order', async () => {
   const { options, actions, calls } = setup();
   const runner = create020705ProtectedStageExecutor(options);
@@ -222,6 +227,7 @@ test('preflight, one paid attempt, stop, cleanup, census, consume in strict orde
   assert.equal(calls(), 1);
 });
 
+// prettier-ignore
 test('failed proof cannot CLAIM, write to DB or call model', async () => {
   const { options, actions, calls } = setup();
   options.proofs.verifyApprovedPreview = async () => false;
@@ -232,6 +238,7 @@ test('failed proof cannot CLAIM, write to DB or call model', async () => {
   assert.equal(actions.includes('db-claim'), false);
 });
 
+// prettier-ignore
 test('production, mismatched provider scope or unprotected execution is denied', () => {
   const factory = () => setup().options;
   assert.throws(() => create020705ProtectedStageExecutor({
@@ -253,6 +260,7 @@ test('production, mismatched provider scope or unprotected execution is denied',
   );
 });
 
+// prettier-ignore
 test('model failure is consumed and sanitised, no retry', async () => {
   const { options, actions, calls } = setup({ failedModel: true });
   const runner = create020705ProtectedStageExecutor(options);
@@ -262,6 +270,7 @@ test('model failure is consumed and sanitised, no retry', async () => {
   assert.ok(actions.includes('census'));
 });
 
+// prettier-ignore
 test('failure of stop or independent census is fatal and still consumed', async () => {
   for (const config of [{ failedStop: true }, { failedCensus: true }]) {
     const { options, actions, calls } = setup(config);
@@ -274,6 +283,7 @@ test('failure of stop or independent census is fatal and still consumed', async 
   }
 });
 
+// prettier-ignore
 test('offline workflow remains unwired: no paid stage, secrets or mutations', () => {
   const workflow = readFileSync(
     new URL('../.github/workflows/ai-020705-owner-staging-paid-trial.yml', import.meta.url),

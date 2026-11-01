@@ -96,6 +96,7 @@ export function createPaidTrialOneShotOpenAiProvider({
       return underlyingProvider.generate(args);
     }
   });
+  // prettier-ignore
   GUARDED_PROVIDERS.set(guarded, Object.freeze({
     approvalCommentId: approved.commentId,
     actorId: approved.ownerId,
@@ -112,6 +113,7 @@ export function isPaidTrialOneShotGuardedProvider(provider) {
   return GUARDED_PROVIDERS.has(provider);
 }
 
+// prettier-ignore
 export function matchesPaidTrialOneShotGuardedProviderScope(provider, scope) {
   const claim = GUARDED_PROVIDERS.get(provider);
   if (!claim || !scope || typeof scope !== 'object') return false;
