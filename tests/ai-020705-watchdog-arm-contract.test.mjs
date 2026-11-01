@@ -5,6 +5,7 @@ import { matches020705WatchdogArm } from
   '../.github/staging-ai-02-07-05/independent-watchdog-arm.mjs';
 
 const NOW = Date.parse('2026-11-01T08:00:00Z');
+// prettier-ignore
 const scope = Object.freeze({
   repository: 'bingohooah888-ai/novelrise',
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg',
@@ -16,6 +17,7 @@ const scope = Object.freeze({
   novelId: 41,
   episodeId: 11
 });
+// prettier-ignore
 function receipt() {
   return {
     ...scope,
@@ -35,12 +37,15 @@ function receipt() {
     expiresAtMs: NOW + 10000
   };
 }
+// prettier-ignore
 const checks = (r, s = scope, now = NOW) =>
   matches020705WatchdogArm({scope: s, receipt: r, now: () => now});
 
+// prettier-ignore
 test('matching synthetic arm receipt validates shape only, not provenance', () => {
   assert.equal(checks(receipt()), true);
 });
+// prettier-ignore
 test('no heartbeat, runner self-attestation or forged scope fails closed', () => {
   assert.equal(checks(), false);
   for (const change of [
@@ -59,6 +64,7 @@ test('no heartbeat, runner self-attestation or forged scope fails closed', () =>
     {noPaidRetry: false}
   ]) assert.equal(checks({...receipt(), ...change}), false);
 });
+// prettier-ignore
 test('expired, stale, future or overlong lease is rejected', () => {
   for (const change of [
     {observedAtMs: NOW - 15001},
@@ -69,6 +75,7 @@ test('expired, stale, future or overlong lease is rejected', () => {
     {observedAtMs: NOW + 1}
   ]) assert.equal(checks({...receipt(), ...change}), false);
 });
+// prettier-ignore
 test('external kill, disable, revocation, cleanup and census are all required', () => {
   for (const key of [
     'killAuthorityVerified', 'stagingDisableVerified',
@@ -76,6 +83,7 @@ test('external kill, disable, revocation, cleanup and census are all required', 
     'zeroCensusVerified'
   ]) assert.equal(checks({...receipt(), [key]: false}), false);
 });
+// prettier-ignore
 test('wrong Staging target or missing clock cannot arm anything', () => {
   assert.equal(checks(receipt(), {...scope, stagingProjectRef: 'fiepaguycecrredwrcwx'}), false);
   assert.equal(checks(receipt(), scope, NaN), false);
