@@ -61,7 +61,8 @@ function mock({
       return {
         ok: postStatus === 200,
         async json() {
-          return postPayload ?? {
+          if (postPayload !== null) return postPayload;
+          return {
             novelId: 354,
             candidateId: 7,
             status: 'accepted',
