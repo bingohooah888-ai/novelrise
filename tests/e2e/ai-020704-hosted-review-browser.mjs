@@ -166,9 +166,16 @@ export async function runHostedOwnerReviewBrowser(env = process.env) {
         apiPosts[0] !== '/api/ai-owner-bible-review') denied();
 
     phase = 'SIGNOUT';
-    await page.evaluate(async () => {
-      if (typeof client === 'object') await client.auth.signOut();
+    // Supabase signOut() defaults to global. This browser uses a DIFFERENT
+    // session from the runner's still-needed JWT: revoke this session only.
+    const locallySignedOut = await page.evaluate(async () => {
+      if (typeof client !== 'object') return false;
+      const result = await client.auth.signOut({ scope: 'local' });
+      if (result?.error) return false;
+      const current = await client.auth.getSession();
+      return !current.error && !current.data?.session;
     });
+    if (!locallySignedOut) denied();
     return true;
   } catch {
     // Emit ONLY a fixed phase label; never the error, credentials, URL
