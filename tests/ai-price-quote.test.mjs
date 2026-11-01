@@ -100,3 +100,35 @@ test('quotes contain no raw prompts, author text or network calls', () => {
     globalThis.fetch = oldFetch;
   }
 });
+
+test('02-07-05 pessimistic quote includes every route and is monotonic', () => {
+  const routes = [
+    flash,
+    {
+      provider: 'openai',
+      model: 'synthetic-offline',
+      inputUsdMicrosPerMillion: 750000,
+      outputUsdMicrosPerMillion: 4500000,
+      maxOutputTokens: 1500
+    }
+  ];
+  const low = quote({
+    routes,
+    fxYenPerUsdCeiling: 150,
+    riskBufferBps: 10000
+  });
+  const high = quote({
+    routes,
+    fxYenPerUsdCeiling: 170,
+    riskBufferBps: 15000
+  });
+  for (const result of [low, high]) {
+    assert.equal(
+      result.quoteMicrosJPY,
+      result.routes.reduce((total, route) => total + route.ceilingMicros, 0)
+    );
+    assert.ok(result.routes.every((route) => route.ceilingMicros > 0));
+  }
+  assert.ok(high.quoteMicrosJPY >= low.quoteMicrosJPY);
+  assert.ok(high.quoteMicrosJPY > 0);
+});
