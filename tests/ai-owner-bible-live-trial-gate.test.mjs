@@ -196,3 +196,70 @@ test('production HTTP default uses independent live activation, not direct bridg
   assert.match(source, /createOwnerNovelBibleLiveTrialBridge\(\)/);
   assert.match(source, /createTrialBridge: createOwnerNovelBibleLiveTrialBridge/);
 });
+
+test('02-07-05 fallback needs both consent and combined cost admission', () => {
+  const base = approvedEnv();
+  const first = {
+    ...JSON.parse(base.NOVELIGHT_AI_TRIAL_ROUTES_JSON)[0],
+    inputMicrosPerMillion: 15000000
+  };
+  const second = { ...first, provider: 'gemini' };
+  const single = build({
+    ...base,
+    NOVELIGHT_AI_TRIAL_ROUTES_JSON: JSON.stringify([first])
+  });
+  assert.equal(typeof single.factory, 'function');
+  assert.equal(single.providerFactories(), 1);
+
+  const missingConsent = build({
+    ...base,
+    NOVELIGHT_AI_TRIAL_ROUTES_JSON: JSON.stringify([first, second])
+  });
+  assert.equal(missingConsent.factory, null);
+  assert.equal(missingConsent.providerFactories(), 0);
+
+  const bothDisclosed = build({
+    ...base,
+    NOVELIGHT_AI_CONSENT_DISCLOSURES_JSON: JSON.stringify([
+      ...JSON.parse(base.NOVELIGHT_AI_CONSENT_DISCLOSURES_JSON),
+      {
+        processor: 'gemini',
+        label: '合成試験用の送信先',
+        purpose: '合成原稿の抽出',
+        dataSent: '合成文章',
+        retention: 'テストで通信なし',
+        internationalTransfer: 'テストで通信なし'
+      }
+    ]),
+    NOVELIGHT_AI_TRIAL_ROUTES_JSON: JSON.stringify([first, second])
+  });
+  assert.equal(bothDisclosed.factory, null);
+  assert.equal(bothDisclosed.providerFactories(), 0);
+});
+
+test('02-07-05 trial ceiling and one-hour expiry require explicit config', () => {
+  const base = approvedEnv();
+  const bounded = build({
+    ...base,
+    NOVELIGHT_AI_TRIAL_MAX_REQUEST_MICROS: '10000000',
+    NOVELIGHT_AI_TRIAL_EXPIRES_AT: new Date(
+      NOW + 60 * 60 * 1000
+    ).toISOString()
+  });
+  assert.equal(typeof bounded.factory, 'function');
+  assert.equal(bounded.providerFactories(), 1);
+  for (const change of [
+    { NOVELIGHT_AI_TRIAL_MAX_REQUEST_MICROS: '0' },
+    { NOVELIGHT_AI_TRIAL_MAX_REQUEST_MICROS: '50000001' },
+    { NOVELIGHT_AI_TRIAL_EXPIRES_AT: new Date(NOW).toISOString() },
+    {
+      NOVELIGHT_AI_TRIAL_EXPIRES_AT: new Date(
+        NOW + 24 * 60 * 60 * 1000 + 1
+      ).toISOString()
+    }
+  ]) {
+    const denied = build({ ...base, ...change });
+    assert.equal(denied.factory, null);
+    assert.equal(denied.providerFactories(), 0);
+  }
+});
