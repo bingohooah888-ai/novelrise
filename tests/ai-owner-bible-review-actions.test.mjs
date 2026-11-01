@@ -197,7 +197,13 @@ test('logout clears and removes private candidates', async () => {
 test('failed POST cannot be mistaken for accepted review or trigger retries', async () => {
   const f = mock({ postStatus: 503 });
   assert.equal(
-    await attach({ client: f.client, novelId: 354, ownerId: OWNER, doc: f.doc, fetcher: f.fetcher }),
+    await attach({
+      client: f.client,
+      novelId: 354,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher
+    }),
     true
   );
   const section = f.host.children[0];
@@ -220,11 +226,25 @@ test('failed POST cannot be mistaken for accepted review or trigger retries', as
 
 test('invalid decision receipt or network failure never reports acceptance', async () => {
   for (const options of [
-    { postPayload: { novelId: 354, candidateId: 7, status: 'accepted', revision: 1, canonModified: false } },
+    {
+      postPayload: {
+        novelId: 354,
+        candidateId: 7,
+        status: 'accepted',
+        revision: 1,
+        canonModified: false
+      }
+    },
     { postThrows: true }
   ]) {
     const f = mock(options);
-    await attach({ client: f.client, novelId: 354, ownerId: OWNER, doc: f.doc, fetcher: f.fetcher });
+    await attach({
+      client: f.client,
+      novelId: 354,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher
+    });
     const list = f.host.children[0].children[1];
     const row = list.children[0];
     await row.children[1].listeners.click();
