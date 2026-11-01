@@ -254,7 +254,7 @@ async function live() {
       // Only the exact allowlisted failure phase may escape the child process.
       const childMarkers=[error?.stderr,error?.stdout].filter(Boolean).map(String).join('\n');
       const match=childMarkers.match(
-        /AI_020704_BROWSER_FAILURE_PHASE:(CHROME_LAUNCH|BROWSER_CONTEXT|LOGIN_PAGE|LOGIN_FORM|LOGIN_REDIRECT|STORY_PAGE|OWNER_LOADED|REVIEW_ATTACH|CANDIDATE|ACCEPT|VERIFY|SIGNOUT|BOOTSTRAP)/
+        /AI_020704_BROWSER_FAILURE_PHASE:(CHROME_LAUNCH|BROWSER_CONTEXT|LOGIN_PAGE|LOGIN_FORM|LOGIN_REDIRECT|STORY_PAGE|OWNER_LOADED|REVIEW_ATTACH|CANDIDATE|ACCEPT|POST_RESPONSE|DOM_ACCEPT|VERIFY|SIGNOUT|BOOTSTRAP)/
       );
       process.stderr.write('STAGING_AI_020704_BROWSER_FAILURE_PHASE:'+(match?.[1]||'UNCLASSIFIED')+'\n');
       fail();
