@@ -12,6 +12,7 @@ import { createPaidTrialOneShotOpenAiProvider } from '../api/_lib/ai/paid-trial-
 const NOW = Date.parse('2026-11-01T08:00:00Z');
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const SHA = 'a'.repeat(40);
+// prettier-ignore
 const approvalBody = {
   actorId: OWNER,
   approvalScope: 'synthetic-one-provider-one-call-only',
@@ -27,6 +28,7 @@ const approvalBody = {
   provider: 'openai',
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg'
 };
+// prettier-ignore
 const approval = {
   id: 777,
   user: { login: 'bingohooah888-ai' },
@@ -35,6 +37,7 @@ const approval = {
     'NOVELIGHT_STAGING_AI_020705_PAID_APPROVE ' +
     JSON.stringify(approvalBody)
 };
+// prettier-ignore
 const expected = {
   mainSha: SHA,
   previewDeploymentId: 'dpl_test123',
@@ -47,6 +50,7 @@ const expected = {
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg'
 };
 
+// prettier-ignore
 function ledger() {
   const comments = [structuredClone(approval)];
   return {
@@ -62,6 +66,7 @@ function ledger() {
   };
 }
 
+// prettier-ignore
 function runtime({ failModel = false } = {}) {
   const log = [];
   let providerCalls = 0;
@@ -115,6 +120,7 @@ function runtime({ failModel = false } = {}) {
   return { log, guardedProvider, count: () => providerCalls };
 }
 
+// prettier-ignore
 test('OWNER claimed once, replay and consumed comments rejected', async () => {
   const state = ledger();
   const result = await claim020705OwnerApproval({
@@ -155,6 +161,7 @@ test('OWNER claimed once, replay and consumed comments rejected', async () => {
   );
 });
 
+// prettier-ignore
 test('non-owner, wrong SHA and expired scopes are never claimable', () => {
   for (const changed of [
     { user: { login: 'stranger' } },
@@ -186,6 +193,7 @@ test('non-owner, wrong SHA and expired scopes are never claimable', () => {
   }
 });
 
+// prettier-ignore
 test('runner requires a claimed ledger and a real one-shot guarded provider', async () => {
   const state = runtime();
   await assert.rejects(
@@ -213,6 +221,7 @@ test('runner requires a claimed ledger and a real one-shot guarded provider', as
   assert.equal(state.count(), 0);
 });
 
+// prettier-ignore
 test('the only model attempt is always followed by stop, cleanup, census', async () => {
   const state = runtime();
   const response = await run020705SinglePaidTrial({
@@ -231,6 +240,7 @@ test('the only model attempt is always followed by stop, cleanup, census', async
   assert.ok(!JSON.stringify(response).includes('"suggestions"'));
 });
 
+// prettier-ignore
 test('provider error never retries but still stops and cleans', async () => {
   const state = runtime({ failModel: true });
   await assert.rejects(
@@ -250,6 +260,7 @@ test('provider error never retries but still stops and cleans', async () => {
   ]);
 });
 
+// prettier-ignore
 test('failed stop cannot skip cleanup or census; final result stays failure', async () => {
   const state = runtime();
   await assert.rejects(
