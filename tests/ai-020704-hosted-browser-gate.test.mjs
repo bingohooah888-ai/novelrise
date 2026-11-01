@@ -230,6 +230,18 @@ test('one-use OWNER workflow, mandatory cleanup, no external provider', () => {
   assert.match(browser, /phase = 'SIGNOUT'/);
   assert.match(runner, /STAGING_AI_020704_BROWSER_FAILURE_PHASE/);
   assert.match(browser, /AI_020704_BROWSER_FAILURE_PHASE/);
+  assert.match(browser, /let phase = 'CHROME_LAUNCH'/);
+  assert.match(browser, /phase = 'BROWSER_CONTEXT'/);
+  assert.match(browser, /browser = await chromium\.launch/);
+  assert.match(browser, /await browser\?\.close/);
+  assert.match(runner, /HOSTED_BROWSER_CHILD_PASS/);
+  assert.match(runner, /POST_BROWSER_CANDIDATE_CHECK/);
+  assert.match(runner, /POST_BROWSER_PERSISTENCE_CHECK/);
+  assert.match(runner, /FINAL_CENSUS_PASS/);
+  assert.match(runner, /FINAL_CENSUS_FAILED/);
+  assert.match(runner, /UNCLASSIFIED/);
+  assert.match(runner, /childMarkers=\[error\?\.stderr,error\?\.stdout\]/);
+  assert.doesNotMatch(runner, /console\.error\(error\)|console\.log\(error\)/);
   assert.ok(browser.includes('await accept.click()'));
   assert.ok(browser.includes('apiPosts.length !== 1'));
   assert.doesNotMatch(browser, /createOpenAiTextProvider|createGeminiTextProvider/);
