@@ -103,21 +103,15 @@ export function create020705StagingCleanup({
         deny();
       }
 
-      // Delete usage and audit rows first (some FKs have SET NULL), then
-      // delete novel and synthetic user; dependent episodes/facts/candidates
-      // cascade from the exact synthetic novel, never a broad table DELETE.
+      // Usage tables allow service_role DELETE; consent/audit tables do
+      // NOT allow direct DELETE (by design). Their FK ON DELETE CASCADE
+      // removes them when this exact verified synthetic novel is deleted.
       for (const table of [
         'novelight_ai_usage_audit',
-        'novelight_ai_usage_requests',
-        'novelight_ai_external_consent_action_audit',
-        'novelight_ai_external_processing_consents'
+        'novelight_ai_usage_requests'
       ]) {
-        const actorColumn = table.includes('consent') ? 'actor_id' : 'actor_id';
-        await scopedDelete(table, actorColumn, synthetic.userId);
-        const workColumn = table.includes('consent')
-          ? 'novel_id'
-          : 'work_id';
-        await scopedDelete(table, workColumn, synthetic.novelId);
+        await scopedDelete(table, 'actor_id', synthetic.userId);
+        await scopedDelete(table, 'work_id', synthetic.novelId);
       }
       const novelDelete = await serviceClient
         .from('novels')
