@@ -17,7 +17,7 @@ const acquisitionSource = sourceBetween('  async function captureAcquisition(cli
 
 function isPreviewFor(hostname) {
   const scope = { location: { hostname } };
-  return new Function('window', hostSource + '; return isVercelPreviewHost();')(scope);
+  return new Function('window', 'VERCEL_INTERNAL_PRODUCTION_HOST', hostSource + '; return isVercelPreviewHost();')(scope, 'novelrise.vercel.app');
 }
 
 function analyticsFixture(hostname) {
