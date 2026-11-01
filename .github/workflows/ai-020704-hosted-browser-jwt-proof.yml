@@ -165,12 +165,18 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/resolve-staging-session-pooler.mjs
+      - name: Set up locked Node.js 24 runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund --quiet
-      - name: Install isolated Chromium for real hosted browser interaction
-        run: |
-          npm --prefix tests/e2e ci --ignore-scripts --no-audit --no-fund --quiet
-          npm --prefix tests/e2e exec -- playwright install --with-deps chromium
+      - name: Install browser test dependencies for runner Chrome
+        # CI already runs Playwright with preinstalled Chrome on ubuntu-latest.
+        # Avoid apt/download hangs from 'playwright install --with-deps chromium'.
+        run: npm --prefix tests/e2e ci --ignore-scripts --no-audit --no-fund --quiet
       - name: Verify real hosted JWT browser review and cleanup
         shell: bash
         run: node .github/staging-ai-02-07-04/hosted-runner.mjs
