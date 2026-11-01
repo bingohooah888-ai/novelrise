@@ -24,6 +24,7 @@ export function createPaidTrialOneShotOpenAiProvider({
   const expiresAt = Date.parse(approved?.expiresAt);
   const current = now();
   if (
+    serviceClient?.supabaseUrl !== STAGING_URL ||
     typeof serviceClient?.rpc !== 'function' ||
     typeof underlyingProvider?.generate !== 'function' ||
     !Number.isSafeInteger(approved?.commentId) ||
