@@ -8,13 +8,18 @@ import { resolve, sep } from 'node:path';
 const [role, suppliedDir] = process.argv.slice(2);
 const dir = resolve(suppliedDir || '/nonexistent');
 const prefix = resolve(tmpdir(), 'novelight-ai-020705-offline-');
+// prettier-ignore
 const allowed = dir.startsWith(prefix) && !dir.slice(prefix.length).includes(sep);
+// prettier-ignore
 if (process.env.NOVELIGHT_AI_020705_OFFLINE_ONLY !== '1' || !allowed ||
     !['runner', 'model', 'watchdog'].includes(role)) process.exit(2);
 
 const path = (name) => resolve(dir, name);
+// prettier-ignore
 const safeRead = async (name) => JSON.parse(await readFile(path(name), 'utf8'));
+// prettier-ignore
 const safeWrite = async (name, data) => writeFile(path(name), JSON.stringify(data));
+// prettier-ignore
 const alive = (pid) => {
   try {
     process.kill(pid, 0);
@@ -24,6 +29,7 @@ const alive = (pid) => {
   }
 };
 
+// prettier-ignore
 if (role === 'runner') {
   const tick = () => safeWrite('runner-heartbeat.json', {at: Date.now()})
     .catch(() => process.exit(3));
