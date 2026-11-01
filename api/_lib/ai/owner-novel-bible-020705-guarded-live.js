@@ -1,30 +1,41 @@
 // 02-07-05: fail-closed default HTTP assembly for the scoped Staging trial.
 // This module DOES NOT enable AI, migrate a database, grant consent or
 // provision GitHub/Vercel credentials. All missing evidence => null / denied.
+// prettier-ignore
 import { verify020705ClaimedOwnerApproval } from
   '../../../.github/staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
+// prettier-ignore
 import {
   createPaidTrialOneShotOpenAiProvider
 } from './paid-trial-one-shot-provider.js';
+// prettier-ignore
 import { createOwnerNovelBibleLiveTrialBridge } from
   './owner-novel-bible-trial-live.js';
+// prettier-ignore
 import { createOpenAiTextProvider } from './providers.js';
 
+// prettier-ignore
 const STAGING_URL = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
+// prettier-ignore
 const SHA = /^[a-f0-9]{40}$/u;
+// prettier-ignore
 const DEPLOYMENT = /^dpl_[A-Za-z0-9]+$/u;
+// prettier-ignore
 const ID = /^[1-9][0-9]*$/u;
 
+// prettier-ignore
 function deny() {
   throw new Error('AI_020705_GUARDED_TRIAL_DENIED');
 }
 
+// prettier-ignore
 function numberId(value) {
   if (typeof value !== 'string' || !ID.test(value)) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
+// prettier-ignore
 export function resolve020705GuardedTrialScope(env = {}, now = Date.now()) {
   let routes;
   try {
@@ -68,6 +79,7 @@ export function resolve020705GuardedTrialScope(env = {}, now = Date.now()) {
   });
 }
 
+// prettier-ignore
 async function read020705PublicOwnerComments({
   issueNumber = 294,
   fetchImpl = globalThis.fetch
@@ -97,6 +109,7 @@ async function read020705PublicOwnerComments({
 
 // Only the HTTP default export uses this assembly. Legacy trial adapter
 // remains importable in unit tests, but is NOT a live HTTP default.
+// prettier-ignore
 export function createOwnerNovelBible020705GuardedLiveTrialBridge({
   env = process.env,
   now = Date.now,
