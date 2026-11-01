@@ -193,8 +193,9 @@ test('production HTTP default uses independent live activation, not direct bridg
     new URL('../api/ai-owner-bible-analyze.js', import.meta.url),
     'utf8'
   );
-  assert.match(source, /createOwnerNovelBibleLiveTrialBridge\(\)/);
-  assert.match(source, /createTrialBridge: createOwnerNovelBibleLiveTrialBridge/);
+  assert.match(source, /createOwnerNovelBible020705GuardedLiveTrialBridge\(\)/);
+  assert.match(source, /createTrialBridge: createOwnerNovelBible020705GuardedLiveTrialBridge/);
+  assert.doesNotMatch(source, /createTrialBridge: createOwnerNovelBibleLiveTrialBridge/);
 });
 
 // prettier-ignore
