@@ -4,6 +4,7 @@ import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, sep } from 'node:path';
+import { setInterval } from 'node:timers';
 
 const [role, suppliedDir] = process.argv.slice(2);
 const dir = resolve(suppliedDir || '/nonexistent');
