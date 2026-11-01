@@ -255,7 +255,7 @@ test('one-use OWNER workflow, mandatory cleanup, no external provider', () => {
   assert.doesNotMatch(browser, /createOpenAiTextProvider|createGeminiTextProvider/);
 });
 
-test('local browser sign-out preserves independent JWT and DB proof runs first', () => {
+test('local sign-out and DB proof before runner JWT', () => {
   const browser = readFileSync(
     'tests/e2e/ai-020704-hosted-review-browser.mjs',
     'utf8'
