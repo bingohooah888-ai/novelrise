@@ -7,7 +7,7 @@ const PREFIX = 'novelight-ai-gatea-';
 const WORKER_NAME = /^novelight-ai-gatea-[a-z0-9-]{1,60}$/u;
 const NAMESPACE = /^[a-f0-9]{32}$/iu;
 const ID = /^[A-Za-z0-9_-]{1,128}$/u;
-const QUERY = \`query NloGateAMetrics($accountTag: string, $datetimeStart: string, $datetimeEnd: string, $scriptName: string) {
+const QUERY = `query NloGateAMetrics($accountTag: string, $datetimeStart: string, $datetimeEnd: string, $scriptName: string) {
   viewer {
     accounts(filter: {accountTag: $accountTag}) {
       workersInvocationsAdaptive(limit: 100, filter: {
@@ -16,7 +16,7 @@ const QUERY = \`query NloGateAMetrics($accountTag: string, $datetimeStart: strin
       }) { sum { requests errors } }
     }
   }
-}\`;
+}`;
 
 export class NloCloudflareError extends Error {
   constructor(code) {
