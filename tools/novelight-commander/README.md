@@ -65,6 +65,24 @@ gh_pr_checks / gh_run_list / supabase_migration_list / vercel_list
 
 read_novel / read_novel_cached / get_novel_cache / list_novel_cache / read_audit
 
+## Cloudflare独立WatchdogのNLO連携（Gate A、読み取り専用）
+
+`cloudflare_account` / `cloudflare_workers` / `cloudflare_durable_objects` / `cloudflare_worker_deployments` / `cloudflare_worker_observability` / `cloudflare_worker_metrics` / `cloudflare_do_object_count` / `cloudflare_watchdog_status` / `cloudflare_plan_change` がNLO直接MCPとIssue Bridgeで使用できます。
+
+現時点で**対象アカウントの情報取得、novelight-ai-gatea-*対象Worker/DOのメタデータ、GraphQLのエラー件数・リクエスト集計**のみ。Workerの作成・更新・削除・停止、Durable Objectへの書込み、料金操作、Secrets、サーバーへの実接続は**一切実行しません**。`cloudflare_plan_change`は別途OWNER承認のための計画を返すだけです。生ログ、原稿、セッション、鍵、Cloudflare APIの生レスポンスはチャット/Issueに返しません。
+
+CloudflareのWorkers製品に限定した**Metadata Read-Only**など最小権限のAPIトークンを作り、NLO稼働マシンのGit非管理環境設定にだけ配置します（チャットへの貼り付け禁止）。
+
+```text
+NLO_CLOUDFLARE_ACCOUNT_ID=6831b18fe814232fa2dd4c470b95aa15
+NLO_CLOUDFLARE_READONLY_ENABLED=true
+NLO_CLOUDFLARE_READ_TOKEN=[LOCAL_READONLY_TOKEN_ONLY]
+```
+
+初期値は必ず `false`。トークン未設定・アカウント不一致・アクセス拒否では失敗で停止します。Workers Freeのプラン名はアカウント詳細APIでは確定できないため、現在のBilling画面の独立確認と区別します。メトリクスのGraphQL `POST` は静的read-only queryのみで、サンプリング/遅延のため**実停止保証にはなりません**。
+
+**注意：ローカルNLOを最新版へ更新・再起動するまで新MCPツールは反映されません。** 既存プラグインとの再接続・Tool listの再読込が必要な場合があります。Gate Aの実外部Watchdog稼働は別工程です。詳細: `docs/ai-phase2/gatea-nlo-cloudflare-bridge.md`。
+
 ## 小説キャッシュ
 
 `read_novel_cached(url)` は前回取得済みepisode URLを再利用し、作品ページで新しく見つかったepisodeだけを取得します。完全再取得したい場合だけ `refreshExisting=true` を指定します。
