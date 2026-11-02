@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 // prettier-ignore
 import {readFile} from 'node:fs/promises';
 // prettier-ignore
+import {URL} from 'node:url';
+// prettier-ignore
 import test from 'node:test';
 // prettier-ignore
 import {createNloCloudflareReadOnly, NloCloudflareError,
