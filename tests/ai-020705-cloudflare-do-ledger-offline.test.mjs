@@ -18,6 +18,7 @@ const scope = Object.freeze({
   novelId: 41, episodeId: 11, runId: 1001, approvalCommentId: 777
 });
 
+// prettier-ignore
 function harness() {
   const db = new DatabaseSync(':memory:');
   let inTransaction = false;
@@ -51,8 +52,10 @@ function harness() {
   });
   return {db, storage, ledger};
 }
+// prettier-ignore
 const arm = () => ({scope, contract: ARM,
   controllerKeyId: 'synthetic-controller-key', nonce: 'A'.repeat(44)});
+// prettier-ignore
 const recovery = (nonce) => ({scope, contract: RECOVERY, nonce,
   checkedSignedDeathOffline: true, observedPaidTombstoneOffline: true});
 
