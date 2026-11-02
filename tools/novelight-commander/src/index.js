@@ -10,6 +10,7 @@ import { buildThumbnailPack, compositePngLayers, scanThumbnailDirectory, validat
 import { createZip, extractZip, listZip, validateThumbnailPack } from "./archive.js";
 import { appendBinaryChunk, beginBinaryWrite, cancelBinaryWrite, finishBinaryWrite, listBinaryWrites, readBinaryChunk } from "./binary-transfer.js";
 import { copyFile, deletePath, fileInfo, hashFile, inspectPng, makeDirectory, moveFile, searchFiles } from "./files.js";
+import { runNloCloudflareAction } from "./cloudflare-readonly.js";
 import { getNovelCache, listNovelCache, readNovelCached } from "./novel-cache.js";
 import { readNovel } from "./novel.js";
 import { listSavedNovelSources, readSavedNovelChunk } from "./novel-saved-reading.js";
@@ -290,6 +291,36 @@ register("gh_pr_create", "Create a pull request from the current feature branch.
 register("gh_run_list", "List recent GitHub Actions runs.", { cwd: z.string().default("."), limit: z.number().int().min(1).max(50).default(10) }, async a => runOnce("gh",["run","list","--limit",String(a.limit)],resolveAllowedPath(a.cwd,security),security,security.commandTimeoutMs));
 register("supabase_migration_list", "Read linked Supabase migration state.", { cwd: z.string().default(".") }, async a => runOnce("supabase",["migration","list"],resolveAllowedPath(a.cwd,security),security,security.commandTimeoutMs));
 register("vercel_list", "List Vercel deployments through the installed CLI.", { cwd: z.string().default(".") }, async a => runOnce("vercel",["ls"],resolveAllowedPath(a.cwd,security),security,security.commandTimeoutMs));
+// Cloudflare integration never takes a raw URL, token, script body or arbitrary API
+// command from MCP. No live mutations, Secrets, billing or Watchdog deployment.
+for (const [toolName, action] of [
+  ["cloudflare_account", "cloudflare_account"],
+  ["cloudflare_workers", "cloudflare_workers"],
+  ["cloudflare_durable_objects", "cloudflare_durable_objects"],
+  ["cloudflare_watchdog_status", "cloudflare_watchdog_status"]
+]) {
+  register(toolName, "Read scoped Cloudflare Gate A metadata; local read-only token required.", {},
+    async () => runNloCloudflareAction({action}));
+}
+for (const [toolName, action] of [
+  ["cloudflare_worker_deployments", "cloudflare_worker_deployments"],
+  ["cloudflare_worker_observability", "cloudflare_worker_observability"]
+]) {
+  register(toolName, "Inspect approved Gate A Worker metadata without secrets.",
+    {workerName: z.string().min(1).max(80)},
+    async args => runNloCloudflareAction({action, args}));
+}
+register("cloudflare_worker_metrics", "Read sanitized Gate A Worker request/error aggregates (not raw logs).",
+  {workerName: z.string().min(1).max(80), minutes: z.number().int().min(5).max(1440).default(60)},
+  async args => runNloCloudflareAction({action: "cloudflare_worker_metrics", args}));
+register("cloudflare_do_object_count", "Read bounded count of scoped Durable Objects; no IDs or stored data.",
+  {namespaceId: z.string().min(1).max(64)},
+  async args => runNloCloudflareAction({action: "cloudflare_do_object_count", args}));
+register("cloudflare_plan_change", "Generate NON-EXECUTABLE Cloudflare change plan. Requires separate OWNER approval to execute.",
+  {action: z.enum(["create_worker","update_worker","delete_worker",
+    "manage_durable_object","stop_watchdog"]), workerName: z.literal("novelight-ai-gatea-watchdog")},
+  async args => runNloCloudflareAction({action: "cloudflare_plan_change", args}));
+
 
 register("read_novel", "Read every discoverable episode from a public novel URL and explicitly report completeness.", { url: z.string().url(), maxEpisodes: z.number().int().min(1).max(1000).optional() }, async a => readNovel(a.url,{ delayMs:Number(process.env.NOVELIGHT_COMMANDER_FETCH_DELAY_MS || 700), maxEpisodes:a.maxEpisodes || Number(process.env.NOVELIGHT_COMMANDER_MAX_EPISODES || 500) }));
 register("read_novel_cached", "Read a novel while reusing already cached episodes and fetching new episodes only.", { url: z.string().url(), maxEpisodes: z.number().int().min(1).max(1000).optional(), refreshExisting: z.boolean().default(false) }, async a => readNovelCached(a.url,{ delayMs:Number(process.env.NOVELIGHT_COMMANDER_FETCH_DELAY_MS || 700), maxEpisodes:a.maxEpisodes || Number(process.env.NOVELIGHT_COMMANDER_MAX_EPISODES || 500), refreshExisting:a.refreshExisting },security));

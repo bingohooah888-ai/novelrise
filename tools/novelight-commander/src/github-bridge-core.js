@@ -1825,10 +1825,34 @@ async function actionGscIndexInspect(request) {
   return runGscReadOnlyBridgeAction({ args: request.args });
 }
 
+async function actionCloudflareNloReadOnly(request) {
+  const { runNloCloudflareAction } = await import('./cloudflare-readonly.js');
+  const permitted = new Set([
+    'cloudflare_account', 'cloudflare_workers', 'cloudflare_durable_objects',
+    'cloudflare_worker_deployments', 'cloudflare_worker_observability',
+    'cloudflare_worker_metrics', 'cloudflare_do_object_count',
+    'cloudflare_watchdog_status', 'cloudflare_plan_change'
+  ]);
+  if (!permitted.has(request.action)) throw new Error('nlo_cf_bridge_action_denied');
+  const safe = await runNloCloudflareAction({action: request.action, args: request.args});
+  // Only sanitized, bounded metadata crosses GitHub Issue Bridge. Never output
+  // headers, credentials, raw logs, full Cloudflare response or arbitrary URLs.
+  return JSON.stringify(safe, null, 2);
+}
+
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
   ['nlo_health', actionNloHealth],
   ['gsc_index_inspect', actionGscIndexInspect],
+  ['cloudflare_account', actionCloudflareNloReadOnly],
+  ['cloudflare_workers', actionCloudflareNloReadOnly],
+  ['cloudflare_durable_objects', actionCloudflareNloReadOnly],
+  ['cloudflare_worker_deployments', actionCloudflareNloReadOnly],
+  ['cloudflare_worker_observability', actionCloudflareNloReadOnly],
+  ['cloudflare_worker_metrics', actionCloudflareNloReadOnly],
+  ['cloudflare_do_object_count', actionCloudflareNloReadOnly],
+  ['cloudflare_watchdog_status', actionCloudflareNloReadOnly],
+  ['cloudflare_plan_change', actionCloudflareNloReadOnly],
   ['codex_auth_diagnose', actionCodexAuthDiagnose],
   ['codex_auth_repair_user_override', actionCodexAuthRepairUserOverride],
   ['autorecovery_install', actionAutorecoveryInstall],

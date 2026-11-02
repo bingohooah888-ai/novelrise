@@ -132,6 +132,36 @@
       "version": "0.1.0",
       "status": "testing",
       "provenance": "NOVELIGHT request 2026-10-22; NLO direct MCP only; no GitHub Issue body export"
+    },
+    {
+      "id": "nlo.cloudflare.gatea-readonly",
+      "description": "NLO direct MCP and GitHub Bridge scoped Cloudflare account, Workers, Durable Objects, deployments, observability, and aggregated error metrics; mutation actions only generate inert OWNER approval plans. Secrets never enter chat or GitHub.",
+      "intents": [
+        "inspect Cloudflare Workers",
+        "read Cloudflare Durable Objects",
+        "inspect NOVELIGHT Gate A watchdog",
+        "CloudflareのプランとWorkerを確認",
+        "NLOでCloudflare運用"
+      ],
+      "aliases": [
+        "NLO Cloudflare integration",
+        "Cloudflare Watchdog inventory",
+        "Cloudflareメトリクス確認"
+      ],
+      "adapter": "tools/novelight-commander/src/cloudflare-readonly.js",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "local_NLO_CLOUDFLARE_READ_TOKEN_scoped_workers_metadata_readonly",
+        "NLO_CLOUDFLARE_READONLY_ENABLED_explicit_opt_in",
+        "owner_account_id_exact_match",
+        "independent_explicit_owner_approval_for_all_cloudflare_writes"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-cloudflare-readonly.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "2026-11-02 OWNER request; Cloudflare API Workers/DO and GraphQL official docs; live account API auth not yet configured"
     }
   ]
 }
