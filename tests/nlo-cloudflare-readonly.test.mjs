@@ -1,15 +1,25 @@
+// prettier-ignore
 import assert from 'node:assert/strict';
+// prettier-ignore
 import {readFile} from 'node:fs/promises';
+// prettier-ignore
 import test from 'node:test';
+// prettier-ignore
 import {createNloCloudflareReadOnly, NloCloudflareError,
   runNloCloudflareAction} from '../tools/novelight-commander/src/cloudflare-readonly.js';
 
+// prettier-ignore
 const ACCOUNT = '6831b18fe814232fa2dd4c470b95aa15';
+// prettier-ignore
 const TOKEN = 'LOCAL_SECRET_CLOUDFLARE_TOKEN_KEEP_PRIVATE';
+// prettier-ignore
 const ENV = {NLO_CLOUDFLARE_READONLY_ENABLED: 'true',
   NLO_CLOUDFLARE_ACCOUNT_ID: ACCOUNT, NLO_CLOUDFLARE_READ_TOKEN: TOKEN};
+// prettier-ignore
 const NAME = 'novelight-ai-gatea-watchdog';
+// prettier-ignore
 const NS = 'd'.repeat(32);
+// prettier-ignore
 function fake({fail = false, graphqlError = false} = {}) {
   const calls = [];
   async function fetchImpl(url, opts) {
@@ -50,6 +60,7 @@ function fake({fail = false, graphqlError = false} = {}) {
   return {fetchImpl, calls};
 }
 
+// prettier-ignore
 test('absent local opt-in and token deny before any network request', async () => {
   const network = fake();
   for (const env of [{}, {...ENV, NLO_CLOUDFLARE_READONLY_ENABLED: 'false'},
@@ -62,6 +73,7 @@ test('absent local opt-in and token deny before any network request', async () =
   assert.equal(network.calls.length, 0);
 });
 
+// prettier-ignore
 test('account and list operations emit only scoped allowlisted metadata', async () => {
   const net = fake();
   const client = createNloCloudflareReadOnly({env: ENV, fetchImpl: net.fetchImpl});
@@ -79,6 +91,7 @@ test('account and list operations emit only scoped allowlisted metadata', async 
   assert.ok(net.calls.every((c) => c.opts.headers.Authorization === 'Bearer ' + TOKEN));
 });
 
+// prettier-ignore
 test('deployments and observability never expose scripts, bindings, token or raw logs', async () => {
   const net = fake();
   const deployments = await runNloCloudflareAction({action: 'cloudflare_worker_deployments',
@@ -91,6 +104,7 @@ test('deployments and observability never expose scripts, bindings, token or raw
   assert.equal(JSON.stringify({deployments, logs}).includes(TOKEN), false);
 });
 
+// prettier-ignore
 test('GraphQL metrics are static scoped read-only query with numeric aggregates', async () => {
   const net = fake();
   const result = await runNloCloudflareAction({action: 'cloudflare_worker_metrics',
@@ -109,6 +123,7 @@ test('GraphQL metrics are static scoped read-only query with numeric aggregates'
   assert.ok(!JSON.stringify(result).includes(TOKEN));
 });
 
+// prettier-ignore
 test('DO count hides object identifiers and refuses any unowned namespace', async () => {
   const net = fake();
   const value = await runNloCloudflareAction({action: 'cloudflare_do_object_count',
@@ -123,6 +138,7 @@ test('DO count hides object identifiers and refuses any unowned namespace', asyn
   assert.equal(net.calls.length, before + 1); // only namespace inventory read
 });
 
+// prettier-ignore
 test('invalid args, unrelated workers and token-injection are rejected with no requests', async () => {
   const net = fake();
   const inputs = [
@@ -142,6 +158,7 @@ test('invalid args, unrelated workers and token-injection are rejected with no r
   assert.equal(net.calls.length, 0);
 });
 
+// prettier-ignore
 test('provider failures and GraphQL errors are sanitized, never echo secrets', async () => {
   for (const net of [fake({fail: true}), fake({graphqlError: true})]) {
     const action = net === null ? 'cloudflare_account' : 'cloudflare_worker_metrics';
@@ -153,6 +170,7 @@ test('provider failures and GraphQL errors are sanitized, never echo secrets', a
   }
 });
 
+// prettier-ignore
 test('Watchdog status is NO-GO until external controller and zero-census verified', async () => {
   const net = fake();
   const status = await runNloCloudflareAction({
@@ -164,6 +182,7 @@ test('Watchdog status is NO-GO until external controller and zero-census verifie
   assert.equal(status.runnerKillAuthority, 'NOT_VERIFIED');
 });
 
+// prettier-ignore
 test('mutation actions create non-executable plans without token or network', async () => {
   const net = fake();
   const plan = await runNloCloudflareAction({
@@ -176,6 +195,7 @@ test('mutation actions create non-executable plans without token or network', as
   assert.equal(net.calls.length, 0);
 });
 
+// prettier-ignore
 test('direct NLO MCP, GitHub Bridge and capability registry all reference Cloudflare integration', async () => {
   const [direct, bridge, registry] = await Promise.all([
     readFile(new URL('../tools/novelight-commander/src/index.js', import.meta.url), 'utf8'),
