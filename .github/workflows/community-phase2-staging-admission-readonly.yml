@@ -1,0 +1,58 @@
+name: Community Phase 2 Hosted Admission Facts (Read-only)
+
+# This is a non-billable inventory, NOT a Staging/Preview executor.
+# It can be run on trusted main only and never reads provider secrets.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+jobs:
+  audit:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact trusted main without stored credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Bind all read-only GitHub facts to main and Phase 2 PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/phase2-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2457" > /tmp/phase2-pr.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/phase2-preview-ledger.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/294" > /tmp/phase2-staging-ledger.json
+          main="$(jq -er '.object.sha' /tmp/phase2-main.json)"
+          head="$(jq -er '.head.sha' /tmp/phase2-pr.json)"
+          test "$main" = "$GITHUB_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/phase2-compare.json
+          gh api "repos/$GITHUB_REPOSITORY/git/commits/$head" > /tmp/phase2-commit.json
+          tree="$(jq -er '.tree.sha' /tmp/phase2-commit.json)"
+          gh api "repos/$GITHUB_REPOSITORY/git/trees/$tree?recursive=1" > /tmp/phase2-tree.json
+          node scripts/community-phase2-staging-admission-readonly.mjs inspect \
+            /tmp/phase2-main.json /tmp/phase2-pr.json /tmp/phase2-compare.json \
+            /tmp/phase2-preview-ledger.json /tmp/phase2-staging-ledger.json \
+            /tmp/phase2-commit.json /tmp/phase2-tree.json \
+            "$GITHUB_SHA" "$GITHUB_ACTOR" > /tmp/phase2-verdict.json
+          jq -e '.status == "PHASE2_READINESS_FACTS_PASSED_NO_EXECUTION" and
+            .stagingCostApproved == false and
+            .ownerOneUseClaimAuthorized == false and .mayCreatePreview == false and
+            .mayCreateBranch == false and .mayRunHostedBrowser == false and
+            .mayChangeProduction == false and .publicReleaseAuthorized == false' \
+            /tmp/phase2-verdict.json >/dev/null
+          jq '{status, reasons, mainSha, candidateSha}' /tmp/phase2-verdict.json
+          echo 'Read-only check complete. No Preview, Staging, CLAIM or Production permission granted.'
