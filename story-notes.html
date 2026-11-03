@@ -50,6 +50,19 @@
     .page-head .return-to-work { display:inline-flex; align-items:center; min-height:40px; margin-top:14px; padding:8px 14px; border:1px solid #d7b65b; border-radius:10px; color:#e9d697; background:rgba(216,180,90,.08); font-size:13px; font-weight:900; text-decoration:none; }
     .page-head .return-to-work:hover, .page-head .return-to-work:focus-visible { background:rgba(216,180,90,.18); }
     .page-head .return-to-work[hidden] { display:none; }
+    /* Match the navy action buttons on the author's works page, without changing AI controls. */
+    html body.novelight-author-studio-shell #main-content .page-head #returnToWork,
+    html body.novelight-author-studio-shell #main-content :is(#noteForm,#noteList) button.btn {
+      background:#0e1d35!important;
+      border-color:#0e1d35!important;
+      color:#fff!important;
+      -webkit-text-fill-color:#fff!important;
+    }
+    html body.novelight-author-studio-shell #main-content .page-head #returnToWork:hover,
+    html body.novelight-author-studio-shell #main-content :is(#noteForm,#noteList) button.btn:hover:not(:disabled) {
+      background:#1b2e4c!important;
+      border-color:#1b2e4c!important;
+    }
   </style>
 <link rel="stylesheet" href="novelight-accessibility.css"><link rel="stylesheet" href="/shared/header/brand-variants.css" data-novelight-brand-variants="true">
 </head>
