@@ -17,17 +17,18 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
  * verified review anchor (or the preceding authorized review checkpoint).
  * Does not choose the launch date, schedule jobs, or apply demotions.
  */
-export function isScoutDemotionReviewDue(
-  lastReviewCheckpointMs,
-  asOfMs
-) {
+export function isScoutDemotionReviewDue(lastReviewCheckpointMs, asOfMs) {
   for (const timestamp of [lastReviewCheckpointMs, asOfMs]) {
     if (!Number.isSafeInteger(timestamp) || timestamp < 0) {
-      throw new RangeError('Review timestamps must be nonnegative integer UTC milliseconds');
+      throw new RangeError(
+        'Review timestamps must be nonnegative integer UTC milliseconds'
+      );
     }
   }
-  return asOfMs - lastReviewCheckpointMs >=
-    SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS * MILLISECONDS_PER_DAY;
+  return (
+    asOfMs - lastReviewCheckpointMs >=
+    SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS * MILLISECONDS_PER_DAY
+  );
 }
 
 /**
