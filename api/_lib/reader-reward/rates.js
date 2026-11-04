@@ -75,7 +75,10 @@ export function quoteScoutProgressAfterMaintenanceReview({
   earnedXpInCompleted30DayWindow,
   currentLevelProgressXp
 }) {
-  if (!Number.isSafeInteger(currentLevelProgressXp) || currentLevelProgressXp < 0) {
+  if (
+    !Number.isSafeInteger(currentLevelProgressXp) ||
+    currentLevelProgressXp < 0
+  ) {
     throw new RangeError(
       'Current-level progression XP must be a nonnegative safe integer'
     );
