@@ -63,7 +63,8 @@ export function quoteScoutMaintenanceLevelReview({
  * Quote the level progress after a maintenance review.
  * On a genuine demotion, the downgraded level starts with 0 XP toward its
  * next level; returning to the former level requires earning new XP via
- * ordinary progression. Lifetime XP/history are NEVER changed here.
+ * ordinary progression. There is no separate lifetime-XP counter;
+ * existing server XP event records remain available for audit and review.
  * When the level is maintained (including a protected floor), keep the
  * existing level-progress XP unchanged.
  * This remains dormant and does not write state or grant levels.
