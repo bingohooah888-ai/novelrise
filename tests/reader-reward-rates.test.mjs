@@ -229,12 +229,36 @@ test('each 30-day window is evaluated independently without surplus carryover', 
 
 test('quota preview rejects invalid or unverifiable XP or levels', () => {
   for (const input of [
-    { currentLevel: 90, verifiedHistoricalMaxLevel: 80, earnedXpInCompleted30DayWindow: 100 },
-    { currentLevel: 0, verifiedHistoricalMaxLevel: 90, earnedXpInCompleted30DayWindow: 100 },
-    { currentLevel: 90, verifiedHistoricalMaxLevel: 101, earnedXpInCompleted30DayWindow: 100 },
-    { currentLevel: 90, verifiedHistoricalMaxLevel: 90, earnedXpInCompleted30DayWindow: -1 },
-    { currentLevel: 90, verifiedHistoricalMaxLevel: 90, earnedXpInCompleted30DayWindow: 12.5 },
-    { currentLevel: 90, verifiedHistoricalMaxLevel: 90, earnedXpInCompleted30DayWindow: '200' },
+    {
+      currentLevel: 90,
+      verifiedHistoricalMaxLevel: 80,
+      earnedXpInCompleted30DayWindow: 100
+    },
+    {
+      currentLevel: 0,
+      verifiedHistoricalMaxLevel: 90,
+      earnedXpInCompleted30DayWindow: 100
+    },
+    {
+      currentLevel: 90,
+      verifiedHistoricalMaxLevel: 101,
+      earnedXpInCompleted30DayWindow: 100
+    },
+    {
+      currentLevel: 90,
+      verifiedHistoricalMaxLevel: 90,
+      earnedXpInCompleted30DayWindow: -1
+    },
+    {
+      currentLevel: 90,
+      verifiedHistoricalMaxLevel: 90,
+      earnedXpInCompleted30DayWindow: 12.5
+    },
+    {
+      currentLevel: 90,
+      verifiedHistoricalMaxLevel: 90,
+      earnedXpInCompleted30DayWindow: '200'
+    },
     { currentLevel: 90, verifiedHistoricalMaxLevel: 90 }
   ]) {
     assert.throws(() => quoteScoutMaintenanceLevelReview(input), RangeError);
