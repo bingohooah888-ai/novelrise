@@ -10,6 +10,50 @@ export const SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70 = 50;
 // OWNER-approved cadence: exactly 30 elapsed days between review checkpoints.
 // The launch anchor and automated scheduling remain undecided and disabled.
 export const SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS = 30;
+
+export const SCOUT_XP_MAINTENANCE_QUOTA_30_DAYS = 200;
+
+/**
+ * Preview the OWNER-approved review outcome for one completed, authoritative
+ * 30-day XP accrual window. This pure function must not be called with browser-
+ * supplied values, schedule reviews, deduct ledger XP or mutate user levels.
+ *
+ * No surplus XP is carried forward: the caller independently provides the
+ * credited XP earned in the specific completed window under review.
+ */
+export function quoteScoutMaintenanceLevelReview({
+  currentLevel,
+  verifiedHistoricalMaxLevel,
+  earnedXpInCompleted30DayWindow
+}) {
+  for (const level of [currentLevel, verifiedHistoricalMaxLevel]) {
+    if (!Number.isSafeInteger(level) || level < 1 || level > 100) {
+      throw new RangeError('Scout level must be an integer between 1 and 100');
+    }
+  }
+  if (currentLevel > verifiedHistoricalMaxLevel) {
+    throw new RangeError('Current Scout level exceeds verified historical maximum');
+  }
+  if (
+    !Number.isSafeInteger(earnedXpInCompleted30DayWindow) ||
+    earnedXpInCompleted30DayWindow < 0
+  ) {
+    throw new RangeError('Authoritatively credited 30-day XP must be a nonnegative safe integer');
+  }
+
+  const metQuota =
+    earnedXpInCompleted30DayWindow >= SCOUT_XP_MAINTENANCE_QUOTA_30_DAYS;
+  const proposedLevel = metQuota ? currentLevel : Math.max(1, currentLevel - 1);
+  const nextLevel = applyVerifiedScoutDemotionFloor(
+    proposedLevel,
+    verifiedHistoricalMaxLevel
+  );
+  return Object.freeze({
+    metQuota,
+    shouldDemote: nextLevel < currentLevel,
+    nextLevel
+  });
+}
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
