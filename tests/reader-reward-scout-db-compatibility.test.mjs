@@ -186,7 +186,7 @@ test('already maxed beta Level 30 has no beta XP overflow carried to Level 31', 
   assert.equal(result.requiresFormalThresholdApproval, true);
 });
 
-test('newly registered user has their own initial review anchor', () => {
+test('post-release registrations must never import legacy beta level state', () => {
   const signup = release + 10 * day;
   const result = quoteScoutBetaToFormalHandoff({
     authenticatedBetaSummary: betaSummary(),
@@ -194,8 +194,11 @@ test('newly registered user has their own initial review anchor', () => {
     formalReleaseAtMs: release,
     accountCreatedAtMs: signup
   });
-  assert.equal(result.proposed.reviewAnchorMs, signup);
-  assert.equal(result.firstReviewDueAtMs, signup + 30 * day);
+  assert.equal(result.status, 'postrelease_registration_not_beta_handoff');
+  assert.equal(result.ready, false);
+  assert.equal(Object.hasOwn(result, 'proposed'), false);
+  // The already-approved signup + 30-day window remains handled by
+  // quoteScoutFirstDemotionReviewWindow, not by a beta account migration.
 });
 
 test('bad summary level and XP inconsistencies block conversion', () => {
