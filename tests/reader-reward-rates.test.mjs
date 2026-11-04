@@ -365,11 +365,15 @@ test('meeting quota preserves in-level progress, and level floor does not reset 
 
 test('progress projection rejects negative and unverified XP', () => {
   for (const xp of [-1, 12.2, '400', NaN, Infinity, undefined]) {
-    assert.throws(() => quoteScoutProgressAfterMaintenanceReview({
-      currentLevel: 90,
-      verifiedHistoricalMaxLevel: 90,
-      earnedXpInCompleted30DayWindow: 199,
-      currentLevelProgressXp: xp
-    }), RangeError);
+    assert.throws(
+      () =>
+        quoteScoutProgressAfterMaintenanceReview({
+          currentLevel: 90,
+          verifiedHistoricalMaxLevel: 90,
+          earnedXpInCompleted30DayWindow: 199,
+          currentLevelProgressXp: xp
+        }),
+      RangeError
+    );
   }
 });
