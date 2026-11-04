@@ -23,7 +23,9 @@ export function applyVerifiedScoutDemotionFloor(
     }
   }
   if (proposedLevel > verifiedHistoricalMaxLevel) {
-    throw new RangeError('A proposed demotion cannot exceed the verified maximum');
+    throw new RangeError(
+      'A proposed demotion cannot exceed the verified maximum'
+    );
   }
   if (verifiedHistoricalMaxLevel >= 70) {
     return Math.max(SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70, proposedLevel);
