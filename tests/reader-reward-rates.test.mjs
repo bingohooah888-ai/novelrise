@@ -10,9 +10,19 @@ import {
 test('draft reward amounts use exact integer tenths of a yen', () => {
   assert.equal(READER_REWARD_UNIT, 'tenth_yen');
   for (const [level, tenths] of [
-    [70, 5], [74, 5], [75, 6], [79, 6],
-    [80, 7], [84, 7], [85, 8], [89, 8],
-    [90, 9], [94, 9], [95, 10], [99, 10], [100, 11]
+    [70, 5],
+    [74, 5],
+    [75, 6],
+    [79, 6],
+    [80, 7],
+    [84, 7],
+    [85, 8],
+    [89, 8],
+    [90, 9],
+    [94, 9],
+    [95, 10],
+    [99, 10],
+    [100, 11]
   ]) {
     assert.equal(quoteEpisodeRewardTenths(level), tenths, `Lv.${level}`);
   }
