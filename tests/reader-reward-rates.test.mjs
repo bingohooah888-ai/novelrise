@@ -4,6 +4,7 @@ import {
   READER_REWARD_COMMENT_LIMIT,
   SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70,
   SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS,
+  quoteScoutFirstDemotionReviewWindow,
   SCOUT_XP_MAINTENANCE_QUOTA_30_DAYS,
   quoteScoutMaintenanceLevelReview,
   isScoutDemotionReviewDue,
@@ -262,5 +263,61 @@ test('quota preview rejects invalid or unverifiable XP or levels', () => {
     { currentLevel: 90, verifiedHistoricalMaxLevel: 90 }
   ]) {
     assert.throws(() => quoteScoutMaintenanceLevelReview(input), RangeError);
+  }
+});
+
+test('existing readers start the first 30-day review at formal release', () => {
+  const release = Date.UTC(2027, 0, 1, 12);
+  const dayMs = 24 * 60 * 60 * 1000;
+  const review = quoteScoutFirstDemotionReviewWindow({
+    formalReleaseAtMs: release,
+    accountCreatedAtMs: release - 90 * dayMs
+  });
+  assert.deepEqual(review, {
+    cohort: 'existing',
+    windowStartMs: release,
+    firstReviewDueAtMs: release + 30 * dayMs
+  });
+  assert.equal(Object.isFrozen(review), true);
+  assert.equal(
+    isScoutDemotionReviewDue(review.windowStartMs, review.firstReviewDueAtMs - 1),
+    false
+  );
+  assert.equal(
+    isScoutDemotionReviewDue(review.windowStartMs, review.firstReviewDueAtMs),
+    true
+  );
+});
+
+test('post-release signups start their own 30-day first-review window', () => {
+  const release = Date.UTC(2027, 0, 1, 12);
+  const dayMs = 24 * 60 * 60 * 1000;
+  for (const offset of [0, 1, 45 * dayMs]) {
+    const registered = release + offset;
+    const review = quoteScoutFirstDemotionReviewWindow({
+      formalReleaseAtMs: release,
+      accountCreatedAtMs: registered
+    });
+    assert.deepEqual(review, {
+      cohort: 'new',
+      windowStartMs: registered,
+      firstReviewDueAtMs: registered + 30 * dayMs
+    });
+  }
+  // Date.UTC above is illustrative only; the real formal-release date is unset.
+});
+
+test('first-review windows reject missing, forged, or unsafe instants', () => {
+  for (const input of [
+    { formalReleaseAtMs: undefined, accountCreatedAtMs: 0 },
+    { formalReleaseAtMs: 0, accountCreatedAtMs: undefined },
+    { formalReleaseAtMs: -1, accountCreatedAtMs: 0 },
+    { formalReleaseAtMs: 0, accountCreatedAtMs: -1 },
+    { formalReleaseAtMs: 0.5, accountCreatedAtMs: 0 },
+    { formalReleaseAtMs: 0, accountCreatedAtMs: '1' },
+    { formalReleaseAtMs: NaN, accountCreatedAtMs: 0 },
+    { formalReleaseAtMs: Number.MAX_SAFE_INTEGER, accountCreatedAtMs: 0 }
+  ]) {
+    assert.throws(() => quoteScoutFirstDemotionReviewWindow(input), RangeError);
   }
 });
