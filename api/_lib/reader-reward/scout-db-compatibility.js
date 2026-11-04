@@ -196,6 +196,12 @@ export function quoteScoutBetaToFormalHandoff({
   const review = quoteScoutFirstDemotionReviewWindow({
     formalReleaseAtMs, accountCreatedAtMs
   });
+  // A post-release signup is NOT a beta-era account. Its initial Lv.1
+  // state belongs to the future approved registration workflow, not this
+  // legacy beta-to-formal handoff.
+  if (review.cohort === 'new') {
+    return Object.freeze({ status: 'postrelease_registration_not_beta_handoff', ready: false });
+  }
   return Object.freeze({
     status: 'handoff_quote_only',
     ready: false,
