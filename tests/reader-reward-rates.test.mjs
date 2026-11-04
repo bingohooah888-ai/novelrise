@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   READER_REWARD_COMMENT_LIMIT,
+  SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70,
+  applyVerifiedScoutDemotionFloor,
   READER_REWARD_UNIT,
   quoteEpisodeRewardTenths,
   quoteMonthlyCommentRewardTenths
@@ -82,5 +84,57 @@ test('comment reward is ¥2 each, capped at 50 eligible comments and ¥100 per m
 test('invalid eligible comment counts are rejected', () => {
   for (const count of [-1, 0.2, NaN, '50', Infinity]) {
     assert.throws(() => quoteMonthlyCommentRewardTenths(count), RangeError);
+  }
+});
+
+test('verified Lv.70 milestone activates Lv.50 demotion floor', () => {
+  assert.equal(SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70, 50);
+  for (const [proposed, historicalMax, expected] of [
+    [70, 70, 70],
+    [69, 70, 69],
+    [50, 70, 50],
+    [49, 70, 50],
+    [1, 70, 50],
+    [50, 100, 50],
+    [1, 100, 50],
+    [75, 100, 75]
+  ]) {
+    assert.equal(
+      applyVerifiedScoutDemotionFloor(proposed, historicalMax),
+      expected,
+      `proposed Lv.${proposed} / verified max Lv.${historicalMax}`
+    );
+  }
+});
+
+test('reader never reaching Lv.70 does not gain an unapproved Lv.50 floor', () => {
+  for (const [proposed, historicalMax] of [
+    [1, 1],
+    [19, 50],
+    [49, 50],
+    [30, 69],
+    [69, 69]
+  ]) {
+    assert.equal(
+      applyVerifiedScoutDemotionFloor(proposed, historicalMax),
+      proposed
+    );
+  }
+});
+
+test('invalid or unverified downgrade inputs are rejected', () => {
+  for (const [proposed, max] of [
+    [49, 0],
+    [49, 101],
+    [49, NaN],
+    [49.5, 70],
+    [0, 70],
+    [50, 49],
+    ['50', 70]
+  ]) {
+    assert.throws(
+      () => applyVerifiedScoutDemotionFloor(proposed, max),
+      RangeError
+    );
   }
 });
