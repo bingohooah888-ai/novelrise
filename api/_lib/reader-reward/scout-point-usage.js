@@ -52,8 +52,14 @@ export function quoteScoutMilestonePointGrant({
   let points;
 
   if (kind === 'level_up') {
-    if (!Number.isSafeInteger(reachedLevel) || reachedLevel < 2 || reachedLevel > 100) {
-      throw new RangeError('Level-up reward requires newly attained Level 2 through 100');
+    if (
+      !Number.isSafeInteger(reachedLevel) ||
+      reachedLevel < 2 ||
+      reachedLevel > 100
+    ) {
+      throw new RangeError(
+        'Level-up reward requires newly attained Level 2 through 100'
+      );
     }
     eventKey = 'level_up:' + id + ':' + reachedLevel;
     points = SCOUT_LEVEL_UP_POINTS;
@@ -65,19 +71,32 @@ export function quoteScoutMilestonePointGrant({
     if (readerBadgeDefinitionVerified !== true) {
       return Object.freeze({ status: 'badge_definition_unverified', eventKey });
     }
-    points = verifyNonnegativeInteger(readerBadgePointReward, 'Reader badge points');
+    points = verifyNonnegativeInteger(
+      readerBadgePointReward,
+      'Reader badge points'
+    );
   } else {
     throw new TypeError('Unrecognized Scout Point reward kind');
   }
 
-  if (awardHistoryComplete !== true || !Array.isArray(historicalEventKeys) ||
-      milestoneVerified !== true) {
+  if (
+    awardHistoryComplete !== true ||
+    !Array.isArray(historicalEventKeys) ||
+    milestoneVerified !== true
+  ) {
     return Object.freeze({ status: 'award_evidence_incomplete', eventKey });
   }
   const known = new Set();
   for (const key of historicalEventKeys) {
-    if (typeof key !== 'string' || key.length < 1 || key.length > 240 || known.has(key)) {
-      throw new TypeError('Incomplete or duplicated verified Scout Point event keys');
+    if (
+      typeof key !== 'string' ||
+      key.length < 1 ||
+      key.length > 240 ||
+      known.has(key)
+    ) {
+      throw new TypeError(
+        'Incomplete or duplicated verified Scout Point event keys'
+      );
     }
     known.add(key);
   }
@@ -150,31 +169,50 @@ export function quoteScoutPointUsage({
     throw new TypeError('Operation id must be a verified UUID');
   }
   if (purpose !== 'external_exchange' && purpose !== 'ai_direct_use') {
-    throw new TypeError('Only external exchange and direct AI usage are supported');
+    throw new TypeError(
+      'Only external exchange and direct AI usage are supported'
+    );
   }
   const amount = verifyPositiveInteger(amountPoints, 'Point usage amount');
   verifyNonnegativeInteger(availablePoints, 'Available Scout Point balance');
   verifyNonnegativeInteger(balanceRevision, 'Balance revision');
   const operationKey = 'scout-point-use-v1:' + id + ':' + opId.toLowerCase();
   const context = { operationKey, purpose };
-  if (duplicateOperationVerified !== true || typeof operationAlreadyCommitted !== 'boolean') {
-    return Object.freeze({ status: 'operation_history_unverified', ...context });
+  if (
+    duplicateOperationVerified !== true ||
+    typeof operationAlreadyCommitted !== 'boolean'
+  ) {
+    return Object.freeze({
+      status: 'operation_history_unverified',
+      ...context
+    });
   }
   if (operationAlreadyCommitted) {
     return Object.freeze({ status: 'already_processed', ...context });
   }
-  if (purpose === 'external_exchange' && amount < SCOUT_POINT_MIN_EXTERNAL_EXCHANGE) {
+  if (
+    purpose === 'external_exchange' &&
+    amount < SCOUT_POINT_MIN_EXTERNAL_EXCHANGE
+  ) {
     return Object.freeze({ status: 'below_exchange_minimum', ...context });
   }
-  if (authoritativeBalanceVerified !== true || riskAndControlsCleared !== true) {
+  if (
+    authoritativeBalanceVerified !== true ||
+    riskAndControlsCleared !== true
+  ) {
     return Object.freeze({ status: 'wallet_or_risk_unverified', ...context });
   }
-  if (channelPolicyVerified !== true ||
-      (purpose === 'ai_direct_use' && aiPriceApproved !== true)) {
+  if (
+    channelPolicyVerified !== true ||
+    (purpose === 'ai_direct_use' && aiPriceApproved !== true)
+  ) {
     return Object.freeze({ status: 'channel_policy_unapproved', ...context });
   }
   if (availablePoints < amount) {
-    return Object.freeze({ status: 'insufficient_available_points', ...context });
+    return Object.freeze({
+      status: 'insufficient_available_points',
+      ...context
+    });
   }
   return Object.freeze({
     status: 'usage_quote_only',
@@ -206,16 +244,24 @@ export function recheckScoutPointUsage({
   if (!quote || quote.status !== 'usage_quote_only') {
     throw new TypeError('A Gate06 Scout Point usage quote is required');
   }
-  verifyNonnegativeInteger(observedBalanceRevision, 'Observed balance revision');
-  verifyNonnegativeInteger(observedAvailablePoints, 'Observed available points');
+  verifyNonnegativeInteger(
+    observedBalanceRevision,
+    'Observed balance revision'
+  );
+  verifyNonnegativeInteger(
+    observedAvailablePoints,
+    'Observed available points'
+  );
   if (typeof operationAlreadyCommitted !== 'boolean') {
     throw new TypeError('A verified operation claim is required');
   }
   if (operationAlreadyCommitted) {
     return Object.freeze({ status: 'already_processed' });
   }
-  if (observedBalanceRevision !== quote.expectedBalanceRevision ||
-      observedAvailablePoints !== quote.expectedAvailablePoints) {
+  if (
+    observedBalanceRevision !== quote.expectedBalanceRevision ||
+    observedAvailablePoints !== quote.expectedAvailablePoints
+  ) {
     return Object.freeze({ status: 'stale_wallet' });
   }
   return Object.freeze({
