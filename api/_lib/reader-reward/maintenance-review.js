@@ -165,6 +165,9 @@ export function quoteScoutMaintenanceReviewDryRun({
     ...context,
     earnedXpInCompleted30DayWindow: ledger.earnedXp,
     ledgerRowsInWindow: ledger.count,
+    quotedFromLevel: currentLevel,
+    quotedFromHighestLevel: verifiedHistoricalMaxLevel,
+    quotedFromLevelProgressXp: currentLevelProgressXp,
     ...preview
   });
 }
