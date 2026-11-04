@@ -4,6 +4,8 @@ import {
   READER_REWARD_COMMENT_LIMIT,
   SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70,
   SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS,
+  SCOUT_XP_MAINTENANCE_QUOTA_30_DAYS,
+  quoteScoutMaintenanceLevelReview,
   isScoutDemotionReviewDue,
   applyVerifiedScoutDemotionFloor,
   READER_REWARD_UNIT,
@@ -164,5 +166,77 @@ test('Scout review cadence rejects forged or invalid timestamps', () => {
     [0, Number.MAX_SAFE_INTEGER + 1]
   ]) {
     assert.throws(() => isScoutDemotionReviewDue(anchor, asOf), RangeError);
+  }
+});
+
+test('exactly 200 XP maintains level, while 199 XP demotes one level', () => {
+  assert.equal(SCOUT_XP_MAINTENANCE_QUOTA_30_DAYS, 200);
+  for (const [windowXp, expectedLevel, expectedDemotion] of [
+    [0, 89, true],
+    [199, 89, true],
+    [200, 90, false],
+    [201, 90, false],
+    [2000, 90, false]
+  ]) {
+    const result = quoteScoutMaintenanceLevelReview({
+      currentLevel: 90,
+      verifiedHistoricalMaxLevel: 90,
+      earnedXpInCompleted30DayWindow: windowXp
+    });
+    assert.deepEqual(result, {
+      metQuota: windowXp >= 200,
+      shouldDemote: expectedDemotion,
+      nextLevel: expectedLevel
+    });
+    assert.equal(Object.isFrozen(result), true);
+  }
+});
+
+test('one review never demotes more than one level and respects history floor', () => {
+  for (const [currentLevel, historicalMax, expectedLevel] of [
+    [100, 100, 99],
+    [70, 70, 69],
+    [51, 80, 50],
+    [50, 80, 50],
+    [2, 30, 1],
+    [1, 1, 1]
+  ]) {
+    const decision = quoteScoutMaintenanceLevelReview({
+      currentLevel,
+      verifiedHistoricalMaxLevel: historicalMax,
+      earnedXpInCompleted30DayWindow: 0
+    });
+    assert.equal(decision.nextLevel, expectedLevel);
+    assert.equal(decision.shouldDemote, expectedLevel < currentLevel);
+  }
+});
+
+test('each 30-day window is evaluated independently without surplus carryover', () => {
+  const first = quoteScoutMaintenanceLevelReview({
+    currentLevel: 82,
+    verifiedHistoricalMaxLevel: 82,
+    earnedXpInCompleted30DayWindow: 600
+  });
+  assert.equal(first.nextLevel, 82);
+  const second = quoteScoutMaintenanceLevelReview({
+    currentLevel: first.nextLevel,
+    verifiedHistoricalMaxLevel: 82,
+    earnedXpInCompleted30DayWindow: 199
+  });
+  assert.equal(second.nextLevel, 81);
+  assert.equal(second.shouldDemote, true);
+});
+
+test('quota preview rejects invalid or unverifiable XP or levels', () => {
+  for (const input of [
+    { currentLevel: 90, verifiedHistoricalMaxLevel: 80, earnedXpInCompleted30DayWindow: 100 },
+    { currentLevel: 0, verifiedHistoricalMaxLevel: 90, earnedXpInCompleted30DayWindow: 100 },
+    { currentLevel: 90, verifiedHistoricalMaxLevel: 101, earnedXpInCompleted30DayWindow: 100 },
+    { currentLevel: 90, verifiedHistoricalMaxLevel: 90, earnedXpInCompleted30DayWindow: -1 },
+    { currentLevel: 90, verifiedHistoricalMaxLevel: 90, earnedXpInCompleted30DayWindow: 12.5 },
+    { currentLevel: 90, verifiedHistoricalMaxLevel: 90, earnedXpInCompleted30DayWindow: '200' },
+    { currentLevel: 90, verifiedHistoricalMaxLevel: 90 }
+  ]) {
+    assert.throws(() => quoteScoutMaintenanceLevelReview(input), RangeError);
   }
 });
