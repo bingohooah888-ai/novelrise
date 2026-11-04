@@ -7,11 +7,14 @@ import {
 
 const PERIOD_MS = SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+const INSTANT =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
 function safeMs(value) {
   if (!Number.isSafeInteger(value) || value < 0) {
-    throw new RangeError('Expected a nonnegative safe UTC millisecond timestamp');
+    throw new RangeError(
+      'Expected a nonnegative safe UTC millisecond timestamp'
+    );
   }
 }
 function uuid(value) {
@@ -22,7 +25,10 @@ function uuid(value) {
 }
 
 /** Exact, disjoint 30-day windows, numbered from the authorized first anchor. */
-export function quoteScoutMaintenanceWindow({ firstWindowStartMs, reviewOrdinal }) {
+export function quoteScoutMaintenanceWindow({
+  firstWindowStartMs,
+  reviewOrdinal
+}) {
   safeMs(firstWindowStartMs);
   if (!Number.isSafeInteger(reviewOrdinal) || reviewOrdinal < 1) {
     throw new RangeError('Review ordinal must be a positive safe integer');
@@ -41,7 +47,8 @@ export function quoteScoutMaintenanceWindow({ firstWindowStartMs, reviewOrdinal 
  * Signed adjustments have undecided attribution rules and block a quotation.
  */
 function summarizeXpRows(rows, userId, start, end) {
-  if (!Array.isArray(rows)) throw new TypeError('XP ledger rows must be an array');
+  if (!Array.isArray(rows))
+    throw new TypeError('XP ledger rows must be an array');
   let earnedXp = 0;
   let adjusted = false;
   let count = 0;
@@ -61,7 +68,10 @@ function summarizeXpRows(rows, userId, start, end) {
     if (typeof kind !== 'string' || kind.length < 1 || kind.length > 80) {
       throw new TypeError('XP kind violates existing DB constraint');
     }
-    if (!Number.isSafeInteger(row.xp_value) || Math.abs(row.xp_value) > 1000000) {
+    if (
+      !Number.isSafeInteger(row.xp_value) ||
+      Math.abs(row.xp_value) > 1000000
+    ) {
       throw new RangeError('XP delta violates existing DB constraint');
     }
     if (typeof row.occurred_at !== 'string' || !INSTANT.test(row.occurred_at)) {
@@ -81,7 +91,8 @@ function summarizeXpRows(rows, userId, start, end) {
       adjusted = true;
     } else {
       earnedXp += row.xp_value;
-      if (!Number.isSafeInteger(earnedXp)) throw new RangeError('XP sum overflow');
+      if (!Number.isSafeInteger(earnedXp))
+        throw new RangeError('XP sum overflow');
     }
   }
   return { earnedXp, adjusted, count };
@@ -107,17 +118,24 @@ export function quoteScoutMaintenanceReviewDryRun({
 }) {
   const userId = uuid(accountId);
   safeMs(asOfMs);
-  const window = quoteScoutMaintenanceWindow({ firstWindowStartMs, reviewOrdinal });
+  const window = quoteScoutMaintenanceWindow({
+    firstWindowStartMs,
+    reviewOrdinal
+  });
   if (lastReviewedWindowEndMs !== null) safeMs(lastReviewedWindowEndMs);
   const reviewKey = 'scout-maintenance-v1:' + userId + ':' + window.windowEndMs;
   const context = { ...window, reviewKey };
 
-  if (lastReviewedWindowEndMs !== null &&
-      lastReviewedWindowEndMs >= window.windowEndMs) {
+  if (
+    lastReviewedWindowEndMs !== null &&
+    lastReviewedWindowEndMs >= window.windowEndMs
+  ) {
     return Object.freeze({ status: 'already_reviewed', ...context });
   }
-  if ((reviewOrdinal === 1 && lastReviewedWindowEndMs !== null) ||
-      (reviewOrdinal > 1 && lastReviewedWindowEndMs !== window.windowStartMs)) {
+  if (
+    (reviewOrdinal === 1 && lastReviewedWindowEndMs !== null) ||
+    (reviewOrdinal > 1 && lastReviewedWindowEndMs !== window.windowStartMs)
+  ) {
     return Object.freeze({ status: 'checkpoint_mismatch', ...context });
   }
   if (asOfMs < window.windowEndMs) {
@@ -128,7 +146,10 @@ export function quoteScoutMaintenanceReviewDryRun({
   }
 
   const ledger = summarizeXpRows(
-    verifiedLedgerRows, userId, window.windowStartMs, window.windowEndMs
+    verifiedLedgerRows,
+    userId,
+    window.windowStartMs,
+    window.windowEndMs
   );
   if (ledger.adjusted) {
     return Object.freeze({ status: 'xp_adjustment_review', ...context });
