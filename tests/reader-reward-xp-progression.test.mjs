@@ -390,3 +390,33 @@ test('recheck requires a verified boolean for durable grant-key existence', () =
     grantKeyAlreadyCommitted: false
   }), TypeError);
 });
+
+test('late XP from an already closed review window is held without state change', () => {
+  const reviewed = state({
+    lastReviewedWindowEndMs: start + 30 * day,
+    revision: 4
+  });
+  for (const timestamp of [start, start + 30 * day - 1]) {
+    const result = quoteScoutXpLevelUp(xp({
+      stateSnapshot: reviewed,
+      xpEvent: grant({ occurredAtMs: timestamp, earnedXp: 50 })
+    }));
+    assert.equal(result.status, 'closed_review_window');
+    assert.equal(Object.hasOwn(result, 'nextState'), false);
+  }
+  const currentWindow = quoteScoutXpLevelUp(xp({
+    stateSnapshot: reviewed,
+    xpEvent: grant({ occurredAtMs: start + 30 * day, earnedXp: 50 })
+  }));
+  assert.equal(currentWindow.status, 'proposal_only');
+  assert.equal(currentWindow.nextState.currentLevel, 68);
+  assert.equal(currentWindow.nextState.levelProgressXp, 70);
+});
+
+test('existing DB scout_xp_ledger kind length, not a speculative kind allowlist, is used', () => {
+  const atypicalButAllowedKind = quoteScoutXpLevelUp(xp({
+    xpEvent: grant({ xpKind: 'discovery.bonus', earnedXp: 10 })
+  }));
+  assert.equal(atypicalButAllowedKind.status, 'proposal_only');
+  assert.equal(atypicalButAllowedKind.nextState.levelProgressXp, 30);
+});
