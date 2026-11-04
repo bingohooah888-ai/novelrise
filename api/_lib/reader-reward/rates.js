@@ -8,7 +8,8 @@ export const READER_REWARD_UNIT = 'tenth_yen';
 export const SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70 = 50;
 
 // OWNER-approved cadence: exactly 30 elapsed days between review checkpoints.
-// The launch anchor and automated scheduling remain undecided and disabled.
+// First review starts at formal release for existing readers, or signup for new readers.
+// No release date is assumed; automated scheduling remains disabled.
 export const SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS = 30;
 
 export const SCOUT_XP_MAINTENANCE_QUOTA_30_DAYS = 200;
@@ -59,6 +60,38 @@ export function quoteScoutMaintenanceLevelReview({
   });
 }
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const SCOUT_REVIEW_INTERVAL_MS =
+  SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS * MILLISECONDS_PER_DAY;
+
+/**
+ * Pure first-review window: accounts existing before formal release start
+ * counting from release, while post-release registrations count from signup.
+ * The authoritative release and signup instants must come from the server.
+ * This does NOT activate scheduling, grant XP, or change any Scout level.
+ */
+export function quoteScoutFirstDemotionReviewWindow({
+  formalReleaseAtMs,
+  accountCreatedAtMs
+}) {
+  for (const value of [formalReleaseAtMs, accountCreatedAtMs]) {
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new RangeError(
+        'Formal release and account creation must be verified UTC millisecond timestamps'
+      );
+    }
+  }
+  const windowStartMs = Math.max(formalReleaseAtMs, accountCreatedAtMs);
+  const firstReviewDueAtMs = windowStartMs + SCOUT_REVIEW_INTERVAL_MS;
+  if (!Number.isSafeInteger(firstReviewDueAtMs)) {
+    throw new RangeError('First review timestamp exceeds safe integer range');
+  }
+  return Object.freeze({
+    cohort: accountCreatedAtMs < formalReleaseAtMs ? 'existing' : 'new',
+    windowStartMs,
+    firstReviewDueAtMs
+  });
+}
+
 
 /**
  * Check whether a 30-day review window has elapsed since an externally
