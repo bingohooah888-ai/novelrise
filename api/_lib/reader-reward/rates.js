@@ -7,6 +7,29 @@ export const READER_REWARD_UNIT = 'tenth_yen';
 // Policy-only downgrade safeguard; never a source of progression evidence.
 export const SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70 = 50;
 
+// OWNER-approved cadence: exactly 30 elapsed days between review checkpoints.
+// The launch anchor and automated scheduling remain undecided and disabled.
+export const SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS = 30;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Check whether a 30-day review window has elapsed since an externally
+ * verified review anchor (or the preceding authorized review checkpoint).
+ * Does not choose the launch date, schedule jobs, or apply demotions.
+ */
+export function isScoutDemotionReviewDue(
+  lastReviewCheckpointMs,
+  asOfMs
+) {
+  for (const timestamp of [lastReviewCheckpointMs, asOfMs]) {
+    if (!Number.isSafeInteger(timestamp) || timestamp < 0) {
+      throw new RangeError('Review timestamps must be nonnegative integer UTC milliseconds');
+    }
+  }
+  return asOfMs - lastReviewCheckpointMs >=
+    SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS * MILLISECONDS_PER_DAY;
+}
+
 /**
  * Apply the OWNER-approved floor to a proposed downgraded Scout level.
  * The caller must supply a server-verified historical maximum Scout level;
