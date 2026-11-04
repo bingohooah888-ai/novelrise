@@ -30,7 +30,14 @@ export function quoteEpisodeRewardTenths(level) {
  */
 export function quoteMonthlyCommentRewardTenths(eligibleCommentCount) {
   if (!Number.isSafeInteger(eligibleCommentCount) || eligibleCommentCount < 0) {
-    throw new RangeError('Eligible comment count must be a nonnegative safe integer');
+    throw new RangeError(
+      'Eligible comment count must be a nonnegative safe integer'
+    );
   }
-  return Math.min(eligibleCommentCount, READER_REWARD_COMMENT_LIMIT.eligibleCommentsPerMonth) * 20;
+  return (
+    Math.min(
+      eligibleCommentCount,
+      READER_REWARD_COMMENT_LIMIT.eligibleCommentsPerMonth
+    ) * 20
+  );
 }
