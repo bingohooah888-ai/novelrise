@@ -32,13 +32,17 @@ export function quoteScoutMaintenanceLevelReview({
     }
   }
   if (currentLevel > verifiedHistoricalMaxLevel) {
-    throw new RangeError('Current Scout level exceeds verified historical maximum');
+    throw new RangeError(
+      'Current Scout level exceeds verified historical maximum'
+    );
   }
   if (
     !Number.isSafeInteger(earnedXpInCompleted30DayWindow) ||
     earnedXpInCompleted30DayWindow < 0
   ) {
-    throw new RangeError('Authoritatively credited 30-day XP must be a nonnegative safe integer');
+    throw new RangeError(
+      'Authoritatively credited 30-day XP must be a nonnegative safe integer'
+    );
   }
 
   const metQuota =
