@@ -28,9 +28,34 @@ test('draft reward amounts use exact integer tenths of a yen', () => {
   }
 });
 
-test('Lv.1-69 rewards remain undecided, never silently interpreted as zero', () => {
-  for (const level of [1, 30, 69]) {
-    assert.equal(quoteEpisodeRewardTenths(level), null);
+test('approved Lv.1-69 quote bands include exact boundaries', () => {
+  for (const [level, tenths] of [
+    [1, 1],
+    [19, 1],
+    [20, 2],
+    [39, 2],
+    [40, 3],
+    [59, 3],
+    [60, 4],
+    [69, 4]
+  ]) {
+    assert.equal(quoteEpisodeRewardTenths(level), tenths, `Lv.${level}`);
+  }
+});
+
+test('every Scout level from 1 to 100 maps to its approved exact rate', () => {
+  for (let level = 1; level <= 100; level++) {
+    const expected =
+      level < 20
+        ? 1
+        : level < 40
+          ? 2
+          : level < 60
+            ? 3
+            : level < 70
+              ? 4
+              : 5 + Math.floor((level - 70) / 5);
+    assert.equal(quoteEpisodeRewardTenths(level), expected, `Lv.${level}`);
   }
 });
 
