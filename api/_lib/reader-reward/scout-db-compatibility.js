@@ -102,18 +102,18 @@ export function auditScoutDbCompatibility(metadata) {
   if (existingFns.has('novelight_scout_record_summary')) {
     blockers.push('legacy_summary_uses_cumulative_xp');
   }
-  if (!isObject(t.scout_formal_level_state) ||
-      !hasColumns(t.scout_formal_level_state, [
-        'user_id', 'current_level', 'level_progress_xp',
-        'highest_level', 'review_anchor', 'review_checkpoint', 'revision'
-      ])) {
+  // The owner has not approved the exact future table names. Check
+  // abstract evidence, never impose newly invented table names on a schema.
+  if (!isObject(metadata.formalStateContract) ||
+      metadata.formalStateContract.verified !== true ||
+      metadata.formalStateContract.hasProgressAndPeak !== true ||
+      metadata.formalStateContract.hasRevisionCas !== true) {
     blockers.push('formal_progress_state_not_verified');
   }
-  if (!isObject(t.scout_formal_review_claims) ||
-      !hasColumns(t.scout_formal_review_claims, ['user_id', 'window_end'])) {
-    blockers.push('formal_review_unique_claim_not_verified');
-  }
-  if (!hasUnique('scout_formal_review_claims', ['user_id', 'window_end'])) {
+  if (!isObject(metadata.formalReviewClaimContract) ||
+      metadata.formalReviewClaimContract.verified !== true ||
+      metadata.formalReviewClaimContract.hasUserWindowUniqueKey !== true ||
+      metadata.formalReviewClaimContract.sameTransactionAsState !== true) {
     blockers.push('formal_review_uniqueness_not_verified');
   }
   return Object.freeze({
