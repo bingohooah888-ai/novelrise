@@ -220,6 +220,12 @@ export function recheckScoutPointOperation({
   if (duplicateOperationClaimExists && proposal.action === 'reserve') {
     return Object.freeze({ status: 'already_reserved' });
   }
+  // Only the initial reservation can run without a durable operation claim.
+  // Commit/release/refund MUST reference an existing, locked original claim;
+  // otherwise a fabricated "reserved" snapshot could fabricate a release.
+  if (!duplicateOperationClaimExists && proposal.action !== 'reserve') {
+    return Object.freeze({ status: 'reservation_claim_missing' });
+  }
   const wallet = verifiedBalance(currentWalletSnapshot);
   const budget = verifiedBudget(currentBudgetSnapshot);
   const operation = verifiedOperation(currentOperationSnapshot);
