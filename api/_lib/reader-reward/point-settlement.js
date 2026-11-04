@@ -6,7 +6,13 @@ import {
 } from './scout-point-usage.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const PHASES = new Set(['new', 'reserved', 'committed', 'released', 'refunded']);
+const PHASES = new Set([
+  'new',
+  'reserved',
+  'committed',
+  'released',
+  'refunded'
+]);
 const ACTIONS = new Set(['reserve', 'commit', 'release', 'refund']);
 
 function plain(value) {
@@ -44,7 +50,8 @@ function verifiedBalance(wallet) {
   const availablePoints = safeInt(wallet.availablePoints, 'Wallet available');
   const reservedPoints = safeInt(wallet.reservedPoints, 'Wallet reserved');
   const revision = safeInt(wallet.revision, 'Wallet revision');
-  if (revision === Number.MAX_SAFE_INTEGER) throw new RangeError('Wallet revision overflow');
+  if (revision === Number.MAX_SAFE_INTEGER)
+    throw new RangeError('Wallet revision overflow');
   return Object.freeze({ userId, availablePoints, reservedPoints, revision });
 }
 function verifiedBudget(budget) {
@@ -57,11 +64,18 @@ function verifiedBudget(budget) {
   const committedPoints = safeInt(budget.committedPoints, 'Budget committed');
   const reservedPoints = safeInt(budget.reservedPoints, 'Budget reserved');
   const revision = safeInt(budget.revision, 'Budget revision');
-  if (revision === Number.MAX_SAFE_INTEGER) throw new RangeError('Budget revision overflow');
+  if (revision === Number.MAX_SAFE_INTEGER)
+    throw new RangeError('Budget revision overflow');
   if (safeSum(committedPoints, reservedPoints) > limitPoints) {
     throw new RangeError('Budget exceeds its approved maximum');
   }
-  return Object.freeze({ scopeId, limitPoints, committedPoints, reservedPoints, revision });
+  return Object.freeze({
+    scopeId,
+    limitPoints,
+    committedPoints,
+    reservedPoints,
+    revision
+  });
 }
 function verifiedOperation(operation) {
   if (!plain(operation)) throw new TypeError('Operation snapshot required');
@@ -75,13 +89,30 @@ function verifiedOperation(operation) {
   const phase = operation.phase;
   if (!PHASES.has(phase)) throw new TypeError('Invalid Point operation phase');
   const revision = safeInt(operation.revision, 'Operation revision');
-  if (revision === Number.MAX_SAFE_INTEGER) throw new RangeError('Operation revision overflow');
-  return Object.freeze({ userId, operationId, purpose, amountPoints, phase, revision });
+  if (revision === Number.MAX_SAFE_INTEGER)
+    throw new RangeError('Operation revision overflow');
+  return Object.freeze({
+    userId,
+    operationId,
+    purpose,
+    amountPoints,
+    phase,
+    revision
+  });
 }
 function comparable(a, b) {
-  return Object.keys(a).every(key => a[key] === b[key]);
+  return Object.keys(a).every((key) => a[key] === b[key]);
 }
-function freezeProposal(action, key, wallet, budget, operation, nextWallet, nextBudget, nextOperation) {
+function freezeProposal(
+  action,
+  key,
+  wallet,
+  budget,
+  operation,
+  nextWallet,
+  nextBudget,
+  nextOperation
+) {
   return Object.freeze({
     status: 'proposal_only',
     action,
@@ -112,20 +143,28 @@ export function quoteScoutPointOperation({
   operationSnapshot,
   evidence
 }) {
-  if (!ACTIONS.has(action)) throw new TypeError('Unsupported wallet transition');
+  if (!ACTIONS.has(action))
+    throw new TypeError('Unsupported wallet transition');
   const wallet = verifiedBalance(walletSnapshot);
   const budget = verifiedBudget(budgetSnapshot);
   const operation = verifiedOperation(operationSnapshot);
   if (wallet.userId !== operation.userId) {
     return Object.freeze({ status: 'user_mismatch' });
   }
-  const operationKey = 'scout-point-use-v1:' + operation.userId + ':' + operation.operationId;
-  if (!plain(evidence) || evidence.authoritativeStateVerified !== true ||
-      evidence.budgetPolicyApproved !== true ||
-      evidence.pointEligibilityVerified !== true ||
-      evidence.riskAndControlsCleared !== true ||
-      evidence.operationUniquenessVerified !== true) {
-    return Object.freeze({ status: 'evidence_or_budget_policy_incomplete', operationKey });
+  const operationKey =
+    'scout-point-use-v1:' + operation.userId + ':' + operation.operationId;
+  if (
+    !plain(evidence) ||
+    evidence.authoritativeStateVerified !== true ||
+    evidence.budgetPolicyApproved !== true ||
+    evidence.pointEligibilityVerified !== true ||
+    evidence.riskAndControlsCleared !== true ||
+    evidence.operationUniquenessVerified !== true
+  ) {
+    return Object.freeze({
+      status: 'evidence_or_budget_policy_incomplete',
+      operationKey
+    });
   }
 
   const amount = operation.amountPoints;
@@ -134,20 +173,34 @@ export function quoteScoutPointOperation({
   const nextOperation = { ...operation, revision: operation.revision + 1 };
 
   if (action === 'reserve') {
-    if (operation.phase !== 'new') return Object.freeze({ status: 'invalid_phase', operationKey });
-    if (operation.purpose === 'external_exchange' &&
-        amount < SCOUT_POINT_MIN_EXTERNAL_EXCHANGE) {
+    if (operation.phase !== 'new')
+      return Object.freeze({ status: 'invalid_phase', operationKey });
+    if (
+      operation.purpose === 'external_exchange' &&
+      amount < SCOUT_POINT_MIN_EXTERNAL_EXCHANGE
+    ) {
       return Object.freeze({ status: 'below_exchange_minimum', operationKey });
     }
-    if (evidence.channelPolicyApproved !== true ||
-        (operation.purpose === 'ai_direct_use' && evidence.aiPriceApproved !== true)) {
-      return Object.freeze({ status: 'channel_policy_unapproved', operationKey });
+    if (
+      evidence.channelPolicyApproved !== true ||
+      (operation.purpose === 'ai_direct_use' &&
+        evidence.aiPriceApproved !== true)
+    ) {
+      return Object.freeze({
+        status: 'channel_policy_unapproved',
+        operationKey
+      });
     }
     if (wallet.availablePoints < amount) {
-      return Object.freeze({ status: 'insufficient_eligible_points', operationKey });
+      return Object.freeze({
+        status: 'insufficient_eligible_points',
+        operationKey
+      });
     }
-    if (safeSum(safeSum(budget.committedPoints, budget.reservedPoints), amount) >
-        budget.limitPoints) {
+    if (
+      safeSum(safeSum(budget.committedPoints, budget.reservedPoints), amount) >
+      budget.limitPoints
+    ) {
       return Object.freeze({ status: 'budget_exceeded', operationKey });
     }
     nextWallet.availablePoints = subtract(wallet.availablePoints, amount);
@@ -155,36 +208,55 @@ export function quoteScoutPointOperation({
     nextBudget.reservedPoints = safeSum(budget.reservedPoints, amount);
     nextOperation.phase = 'reserved';
   } else if (action === 'commit') {
-    if (operation.phase !== 'reserved') return Object.freeze({ status: 'invalid_phase', operationKey });
+    if (operation.phase !== 'reserved')
+      return Object.freeze({ status: 'invalid_phase', operationKey });
     if (evidence.fulfillmentVerified !== true) {
-      return Object.freeze({ status: 'fulfillment_not_verified', operationKey });
+      return Object.freeze({
+        status: 'fulfillment_not_verified',
+        operationKey
+      });
     }
     if (wallet.reservedPoints < amount || budget.reservedPoints < amount) {
-      return Object.freeze({ status: 'reservation_snapshot_mismatch', operationKey });
+      return Object.freeze({
+        status: 'reservation_snapshot_mismatch',
+        operationKey
+      });
     }
     nextWallet.reservedPoints = subtract(wallet.reservedPoints, amount);
     nextBudget.reservedPoints = subtract(budget.reservedPoints, amount);
     nextBudget.committedPoints = safeSum(budget.committedPoints, amount);
     nextOperation.phase = 'committed';
   } else if (action === 'release') {
-    if (operation.phase !== 'reserved') return Object.freeze({ status: 'invalid_phase', operationKey });
-    if (evidence.failureOrCancellationVerified !== true ||
-        evidence.noFulfillmentVerified !== true) {
-      return Object.freeze({ status: 'release_proof_incomplete', operationKey });
+    if (operation.phase !== 'reserved')
+      return Object.freeze({ status: 'invalid_phase', operationKey });
+    if (
+      evidence.failureOrCancellationVerified !== true ||
+      evidence.noFulfillmentVerified !== true
+    ) {
+      return Object.freeze({
+        status: 'release_proof_incomplete',
+        operationKey
+      });
     }
     if (wallet.reservedPoints < amount || budget.reservedPoints < amount) {
-      return Object.freeze({ status: 'reservation_snapshot_mismatch', operationKey });
+      return Object.freeze({
+        status: 'reservation_snapshot_mismatch',
+        operationKey
+      });
     }
     nextWallet.reservedPoints = subtract(wallet.reservedPoints, amount);
     nextWallet.availablePoints = safeSum(wallet.availablePoints, amount);
     nextBudget.reservedPoints = subtract(budget.reservedPoints, amount);
     nextOperation.phase = 'released';
   } else {
-    if (operation.phase !== 'committed') return Object.freeze({ status: 'invalid_phase', operationKey });
-    if (evidence.refundProofVerified !== true ||
-        evidence.originalSettlementVerified !== true ||
-        (operation.purpose === 'external_exchange' &&
-         evidence.externalFundsRecoveryVerified !== true)) {
+    if (operation.phase !== 'committed')
+      return Object.freeze({ status: 'invalid_phase', operationKey });
+    if (
+      evidence.refundProofVerified !== true ||
+      evidence.originalSettlementVerified !== true ||
+      (operation.purpose === 'external_exchange' &&
+        evidence.externalFundsRecoveryVerified !== true)
+    ) {
       return Object.freeze({ status: 'refund_proof_incomplete', operationKey });
     }
     // Do not automatically recredit the period budget. That policy is not
@@ -193,8 +265,16 @@ export function quoteScoutPointOperation({
     nextOperation.phase = 'refunded';
     nextBudget.revision = budget.revision;
   }
-  return freezeProposal(action, operationKey, wallet, budget, operation,
-    nextWallet, nextBudget, nextOperation);
+  return freezeProposal(
+    action,
+    operationKey,
+    wallet,
+    budget,
+    operation,
+    nextWallet,
+    nextBudget,
+    nextOperation
+  );
 }
 
 /**
@@ -213,8 +293,10 @@ export function recheckScoutPointOperation({
   if (!plain(proposal) || proposal.status !== 'proposal_only') {
     throw new TypeError('A Gate07 proposal is required');
   }
-  if (duplicateOperationClaimVerified !== true ||
-      typeof duplicateOperationClaimExists !== 'boolean') {
+  if (
+    duplicateOperationClaimVerified !== true ||
+    typeof duplicateOperationClaimExists !== 'boolean'
+  ) {
     return Object.freeze({ status: 'unique_claim_unverified' });
   }
   if (duplicateOperationClaimExists && proposal.action === 'reserve') {
@@ -229,9 +311,11 @@ export function recheckScoutPointOperation({
   const wallet = verifiedBalance(currentWalletSnapshot);
   const budget = verifiedBudget(currentBudgetSnapshot);
   const operation = verifiedOperation(currentOperationSnapshot);
-  if (!comparable(proposal.expectedWallet, wallet) ||
-      !comparable(proposal.expectedBudget, budget) ||
-      !comparable(proposal.expectedOperation, operation)) {
+  if (
+    !comparable(proposal.expectedWallet, wallet) ||
+    !comparable(proposal.expectedBudget, budget) ||
+    !comparable(proposal.expectedOperation, operation)
+  ) {
     return Object.freeze({ status: 'stale_snapshot' });
   }
   return Object.freeze({
@@ -256,13 +340,19 @@ export function quoteScoutPointGrantBudget({
 }) {
   const points = positive(pointsToIssue, 'Reward points');
   const budget = verifiedBudget(fundingBudgetSnapshot);
-  if (fundingBudgetVerified !== true || awardEventUniqueVerified !== true ||
-      typeof awardEventPreviouslyIssued !== 'boolean') {
+  if (
+    fundingBudgetVerified !== true ||
+    awardEventUniqueVerified !== true ||
+    typeof awardEventPreviouslyIssued !== 'boolean'
+  ) {
     return Object.freeze({ status: 'funding_evidence_incomplete' });
   }
-  if (awardEventPreviouslyIssued) return Object.freeze({ status: 'already_awarded' });
-  if (safeSum(safeSum(budget.committedPoints, budget.reservedPoints), points) >
-      budget.limitPoints) {
+  if (awardEventPreviouslyIssued)
+    return Object.freeze({ status: 'already_awarded' });
+  if (
+    safeSum(safeSum(budget.committedPoints, budget.reservedPoints), points) >
+    budget.limitPoints
+  ) {
     return Object.freeze({ status: 'funding_budget_exceeded' });
   }
   return Object.freeze({
@@ -270,7 +360,8 @@ export function quoteScoutPointGrantBudget({
     points,
     expectedBudget: budget,
     proposedBudget: Object.freeze({
-      ...budget, committedPoints: budget.committedPoints + points,
+      ...budget,
+      committedPoints: budget.committedPoints + points,
       revision: budget.revision + 1
     }),
     mayIssuePoints: false
