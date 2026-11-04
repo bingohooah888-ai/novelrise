@@ -36,7 +36,14 @@ test('missing, forged or invalid metric counts fail closed', () => {
   for (const value of [undefined, null, [], {}, { validReadCount: 1 }]) {
     assert.throws(() => buildScoutDemotionActivityEvidence(value));
   }
-  for (const bad of [-1, 1.5, NaN, Infinity, '5', Number.MAX_SAFE_INTEGER + 1]) {
+  for (const bad of [
+    -1,
+    1.5,
+    NaN,
+    Infinity,
+    '5',
+    Number.MAX_SAFE_INTEGER + 1
+  ]) {
     assert.throws(
       () =>
         buildScoutDemotionActivityEvidence({
