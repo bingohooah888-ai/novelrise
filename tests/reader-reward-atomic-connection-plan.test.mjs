@@ -120,9 +120,7 @@ const metadata = (overrides = {}) => ({
       rlsEnabled: true
     }
   },
-  uniqueKeys: [
-    { tableName: 'scout_point_ledger', columns: ['event_key'] }
-  ],
+  uniqueKeys: [{ tableName: 'scout_point_ledger', columns: ['event_key'] }],
   ...overrides
 });
 const observed = (overrides = {}) => ({
@@ -157,7 +155,9 @@ test('existing ledger and RLS can be reused only as partial building blocks', ()
   assert.equal(result.reusable.reversalReference, true);
   assert.equal(result.mayConnectDb, false);
   assert.ok(result.blockers.includes('shared_wallet_revision_cas_not_proven'));
-  assert.ok(result.blockers.includes('spending_freeze_and_identity_policy_not_proven'));
+  assert.ok(
+    result.blockers.includes('spending_freeze_and_identity_policy_not_proven')
+  );
   assert.ok(result.blockers.includes('one_reversal_per_original_unverified'));
   assert.equal(Object.isFrozen(result.blockers), true);
 });
@@ -189,7 +189,9 @@ test('even hypothetical extra reversal uniqueness does not authorize connection'
     })
   );
   assert.equal(result.mayConnectDb, false);
-  assert.ok(result.blockers.includes('durable_operation_reservation_claim_not_proven'));
+  assert.ok(
+    result.blockers.includes('durable_operation_reservation_claim_not_proven')
+  );
 });
 
 test('reserve outlines a transaction, not executable SQL or a payout', () => {
@@ -358,7 +360,10 @@ test('partial fulfillment is neither automatic commit nor release', () => {
 });
 
 test('refunds require independently verified reversal and cash recovery', () => {
-  assert.equal(recovery('committed', 'refunded').status, 'refund_candidate_only');
+  assert.equal(
+    recovery('committed', 'refunded').status,
+    'refund_candidate_only'
+  );
   for (const key of ['reversalProofVerified', 'externalFundsRecovered']) {
     assert.equal(
       recovery('committed', 'refunded', {
@@ -389,10 +394,7 @@ test('an AI refund needs reversal proof but not external cash recovery', () => {
 test('terminal operations and missing claims never repeat effects', () => {
   assert.equal(recovery('released', 'fulfilled').status, 'terminal_noop');
   assert.equal(recovery('refunded', 'fulfilled').status, 'terminal_noop');
-  assert.equal(
-    recovery('new', 'fulfilled').status,
-    'missing_reservation_hold'
-  );
+  assert.equal(recovery('new', 'fulfilled').status, 'missing_reservation_hold');
 });
 
 test('unverified owner, claim and event history block recovery', () => {
@@ -411,11 +413,12 @@ test('unverified owner, claim and event history block recovery', () => {
     );
   }
   assert.throws(
-    () => quoteScoutPointRecovery({
-      operation: operation({ phase: 'invalid' }),
-      observation: observed(),
-      evidence: recoveryProof()
-    }),
+    () =>
+      quoteScoutPointRecovery({
+        operation: operation({ phase: 'invalid' }),
+        observation: observed(),
+        evidence: recoveryProof()
+      }),
     TypeError
   );
 });

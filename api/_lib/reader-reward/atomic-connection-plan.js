@@ -23,7 +23,13 @@ const REQUIRED_AUDIT_COLUMNS = Object.freeze([
   'created_at'
 ]);
 const ACTIONS = new Set(['reserve', 'commit', 'release', 'refund']);
-const PHASES = new Set(['new', 'reserved', 'committed', 'released', 'refunded']);
+const PHASES = new Set([
+  'new',
+  'reserved',
+  'committed',
+  'released',
+  'refunded'
+]);
 const OUTCOMES = new Set([
   'unknown',
   'pending',
@@ -84,9 +90,7 @@ export function auditScoutPointConnectionSurface(metadata) {
     }
   }
   if (
-    !uniqueKeyPresent(metadata.uniqueKeys, 'scout_point_ledger', [
-      'event_key'
-    ])
+    !uniqueKeyPresent(metadata.uniqueKeys, 'scout_point_ledger', ['event_key'])
   ) {
     blockers.push('event_key_uniqueness_unverified');
   }
@@ -107,7 +111,10 @@ export function auditScoutPointConnectionSurface(metadata) {
   return frozen({
     status: 'preconnection_audit_only',
     reusable: frozen({
-      pointLedger: hasColumns(tables.scout_point_ledger, REQUIRED_LEDGER_COLUMNS),
+      pointLedger: hasColumns(
+        tables.scout_point_ledger,
+        REQUIRED_LEDGER_COLUMNS
+      ),
       existingEventKeyUnique: uniqueKeyPresent(
         metadata.uniqueKeys,
         'scout_point_ledger',
@@ -213,11 +220,7 @@ export function quoteScoutPointAtomicConnection({
  * and partially observed external outcomes. Never auto-retry a provider.
  * No candidate below is authorized to change a real wallet.
  */
-export function quoteScoutPointRecovery({
-  operation,
-  observation,
-  evidence
-}) {
+export function quoteScoutPointRecovery({ operation, observation, evidence }) {
   if (
     !object(operation) ||
     !PHASES.has(operation.phase) ||
@@ -257,10 +260,7 @@ export function quoteScoutPointRecovery({
   if (observation.outcome === 'partially_fulfilled') {
     return result('partial_fulfillment_manual_reconcile');
   }
-  if (
-    observation.outcome === 'unknown' ||
-    observation.outcome === 'pending'
-  ) {
+  if (observation.outcome === 'unknown' || observation.outcome === 'pending') {
     return result('hold_pending_authoritative_reconciliation');
   }
   if (operation.phase === 'committed') {
