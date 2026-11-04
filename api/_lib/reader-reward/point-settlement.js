@@ -1,9 +1,6 @@
 // Gate 07: proposed Scout Point wallet state machine. All functions are pure.
 // No external payment, AI use, DB transaction, balance writes, or claim insert.
-import {
-  SCOUT_POINT_MIN_EXTERNAL_EXCHANGE,
-  SCOUT_POINT_YEN_VALUE
-} from './scout-point-usage.js';
+import { SCOUT_POINT_MIN_EXTERNAL_EXCHANGE } from './scout-point-usage.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PHASES = new Set([
