@@ -59,6 +59,37 @@ export function quoteScoutMaintenanceLevelReview({
     nextLevel
   });
 }
+/**
+ * Quote the level progress after a maintenance review.
+ * On a genuine demotion, the downgraded level starts with 0 XP toward its
+ * next level; returning to the former level requires earning new XP via
+ * ordinary progression. Lifetime XP/history are NEVER changed here.
+ * When the level is maintained (including a protected floor), keep the
+ * existing level-progress XP unchanged.
+ * This remains dormant and does not write state or grant levels.
+ */
+export function quoteScoutProgressAfterMaintenanceReview({
+  currentLevel,
+  verifiedHistoricalMaxLevel,
+  earnedXpInCompleted30DayWindow,
+  currentLevelProgressXp
+}) {
+  if (!Number.isSafeInteger(currentLevelProgressXp) || currentLevelProgressXp < 0) {
+    throw new RangeError(
+      'Current-level progression XP must be a nonnegative safe integer'
+    );
+  }
+  const review = quoteScoutMaintenanceLevelReview({
+    currentLevel,
+    verifiedHistoricalMaxLevel,
+    earnedXpInCompleted30DayWindow
+  });
+  return Object.freeze({
+    ...review,
+    nextLevelProgressXp: review.shouldDemote ? 0 : currentLevelProgressXp
+  });
+}
+
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 const SCOUT_REVIEW_INTERVAL_MS =
   SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS * MILLISECONDS_PER_DAY;
