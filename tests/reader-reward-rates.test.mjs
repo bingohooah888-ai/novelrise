@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   READER_REWARD_COMMENT_LIMIT,
   SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70,
+  SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS,
+  isScoutDemotionReviewDue,
   applyVerifiedScoutDemotionFloor,
   READER_REWARD_UNIT,
   quoteEpisodeRewardTenths,
@@ -136,5 +138,31 @@ test('invalid or unverified downgrade inputs are rejected', () => {
       () => applyVerifiedScoutDemotionFloor(proposed, max),
       RangeError
     );
+  }
+});
+
+test('Scout demotion review cadence is exactly 30 elapsed days', () => {
+  assert.equal(SCOUT_DEMOTION_REVIEW_INTERVAL_DAYS, 30);
+  const anchor = Date.UTC(2026, 11, 1, 0, 0, 0);
+  const day = 24 * 60 * 60 * 1000;
+  assert.equal(isScoutDemotionReviewDue(anchor, anchor), false);
+  assert.equal(isScoutDemotionReviewDue(anchor, anchor + 29 * day), false);
+  assert.equal(isScoutDemotionReviewDue(anchor, anchor + 30 * day - 1), false);
+  assert.equal(isScoutDemotionReviewDue(anchor, anchor + 30 * day), true);
+  assert.equal(isScoutDemotionReviewDue(anchor, anchor + 31 * day), true);
+  assert.equal(isScoutDemotionReviewDue(anchor, anchor - 1), false);
+  // Testing an illustrative UTC anchor does not authorize its use as launch time.
+});
+
+test('Scout review cadence rejects forged or invalid timestamps', () => {
+  for (const [anchor, asOf] of [
+    [-1, 1],
+    [1.1, 2],
+    [NaN, 1],
+    [1, Infinity],
+    ['1', 2],
+    [0, Number.MAX_SAFE_INTEGER + 1]
+  ]) {
+    assert.throws(() => isScoutDemotionReviewDue(anchor, asOf), RangeError);
   }
 });
