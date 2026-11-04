@@ -13,13 +13,17 @@ function validUuid(value, label) {
 }
 function positiveXp(value) {
   if (!Number.isSafeInteger(value) || value <= 0 || value > 1000000) {
-    throw new RangeError('XP grant value must match the positive Scout XP ledger value range');
+    throw new RangeError(
+      'XP grant value must match the positive Scout XP ledger value range'
+    );
   }
   return value;
 }
 function validMs(value) {
   if (!Number.isSafeInteger(value) || value < 0) {
-    throw new RangeError('XP grant time must be an integer UTC millisecond timestamp');
+    throw new RangeError(
+      'XP grant time must be an integer UTC millisecond timestamp'
+    );
   }
   return value;
 }
@@ -27,12 +31,16 @@ function confirmedThreshold(level, map) {
   if (!Object.prototype.hasOwnProperty.call(map, String(level))) return null;
   const required = map[String(level)];
   if (!Number.isSafeInteger(required) || required <= 0) {
-    throw new RangeError('Confirmed XP threshold for Level ' + level + ' must be a positive safe integer');
+    throw new RangeError(
+      'Confirmed XP threshold for Level ' +
+        level +
+        ' must be a positive safe integer'
+    );
   }
   return required;
 }
 function sameState(expected, current) {
-  return Object.keys(expected).every(key => expected[key] === current[key]);
+  return Object.keys(expected).every((key) => expected[key] === current[key]);
 }
 
 /**
@@ -66,24 +74,35 @@ export function quoteScoutXpLevelUp({
   }
   const kind = xpEvent.xpKind;
   if (typeof kind !== 'string' || kind.length < 1 || kind.length > 80) {
-    throw new TypeError('XP kind must match the existing Scout XP ledger length constraint');
+    throw new TypeError(
+      'XP kind must match the existing Scout XP ledger length constraint'
+    );
   }
   const earnedXp = positiveXp(xpEvent.earnedXp);
   const occurredAtMs = validMs(xpEvent.occurredAtMs);
-  const grantKey = 'scout-xp-progress-v1:' + userId + ':' + sourceEventId + ':' + kind;
+  const grantKey =
+    'scout-xp-progress-v1:' + userId + ':' + sourceEventId + ':' + kind;
   const context = { grantKey };
 
-  if (evidenceComplete !== true || typeof alreadyAppliedToProgress !== 'boolean') {
+  if (
+    evidenceComplete !== true ||
+    typeof alreadyAppliedToProgress !== 'boolean'
+  ) {
     return Object.freeze({ status: 'evidence_incomplete', ...context });
   }
   if (alreadyAppliedToProgress) {
     return Object.freeze({ status: 'already_applied', ...context });
   }
   if (occurredAtMs < state.reviewAnchorMs) {
-    return Object.freeze({ status: 'outside_formal_release_window', ...context });
+    return Object.freeze({
+      status: 'outside_formal_release_window',
+      ...context
+    });
   }
-  if (state.lastReviewedWindowEndMs !== null &&
-      occurredAtMs < state.lastReviewedWindowEndMs) {
+  if (
+    state.lastReviewedWindowEndMs !== null &&
+    occurredAtMs < state.lastReviewedWindowEndMs
+  ) {
     // A late ledger entry in a finalized 30-day window has an undecided
     // correction policy. Never silently apply it to a newer Level state.
     return Object.freeze({ status: 'closed_review_window', ...context });
@@ -103,9 +122,12 @@ export function quoteScoutXpLevelUp({
   if (state.currentLevel === 100) {
     return Object.freeze({ status: 'level_cap_policy_pending', ...context });
   }
-  if (thresholdsApproved !== true ||
-      !requiredXpByLevel || typeof requiredXpByLevel !== 'object' ||
-      Array.isArray(requiredXpByLevel)) {
+  if (
+    thresholdsApproved !== true ||
+    !requiredXpByLevel ||
+    typeof requiredXpByLevel !== 'object' ||
+    Array.isArray(requiredXpByLevel)
+  ) {
     return Object.freeze({ status: 'thresholds_not_confirmed', ...context });
   }
 
@@ -116,7 +138,11 @@ export function quoteScoutXpLevelUp({
   }
   const firstThreshold = confirmedThreshold(level, requiredXpByLevel);
   if (firstThreshold === null) {
-    return Object.freeze({ status: 'threshold_missing', blockedAtLevel: level, ...context });
+    return Object.freeze({
+      status: 'threshold_missing',
+      blockedAtLevel: level,
+      ...context
+    });
   }
   if (state.levelProgressXp >= firstThreshold) {
     return Object.freeze({ status: 'state_progress_inconsistent', ...context });
@@ -129,7 +155,11 @@ export function quoteScoutXpLevelUp({
     if (remaining === 0) break;
     const threshold = confirmedThreshold(level, requiredXpByLevel);
     if (threshold === null) {
-      return Object.freeze({ status: 'threshold_missing', blockedAtLevel: level, ...context });
+      return Object.freeze({
+        status: 'threshold_missing',
+        blockedAtLevel: level,
+        ...context
+      });
     }
     if (remaining < threshold) break;
     remaining -= threshold;
@@ -172,7 +202,9 @@ export function recheckScoutXpLevelUp({
     throw new TypeError('A Gate 04 XP progression proposal is required');
   }
   if (typeof grantKeyAlreadyCommitted !== 'boolean') {
-    throw new TypeError('An authoritative XP grant-key observation is required');
+    throw new TypeError(
+      'An authoritative XP grant-key observation is required'
+    );
   }
   const observed = validateScoutLevelStateSnapshot(currentStateSnapshot);
   if (grantKeyAlreadyCommitted) {
