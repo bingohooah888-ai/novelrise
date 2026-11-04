@@ -119,6 +119,9 @@ export function quoteScoutXpLevelUp({
 
   const levelsGained = [];
   while (level < 100) {
+    // Exact promotion with no surplus does not require a threshold for the
+    // newly attained next Level; that threshold may still be undecided.
+    if (remaining === 0) break;
     const threshold = confirmedThreshold(level, requiredXpByLevel);
     if (threshold === null) {
       return Object.freeze({ status: 'threshold_missing', blockedAtLevel: level, ...context });
