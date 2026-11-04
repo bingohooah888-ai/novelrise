@@ -92,7 +92,6 @@ export function quoteScoutFirstDemotionReviewWindow({
   });
 }
 
-
 /**
  * Check whether a 30-day review window has elapsed since an externally
  * verified review anchor (or the preceding authorized review checkpoint).
