@@ -12,14 +12,17 @@ export const READER_REWARD_COMMENT_LIMIT = Object.freeze({
 
 /**
  * Return a quoted reward for one valid episode read.
- * null means the policy for Lv.1-69 is UNDECIDED, not zero.
+ * Rates are the approved formal-release draft for all levels 1 through 100.
  * This function must never be used as a grant or eligibility decision.
  */
 export function quoteEpisodeRewardTenths(level) {
   if (!Number.isSafeInteger(level) || level < 1 || level > 100) {
     throw new RangeError('Scout level must be an integer between 1 and 100');
   }
-  if (level < 70) return null;
+  if (level < 20) return 1;
+  if (level < 40) return 2;
+  if (level < 60) return 3;
+  if (level < 70) return 4;
   return 5 + Math.floor((level - 70) / 5);
 }
 
