@@ -4,6 +4,33 @@
 
 export const READER_REWARD_UNIT = 'tenth_yen';
 
+// Policy-only downgrade safeguard; never a source of progression evidence.
+export const SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70 = 50;
+
+/**
+ * Apply the OWNER-approved floor to a proposed downgraded Scout level.
+ * The caller must supply a server-verified historical maximum Scout level;
+ * this helper does not decide when a downgrade is due or alter any DB state.
+ * Reaching Lv.50 without ever reaching Lv.70 does not activate the floor.
+ */
+export function applyVerifiedScoutDemotionFloor(
+  proposedLevel,
+  verifiedHistoricalMaxLevel
+) {
+  for (const value of [proposedLevel, verifiedHistoricalMaxLevel]) {
+    if (!Number.isSafeInteger(value) || value < 1 || value > 100) {
+      throw new RangeError('Scout level must be an integer between 1 and 100');
+    }
+  }
+  if (proposedLevel > verifiedHistoricalMaxLevel) {
+    throw new RangeError('A proposed demotion cannot exceed the verified maximum');
+  }
+  if (verifiedHistoricalMaxLevel >= 70) {
+    return Math.max(SCOUT_DEMOTION_FLOOR_AFTER_LEVEL_70, proposedLevel);
+  }
+  return proposedLevel;
+}
+
 export const READER_REWARD_COMMENT_LIMIT = Object.freeze({
   yenPerEligibleComment: 2,
   eligibleCommentsPerMonth: 50,
