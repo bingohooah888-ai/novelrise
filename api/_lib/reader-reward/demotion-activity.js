@@ -14,7 +14,9 @@ export const SCOUT_DEMOTION_ACTIVITY_METRICS = Object.freeze([
  */
 export function buildScoutDemotionActivityEvidence(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new TypeError('A server-verified Scout activity snapshot is required');
+    throw new TypeError(
+      'A server-verified Scout activity snapshot is required'
+    );
   }
   const { validReadCount, verifiedDiscoverySuccessCount } = input;
   for (const value of [validReadCount, verifiedDiscoverySuccessCount]) {
