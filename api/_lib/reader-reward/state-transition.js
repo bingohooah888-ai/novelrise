@@ -1,8 +1,6 @@
 // Gate 03: immutable Scout state and XP-ledger review consistency PROPOSALS.
 // No DB access, mutations, persistent locks, payouts or public wiring.
-import {
-  quoteScoutProgressAfterMaintenanceReview
-} from './rates.js';
+import { quoteScoutProgressAfterMaintenanceReview } from './rates.js';
 import { quoteScoutMaintenanceWindow } from './maintenance-review.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -40,13 +38,20 @@ export function validateScoutLevelStateSnapshot(snapshot) {
   }
   const levelProgressXp = safeInt(snapshot.levelProgressXp, 'levelProgressXp');
   const reviewAnchorMs = safeInt(snapshot.reviewAnchorMs, 'reviewAnchorMs');
-  const revision = safeInt(snapshot.revision, 'revision', 0, Number.MAX_SAFE_INTEGER - 1);
+  const revision = safeInt(
+    snapshot.revision,
+    'revision',
+    0,
+    Number.MAX_SAFE_INTEGER - 1
+  );
   const lastReviewedWindowEndMs = snapshot.lastReviewedWindowEndMs;
   if (lastReviewedWindowEndMs !== null) {
     safeInt(lastReviewedWindowEndMs, 'lastReviewedWindowEndMs');
     const diff = lastReviewedWindowEndMs - reviewAnchorMs;
     if (diff < THIRTY_DAYS_MS || diff % THIRTY_DAYS_MS !== 0) {
-      throw new RangeError('Review checkpoint does not align to the saved 30-day anchor');
+      throw new RangeError(
+        'Review checkpoint does not align to the saved 30-day anchor'
+      );
     }
   }
   if (highestLevel >= 70 && currentLevel < 50) {
@@ -64,7 +69,7 @@ export function validateScoutLevelStateSnapshot(snapshot) {
 }
 
 function sameExpectedState(state, snapshot) {
-  return Object.keys(state).every(key => state[key] === snapshot[key]);
+  return Object.keys(state).every((key) => state[key] === snapshot[key]);
 }
 
 /**
@@ -72,9 +77,16 @@ function sameExpectedState(state, snapshot) {
  * The given review quote is revalidated against the authoritative state
  * snapshot; neither snapshot nor quote alone proves DB authority.
  */
-export function quoteScoutReviewStateTransition({ stateSnapshot, reviewQuote }) {
+export function quoteScoutReviewStateTransition({
+  stateSnapshot,
+  reviewQuote
+}) {
   const state = validateScoutLevelStateSnapshot(stateSnapshot);
-  if (!reviewQuote || typeof reviewQuote !== 'object' || Array.isArray(reviewQuote)) {
+  if (
+    !reviewQuote ||
+    typeof reviewQuote !== 'object' ||
+    Array.isArray(reviewQuote)
+  ) {
     throw new TypeError('A Gate 02 review quotation is required');
   }
   if (reviewQuote.status !== 'quotation_only') {
@@ -86,10 +98,13 @@ export function quoteScoutReviewStateTransition({ stateSnapshot, reviewQuote }) 
     firstWindowStartMs: state.reviewAnchorMs,
     reviewOrdinal: ordinal
   });
-  const expectedKey = 'scout-maintenance-v1:' + state.userId + ':' + window.windowEndMs;
-  if (reviewQuote.reviewKey !== expectedKey ||
-      reviewQuote.windowStartMs !== window.windowStartMs ||
-      reviewQuote.windowEndMs !== window.windowEndMs) {
+  const expectedKey =
+    'scout-maintenance-v1:' + state.userId + ':' + window.windowEndMs;
+  if (
+    reviewQuote.reviewKey !== expectedKey ||
+    reviewQuote.windowStartMs !== window.windowStartMs ||
+    reviewQuote.windowEndMs !== window.windowEndMs
+  ) {
     return Object.freeze({ status: 'review_identity_mismatch' });
   }
 
@@ -97,16 +112,20 @@ export function quoteScoutReviewStateTransition({ stateSnapshot, reviewQuote }) 
   if (last !== null && last >= window.windowEndMs) {
     return Object.freeze({ status: 'already_reviewed' });
   }
-  if ((ordinal === 1 && last !== null) ||
-      (ordinal > 1 && last !== window.windowStartMs)) {
+  if (
+    (ordinal === 1 && last !== null) ||
+    (ordinal > 1 && last !== window.windowStartMs)
+  ) {
     return Object.freeze({ status: 'checkpoint_mismatch' });
   }
 
   // A demotion resets XP to zero, so its RESULT alone cannot prove
   // which progress value was quoted. Bind the quotation to its SOURCE state.
-  if (reviewQuote.quotedFromLevel !== state.currentLevel ||
-      reviewQuote.quotedFromHighestLevel !== state.highestLevel ||
-      reviewQuote.quotedFromLevelProgressXp !== state.levelProgressXp) {
+  if (
+    reviewQuote.quotedFromLevel !== state.currentLevel ||
+    reviewQuote.quotedFromHighestLevel !== state.highestLevel ||
+    reviewQuote.quotedFromLevelProgressXp !== state.levelProgressXp
+  ) {
     return Object.freeze({ status: 'quote_state_mismatch' });
   }
 
@@ -121,8 +140,13 @@ export function quoteScoutReviewStateTransition({ stateSnapshot, reviewQuote }) 
     currentLevelProgressXp: state.levelProgressXp
   });
 
-  const fields = ['metQuota', 'shouldDemote', 'nextLevel', 'nextLevelProgressXp'];
-  if (fields.some(key => reviewQuote[key] !== expected[key])) {
+  const fields = [
+    'metQuota',
+    'shouldDemote',
+    'nextLevel',
+    'nextLevelProgressXp'
+  ];
+  if (fields.some((key) => reviewQuote[key] !== expected[key])) {
     return Object.freeze({ status: 'quote_state_mismatch' });
   }
 
@@ -156,11 +180,16 @@ export function recheckScoutReviewProposal({
     throw new TypeError('A Gate 03 state proposal is required');
   }
   if (typeof reviewKeyAlreadyCommitted !== 'boolean') {
-    throw new TypeError('The committed review key must be verified on the server');
+    throw new TypeError(
+      'The committed review key must be verified on the server'
+    );
   }
   const observed = validateScoutLevelStateSnapshot(currentStateSnapshot);
-  if (reviewKeyAlreadyCommitted ||
-      observed.lastReviewedWindowEndMs >= proposal.nextState.lastReviewedWindowEndMs) {
+  if (
+    reviewKeyAlreadyCommitted ||
+    observed.lastReviewedWindowEndMs >=
+      proposal.nextState.lastReviewedWindowEndMs
+  ) {
     return Object.freeze({ status: 'already_reviewed' });
   }
   if (!sameExpectedState(proposal.expectedState, observed)) {
