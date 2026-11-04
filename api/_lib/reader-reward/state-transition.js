@@ -102,6 +102,14 @@ export function quoteScoutReviewStateTransition({ stateSnapshot, reviewQuote }) 
     return Object.freeze({ status: 'checkpoint_mismatch' });
   }
 
+  // A demotion resets XP to zero, so its RESULT alone cannot prove
+  // which progress value was quoted. Bind the quotation to its SOURCE state.
+  if (reviewQuote.quotedFromLevel !== state.currentLevel ||
+      reviewQuote.quotedFromHighestLevel !== state.highestLevel ||
+      reviewQuote.quotedFromLevelProgressXp !== state.levelProgressXp) {
+    return Object.freeze({ status: 'quote_state_mismatch' });
+  }
+
   const earned = safeInt(
     reviewQuote.earnedXpInCompleted30DayWindow,
     'earnedXpInCompleted30DayWindow'
