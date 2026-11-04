@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  quoteScoutMaintenanceReviewDryRun
-} from '../api/_lib/reader-reward/maintenance-review.js';
+import { quoteScoutMaintenanceReviewDryRun } from '../api/_lib/reader-reward/maintenance-review.js';
 import {
   validateScoutLevelStateSnapshot,
   quoteScoutReviewStateTransition,
@@ -31,23 +29,25 @@ const xpEvent = (value) => ({
   xp_value: value,
   occurred_at: new Date(anchor).toISOString()
 });
-const quote = (extra = {}) => quoteScoutMaintenanceReviewDryRun({
-  accountId: userId,
-  firstWindowStartMs: anchor,
-  reviewOrdinal: 1,
-  asOfMs: anchor + 30 * day,
-  lastReviewedWindowEndMs: null,
-  ledgerSnapshotComplete: true,
-  verifiedLedgerRows: [xpEvent(199)],
-  currentLevel: 90,
-  verifiedHistoricalMaxLevel: 92,
-  currentLevelProgressXp: 425,
-  ...extra
-});
-const propose = (snap = state(), review = quote()) => quoteScoutReviewStateTransition({
-  stateSnapshot: snap,
-  reviewQuote: review
-});
+const quote = (extra = {}) =>
+  quoteScoutMaintenanceReviewDryRun({
+    accountId: userId,
+    firstWindowStartMs: anchor,
+    reviewOrdinal: 1,
+    asOfMs: anchor + 30 * day,
+    lastReviewedWindowEndMs: null,
+    ledgerSnapshotComplete: true,
+    verifiedLedgerRows: [xpEvent(199)],
+    currentLevel: 90,
+    verifiedHistoricalMaxLevel: 92,
+    currentLevelProgressXp: 425,
+    ...extra
+  });
+const propose = (snap = state(), review = quote()) =>
+  quoteScoutReviewStateTransition({
+    stateSnapshot: snap,
+    reviewQuote: review
+  });
 
 test('state snapshot keeps ONLY current level, XP progress, peak, anchor, checkpoint, revision', () => {
   const validated = validateScoutLevelStateSnapshot({
@@ -88,16 +88,19 @@ test('200 XP maintains level and progress while checkpoint advances once', () =>
 test('two workers quoting the same immutable state cannot reuse a checkpoint in recheck', () => {
   const workerA = propose();
   const workerB = propose();
-  assert.deepEqual(recheckScoutReviewProposal({
-    proposal: workerA,
-    currentStateSnapshot: state(),
-    reviewKeyAlreadyCommitted: false
-  }), {
-    status: 'preconditions_match_only',
-    reviewKey: workerA.reviewKey,
-    expectedRevision: 9,
-    proposedRevision: 10
-  });
+  assert.deepEqual(
+    recheckScoutReviewProposal({
+      proposal: workerA,
+      currentStateSnapshot: state(),
+      reviewKeyAlreadyCommitted: false
+    }),
+    {
+      status: 'preconditions_match_only',
+      reviewKey: workerA.reviewKey,
+      expectedRevision: 9,
+      proposedRevision: 10
+    }
+  );
   const afterA = workerA.nextState;
   const duplicate = recheckScoutReviewProposal({
     proposal: workerB,
@@ -139,10 +142,22 @@ test('a quote made for stale level progress is rejected, even at same XP total',
 });
 
 test('a review quote cannot be redirected to another user or different 30-day window', () => {
-  assert.equal(propose(state({ userId: otherUser })).status, 'review_identity_mismatch');
-  assert.equal(propose(state({ reviewAnchorMs: anchor + day })).status, 'review_identity_mismatch');
-  assert.equal(propose(state(), { ...quote(), reviewKey: 'tampered' }).status, 'review_identity_mismatch');
-  assert.equal(propose(state(), { ...quote(), windowEndMs: anchor + 60 * day }).status, 'review_identity_mismatch');
+  assert.equal(
+    propose(state({ userId: otherUser })).status,
+    'review_identity_mismatch'
+  );
+  assert.equal(
+    propose(state({ reviewAnchorMs: anchor + day })).status,
+    'review_identity_mismatch'
+  );
+  assert.equal(
+    propose(state(), { ...quote(), reviewKey: 'tampered' }).status,
+    'review_identity_mismatch'
+  );
+  assert.equal(
+    propose(state(), { ...quote(), windowEndMs: anchor + 60 * day }).status,
+    'review_identity_mismatch'
+  );
 });
 
 test('a missing review checkpoint cannot be skipped by requesting the second period', () => {
@@ -159,7 +174,10 @@ test('a missing review checkpoint cannot be skipped by requesting the second per
     currentLevelProgressXp: 425
   });
   assert.equal(propose(state(), second).status, 'checkpoint_mismatch');
-  const proper = propose(state({ lastReviewedWindowEndMs: anchor + 30 * day }), second);
+  const proper = propose(
+    state({ lastReviewedWindowEndMs: anchor + 30 * day }),
+    second
+  );
   assert.equal(proper.status, 'proposal_only');
   assert.equal(proper.nextState.lastReviewedWindowEndMs, anchor + 60 * day);
   assert.equal(proper.nextState.revision, 10);
@@ -169,11 +187,14 @@ test('previously completed periods are not proposed again', () => {
   const completedState = state({ lastReviewedWindowEndMs: anchor + 30 * day });
   assert.equal(propose(completedState).status, 'already_reviewed');
   const plan = propose();
-  assert.equal(recheckScoutReviewProposal({
-    proposal: plan,
-    currentStateSnapshot: completedState,
-    reviewKeyAlreadyCommitted: true
-  }).status, 'already_reviewed');
+  assert.equal(
+    recheckScoutReviewProposal({
+      proposal: plan,
+      currentStateSnapshot: completedState,
+      reviewKeyAlreadyCommitted: true
+    }).status,
+    'already_reviewed'
+  );
 });
 
 test('unapproved corrections and missing evidence never produce a transition proposal', () => {
@@ -252,13 +273,21 @@ test('a forged quote with altered level, quota, or progress is rejected', () => 
 });
 
 test('recheck demands an explicit confirmed unique-key observation', () => {
-  assert.throws(() => recheckScoutReviewProposal({
-    proposal: propose(),
-    currentStateSnapshot: state()
-  }), TypeError);
-  assert.throws(() => recheckScoutReviewProposal({
-    proposal: { status: 'not_due' },
-    currentStateSnapshot: state(),
-    reviewKeyAlreadyCommitted: false
-  }), TypeError);
+  assert.throws(
+    () =>
+      recheckScoutReviewProposal({
+        proposal: propose(),
+        currentStateSnapshot: state()
+      }),
+    TypeError
+  );
+  assert.throws(
+    () =>
+      recheckScoutReviewProposal({
+        proposal: { status: 'not_due' },
+        currentStateSnapshot: state(),
+        reviewKeyAlreadyCommitted: false
+      }),
+    TypeError
+  );
 });
