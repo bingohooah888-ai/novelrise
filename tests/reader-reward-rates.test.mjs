@@ -280,7 +280,10 @@ test('existing readers start the first 30-day review at formal release', () => {
   });
   assert.equal(Object.isFrozen(review), true);
   assert.equal(
-    isScoutDemotionReviewDue(review.windowStartMs, review.firstReviewDueAtMs - 1),
+    isScoutDemotionReviewDue(
+      review.windowStartMs,
+      review.firstReviewDueAtMs - 1
+    ),
     false
   );
   assert.equal(
