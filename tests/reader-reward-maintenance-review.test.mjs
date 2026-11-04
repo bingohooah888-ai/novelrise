@@ -13,7 +13,8 @@ const RELEASE = Date.UTC(2027, 0, 1, 12);
 const entry = (number, xp, timestamp, extra = {}) => ({
   id: '10000000-0000-4000-8000-' + String(number).padStart(12, '0'),
   user_id: userId,
-  source_event_id: '20000000-0000-4000-8000-' + String(number).padStart(12, '0'),
+  source_event_id:
+    '20000000-0000-4000-8000-' + String(number).padStart(12, '0'),
   xp_kind: 'valid_read_episode',
   xp_value: xp,
   occurred_at: new Date(timestamp).toISOString(),
@@ -34,8 +35,14 @@ const input = (extra = {}) => ({
 });
 
 test('one-based 30-day review windows are exact and contiguous', () => {
-  const first = quoteScoutMaintenanceWindow({ firstWindowStartMs: RELEASE, reviewOrdinal: 1 });
-  const second = quoteScoutMaintenanceWindow({ firstWindowStartMs: RELEASE, reviewOrdinal: 2 });
+  const first = quoteScoutMaintenanceWindow({
+    firstWindowStartMs: RELEASE,
+    reviewOrdinal: 1
+  });
+  const second = quoteScoutMaintenanceWindow({
+    firstWindowStartMs: RELEASE,
+    reviewOrdinal: 2
+  });
   assert.deepEqual(first, {
     reviewOrdinal: 1,
     windowStartMs: RELEASE,
@@ -61,14 +68,16 @@ test('new signups use their own first-review anchor', () => {
 });
 
 test('period is start-inclusive and end-exclusive, counting existing ledger fields', () => {
-  const review = quoteScoutMaintenanceReviewDryRun(input({
-    verifiedLedgerRows: [
-      entry(1, 150, RELEASE),
-      entry(2, 49, RELEASE + 30 * DAY - 1),
-      entry(3, 1000, RELEASE + 30 * DAY),
-      entry(4, 1000, RELEASE - 1)
-    ]
-  }));
+  const review = quoteScoutMaintenanceReviewDryRun(
+    input({
+      verifiedLedgerRows: [
+        entry(1, 150, RELEASE),
+        entry(2, 49, RELEASE + 30 * DAY - 1),
+        entry(3, 1000, RELEASE + 30 * DAY),
+        entry(4, 1000, RELEASE - 1)
+      ]
+    })
+  );
   assert.equal(review.status, 'quotation_only');
   assert.equal(review.earnedXpInCompleted30DayWindow, 199);
   assert.equal(review.ledgerRowsInWindow, 2);
@@ -79,9 +88,11 @@ test('period is start-inclusive and end-exclusive, counting existing ledger fiel
 });
 
 test('exactly 200 XP keeps the level and its current progress', () => {
-  const review = quoteScoutMaintenanceReviewDryRun(input({
-    verifiedLedgerRows: [entry(1, 200, RELEASE)]
-  }));
+  const review = quoteScoutMaintenanceReviewDryRun(
+    input({
+      verifiedLedgerRows: [entry(1, 200, RELEASE)]
+    })
+  );
   assert.equal(review.earnedXpInCompleted30DayWindow, 200);
   assert.equal(review.metQuota, true);
   assert.equal(review.shouldDemote, false);
@@ -90,8 +101,12 @@ test('exactly 200 XP keeps the level and its current progress', () => {
 });
 
 test('future periods and incomplete evidence never quote demotion', () => {
-  const future = quoteScoutMaintenanceReviewDryRun(input({ asOfMs: RELEASE + 30 * DAY - 1 }));
-  const incomplete = quoteScoutMaintenanceReviewDryRun(input({ ledgerSnapshotComplete: false }));
+  const future = quoteScoutMaintenanceReviewDryRun(
+    input({ asOfMs: RELEASE + 30 * DAY - 1 })
+  );
+  const incomplete = quoteScoutMaintenanceReviewDryRun(
+    input({ ledgerSnapshotComplete: false })
+  );
   assert.equal(future.status, 'not_due');
   assert.equal(incomplete.status, 'evidence_incomplete');
   assert.equal(Object.hasOwn(future, 'shouldDemote'), false);
@@ -100,52 +115,84 @@ test('future periods and incomplete evidence never quote demotion', () => {
 
 test('retries preserve stable review key and never apply duplicate demotion', () => {
   const first = quoteScoutMaintenanceReviewDryRun(input());
-  const replay = quoteScoutMaintenanceReviewDryRun(input({
-    lastReviewedWindowEndMs: first.windowEndMs
-  }));
+  const replay = quoteScoutMaintenanceReviewDryRun(
+    input({
+      lastReviewedWindowEndMs: first.windowEndMs
+    })
+  );
   assert.equal(replay.status, 'already_reviewed');
   assert.equal(replay.reviewKey, first.reviewKey);
   assert.equal(Object.hasOwn(replay, 'nextLevel'), false);
 });
 
 test('cannot silently skip an unsettled 30-day checkpoint', () => {
-  const skipped = quoteScoutMaintenanceReviewDryRun(input({
-    reviewOrdinal: 2,
-    asOfMs: RELEASE + 60 * DAY
-  }));
+  const skipped = quoteScoutMaintenanceReviewDryRun(
+    input({
+      reviewOrdinal: 2,
+      asOfMs: RELEASE + 60 * DAY
+    })
+  );
   assert.equal(skipped.status, 'checkpoint_mismatch');
-  const second = quoteScoutMaintenanceReviewDryRun(input({
-    reviewOrdinal: 2,
-    asOfMs: RELEASE + 60 * DAY,
-    lastReviewedWindowEndMs: RELEASE + 30 * DAY
-  }));
+  const second = quoteScoutMaintenanceReviewDryRun(
+    input({
+      reviewOrdinal: 2,
+      asOfMs: RELEASE + 60 * DAY,
+      lastReviewedWindowEndMs: RELEASE + 30 * DAY
+    })
+  );
   assert.equal(second.status, 'quotation_only');
-  assert.notEqual(second.reviewKey, quoteScoutMaintenanceReviewDryRun(input()).reviewKey);
+  assert.notEqual(
+    second.reviewKey,
+    quoteScoutMaintenanceReviewDryRun(input()).reviewKey
+  );
 });
 
 test('signed XP reversals block downgrade until attribution policy is approved', () => {
-  const review = quoteScoutMaintenanceReviewDryRun(input({
-    verifiedLedgerRows: [entry(1, 300, RELEASE), entry(2, -10, RELEASE + DAY)]
-  }));
+  const review = quoteScoutMaintenanceReviewDryRun(
+    input({
+      verifiedLedgerRows: [entry(1, 300, RELEASE), entry(2, -10, RELEASE + DAY)]
+    })
+  );
   assert.equal(review.status, 'xp_adjustment_review');
   assert.equal(Object.hasOwn(review, 'shouldDemote'), false);
 });
 
 test('mixed users and repeated XP source keys are fail-closed', () => {
-  assert.throws(() => quoteScoutMaintenanceReviewDryRun(input({
-    verifiedLedgerRows: [entry(1, 100, RELEASE, { user_id: otherUser })]
-  })), RangeError);
-  assert.throws(() => quoteScoutMaintenanceReviewDryRun(input({
-    verifiedLedgerRows: [entry(1, 100, RELEASE), entry(1, 100, RELEASE + DAY)]
-  })), RangeError);
-  assert.throws(() => quoteScoutMaintenanceReviewDryRun(input({
-    verifiedLedgerRows: [
-      entry(1, 100, RELEASE),
-      entry(2, 100, RELEASE + DAY, {
-        source_event_id: entry(1, 100, RELEASE).source_event_id
-      })
-    ]
-  })), RangeError);
+  assert.throws(
+    () =>
+      quoteScoutMaintenanceReviewDryRun(
+        input({
+          verifiedLedgerRows: [entry(1, 100, RELEASE, { user_id: otherUser })]
+        })
+      ),
+    RangeError
+  );
+  assert.throws(
+    () =>
+      quoteScoutMaintenanceReviewDryRun(
+        input({
+          verifiedLedgerRows: [
+            entry(1, 100, RELEASE),
+            entry(1, 100, RELEASE + DAY)
+          ]
+        })
+      ),
+    RangeError
+  );
+  assert.throws(
+    () =>
+      quoteScoutMaintenanceReviewDryRun(
+        input({
+          verifiedLedgerRows: [
+            entry(1, 100, RELEASE),
+            entry(2, 100, RELEASE + DAY, {
+              source_event_id: entry(1, 100, RELEASE).source_event_id
+            })
+          ]
+        })
+      ),
+    RangeError
+  );
 });
 
 test('malformed server event rows and incomplete windows are rejected', () => {
@@ -156,34 +203,54 @@ test('malformed server event rows and incomplete windows are rejected', () => {
     entry(1, 100, RELEASE, { xp_kind: '' }),
     entry(1, 100, RELEASE, { source_event_id: '' })
   ]) {
-    assert.throws(() => quoteScoutMaintenanceReviewDryRun(input({
-      verifiedLedgerRows: [broken]
-    })));
+    assert.throws(() =>
+      quoteScoutMaintenanceReviewDryRun(
+        input({
+          verifiedLedgerRows: [broken]
+        })
+      )
+    );
   }
-  assert.throws(() => quoteScoutMaintenanceReviewDryRun(input({
-    verifiedLedgerRows: null
-  })), TypeError);
+  assert.throws(
+    () =>
+      quoteScoutMaintenanceReviewDryRun(
+        input({
+          verifiedLedgerRows: null
+        })
+      ),
+    TypeError
+  );
 });
 
 test('invalid ordinal and unsafe timestamps cannot generate a review window', () => {
   for (const ordinal of [0, -1, 1.5, NaN, '2', Number.MAX_SAFE_INTEGER]) {
-    assert.throws(() => quoteScoutMaintenanceWindow({
-      firstWindowStartMs: RELEASE,
-      reviewOrdinal: ordinal
-    }), RangeError);
+    assert.throws(
+      () =>
+        quoteScoutMaintenanceWindow({
+          firstWindowStartMs: RELEASE,
+          reviewOrdinal: ordinal
+        }),
+      RangeError
+    );
   }
-  assert.throws(() => quoteScoutMaintenanceWindow({
-    firstWindowStartMs: Number.MAX_SAFE_INTEGER,
-    reviewOrdinal: 1
-  }), RangeError);
+  assert.throws(
+    () =>
+      quoteScoutMaintenanceWindow({
+        firstWindowStartMs: Number.MAX_SAFE_INTEGER,
+        reviewOrdinal: 1
+      }),
+    RangeError
+  );
 });
 
 test('Lv.70 milestone protects Lv.50 floor even in a verified zero XP window', () => {
-  const review = quoteScoutMaintenanceReviewDryRun(input({
-    currentLevel: 50,
-    verifiedHistoricalMaxLevel: 75,
-    currentLevelProgressXp: 140
-  }));
+  const review = quoteScoutMaintenanceReviewDryRun(
+    input({
+      currentLevel: 50,
+      verifiedHistoricalMaxLevel: 75,
+      currentLevelProgressXp: 140
+    })
+  );
   assert.equal(review.status, 'quotation_only');
   assert.equal(review.metQuota, false);
   assert.equal(review.shouldDemote, false);
