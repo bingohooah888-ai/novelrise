@@ -7,6 +7,7 @@ import {
   quoteScoutFirstDemotionReviewWindow,
   SCOUT_XP_MAINTENANCE_QUOTA_30_DAYS,
   quoteScoutMaintenanceLevelReview,
+  quoteScoutProgressAfterMaintenanceReview,
   isScoutDemotionReviewDue,
   applyVerifiedScoutDemotionFloor,
   READER_REWARD_UNIT,
@@ -322,5 +323,53 @@ test('first-review windows reject missing, forged, or unsafe instants', () => {
     { formalReleaseAtMs: Number.MAX_SAFE_INTEGER, accountCreatedAtMs: 0 }
   ]) {
     assert.throws(() => quoteScoutFirstDemotionReviewWindow(input), RangeError);
+  }
+});
+
+test('demotion restarts progress at zero without any lifetime-XP total', () => {
+  const result = quoteScoutProgressAfterMaintenanceReview({
+    currentLevel: 90,
+    verifiedHistoricalMaxLevel: 90,
+    earnedXpInCompleted30DayWindow: 199,
+    currentLevelProgressXp: 725
+  });
+  assert.deepEqual(result, {
+    metQuota: false,
+    shouldDemote: true,
+    nextLevel: 89,
+    nextLevelProgressXp: 0
+  });
+  assert.equal(Object.hasOwn(result, 'lifetimeXp'), false);
+  assert.equal(Object.isFrozen(result), true);
+});
+
+test('meeting quota preserves in-level progress, and level floor does not reset it', () => {
+  const kept = quoteScoutProgressAfterMaintenanceReview({
+    currentLevel: 90,
+    verifiedHistoricalMaxLevel: 90,
+    earnedXpInCompleted30DayWindow: 200,
+    currentLevelProgressXp: 725
+  });
+  assert.equal(kept.nextLevel, 90);
+  assert.equal(kept.nextLevelProgressXp, 725);
+  const floor = quoteScoutProgressAfterMaintenanceReview({
+    currentLevel: 50,
+    verifiedHistoricalMaxLevel: 80,
+    earnedXpInCompleted30DayWindow: 0,
+    currentLevelProgressXp: 350
+  });
+  assert.equal(floor.nextLevel, 50);
+  assert.equal(floor.shouldDemote, false);
+  assert.equal(floor.nextLevelProgressXp, 350);
+});
+
+test('progress projection rejects negative and unverified XP', () => {
+  for (const xp of [-1, 12.2, '400', NaN, Infinity, undefined]) {
+    assert.throws(() => quoteScoutProgressAfterMaintenanceReview({
+      currentLevel: 90,
+      verifiedHistoricalMaxLevel: 90,
+      earnedXpInCompleted30DayWindow: 199,
+      currentLevelProgressXp: xp
+    }), RangeError);
   }
 });
