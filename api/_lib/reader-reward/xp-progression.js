@@ -2,7 +2,7 @@
 // No real XP grant, DB read/write, Cron, user-visible or payout path.
 import { validateScoutLevelStateSnapshot } from './state-transition.js';
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const XP_KIND = /^[a-z0-9_:-]{1,80}$/i;
 const THIRTY_DAY_MS = 30 * 86400000;
 
