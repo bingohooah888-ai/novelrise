@@ -8,21 +8,31 @@ import {
 
 const day = 86400000;
 const release = Date.UTC(2027, 0, 1, 12); // Test ONLY, no launch date approved.
-const betaRows = Object.freeze(Array.from({ length: 30 }, (_, i) => {
-  const level = i + 1;
-  return Object.freeze({
-    level,
-    cumulative_xp: 10 * i * (i + 4),
-    rule_version: 'beta-2026-09-21'
-  });
-}));
+const betaRows = Object.freeze(
+  Array.from({ length: 30 }, (_, i) => {
+    const level = i + 1;
+    return Object.freeze({
+      level,
+      cumulative_xp: 10 * i * (i + 4),
+      rule_version: 'beta-2026-09-21'
+    });
+  })
+);
 
 // Fixtures are limited to verified *metadata*, not user or secret records.
 // Observed read-only on 2026-11-05; not an immutable production snapshot.
 const observed = () => ({
   tables: {
     scout_xp_ledger: {
-      columns: ['id', 'user_id', 'source_event_id', 'xp_kind', 'xp_value', 'rule_version', 'occurred_at'],
+      columns: [
+        'id',
+        'user_id',
+        'source_event_id',
+        'xp_kind',
+        'xp_value',
+        'rule_version',
+        'occurred_at'
+      ],
       rlsEnabled: true
     },
     scout_event_ledger: {
@@ -35,7 +45,10 @@ const observed = () => ({
     }
   },
   uniqueKeys: [
-    { tableName: 'scout_xp_ledger', columns: ['user_id', 'source_event_id', 'xp_kind'] },
+    {
+      tableName: 'scout_xp_ledger',
+      columns: ['user_id', 'source_event_id', 'xp_kind']
+    },
     { tableName: 'scout_event_ledger', columns: ['event_key'] }
   ],
   triggers: [
@@ -69,13 +82,34 @@ test('read-only observed beta schema is not ready for formal reward release', ()
   assert.equal(result.productionCutoverAllowed, false);
   assert.equal(result.preservesBeta, true);
   assert.equal(Object.isFrozen(result), true);
-  assert.equal(result.blockers.includes('active_beta_trigger:scout_xp_beta_level_cap'), true);
-  assert.equal(result.blockers.includes('active_beta_trigger:scout_xp_level_up_points'), true);
-  assert.equal(result.blockers.includes('legacy_summary_uses_cumulative_xp'), true);
-  assert.equal(result.blockers.includes('formal_progress_state_not_verified'), true);
-  assert.equal(result.blockers.includes('formal_review_uniqueness_not_verified'), true);
-  assert.equal(result.blockers.includes('xp_source_uniqueness_not_verified'), false);
-  assert.equal(result.blockers.includes('event_uniqueness_not_verified'), false);
+  assert.equal(
+    result.blockers.includes('active_beta_trigger:scout_xp_beta_level_cap'),
+    true
+  );
+  assert.equal(
+    result.blockers.includes('active_beta_trigger:scout_xp_level_up_points'),
+    true
+  );
+  assert.equal(
+    result.blockers.includes('legacy_summary_uses_cumulative_xp'),
+    true
+  );
+  assert.equal(
+    result.blockers.includes('formal_progress_state_not_verified'),
+    true
+  );
+  assert.equal(
+    result.blockers.includes('formal_review_uniqueness_not_verified'),
+    true
+  );
+  assert.equal(
+    result.blockers.includes('xp_source_uniqueness_not_verified'),
+    false
+  );
+  assert.equal(
+    result.blockers.includes('event_uniqueness_not_verified'),
+    false
+  );
 });
 
 test('missing XP idempotency, columns, or RLS trigger safe blockers', () => {
@@ -99,10 +133,13 @@ test('missing XP idempotency, columns, or RLS trigger safe blockers', () => {
 
 test('even hypothetical complete cutover metadata cannot grant production approval', () => {
   const x = observed();
-  x.triggers = x.triggers.filter(v =>
-    !['scout_xp_beta_level_cap', 'scout_xp_level_up_points'].includes(v.name)
+  x.triggers = x.triggers.filter(
+    (v) =>
+      !['scout_xp_beta_level_cap', 'scout_xp_level_up_points'].includes(v.name)
   );
-  x.functions = x.functions.filter(v => v !== 'novelight_scout_record_summary');
+  x.functions = x.functions.filter(
+    (v) => v !== 'novelight_scout_record_summary'
+  );
   x.formalStateContract = {
     verified: true,
     hasProgressAndPeak: true,
@@ -131,17 +168,32 @@ test('beta 1-30 ladder is validated without extending it to Lv.31', () => {
 });
 
 test('malformed or extrapolated Level 31 thresholds cannot enter the beta bridge', () => {
-  assert.throws(() => validateScoutBetaThresholds([
-    ...betaRows,
-    { level: 31, cumulative_xp: 10200, rule_version: 'unapproved' }
-  ]), RangeError);
-  assert.throws(() => validateScoutBetaThresholds(betaRows.slice(1)), RangeError);
-  assert.throws(() => validateScoutBetaThresholds(betaRows.map((x, i) =>
-    i === 12 ? { ...x, rule_version: 'other' } : x
-  )), RangeError);
-  assert.throws(() => validateScoutBetaThresholds(betaRows.map((x, i) =>
-    i === 20 ? { ...x, cumulative_xp: 1 } : x
-  )), RangeError);
+  assert.throws(
+    () =>
+      validateScoutBetaThresholds([
+        ...betaRows,
+        { level: 31, cumulative_xp: 10200, rule_version: 'unapproved' }
+      ]),
+    RangeError
+  );
+  assert.throws(
+    () => validateScoutBetaThresholds(betaRows.slice(1)),
+    RangeError
+  );
+  assert.throws(
+    () =>
+      validateScoutBetaThresholds(
+        betaRows.map((x, i) => (i === 12 ? { ...x, rule_version: 'other' } : x))
+      ),
+    RangeError
+  );
+  assert.throws(
+    () =>
+      validateScoutBetaThresholds(
+        betaRows.map((x, i) => (i === 20 ? { ...x, cumulative_xp: 1 } : x))
+      ),
+    RangeError
+  );
 });
 
 test('beta Lv.29 handoff preserves only Level/XP gauge/peak with release review anchor', () => {
@@ -214,12 +266,13 @@ test('bad summary level and XP inconsistencies block conversion', () => {
     { level: '29' },
     { xp_for_next_level: null }
   ]) {
-    const fn = () => quoteScoutBetaToFormalHandoff({
-      authenticatedBetaSummary: betaSummary(mutation),
-      betaThresholdRows: betaRows,
-      formalReleaseAtMs: release,
-      accountCreatedAtMs: release - day
-    });
+    const fn = () =>
+      quoteScoutBetaToFormalHandoff({
+        authenticatedBetaSummary: betaSummary(mutation),
+        betaThresholdRows: betaRows,
+        formalReleaseAtMs: release,
+        accountCreatedAtMs: release - day
+      });
     let output;
     try {
       output = fn();
@@ -232,7 +285,11 @@ test('bad summary level and XP inconsistencies block conversion', () => {
 });
 
 test('corrupt input data cannot bypass the contract by claiming readiness', () => {
-  for (const value of [null, {}, { tables: {}, uniqueKeys: [], triggers: [] }]) {
+  for (const value of [
+    null,
+    {},
+    { tables: {}, uniqueKeys: [], triggers: [] }
+  ]) {
     assert.throws(() => auditScoutDbCompatibility(value), TypeError);
   }
   const forged = observed();
