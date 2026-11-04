@@ -3,7 +3,6 @@
 import { validateScoutLevelStateSnapshot } from './state-transition.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const XP_KIND = /^[a-z0-9_:-]{1,80}$/i;
 const THIRTY_DAY_MS = 30 * 86400000;
 
 function validUuid(value, label) {
@@ -66,8 +65,8 @@ export function quoteScoutXpLevelUp({
     throw new RangeError('XP grant belongs to a different user');
   }
   const kind = xpEvent.xpKind;
-  if (typeof kind !== 'string' || !XP_KIND.test(kind)) {
-    throw new TypeError('XP kind must match the existing Scout XP ledger kind');
+  if (typeof kind !== 'string' || kind.length < 1 || kind.length > 80) {
+    throw new TypeError('XP kind must match the existing Scout XP ledger length constraint');
   }
   const earnedXp = positiveXp(xpEvent.earnedXp);
   const occurredAtMs = validMs(xpEvent.occurredAtMs);
@@ -82,6 +81,12 @@ export function quoteScoutXpLevelUp({
   }
   if (occurredAtMs < state.reviewAnchorMs) {
     return Object.freeze({ status: 'outside_formal_release_window', ...context });
+  }
+  if (state.lastReviewedWindowEndMs !== null &&
+      occurredAtMs < state.lastReviewedWindowEndMs) {
+    // A late ledger entry in a finalized 30-day window has an undecided
+    // correction policy. Never silently apply it to a newer Level state.
+    return Object.freeze({ status: 'closed_review_window', ...context });
   }
 
   // Explicit ordering: if the next 30-day period is already over, review it
