@@ -366,3 +366,36 @@ test('refund does not restore a consumed period budget without owner approval', 
   assert.equal(refunded.nextBudget.reservedPoints, committed.nextBudget.reservedPoints);
   assert.equal(refunded.nextBudget.revision, committed.nextBudget.revision);
 });
+
+test('commit/release/refund require a verified durable reservation claim', () => {
+  const reserved = quote('reserve');
+  const committed = stage('commit', reserved);
+  const released = stage('release', reserved);
+  const refunded = stage('refund', committed);
+
+  for (const [proposal, current] of [
+    [committed, reserved],
+    [released, reserved],
+    [refunded, committed]
+  ]) {
+    const missing = recheckScoutPointOperation({
+      proposal,
+      currentWalletSnapshot: current.nextWallet,
+      currentBudgetSnapshot: current.nextBudget,
+      currentOperationSnapshot: current.nextOperation,
+      duplicateOperationClaimVerified: true,
+      duplicateOperationClaimExists: false
+    });
+    assert.equal(missing.status, 'reservation_claim_missing');
+    const verified = recheckScoutPointOperation({
+      proposal,
+      currentWalletSnapshot: current.nextWallet,
+      currentBudgetSnapshot: current.nextBudget,
+      currentOperationSnapshot: current.nextOperation,
+      duplicateOperationClaimVerified: true,
+      duplicateOperationClaimExists: true
+    });
+    assert.equal(verified.status, 'preconditions_match_only');
+    assert.equal(verified.mayMovePointsOrMoney, false);
+  }
+});
