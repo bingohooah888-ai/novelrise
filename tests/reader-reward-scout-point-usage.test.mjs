@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  SCOUT_POINTS_PER_YEN,
   SCOUT_POINT_YEN_VALUE,
   SCOUT_POINT_MIN_EXTERNAL_EXCHANGE,
   SCOUT_LEVEL_UP_POINTS,
@@ -28,8 +29,8 @@ const spend = (changes = {}) => ({
   userId,
   operationId,
   purpose: 'external_exchange',
-  amountPoints: 3000,
-  availablePoints: 5000,
+  amountPoints: 30000,
+  availablePoints: 50000,
   balanceRevision: 15,
   authoritativeBalanceVerified: true,
   riskAndControlsCleared: true,
@@ -40,28 +41,30 @@ const spend = (changes = {}) => ({
   ...changes
 });
 
-test('owner exchange policy: 1 Scout Point = ¥1 and 3000 Point external minimum', () => {
-  assert.equal(SCOUT_POINT_YEN_VALUE, 1);
-  assert.equal(SCOUT_POINT_MIN_EXTERNAL_EXCHANGE, 3000);
+test('owner exchange policy: 10 Scout Point = ¥1 and 30000 Point external minimum', () => {
+  assert.equal(SCOUT_POINT_YEN_VALUE, 0.1);
+  assert.equal(SCOUT_POINTS_PER_YEN, 10);
+  assert.equal(SCOUT_POINT_MIN_EXTERNAL_EXCHANGE, 30000);
   assert.equal(
-    quoteScoutPointUsage(spend({ amountPoints: 2999 })).status,
+    quoteScoutPointUsage(spend({ amountPoints: 29990 })).status,
     'below_exchange_minimum'
   );
   const result = quoteScoutPointUsage(spend());
   assert.equal(result.status, 'usage_quote_only');
-  assert.equal(result.amountPoints, 3000);
+  assert.equal(result.amountPoints, 30000);
   assert.equal(result.yenEquivalent, 3000);
-  assert.equal(result.proposedRemainingPoints, 2000);
+  assert.equal(result.yenEquivalentTenths, 30000);
+  assert.equal(result.proposedRemainingPoints, 20000);
   assert.equal(result.maySpendOrPayOut, false);
   assert.equal(Object.isFrozen(result), true);
   assert.equal(
-    quoteScoutPointUsage(spend({ amountPoints: 3001 })).status,
+    quoteScoutPointUsage(spend({ amountPoints: 30010 })).status,
     'usage_quote_only'
   );
 });
 
 test('AI spends SCOUT Point directly, with no 3000pt minimum or AI-credit minting', () => {
-  for (const amount of [1, 2, 25, 2999]) {
+  for (const amount of [1, 2, 25, 29990]) {
     const result = quoteScoutPointUsage(
       spend({
         purpose: 'ai_direct_use',
@@ -70,7 +73,8 @@ test('AI spends SCOUT Point directly, with no 3000pt minimum or AI-credit mintin
     );
     assert.equal(result.status, 'usage_quote_only');
     assert.equal(result.amountPoints, amount);
-    assert.equal(result.yenEquivalent, amount);
+    assert.equal(result.yenEquivalent, amount / 10);
+    assert.equal(result.yenEquivalentTenths, amount);
     assert.equal(Object.hasOwn(result, 'aiCredits'), false);
     assert.equal(result.maySpendOrPayOut, false);
   }
@@ -89,8 +93,8 @@ test('exchange and AI quotes compete against ONE verified wallet balance', () =>
   const exchange = quoteScoutPointUsage(
     spend({
       operationId,
-      amountPoints: 3000,
-      availablePoints: 4500,
+      amountPoints: 30000,
+      availablePoints: 45000,
       balanceRevision: 17
     })
   );
@@ -98,8 +102,8 @@ test('exchange and AI quotes compete against ONE verified wallet balance', () =>
     spend({
       operationId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       purpose: 'ai_direct_use',
-      amountPoints: 2000,
-      availablePoints: 4500,
+      amountPoints: 20000,
+      availablePoints: 45000,
       balanceRevision: 17
     })
   );
@@ -108,7 +112,7 @@ test('exchange and AI quotes compete against ONE verified wallet balance', () =>
   const afterExchange = recheckScoutPointUsage({
     quote: ai,
     observedBalanceRevision: 18,
-    observedAvailablePoints: 1500,
+    observedAvailablePoints: 15000,
     operationAlreadyCommitted: false
   });
   assert.equal(afterExchange.status, 'stale_wallet');
@@ -117,7 +121,7 @@ test('exchange and AI quotes compete against ONE verified wallet balance', () =>
     recheckScoutPointUsage({
       quote: exchange,
       observedBalanceRevision: 17,
-      observedAvailablePoints: 4500,
+      observedAvailablePoints: 45000,
       operationAlreadyCommitted: false
     }).status,
     'preconditions_match_only'
@@ -137,7 +141,7 @@ test('replay of same operation is stopped and does not create a new debit', () =
   const replay = recheckScoutPointUsage({
     quote: p,
     observedBalanceRevision: 16,
-    observedAvailablePoints: 2000,
+    observedAvailablePoints: 20000,
     operationAlreadyCommitted: true
   });
   assert.equal(replay.status, 'already_processed');
@@ -145,7 +149,7 @@ test('replay of same operation is stopped and does not create a new debit', () =
     recheckScoutPointUsage({
       quote: p,
       observedBalanceRevision: 15,
-      observedAvailablePoints: 4000,
+      observedAvailablePoints: 40000,
       operationAlreadyCommitted: false
     }).status,
     'stale_wallet'
@@ -154,7 +158,7 @@ test('replay of same operation is stopped and does not create a new debit', () =
     recheckScoutPointUsage({
       quote: p,
       observedBalanceRevision: 16,
-      observedAvailablePoints: 5000,
+      observedAvailablePoints: 50000,
       operationAlreadyCommitted: false
     }).status,
     'stale_wallet'
@@ -172,8 +176,8 @@ test('pending/frozen/controlled balances cannot be treated as spendable', () => 
   }
   const onlyConfirmedAvailable = quoteScoutPointUsage(
     spend({
-      availablePoints: 500,
-      amountPoints: 3000
+      availablePoints: 5000,
+      amountPoints: 30000
     })
   );
   assert.equal(onlyConfirmedAvailable.status, 'insufficient_available_points');
@@ -211,7 +215,7 @@ test('read-only quote never enables cashout or AI invocation even with flags tru
     const recheck = recheckScoutPointUsage({
       quote: proposal,
       observedBalanceRevision: 15,
-      observedAvailablePoints: 5000,
+      observedAvailablePoints: 50000,
       operationAlreadyCommitted: false
     });
     assert.deepEqual(recheck, {
@@ -227,7 +231,7 @@ test('invalid costs, unknown purpose and user identities are rejected', () => {
     { amountPoints: 0 },
     { amountPoints: -1 },
     { amountPoints: 0.1 },
-    { amountPoints: '3000' },
+    { amountPoints: '30000' },
     { amountPoints: Number.MAX_SAFE_INTEGER + 1 },
     { availablePoints: -1 },
     { availablePoints: 1.5 },
@@ -245,18 +249,18 @@ test('invalid costs, unknown purpose and user identities are rejected', () => {
       recheckScoutPointUsage({
         quote: quoteScoutPointUsage(spend()),
         observedBalanceRevision: 15,
-        observedAvailablePoints: 5000
+        observedAvailablePoints: 50000
       }),
     TypeError
   );
 });
 
-test('reaching a Level grants 5pt once, including newly unlocked 100; re-ascending grants zero', () => {
-  assert.equal(SCOUT_LEVEL_UP_POINTS, 5);
+test('reaching a Level grants 50pt once, including newly unlocked 100; re-ascending grants zero', () => {
+  assert.equal(SCOUT_LEVEL_UP_POINTS, 50);
   const first = quoteScoutMilestonePointGrant(grant({ reachedLevel: 30 }));
   assert.equal(first.status, 'grant_quote_only');
   assert.equal(first.eventKey, 'level_up:' + userId + ':30');
-  assert.equal(first.points, 5);
+  assert.equal(first.points, 50);
   assert.equal(first.mayIssuePoints, false);
   const revisited = quoteScoutMilestonePointGrant(
     grant({
@@ -267,7 +271,7 @@ test('reaching a Level grants 5pt once, including newly unlocked 100; re-ascendi
   assert.equal(revisited.status, 'already_awarded');
   const top = quoteScoutMilestonePointGrant(grant({ reachedLevel: 100 }));
   assert.equal(top.status, 'grant_quote_only');
-  assert.equal(top.points, 5);
+  assert.equal(top.points, 50);
   assert.equal(Object.hasOwn(top, 'lifetimeXp'), false);
   assert.throws(
     () => quoteScoutMilestonePointGrant(grant({ reachedLevel: 1 })),
@@ -294,9 +298,9 @@ test('β-issued Level-up points remain deduplicated at formal migration', () => 
     })
   );
   assert.equal(lvl31.status, 'grant_quote_only');
-  assert.equal(lvl31.points, 5);
-  assert.equal(previouslyGranted.length * 5, 145);
-  assert.equal(99 * 5, 495);
+  assert.equal(lvl31.points, 50);
+  assert.equal(previouslyGranted.length * 50, 1450);
+  assert.equal(99 * 50, 4950);
 });
 
 test('reader badge points use existing badge unique key, author badges are not payable', () => {
@@ -305,19 +309,19 @@ test('reader badge points use existing badge unique key, author badges are not p
       kind: 'reader_badge',
       reachedLevel: null,
       badgeId: 'reader_book_001',
-      readerBadgePointReward: 25,
+      readerBadgePointReward: 250,
       readerBadgeDefinitionVerified: true
     })
   );
   assert.equal(badge.status, 'grant_quote_only');
   assert.equal(badge.eventKey, 'badge:' + userId + ':reader_book_001');
   assert.equal(badge.kind, 'badge');
-  assert.equal(badge.points, 25);
+  assert.equal(badge.points, 250);
   const repeat = quoteScoutMilestonePointGrant(
     grant({
       kind: 'reader_badge',
       badgeId: 'reader_book_001',
-      readerBadgePointReward: 25,
+      readerBadgePointReward: 250,
       readerBadgeDefinitionVerified: true,
       historicalEventKeys: [badge.eventKey]
     })
@@ -352,7 +356,7 @@ test('a badge without verified definition or full award history never grants poi
       grant({
         kind: 'reader_badge',
         badgeId: 'reader_book_001',
-        readerBadgePointReward: 25
+        readerBadgePointReward: 250
       })
     ),
     quoteScoutMilestonePointGrant(grant({ awardHistoryComplete: false })),
@@ -393,41 +397,27 @@ test('a badge without verified definition or full award history never grants poi
   );
 });
 
-test('835 total badge reward remains observed-only theoretical max, not a forced grant', () => {
-  assert.equal(SCOUT_READER_BADGE_DEFINED_MAX_POINTS, 835);
-  const byDifficulty = [30, 305, 500];
+test('8350 total badge reward remains observed-only theoretical max, not a forced grant', () => {
+  assert.equal(SCOUT_READER_BADGE_DEFINED_MAX_POINTS, 8350);
+  const byDifficulty = [300, 3050, 5000];
   assert.equal(
     byDifficulty.reduce((a, b) => a + b, 0),
-    835
+    8350
   );
-  assert.equal(835 + 495, 1330);
-  assert.equal(1330 < SCOUT_POINT_MIN_EXTERNAL_EXCHANGE, true);
-  assert.equal(253 + 145, 398);
+  assert.equal(8350 + 4950, 13300);
+  assert.equal(13300 < SCOUT_POINT_MIN_EXTERNAL_EXCHANGE, true);
+  assert.equal(2530 + 1450, 3980);
 });
 
-test('0.1 yen valid-read reward is held until fractional accounting is approved', () => {
-  assert.equal(
-    quoteScoutTenthsYenAsPoints(1).status,
-    'fractional_settlement_policy_pending'
-  );
-  assert.equal(
-    quoteScoutTenthsYenAsPoints(2).status,
-    'fractional_settlement_policy_pending'
-  );
-  assert.equal(
-    quoteScoutTenthsYenAsPoints(9).status,
-    'fractional_settlement_policy_pending'
-  );
-  assert.equal(
-    quoteScoutTenthsYenAsPoints(11).status,
-    'fractional_settlement_policy_pending'
-  );
-  assert.deepEqual(quoteScoutTenthsYenAsPoints(10), {
-    status: 'exact_integer_quote_only',
-    points: 1,
-    mayIssuePoints: false
-  });
-  assert.equal(quoteScoutTenthsYenAsPoints(20).points, 2);
+test('0.1 yen corresponds to one integer Scout Point with no rounding', () => {
+  for (const tenths of [1, 2, 9, 10, 11, 20]) {
+    assert.deepEqual(quoteScoutTenthsYenAsPoints(tenths), {
+      status: 'exact_integer_quote_only',
+      points: tenths,
+      amountTenthsYen: tenths,
+      mayIssuePoints: false
+    });
+  }
   for (const bad of [-1, 0.5, '10', Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => quoteScoutTenthsYenAsPoints(bad), RangeError);
   }

@@ -1,10 +1,12 @@
 // Gate 06: draft-only SCOUT Point grants, settlement and spending quotations.
 // No DB access, real balance changes, payouts, AI invocation, or public wiring.
-// OWNER: 1 Scout Point = 1 yen; external redemption minimum is 3000 points.
-export const SCOUT_POINT_YEN_VALUE = 1;
-export const SCOUT_POINT_MIN_EXTERNAL_EXCHANGE = 3000;
-export const SCOUT_LEVEL_UP_POINTS = 5;
-export const SCOUT_READER_BADGE_DEFINED_MAX_POINTS = 835;
+// OWNER 2026-11-05 revision: integer 10 Scout Points = 1 yen.
+// New reward/redemption policies remain draft and cannot mutate beta balances.
+export const SCOUT_POINTS_PER_YEN = 10;
+export const SCOUT_POINT_YEN_VALUE = 1 / SCOUT_POINTS_PER_YEN;
+export const SCOUT_POINT_MIN_EXTERNAL_EXCHANGE = 30000;
+export const SCOUT_LEVEL_UP_POINTS = 50;
+export const SCOUT_READER_BADGE_DEFINED_MAX_POINTS = 8350;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BADGE_ID = /^[a-z0-9][a-z0-9_-]{2,99}$/i;
@@ -119,22 +121,15 @@ export function quoteScoutMilestonePointGrant({
 }
 
 /**
- * Approved episode rewards can be as low as 0.1 yen but the existing
- * scout_point_ledger stores INTEGER points. Never round or discard fractions
- * on an event-by-event basis without an approved accumulation policy.
+ * In the OWNER-approved 10x unit, one integer Scout Point is exactly
+ * 0.1 yen. Never round, multiply again, or issue without a live gate.
  */
 export function quoteScoutTenthsYenAsPoints(tenthsYen) {
   verifyNonnegativeInteger(tenthsYen, 'Tenths of yen');
-  if (tenthsYen % 10 !== 0) {
-    return Object.freeze({
-      status: 'fractional_settlement_policy_pending',
-      amountTenthsYen: tenthsYen,
-      mayIssuePoints: false
-    });
-  }
   return Object.freeze({
     status: 'exact_integer_quote_only',
-    points: tenthsYen / 10,
+    points: tenthsYen,
+    amountTenthsYen: tenthsYen,
     mayIssuePoints: false
   });
 }
@@ -145,8 +140,8 @@ export function quoteScoutTenthsYenAsPoints(tenthsYen) {
  * cancelled, reversals, active holds, and user controls are reconciled.
  * availablePoints and verification flags DO NOT independently prove it.
  *
- * An external cash/exchange request has the OWNER floor of 3000 points.
- * Direct AI usage has NO 3000 point minimum and does NOT mint AI Credits.
+ * An external gift/exchange request has the OWNER floor of 30000 points.
+ * Direct AI usage has NO 30000 point minimum and does NOT mint AI Credits.
  * This returns proposals only: never execution approval.
  */
 export function quoteScoutPointUsage({
@@ -220,7 +215,9 @@ export function quoteScoutPointUsage({
     userId: id,
     purpose,
     amountPoints: amount,
-    yenEquivalent: amount * SCOUT_POINT_YEN_VALUE,
+    // The canonical accounting value is ALWAYS integer tenths of yen.
+    yenEquivalentTenths: amount,
+    yenEquivalent: amount / SCOUT_POINTS_PER_YEN,
     expectedBalanceRevision: balanceRevision,
     expectedAvailablePoints: availablePoints,
     proposedRemainingPoints: availablePoints - amount,

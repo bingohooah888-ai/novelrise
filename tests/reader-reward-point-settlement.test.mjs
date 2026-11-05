@@ -12,15 +12,15 @@ const OP = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const OP2 = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const wallet = (props = {}) => ({
   userId: USER,
-  availablePoints: 5000,
+  availablePoints: 50000,
   reservedPoints: 0,
   revision: 9,
   ...props
 });
 const budget = (props = {}) => ({
   scopeId: 'approved-period-identifier-test-only',
-  limitPoints: 10000,
-  committedPoints: 2000,
+  limitPoints: 100000,
+  committedPoints: 20000,
   reservedPoints: 0,
   revision: 3,
   ...props
@@ -29,7 +29,7 @@ const operation = (props = {}) => ({
   userId: USER,
   operationId: OP,
   purpose: 'external_exchange',
-  amountPoints: 3000,
+  amountPoints: 30000,
   phase: 'new',
   revision: 0,
   ...props
@@ -73,15 +73,15 @@ test('reserve removes only available points and keeps reserved funds accounted',
   assert.deepEqual(
     result.nextWallet,
     wallet({
-      availablePoints: 2000,
-      reservedPoints: 3000,
+      availablePoints: 20000,
+      reservedPoints: 30000,
       revision: 10
     })
   );
   assert.deepEqual(
     result.nextBudget,
     budget({
-      reservedPoints: 3000,
+      reservedPoints: 30000,
       revision: 4
     })
   );
@@ -99,7 +99,7 @@ test('reserve -> commit spends once; committed period budget is not released', (
   assert.deepEqual(
     settled.nextWallet,
     wallet({
-      availablePoints: 2000,
+      availablePoints: 20000,
       reservedPoints: 0,
       revision: 11
     })
@@ -107,7 +107,7 @@ test('reserve -> commit spends once; committed period budget is not released', (
   assert.deepEqual(
     settled.nextBudget,
     budget({
-      committedPoints: 5000,
+      committedPoints: 50000,
       reservedPoints: 0,
       revision: 5
     })
@@ -124,7 +124,7 @@ test('reservation cancellation releases amount exactly once without payment', ()
   assert.deepEqual(
     released.nextWallet,
     wallet({
-      availablePoints: 5000,
+      availablePoints: 50000,
       reservedPoints: 0,
       revision: 11
     })
@@ -132,7 +132,7 @@ test('reservation cancellation releases amount exactly once without payment', ()
   assert.deepEqual(
     released.nextBudget,
     budget({
-      committedPoints: 2000,
+      committedPoints: 20000,
       reservedPoints: 0,
       revision: 5
     })
@@ -152,7 +152,7 @@ test('committed AI invocation may refund only with verified reversal evidence', 
   const committed = stage('commit', reserved);
   const refunded = stage('refund', committed);
   assert.equal(refunded.status, 'proposal_only');
-  assert.equal(refunded.nextWallet.availablePoints, 5000);
+  assert.equal(refunded.nextWallet.availablePoints, 50000);
   assert.equal(refunded.nextWallet.reservedPoints, 0);
   assert.equal(refunded.nextOperation.phase, 'refunded');
   // A refund restores wallet points, but does not automatically re-credit
@@ -174,8 +174,8 @@ test('external cashout refund cannot credit wallet until funds recovery verified
   assert.equal(Object.hasOwn(unproven, 'nextWallet'), false);
   const justified = stage('refund', committed);
   assert.equal(justified.status, 'proposal_only');
-  assert.equal(justified.nextWallet.availablePoints, 5000);
-  assert.equal(justified.nextBudget.committedPoints, 5000);
+  assert.equal(justified.nextWallet.availablePoints, 50000);
+  assert.equal(justified.nextBudget.committedPoints, 50000);
 });
 
 test('unverified fulfillment never commits, and unverified cancellation never releases', () => {
@@ -244,7 +244,7 @@ test('a verified wallet and budget CAS both must match before any commit', () =>
     { currentBudgetSnapshot: budget({ revision: 4 }) },
     { currentBudgetSnapshot: budget({ reservedPoints: 1 }) },
     { currentOperationSnapshot: operation({ revision: 1 }) },
-    { currentOperationSnapshot: operation({ amountPoints: 2999 }) },
+    { currentOperationSnapshot: operation({ amountPoints: 29990 }) },
     { currentOperationSnapshot: operation({ operationId: OP2 }) }
   ];
   for (const overrides of variations) {
@@ -267,7 +267,7 @@ test('concurrent external redemption and AI use cannot both reuse old snapshot',
     operationSnapshot: operation({
       operationId: OP2,
       purpose: 'ai_direct_use',
-      amountPoints: 2500
+      amountPoints: 25000
     })
   });
   assert.equal(exchange.status, 'proposal_only');
@@ -281,8 +281,8 @@ test('concurrent external redemption and AI use cannot both reuse old snapshot',
     duplicateOperationClaimExists: false
   });
   assert.equal(stale.status, 'stale_snapshot');
-  assert.equal(exchange.nextWallet.availablePoints, 2000);
-  assert.equal(2500 > exchange.nextWallet.availablePoints, true);
+  assert.equal(exchange.nextWallet.availablePoints, 20000);
+  assert.equal(25000 > exchange.nextWallet.availablePoints, true);
 });
 
 test('unapproved budget and any risk or eligibility doubt block reservations', () => {
@@ -319,9 +319,9 @@ test('budget cap includes both committed costs and in-flight reservations', () =
   assert.equal(
     quote('reserve', {
       budgetSnapshot: budget({
-        limitPoints: 5000,
-        committedPoints: 2000,
-        reservedPoints: 2000
+        limitPoints: 50000,
+        committedPoints: 20000,
+        reservedPoints: 20000
       })
     }).status,
     'budget_exceeded'
@@ -329,8 +329,8 @@ test('budget cap includes both committed costs and in-flight reservations', () =
   assert.equal(
     quote('reserve', {
       budgetSnapshot: budget({
-        limitPoints: 5000,
-        committedPoints: 2000,
+        limitPoints: 50000,
+        committedPoints: 20000,
         reservedPoints: 0
       })
     }).status,
@@ -339,8 +339,8 @@ test('budget cap includes both committed costs and in-flight reservations', () =
   assert.equal(
     quote('reserve', {
       budgetSnapshot: budget({
-        limitPoints: 4999,
-        committedPoints: 2000,
+        limitPoints: 49990,
+        committedPoints: 20000,
         reservedPoints: 0
       })
     }).status,
@@ -348,14 +348,14 @@ test('budget cap includes both committed costs and in-flight reservations', () =
   );
 });
 
-test('external 3000 point minimum never applies to direct AI usage', () => {
+test('external 30000 point minimum never applies to direct AI usage', () => {
   assert.equal(
     quote('reserve', {
-      operationSnapshot: operation({ amountPoints: 2999 })
+      operationSnapshot: operation({ amountPoints: 29990 })
     }).status,
     'below_exchange_minimum'
   );
-  for (const amount of [1, 10, 2999]) {
+  for (const amount of [1, 10, 29990]) {
     const result = quote('reserve', {
       operationSnapshot: operation({
         purpose: 'ai_direct_use',
@@ -363,14 +363,14 @@ test('external 3000 point minimum never applies to direct AI usage', () => {
       })
     });
     assert.equal(result.status, 'proposal_only');
-    assert.equal(result.nextWallet.availablePoints, 5000 - amount);
+    assert.equal(result.nextWallet.availablePoints, 50000 - amount);
   }
 });
 
 test('insufficient points, mixed user and missing evidence fail closed', () => {
   assert.equal(
     quote('reserve', {
-      walletSnapshot: wallet({ availablePoints: 2500 })
+      walletSnapshot: wallet({ availablePoints: 25000 })
     }).status,
     'insufficient_eligible_points'
   );
@@ -392,7 +392,7 @@ test('broken wallet, phase, budget and overflow snapshots never produce proposal
   for (const bad of [
     { walletSnapshot: wallet({ reservedPoints: -1 }) },
     { walletSnapshot: wallet({ revision: Number.MAX_SAFE_INTEGER }) },
-    { walletSnapshot: wallet({ availablePoints: '5000' }) },
+    { walletSnapshot: wallet({ availablePoints: '50000' }) },
     { budgetSnapshot: budget({ limitPoints: -1 }) },
     { budgetSnapshot: budget({ limitPoints: 1 }) },
     { budgetSnapshot: budget({ scopeId: '' }) },
@@ -437,28 +437,28 @@ test('wallet transition cannot be rechecked without a unique claim observation',
 
 test('reward issuance has its own approved budget distinct from redemption', () => {
   const result = quoteScoutPointGrantBudget({
-    pointsToIssue: 5,
+    pointsToIssue: 50,
     fundingBudgetSnapshot: budget({
       scopeId: 'issuance-budget-test-only',
-      limitPoints: 1500,
-      committedPoints: 1000,
-      reservedPoints: 495
+      limitPoints: 15000,
+      committedPoints: 10000,
+      reservedPoints: 4950
     }),
     fundingBudgetVerified: true,
     awardEventUniqueVerified: true,
     awardEventPreviouslyIssued: false
   });
   assert.equal(result.status, 'grant_budget_quote_only');
-  assert.equal(result.proposedBudget.committedPoints, 1005);
+  assert.equal(result.proposedBudget.committedPoints, 10050);
   assert.equal(result.proposedBudget.revision, 4);
   assert.equal(result.mayIssuePoints, false);
   const tooMuch = quoteScoutPointGrantBudget({
-    pointsToIssue: 6,
+    pointsToIssue: 60,
     fundingBudgetSnapshot: budget({
       scopeId: 'issuance-budget-test-only',
-      limitPoints: 1500,
-      committedPoints: 1000,
-      reservedPoints: 495
+      limitPoints: 15000,
+      committedPoints: 10000,
+      reservedPoints: 4950
     }),
     fundingBudgetVerified: true,
     awardEventUniqueVerified: true,
@@ -469,7 +469,7 @@ test('reward issuance has its own approved budget distinct from redemption', () 
 
 test('missing issuance budget approval and previously issued level/badge refuse payout', () => {
   const normal = {
-    pointsToIssue: 5,
+    pointsToIssue: 50,
     fundingBudgetSnapshot: budget(),
     fundingBudgetVerified: true,
     awardEventUniqueVerified: true,

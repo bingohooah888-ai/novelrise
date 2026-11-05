@@ -16,14 +16,14 @@ const OP2 = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 
 const wallet = (overrides = {}) => ({
   userId: USER,
-  availablePoints: 5000,
+  availablePoints: 50000,
   reservedPoints: 0,
   revision: 9,
   ...overrides
 });
 const budget = (overrides = {}) => ({
   scopeId: 'test-budget-only-not-owner-approved',
-  limitPoints: 10000,
+  limitPoints: 100000,
   committedPoints: 0,
   reservedPoints: 0,
   revision: 2,
@@ -33,7 +33,7 @@ const operation = (overrides = {}) => ({
   userId: USER,
   operationId: OP,
   purpose: 'external_exchange',
-  amountPoints: 3000,
+  amountPoints: 30000,
   phase: 'new',
   revision: 0,
   ...overrides
@@ -264,7 +264,7 @@ test('stale wallet and budget prevent simultaneous AI and cash reservations', ()
     operationSnapshot: operation({
       operationId: OP2,
       purpose: 'ai_direct_use',
-      amountPoints: 2500
+      amountPoints: 25000
     })
   });
   assert.equal(plan(exchange).status, 'connection_design_only');

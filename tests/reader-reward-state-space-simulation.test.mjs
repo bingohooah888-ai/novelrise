@@ -11,13 +11,13 @@ const A = '11111111-1111-4111-8111-111111111111';
 const B = '22222222-2222-4222-8222-222222222222';
 const DIGEST_A = 'a'.repeat(64);
 const DIGEST_B = 'b'.repeat(64);
-const wallet = (availablePoints = 5000) => ({
+const wallet = (availablePoints = 50000) => ({
   userId: USER,
   availablePoints,
   reservedPoints: 0,
   revision: 0
 });
-const budget = (limitPoints = 10000) => ({
+const budget = (limitPoints = 100000) => ({
   scopeId: 'private-model-budget',
   limitPoints,
   committedPoints: 0,
@@ -26,7 +26,7 @@ const budget = (limitPoints = 10000) => ({
 });
 const operation = (
   operationId,
-  amountPoints = 3000,
+  amountPoints = 30000,
   purpose = 'external_exchange'
 ) => ({
   userId: USER,
@@ -53,7 +53,7 @@ const outbox = (operationId = A) => ({
   providerRoute: 'simulated_route',
   payloadDigest: DIGEST_A,
   purpose: 'external_exchange',
-  amountPoints: 3000,
+  amountPoints: 30000,
   status: 'queued',
   revision: 0
 });
@@ -112,8 +112,8 @@ test('wallet cannot be overdrawn in any interleaving of two 3000pt requests', ()
   const result = race();
   invariant(result);
   for (const scenario of result.scenarios) {
-    assert.equal(scenario.wallet.availablePoints, 2000);
-    assert.equal(scenario.wallet.reservedPoints, 3000);
+    assert.equal(scenario.wallet.availablePoints, 20000);
+    assert.equal(scenario.wallet.reservedPoints, 30000);
     assert.equal(scenario.outboxes.filter(Boolean).length, 1);
   }
 });
@@ -145,27 +145,27 @@ test('sequential quote after first reservation rechecks insufficient funds', () 
 
 test('an approved virtual budget below demand blocks the second reservation', () => {
   const result = race({
-    walletSnapshot: wallet(9000),
-    budgetSnapshot: budget(5000)
+    walletSnapshot: wallet(90000),
+    budgetSnapshot: budget(50000)
   });
   invariant(result);
   for (const scenario of result.scenarios) {
-    assert.equal(scenario.wallet.reservedPoints, 3000);
-    assert.equal(scenario.budget.reservedPoints, 3000);
+    assert.equal(scenario.wallet.reservedPoints, 30000);
+    assert.equal(scenario.budget.reservedPoints, 30000);
     assert.equal(scenario.budget.committedPoints, 0);
   }
 });
 
 test('both 3000pt operations can reserve only when sequenced with sufficient balance', () => {
-  const result = race({ walletSnapshot: wallet(8000) });
+  const result = race({ walletSnapshot: wallet(80000) });
   invariant(result);
-  const two = result.scenarios.filter((s) => s.wallet.reservedPoints === 6000);
+  const two = result.scenarios.filter((s) => s.wallet.reservedPoints === 60000);
   assert.equal(two.length, 2);
   assert.ok(two.every((s) => s.outboxes.filter(Boolean).length === 2));
 });
 
 test('simultaneous quotations do not both pass stale revisions with enough money', () => {
-  const result = race({ walletSnapshot: wallet(8000) });
+  const result = race({ walletSnapshot: wallet(80000) });
   invariant(result);
   assert.equal(
     result.scenarios.filter((s) =>
@@ -178,30 +178,30 @@ test('simultaneous quotations do not both pass stale revisions with enough money
 test('different operation purposes consume the same virtual wallet and budget', () => {
   const result = race({
     operations: [
-      operation(A, 3000, 'external_exchange'),
-      operation(B, 2500, 'ai_direct_use')
+      operation(A, 30000, 'external_exchange'),
+      operation(B, 25000, 'ai_direct_use')
     ]
   });
   invariant(result);
   assert.ok(
     result.scenarios.every(
       (s) =>
-        s.wallet.reservedPoints === 3000 || s.wallet.reservedPoints === 2500
+        s.wallet.reservedPoints === 30000 || s.wallet.reservedPoints === 25000
     )
   );
 });
 
 test('AI can be tested with a 1pt fixture without setting any actual AI price', () => {
   const result = race({
-    walletSnapshot: wallet(4000),
+    walletSnapshot: wallet(40000),
     operations: [
-      operation(A, 3000, 'external_exchange'),
+      operation(A, 30000, 'external_exchange'),
       operation(B, 1, 'ai_direct_use')
     ]
   });
   invariant(result);
   const sequential = result.scenarios.filter(
-    (s) => s.wallet.reservedPoints === 3001
+    (s) => s.wallet.reservedPoints === 30001
   );
   assert.equal(sequential.length, 2);
 });
@@ -209,8 +209,8 @@ test('AI can be tested with a 1pt fixture without setting any actual AI price', 
 test('mock external exchange below the existing 3000pt floor is not reserved', () => {
   const result = race({
     operations: [
-      operation(A, 2999, 'external_exchange'),
-      operation(B, 3000, 'external_exchange')
+      operation(A, 29990, 'external_exchange'),
+      operation(B, 30000, 'external_exchange')
     ]
   });
   invariant(result);
@@ -224,8 +224,8 @@ test('mock external exchange below the existing 3000pt floor is not reserved', (
 });
 
 test('conservation law and approved budget apply across a bounded numeric grid', () => {
-  for (const available of [0, 1, 3000, 3001, 5000, 6000, 9000]) {
-    for (const limit of [0, 2999, 3000, 5000, 6000, 9000]) {
+  for (const available of [0, 1, 30000, 30010, 50000, 60000, 90000]) {
+    for (const limit of [0, 29990, 30000, 50000, 60000, 90000]) {
       const result = race({
         walletSnapshot: wallet(available),
         budgetSnapshot: budget(limit)

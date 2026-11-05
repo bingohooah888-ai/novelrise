@@ -23,13 +23,13 @@ const providerKey = 'scout-provider-v1:' + USER + ':' + OP;
 const operationKey = 'scout-point-use-v1:' + USER + ':' + OP;
 const wallet = () => ({
   userId: USER,
-  availablePoints: 8000,
+  availablePoints: 80000,
   reservedPoints: 0,
   revision: 5
 });
 const budget = () => ({
   scopeId: 'mock_budget_not_approved_in_live_service',
-  limitPoints: 10000,
+  limitPoints: 100000,
   committedPoints: 0,
   reservedPoints: 0,
   revision: 9
@@ -38,7 +38,7 @@ const operation = () => ({
   userId: USER,
   operationId: OP,
   purpose: 'external_exchange',
-  amountPoints: 3000,
+  amountPoints: 30000,
   phase: 'new',
   revision: 0
 });

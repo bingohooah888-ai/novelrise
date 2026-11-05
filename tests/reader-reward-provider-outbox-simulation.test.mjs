@@ -20,14 +20,14 @@ const DIGEST_OTHER = 'b'.repeat(64);
 
 const budget = () => ({
   scopeId: 'approved-test-scope-only',
-  limitPoints: 9999,
+  limitPoints: 99990,
   committedPoints: 0,
   reservedPoints: 0,
   revision: 3
 });
 const wallet = () => ({
   userId: USER,
-  availablePoints: 5000,
+  availablePoints: 50000,
   reservedPoints: 0,
   revision: 5
 });
@@ -35,7 +35,7 @@ const op = (overrides = {}) => ({
   userId: USER,
   operationId: OP,
   purpose: 'external_exchange',
-  amountPoints: 3000,
+  amountPoints: 30000,
   phase: 'new',
   revision: 0,
   ...overrides
@@ -202,7 +202,7 @@ test('the same logical operation always uses the same provider idempotency key',
 test('same operation ID with changed amount, purpose, digest, route is rejected', () => {
   const s = setup();
   for (const changes of [
-    { reservedOperation: { ...s.reservedOperation, amountPoints: 3001 } },
+    { reservedOperation: { ...s.reservedOperation, amountPoints: 30010 } },
     { reservedOperation: { ...s.reservedOperation, purpose: 'ai_direct_use' } },
     { payload: { ...s.payload, payloadDigest: DIGEST_OTHER } },
     { payload: { ...s.payload, providerRoute: 'different_route' } }
