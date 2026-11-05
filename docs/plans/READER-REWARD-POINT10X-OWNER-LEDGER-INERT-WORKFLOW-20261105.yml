@@ -27,6 +27,17 @@ jobs:
 # 04. Resolve fresh main, Draft PR head, canonical JSON and exact scope/mode.
 # 05. Fetch EVERY Issue #294 ledger page; reject missing, duplicate or invalid.
 # 06. Serialize all Issue #294 Staging mutations with a reviewed shared lock.
+#     LOCK TOPOLOGY IS STILL UNPROVEN: old admit, old stage and this template
+#     have different groups. A GitHub concurrency string is NOT durable CAS.
+# 06a. Before GitHub CLAIMED or Staging secrets, reserve a single-use approval
+#      with an independent linearizable durable CAS: exact request comment ID,
+#      operation ID, scope/mode, main+candidate HEAD, run ID, and a persisted
+#      monotonically increasing fencing token in ONE transaction. Unique keys
+#      must cover replay and the shared all-Point-writer mutation domain.
+#      All scopes/old executors that can mutate that domain must use the fence.
+#      No real adapter/storage/permissions are implemented in this template.
+# 06b. CAS acknowledgement lost or crash before GitHub CLAIMED must HOLD;
+#      do not treat absent Issue comments as an unused approval or auto-retry.
 # 07. Post CLAIMED via trusted main code, then re-read and verify one new claim.
 # 08. Access Staging secrets ONLY after the claim is proven persisted.
 # 09. Check dedicated Staging identity and full backup + independent restore.
