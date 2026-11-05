@@ -41,7 +41,17 @@ jobs:
 # 07. Post CLAIMED via trusted main code, then re-read and verify one new claim.
 # 08. Access Staging secrets ONLY after the claim is proven persisted.
 # 09. Check dedicated Staging identity and full backup + independent restore.
+#     Phase06 OFFLINE contract: verify immutable complete dump and manifest,
+#     independently restored isolated Postgres, same locked source watermark,
+#     exact XP/Point/Badge/Operator relation digests, function/ACL/trigger.
+#     This blueprint CANNOT create, decrypt, inspect or restore any backup.
 # 10. Fence every legacy/new Point writer, retry, Cron, Edge and service_role.
+#     All 9 known classes must show pause+admission closure, inflight/queue/
+#     retry/outbox/unacked zero, old token denied at Data Plane, two stable
+#     independent read-only samples; GitHub concurrency alone is insufficient.
+#     Unknown/ambiguous COMMIT => HOLD. Confirmed COMMIT => forward repair;
+#     any valid post-snapshot award/reversal/XP => no stale backup restore.
+#     All fixture flags remain untrusted; no executable restore is authorized.
 # 11. Verify private marker and SECURITY DEFINER exact RPC one-token diff.
 # 12. Verify full-row integrity, RLS, ACL, event keys, reversals, no hidden writers.
 # 13. Independent rollback proof versus persistent Staging require DIFFERENT scopes.
