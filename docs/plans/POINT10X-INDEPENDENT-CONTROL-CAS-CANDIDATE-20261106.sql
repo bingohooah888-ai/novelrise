@@ -9,17 +9,19 @@
 -- No call to this function constitutes GitHub OWNER authentication.
 -- The consumed/spent tombstone MUST NEVER be deleted or reset on failure.
 
-CREATE SCHEMA IF NOT EXISTS point10x_control;
+BEGIN;
+
+CREATE SCHEMA point10x_control;
 REVOKE ALL ON SCHEMA point10x_control FROM PUBLIC;
 
-CREATE TABLE IF NOT EXISTS point10x_control.domain_epochs (
+CREATE TABLE point10x_control.domain_epochs (
   mutation_domain text PRIMARY KEY
     CHECK (mutation_domain = 'issue294-point10x-all-staging-writers'),
   fencing_epoch bigint NOT NULL CHECK (fencing_epoch >= 0),
   updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 
-CREATE TABLE IF NOT EXISTS point10x_control.spent_approvals (
+CREATE TABLE point10x_control.spent_approvals (
   repo text NOT NULL CHECK (repo = 'bingohooah888-ai/novelrise'),
   issue_number integer NOT NULL CHECK (issue_number = 294),
   comment_id bigint NOT NULL CHECK (comment_id > 0),
@@ -38,7 +40,7 @@ CREATE TABLE IF NOT EXISTS point10x_control.spent_approvals (
   UNIQUE (repo, issue_number, approval_digest)
 );
 
-CREATE OR REPLACE FUNCTION point10x_control.claim_once_v1(
+CREATE FUNCTION point10x_control.claim_once_v1(
   p_repo text,
   p_issue_number integer,
   p_comment_id bigint,
@@ -118,6 +120,9 @@ REVOKE ALL ON FUNCTION point10x_control.claim_once_v1(
   text,integer,bigint,text,text,text,text,text,bigint
 ) FROM PUBLIC;
 REVOKE ALL ON ALL TABLES IN SCHEMA point10x_control FROM PUBLIC;
+
+-- Atomic DDL transaction prevents transient PUBLIC EXECUTE exposure.
+COMMIT;
 
 -- Any uncertain COMMIT ACK must be resolved by a new read-only query against
 -- the authoritative independent CONTROL primary. Never automatically retry

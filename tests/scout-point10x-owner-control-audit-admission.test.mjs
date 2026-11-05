@@ -686,6 +686,13 @@ test('CONTROL SQL candidate is independent, tombstone-unique, no installed grant
   );
   assert.match(sql, /DO NOT RUN IN THIS TURN/u);
   assert.match(sql, /SECURITY DEFINER/u);
+  assert.equal((sql.match(/^BEGIN;$/gmu) || []).length, 1);
+  assert.equal((sql.match(/^COMMIT;$/gmu) || []).length, 1);
+  assert.ok(
+    sql.indexOf('CREATE FUNCTION') < sql.indexOf('REVOKE ALL ON FUNCTION')
+  );
+  assert.ok(sql.indexOf('REVOKE ALL ON FUNCTION') < sql.lastIndexOf('COMMIT;'));
+  assert.doesNotMatch(sql, /CREATE OR REPLACE|IF NOT EXISTS/iu);
   assert.match(sql, /FOR UPDATE;/u);
   assert.match(sql, /PRIMARY KEY \(repo, issue_number, comment_id\)/u);
   assert.match(sql, /ON CONFLICT DO NOTHING/u);
