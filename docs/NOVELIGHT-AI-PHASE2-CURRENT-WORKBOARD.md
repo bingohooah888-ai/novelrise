@@ -40,12 +40,12 @@ last_reviewed_jst: 2026-11-05
 - 既存Workers Free/支払い方法未登録は表示確認できたが、請求額0の証拠ではない（Billing APIは403）。
 - **Gate A全体 NO-GO**。合成P2 PASSやローカル候補コンパイルPASSを独立Watchdog完成と称しない。
 
-主要な既存証拠：
-`docs/ai-phase2/gatea-a2-p2-v8-r3-final-readonly-audit-20261105.md`、
-`docs/ai-phase2/gatea-a2-p3-v8-r3-cron-stop-executed-20261105.md`、
-`docs/ai-phase2/gatea-a2-p4-formal-audit-20261105.md`、
-`docs/ai-phase2/gatea-a2-p3-v8r3-readonly-observer-preapproval-20261105.md`、
-`docs/ai-phase2/gatea-a2-p3-v8r3-observation-live-preflight-safe-stop-20261105.md`。
+主要な既存証拠（接続PCの未コミット・ローカルファイル名。GitHub正式文書として扱わない。他環境で読めなければUNVERIFIEDと明記し、元の試験を勝手に再実行しない）：
+`LOCAL_ONLY:gatea-a2-p2-v8-r3-final-readonly-audit-20261105.md`、
+`LOCAL_ONLY:gatea-a2-p3-v8-r3-cron-stop-executed-20261105.md`、
+`LOCAL_ONLY:gatea-a2-p4-formal-audit-20261105.md`、
+`LOCAL_ONLY:gatea-a2-p3-v8r3-readonly-observer-preapproval-20261105.md`、
+`LOCAL_ONLY:gatea-a2-p3-v8r3-observation-live-preflight-safe-stop-20261105.md`。
 
 ## 3. 次の作業優先順位（単発の後片付けに没頭しない）
 
