@@ -3,7 +3,7 @@
 **最終内容確認：2026-11-05 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 03f64b14138ec5c6a90c0d8231a0784f878e78fa
+source_main: 0e4f3f594193d137d582fb693703ffdfe1d1cfd3
 source_master_blob: 91d11fa367b7de64990b13397b13d4bb6e3c0230
 phase: 02-07-05
 last_reviewed_jst: 2026-11-05
@@ -46,6 +46,17 @@ last_reviewed_jst: 2026-11-05
 `LOCAL_ONLY:gatea-a2-p4-formal-audit-20261105.md`、
 `LOCAL_ONLY:gatea-a2-p3-v8r3-readonly-observer-preapproval-20261105.md`、
 `LOCAL_ONLY:gatea-a2-p3-v8r3-observation-live-preflight-safe-stop-20261105.md`。
+
+## 2.5 2026-11-05 Gate B/C ローカル準備差分（この変更がmain統合前ならLOCAL_ONLY）
+
+- 正式mainは `0e4f3f594193d137d582fb693703ffdfe1d1cfd3`。旧アンカーからの差分はPR #2764の継続機能だけで、MASTER blob `91d11fa367b7de64990b13397b13d4bb6e3c0230` は不変。
+- 隔離worktree `work/ai-020705-gatebc-offline-20261105` でGate BのPreview分岐ENV不足をNO-GOへ修正、Gate Cの最初の失敗で後続offline proofを抑止。
+- `scripts/nlo-ai-phase2-gatebc-readonly.mjs` を追加し、NLO Capability Registryへ「caller-supplied redacted metadataのみの判定能力」を登録。実環境認証やlive permissionは持たない。
+- 変更対象のofflineテストは12/12 PASS。NLO registry validate PASS、resolve=available。いずれもGitHub CI・実Runner・Staging・有料AIの成功証拠ではない。
+- Vercelの既存Projectメタデータは確認したが、新B用branchには9件の環境変数名のbranch-scoped確認がなく、新Preview未作成。既存設定の自動継承を推定しない。
+- Supabase connectorでStaging Projectの詳細取得は「Project not found」。プロジェクト削除を意味せず、この接続権限での最新状態はUNVERIFIED。旧証拠のSQL6件は再実行しない。
+- Gate A=NO-GO、Gate B=未完、Gate C=未完、D/E=未実施。独立Watchdog実kill、実Runner接続、実JWT、Provider費用条件、1回限り承認は別途の実証が必要。
+- このローカル準備差分では **Cloudflare/DO/SQL/Preview/Production/有料AI/外部Secretsの変更0回**。commit/push/PR/mergeは未実行で、個別承認を再利用しない。
 
 ## 3. 次の作業優先順位（単発の後片付けに没頭しない）
 

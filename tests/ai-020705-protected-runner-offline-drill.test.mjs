@@ -94,3 +94,37 @@ test('missing required observer / wrong staging project denied before requests',
     observers: observers(), now: () => NOW
   }), /AI_020705_PROTECTED_RUNNER_DRYRUN_DENIED/u);
 });
+
+test('first failed gate suppresses downstream read-only calls', async () => {
+  const os = observers();
+  let downstreamCalls = 0;
+  os.readMain = async () => ({
+    repository: approved.repository,
+    branch: 'main',
+    sha: 'b'.repeat(40),
+    verifiedReadOnly: true
+  });
+  for (const name of [
+    'readRunnerProtection',
+    'readPreview',
+    'readMigration',
+    'readSyntheticConsent',
+    'readBillingProtection'
+  ]) {
+    os[name] = async () => {
+      downstreamCalls += 1;
+      return {};
+    };
+  }
+  const result = await inspect020705ProtectedRunnerOffline({
+    approved,
+    observers: os,
+    now: () => NOW
+  });
+  assert.equal(result.status, 'PROTECTED_RUNNER_PROOFS_INCOMPLETE_NO_GO');
+  assert.equal(result.checks.length, 6);
+  assert.equal(result.checks[0].verified, false);
+  assert.ok(result.checks.slice(1).every((x) => x.skipped === true));
+  assert.equal(downstreamCalls, 0);
+  assert.equal(result.authorizesExecution, false);
+});

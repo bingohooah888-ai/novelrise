@@ -162,6 +162,29 @@
       "version": "0.1.0",
       "status": "testing",
       "provenance": "2026-11-02 OWNER request; Cloudflare API Workers/DO and GraphQL official docs; live account API auth not yet configured"
+    },
+    {
+      "id": "nlo.ai.phase2.gatebc.metadata-readonly",
+      "description": "Offline B/C readiness assessment from caller-supplied redacted Vercel, Supabase and existing proof metadata. No live credential access, network, or execution authority.",
+      "intents": [
+        "ai phase2 gate b c metadata-only readiness"
+      ],
+      "aliases": [
+        "NLO Gate B C offline readiness assessment",
+        "Gate B C redacted metadata checklist"
+      ],
+      "adapter": "scripts/nlo-ai-phase2-gatebc-readonly.mjs",
+      "executionRisk": "A",
+      "requiredPermissions": [
+        "repo_read",
+        "caller_supplied_redacted_metadata"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-ai-phase2-gatebc-readonly.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "enabled",
+      "provenance": "2026-11-05 Gate B/C read-only local offline evidence adapter; no live authenticated integration"
     }
   ]
 }

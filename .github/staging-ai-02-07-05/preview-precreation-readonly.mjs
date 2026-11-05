@@ -51,7 +51,9 @@ export function inspect020705PreviewPrecreation({
       ? 'EXISTING_PREVIEW_SHA_MISMATCH'
       : existingPreview.state !== 'READY'
         ? 'EXISTING_PREVIEW_NOT_READY'
-        : 'PREVIEW_METADATA_MATCHES_REQUIRES_INDEPENDENT_APPROVAL';
+        : missingNames.length > 0
+          ? 'PREVIEW_BRANCH_ENV_INCOMPLETE_NO_GO'
+          : 'PREVIEW_METADATA_MATCHES_REQUIRES_INDEPENDENT_APPROVAL';
   }
   return Object.freeze({
     status, expectedMainSha: scope.mainSha, plannedBranch: scope.branch,
