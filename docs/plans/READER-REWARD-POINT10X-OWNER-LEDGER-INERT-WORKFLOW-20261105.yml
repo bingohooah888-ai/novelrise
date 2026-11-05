@@ -53,7 +53,14 @@ jobs:
 #     any valid post-snapshot award/reversal/XP => no stale backup restore.
 #     All fixture flags remain untrusted; no executable restore is authorized.
 # 11. Verify private marker and SECURITY DEFINER exact RPC one-token diff.
+#     Phase07 OFFLINE model: private marker + exact 5pt -> 50pt RPC must
+#     share ONE SERIALIZABLE transaction with all five locked relations.
+#     Preserve trigger, owner/ACL, empty search_path, and event keys.
+#     Approval spent and fencing epoch are prerequisites, never authority.
 # 12. Verify full-row integrity, RLS, ACL, event keys, reversals, no hidden writers.
+#     Reject duplicate Point/XP events, overflow, source/HEAD drift and
+#     unknown badge metric; 12 fault checkpoints MUST fail closed.
+#     COMMIT uncertain => HOLD, do not replay conversion or release writers.
 # 13. Independent rollback proof versus persistent Staging require DIFFERENT scopes.
 # 14. Resolve ambiguous commits via read-only marker/journal requery; never retry.
 # 15. In a trusted-main finally branch, mark CONSUMED on all terminal outcomes.
