@@ -10,7 +10,7 @@
 
 ## 0.5 AI工程②（02-07-05）の別チャット継続ゲート
 
-NOVELIGHTの10項目中②「作品カルテ／Novel Bible」の開発では、着手前に最新main・MASTER・このAGENTS.mdを確認し、必ず npm run nlo:ai:resume で docs/ai-phase2/AI-02-07-05-CURRENT-WORKBOARD.md の実績・残作業・再実行禁止事項を読み込む。過去チャットや記憶を現在の実行状態の代わりにしない。
+NOVELIGHTの10項目中②「作品カルテ／Novel Bible」の開発では、着手前に最新main・MASTER・このAGENTS.mdを確認し、必ず npm run nlo:ai:resume で docs/NOVELIGHT-AI-PHASE2-CURRENT-WORKBOARD.md の実績・残作業・再実行禁止事項を読み込む。過去チャットや記憶を現在の実行状態の代わりにしない。
 
 NLO FAST PATCHの対象がAI工程②の場合は --workstream=ai-phase2、FULL PREFLIGHTでは npm run runtime:gate -- --phase=<phase> --workstream=ai-phase2 を指定し、機械ゲートの継続チェックを通す。異なる作業の開始にAI工程②の長い再読を要求しない。NEW_MAIN_DELTA_REVIEW_REQUIRED なら最新mainの関連差分を確認する。MASTER変更・監査基準の断絶は安全停止する。
 

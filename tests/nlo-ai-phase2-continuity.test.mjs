@@ -187,7 +187,7 @@ test('resumption is read only and returns explicit stale status', () => {
     }),
     2
   );
-  assert.equal(BOARD_PATH, 'docs/ai-phase2/AI-02-07-05-CURRENT-WORKBOARD.md');
+  assert.equal(BOARD_PATH, 'docs/NOVELIGHT-AI-PHASE2-CURRENT-WORKBOARD.md');
 });
 
 test('no unverified progress percentage or automatic approval is created', () => {

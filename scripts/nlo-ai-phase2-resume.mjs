@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-export const BOARD_PATH = 'docs/ai-phase2/AI-02-07-05-CURRENT-WORKBOARD.md';
+export const BOARD_PATH = 'docs/NOVELIGHT-AI-PHASE2-CURRENT-WORKBOARD.md';
 export const PHASE2_NEXT =
   'Gate A: keep residual DO3 safely frozen; prepare Gate B/C in parallel; never infer GO from A2-P2 synthetic PASS.';
 
