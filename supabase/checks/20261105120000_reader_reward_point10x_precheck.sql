@@ -5,6 +5,10 @@
 LOCK TABLE public.scout_point_ledger, public.scout_badge_definitions,
   public.user_scout_badges, public.scout_point_operator_actions IN ACCESS EXCLUSIVE MODE;
 
+-- The only valid opt-in is scoped to this single rollback-only transaction.
+-- Direct migration replay without this precheck cannot multiply any rows.
+SELECT set_config('novelight.point10x_rollback_proof','rollback-only',true);
+
 DO $nl10_guard$ BEGIN
   IF (SELECT count(*) FROM public.scout_point_ledger) <> 3581
     OR (SELECT count(DISTINCT user_id) FROM public.scout_point_ledger) <> 1605

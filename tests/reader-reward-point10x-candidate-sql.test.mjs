@@ -194,6 +194,28 @@ test('old 5pt level-up function is not modified during this rollback-only proof'
   assert.ok(sql.precheck.includes('830b9784d2e7d5bdd71054188aa06e91'));
   assert.doesNotMatch(sql.migration, /CREATE\s+(OR\s+REPLACE\s+)?FUNCTION/iu);
 });
+test('normal migration replay cannot multiply data without the one-transaction precheck flag', () => {
+  assert.match(
+    sql.precheck,
+    /SELECT set_config\('novelight\.point10x_rollback_proof',\s*'rollback-only',\s*true\)/u
+  );
+  assert.equal(
+    (
+      sql.migration.match(
+        /current_setting\('novelight\.point10x_rollback_proof',\s*true\) = 'rollback-only'/g
+      ) || []
+    ).length,
+    5
+  );
+  assert.doesNotMatch(sql.migration, /\bset_config\s*\(/u);
+});
+test('caller cannot make full persistent cutover via migration alone', () => {
+  assert.doesNotMatch(
+    sql.migration,
+    /CREATE\s+(OR\s+REPLACE\s+)?FUNCTION|CREATE\s+TABLE\s+public\.scout_point_unit_cutover_marker/iu
+  );
+  assert.match(sql.migration, /NO-OP/u);
+});
 test('main SQL validator rejects persistent malicious commands', () => {
   const bad = sql.migration.replace(
     'UPDATE public.scout_point_ledger',

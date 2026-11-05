@@ -30,6 +30,7 @@
 
 ## 4. 予期する安全停止・残存の実証ギャップ
 
+- **事故防止の二重ガード**：`precheck.sql`内のトランザクションローカル `set_config('novelight.point10x_rollback_proof','rollback-only',true)` が成立しない限り、migrationのすべてのUPDATEは `WHERE current_setting(...)='rollback-only'` により0行変更になる。通常のCI migration replayや、前処理なしの直接実行で既存Pointを10倍しない。これはOWNERの承認・trusted compilerによるROLLBACKを代替するものではなく、precheckとSQLを同時実行してCOMMITすれば変更可能なため、PRのmain統合禁止は継続する。
 - この候補をmainにmergeしてしまうと`supabase/migrations/`内のSQLが通常の自動DB移行経路から見える。**レビュー候補としてDraft維持、mergeは禁止**。本候補のmigrationはProduction適用の承認も受けておらず、恒久的な本番実行ファイルではない。
 - ROLLBACKだけではStaging外部へのメール・webhook等の外部副作用を元に戻せない。今回の前提で実トリガーを確認し、未知の追加トリガーならprecheckで停止する。**新たなトリガー／外部providerを勝手に無効化しない**。
 - precheckの排他ロック、再集計、全行snapshot、postcheck JSONB差分は**同一トランザクション**で実行することが必須。トランザクション外に分割実行すると意味がない。
