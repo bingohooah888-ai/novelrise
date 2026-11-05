@@ -8,6 +8,11 @@ import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
+import {
+  LOCAL_DOCKER_CONTEXT,
+  BLOCKED_DOCKER_ENV_KEYS,
+  inspectDisposableDockerSafety
+} from './scout-point10x-docker-inventory-policy.mjs';
 
 export const DISPOSABLE_POSTGRES_IMAGE = 'postgres:16-alpine';
 export const OPT_IN_NAME = 'NOVELIGHT_POINT10X_LOCAL_PG';
@@ -49,6 +54,10 @@ export function checkLocalProofPermission(env, args) {
   ]) {
     if (typeof env?.[key] === 'string' && env[key].trim())
       blockers.push('external_database_environment_present:' + key);
+  }
+  for (const key of BLOCKED_DOCKER_ENV_KEYS) {
+    if (typeof env?.[key] === 'string' && env[key].trim())
+      blockers.push('docker_endpoint_override_detected:' + key);
   }
   return Object.freeze({
     readyForLocalProbe: blockers.length === 0,
@@ -97,13 +106,17 @@ export function disposableDockerArguments(nonce) {
   });
 }
 function docker(args, options = {}) {
-  const result = spawnSync('docker', args, {
-    encoding: 'utf8',
-    input: options.input,
-    timeout: options.timeout || 15000,
-    windowsHide: true,
-    maxBuffer: 1024 * 512
-  });
+  const result = spawnSync(
+    'docker',
+    ['--context', LOCAL_DOCKER_CONTEXT, ...args],
+    {
+      encoding: 'utf8',
+      input: options.input,
+      timeout: options.timeout || 15000,
+      windowsHide: true,
+      maxBuffer: 1024 * 512
+    }
+  );
   return {
     ok: !result.error && result.status === 0,
     status: result.status,
@@ -112,26 +125,90 @@ function docker(args, options = {}) {
     errorCode: result.error?.code || null
   };
 }
-export function checkDisposablePostgresAvailability() {
+export function checkDisposablePostgresAvailability(env = process.env) {
+  // Check environment *before* any Docker daemon query. Docker CLI can point
+  // to a remote host through inherited variables or context configuration.
+  const endpointOverride = BLOCKED_DOCKER_ENV_KEYS.some(
+    (key) => typeof env?.[key] === 'string' && env[key].trim()
+  );
+  if (endpointOverride) {
+    const guard = inspectDisposableDockerSafety({ environment: env });
+    return Object.freeze({
+      available: false,
+      dockerClientInstalled: false,
+      linuxEngineAvailable: false,
+      imageAlreadyCached: false,
+      ...guard,
+      willPullImage: false,
+      willConnectExistingDatabase: false,
+      willStartContainers: false,
+      willChangeDockerDesktopSettings: false
+    });
+  }
   const cli = docker(['--version']);
-  const engine = cli.ok
-    ? docker(['info', '--format', '{{.OSType}}'])
-    : { ok: false, stdout: '', errorCode: 'NO_DOCKER_CLIENT' };
-  const image =
-    engine.ok && engine.stdout === 'linux'
-      ? docker([
-          'image',
-          'inspect',
-          DISPOSABLE_POSTGRES_IMAGE,
-          '--format',
-          '{{.Id}}'
-        ])
-      : { ok: false };
-  return Object.freeze({
-    available: cli.ok && engine.ok && engine.stdout === 'linux' && image.ok,
+  const ctx = cli.ok
+    ? docker(['context', 'inspect', LOCAL_DOCKER_CONTEXT])
+    : { ok: false };
+  let contextName = null;
+  let contextHost = null;
+  if (ctx.ok) {
+    try {
+      const j = JSON.parse(ctx.stdout);
+      contextName = j?.[0]?.Name ?? null;
+      contextHost = j?.[0]?.Endpoints?.docker?.Host ?? null;
+    } catch {
+      // Unverifiable context is unsafe; no daemon call follows.
+    }
+  }
+  const verifiedLocalContext =
+    contextName === LOCAL_DOCKER_CONTEXT &&
+    contextHost === 'npipe:////./pipe/dockerDesktopLinuxEngine';
+  const engine =
+    cli.ok && verifiedLocalContext
+      ? docker(['info', '--format', '{{.OSType}}'])
+      : { ok: false, stdout: '' };
+  const linuxEngine = engine.ok && engine.stdout === 'linux';
+  const containers = linuxEngine
+    ? docker(['container', 'ls', '--all', '--quiet'])
+    : { ok: false };
+  const volumes = linuxEngine
+    ? docker(['volume', 'ls', '--quiet'])
+    : { ok: false };
+  const image = linuxEngine
+    ? docker([
+        'image',
+        'inspect',
+        DISPOSABLE_POSTGRES_IMAGE,
+        '--format',
+        '{{.Id}}'
+      ])
+    : { ok: false };
+  const ids = containers.ok
+    ? containers.stdout.split(/\r?\n/u).filter(Boolean)
+    : null;
+  const names = volumes.ok
+    ? volumes.stdout.split(/\r?\n/u).filter(Boolean)
+    : null;
+  const guard = inspectDisposableDockerSafety({
     dockerClientInstalled: cli.ok,
-    linuxEngineAvailable: engine.ok && engine.stdout === 'linux',
+    engineRunning: engine.ok,
+    engineIsLinux: linuxEngine,
+    contextName,
+    contextHost,
+    containerListComplete: containers.ok,
+    existingContainerIds: ids,
+    volumeListComplete: volumes.ok,
+    existingVolumeNames: names,
+    imageCacheChecked: linuxEngine,
+    imageCached: image.ok,
+    environment: env
+  });
+  return Object.freeze({
+    available: guard.safeForDisposableContainer,
+    dockerClientInstalled: cli.ok,
+    linuxEngineAvailable: linuxEngine,
     imageAlreadyCached: image.ok,
+    ...guard,
     willPullImage: false,
     willConnectExistingDatabase: false,
     willStartContainers: false,
@@ -163,10 +240,14 @@ function sql(name, db, text, role = 'postgres') {
 }
 function asyncSql(name, db, text, role = 'postgres') {
   return new Promise((resolve) => {
-    const proc = spawn('docker', psqlArgs(name, db, role), {
-      windowsHide: true,
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
+    const proc = spawn(
+      'docker',
+      ['--context', LOCAL_DOCKER_CONTEXT, ...psqlArgs(name, db, role)],
+      {
+        windowsHide: true,
+        stdio: ['pipe', 'pipe', 'pipe']
+      }
+    );
     let stdout = '',
       stderr = '',
       done = false;
@@ -398,7 +479,12 @@ async function run() {
   const nonce = randomUUID().replaceAll('-', '').slice(0, 12);
   const spec = disposableDockerArguments(nonce);
   let created = false;
+  let startAttempted = false;
   try {
+    const finalInventory = checkDisposablePostgresAvailability();
+    if (!finalInventory.available)
+      fail('docker_inventory_or_context_changed_before_start');
+    startAttempted = true;
     const started = docker(spec.args, { timeout: 30000 });
     if (!started.ok) fail('temporary_container_start_failed');
     created = true;
@@ -437,7 +523,9 @@ async function run() {
     );
     process.exitCode = 1;
   } finally {
-    if (created) {
+    // Even if docker run loses its acknowledgement, inspect ONLY our random
+    // name and delete it only when the exact ownership label matches.
+    if (created || startAttempted) {
       const label = docker([
         'inspect',
         '--format',

@@ -250,8 +250,8 @@ test('only test fixture SQL, no migration or production SQL file created', () =>
 });
 test('harness only reaches Docker exec to a generated disposable name', () => {
   const src = script();
-  assert.match(src, /spawnSync\('docker'/u);
-  assert.match(src, /spawn\('docker'/u);
+  assert.match(src, /spawnSync\(\s*'docker'/u);
+  assert.match(src, /spawn\(\s*'docker'/u);
   assert.match(src, /'exec',\s*'--interactive'/u);
   assert.match(src, /docker\(psqlArgs\(/u);
   assert.match(src, /SANDBOX_LABEL/u);
@@ -262,7 +262,7 @@ test('harness only reaches Docker exec to a generated disposable name', () => {
 test('disposable container cleanup happens in finally even on failing test', () => {
   const src = script();
   assert.match(src, /\} finally \{/u);
-  assert.match(src, /if\s*\(created\)/u);
+  assert.match(src, /created\s*\|\|\s*startAttempted/u);
   assert.match(src, /LOCAL_PROOF_CONTAINER_CLEANUP_UNVERIFIED/u);
   assert.match(src, /LOCAL_PROOF_OWNERSHIP_LABEL_MISMATCH_NO_CLEANUP/u);
 });
