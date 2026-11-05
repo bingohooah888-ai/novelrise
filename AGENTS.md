@@ -8,6 +8,13 @@
 - **承認は対象別で一回限り**：PRの「本番承認」はそのPRのmain統合だけ（既存の自動Productionデプロイ可能性を含めて説明）。別のProduction mutationには個別承認。Staging書き込み・実JWT試験・有料Previewは独立した「ステージング承認」を必要とする。受理後の失敗・中断でも消費し、過去の承認を再利用しない。以前の同一workstream承認再利用記述より新しいOWNER規則を優先する。ゲート不一致はfail closed。
 - **対象を限定して費用を抑える**。重要な安全検証は省かず、検証証跡・未検証部分を簡潔に報告する。別チャットでもrepo最新規則を読む。
 
+## 0.5 AI工程②（02-07-05）の別チャット継続ゲート
+
+NOVELIGHTの10項目中②「作品カルテ／Novel Bible」の開発では、着手前に最新main・MASTER・このAGENTS.mdを確認し、必ず npm run nlo:ai:resume で docs/ai-phase2/AI-02-07-05-CURRENT-WORKBOARD.md の実績・残作業・再実行禁止事項を読み込む。過去チャットや記憶を現在の実行状態の代わりにしない。
+
+NLO FAST PATCHの対象がAI工程②の場合は --workstream=ai-phase2、FULL PREFLIGHTでは npm run runtime:gate -- --phase=<phase> --workstream=ai-phase2 を指定し、機械ゲートの継続チェックを通す。異なる作業の開始にAI工程②の長い再読を要求しない。NEW_MAIN_DELTA_REVIEW_REQUIRED なら最新mainの関連差分を確認する。MASTER変更・監査基準の断絶は安全停止する。
+
+A2合成試験・SQL6件・Cron停止のPASSをやり直さず、Gate A本体の独立Watchdog・B/Cの安全な並行準備を優先する。実環境操作、機密・課金、Preview/Production、Worker配備・DO削除では従来の個別承認境界を維持する。0/5 Gateの合格数を根拠なく工数％へ変換しない。進捗ボードは実証と最新sourceに基づくPRで更新する。既存の承認は新チャットで自動復活しない。
 ## 1. 最上位方針
 
 `docs/NOVELIGHT-MASTER.md` をNOVELIGHTの正式なMASTERとして扱う。思想・3原則・意思決定原則・安全原則と矛盾する実装を行わない。

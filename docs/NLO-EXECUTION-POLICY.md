@@ -253,3 +253,9 @@ npm run nlo:capabilities -- record-gap --intent="<intent>" --effect="<effect>"
 承認依頼前に、変更差分、必要なformat/lint/tests/CI、security/secret確認、最新SHA、Preview/Stagingが未承認で起動していないこと、rollback方針を確認する。未実施のlive proofは未実施と明示する。PR作成だけをもって承認待ちに移行しない。
 
 この節は効率・継続実行の規定であり、MASTER、FULL PREFLIGHT、Runtime Gate、Preview/Staging費用ゲート、Production承認を緩和しない。
+
+## 15. AI工程②の継続状態（NLO起動時の再確認）
+
+工程②（02-07-05 / 作品カルテ）の実装・再開では、最新main/MASTER照合に加え、npm run nlo:ai:resume と docs/ai-phase2/AI-02-07-05-CURRENT-WORKBOARD.md を使用する。別チャットや新エージェントは完了済み検証を再実行しない。NLOのFAST PATCHとFULL PREFLIGHTは対象workstreamが ai-phase2 等の場合だけ自動的に継続チェックを挿入する。関連のない低リスク作業では発火させない。
+
+既知のmain基準より新しいmainは差分レビューを必須とし、変わっていないMASTERのcontent-addressed reuseを許可する。MASTERが変わっている／監査基準が別系統ならfail closed。過去の作業台帳・承認をlive権限や再実行許可と誤認しない。A/B/Cの並列準備は安全ゲートを維持する範囲で優先し、試験用DOの後片付けだけに工程全体を停滞させない。
