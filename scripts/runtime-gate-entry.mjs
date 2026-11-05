@@ -44,13 +44,17 @@ function optionValue(argv, name) {
 function cleanEvidence(value, field, { min = 1, max = 240 } = {}) {
   const cleaned = String(value || '').trim();
   if (cleaned.length < min) {
-    throw new Error(`${field} is required and must contain auditable non-empty evidence.`);
+    throw new Error(
+      `${field} is required and must contain auditable non-empty evidence.`
+    );
   }
   if (cleaned.length > max) {
     throw new Error(`${field} must be ${max} characters or fewer.`);
   }
   if (SECRETISH_PATTERN.test(cleaned)) {
-    throw new Error(`${field} appears to contain a secret or credential and must not be recorded.`);
+    throw new Error(
+      `${field} appears to contain a secret or credential and must not be recorded.`
+    );
   }
   return cleaned;
 }
@@ -59,13 +63,19 @@ function parseFreshCheckedAt(value, nowMs) {
   const checkedAt = String(value || '').trim();
   const checkedMs = Date.parse(checkedAt);
   if (!checkedAt || Number.isNaN(checkedMs)) {
-    throw new Error('Codex routing requires a valid --codex-checked-at timestamp.');
+    throw new Error(
+      'Codex routing requires a valid --codex-checked-at timestamp.'
+    );
   }
   if (checkedMs - nowMs > FUTURE_TOLERANCE_MS) {
-    throw new Error('Codex routing evidence timestamp is too far in the future.');
+    throw new Error(
+      'Codex routing evidence timestamp is too far in the future.'
+    );
   }
   if (nowMs - checkedMs > FRESHNESS_WINDOW_MS) {
-    throw new Error('Codex routing evidence is stale; re-check Codex availability in the current execution window.');
+    throw new Error(
+      'Codex routing evidence is stale; re-check Codex availability in the current execution window.'
+    );
   }
   return new Date(checkedMs).toISOString();
 }
@@ -88,7 +98,8 @@ export function parseCodexRoutingEvidence(
     };
   }
 
-  const route = optionValue(argv, 'codex-route') || env.NOVELIGHT_CODEX_ROUTE || '';
+  const route =
+    optionValue(argv, 'codex-route') || env.NOVELIGHT_CODEX_ROUTE || '';
   if (!['used', 'bypass'].includes(route)) {
     throw new Error(
       'Implementation phase requires Codex-first routing evidence: --codex-route=used or an explicitly permitted --codex-route=bypass.'
@@ -138,7 +149,8 @@ export function parseCodexRoutingEvidence(
   }
 
   const bypassReason = cleanEvidence(
-    optionValue(argv, 'codex-bypass-reason') || env.NOVELIGHT_CODEX_BYPASS_REASON,
+    optionValue(argv, 'codex-bypass-reason') ||
+      env.NOVELIGHT_CODEX_BYPASS_REASON,
     'Codex bypass reason',
     { min: 20 }
   );
@@ -191,6 +203,24 @@ export function runRuntimeGateEntry(
   const phase = optionValue(argv, 'phase') || env.NOVELIGHT_RUNTIME_PHASE || '';
   const codexRouting = parseCodexRoutingEvidence(phase, argv, env, nowMs);
   runCoreRuntimeGate(argv, env);
+  const workstream =
+    optionValue(argv, 'workstream') || env.NOVELIGHT_WORKSTREAM || '';
+  // Only phase2 workstreams depend on the continuity module.
+  if (
+    /^(?:ai-phase2|ai-02-07-05|02-07-05|novel-bible|作品カルテ)$/iu.test(
+      workstream
+    )
+  ) {
+    const resume = join(
+      dirname(fileURLToPath(import.meta.url)),
+      'nlo-ai-phase2-resume.mjs'
+    );
+    execFileSync(process.execPath, [resume, '--summary'], {
+      cwd: process.cwd(),
+      env,
+      stdio: 'inherit'
+    });
+  }
   const { manifest: documentFreshness } = runFastFreshnessFromOriginMain({
     selectedPaths: parseSelectedGuideArgs(argv, env),
     fetchMain: false

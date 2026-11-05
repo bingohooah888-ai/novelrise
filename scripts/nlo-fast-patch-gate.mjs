@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { assertPhase2ContinuityForWorkstream } from './nlo-ai-phase2-resume.mjs';
 
 export const POLICY_VERSION = '1.0';
 export const STATE_SCHEMA_VERSION = 1;
@@ -69,7 +70,10 @@ export function targetAllowsPath(target, candidate) {
   if (!normalizedTarget) return false;
   if (normalizedTarget.endsWith('/**')) {
     const prefix = normalizedTarget.slice(0, -3).replace(/\/$/u, '');
-    return normalizedCandidate === prefix || normalizedCandidate.startsWith(`${prefix}/`);
+    return (
+      normalizedCandidate === prefix ||
+      normalizedCandidate.startsWith(`${prefix}/`)
+    );
   }
   return (
     normalizedCandidate === normalizedTarget ||
@@ -172,7 +176,10 @@ function baseState({ mainSha, headSha, workstream, targets, previous }) {
       ? previous.completedWorkstreams.slice(-20)
       : [],
     targets,
-    checks: previous?.checks && typeof previous.checks === 'object' ? previous.checks : {}
+    checks:
+      previous?.checks && typeof previous.checks === 'object'
+        ? previous.checks
+        : {}
   };
 }
 
@@ -185,9 +192,12 @@ function before(argv) {
   const mainSha = git(['rev-parse', 'origin/main']);
   const headSha = currentHeadSha();
   const branch = currentBranch();
+  assertPhase2ContinuityForWorkstream(workstream);
 
   if (branch === 'main' || branch === 'master') {
-    throw new Error('FAST PATCH must run on a work branch, not directly on main/master.');
+    throw new Error(
+      'FAST PATCH must run on a work branch, not directly on main/master.'
+    );
   }
 
   try {
@@ -223,7 +233,8 @@ function after(argv) {
     throw new Error('No valid FAST PATCH state. Run --stage=before first.');
   }
 
-  const workstream = optionValue(argv, 'workstream') || previous.activeWorkstream || '';
+  const workstream =
+    optionValue(argv, 'workstream') || previous.activeWorkstream || '';
   const changedFiles = changedFilesSince(previous.mainSha);
   ensureLowRisk(changedFiles, 'Changed files');
   ensureTargetsCoverChanges(previous.targets || [], changedFiles);
@@ -244,8 +255,14 @@ function after(argv) {
   };
 
   if (workstream) {
-    const filtered = state.completedWorkstreams.filter((item) => item.name !== workstream);
-    filtered.push({ name: workstream, mainSha: previous.mainSha, completedAt: now });
+    const filtered = state.completedWorkstreams.filter(
+      (item) => item.name !== workstream
+    );
+    filtered.push({
+      name: workstream,
+      mainSha: previous.mainSha,
+      completedAt: now
+    });
     state.completedWorkstreams = filtered.slice(-20);
   }
 
