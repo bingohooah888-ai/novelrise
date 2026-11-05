@@ -1,6 +1,7 @@
 // NOVELIGHT Point10x. Inactive read-only GitHub OWNER evidence verifier.
 // No event listener, workflow, database adapter, approval claim, or side effects at import.
 import { createHash } from 'node:crypto';
+import { inspectMergedPrOnFreshMain } from './scout-point10x-merged-main-attestation.mjs';
 
 export const GITHUB_OWNER_ID = 317436651;
 export const GITHUB_OWNER_LOGIN = 'bingohooah888-ai';
@@ -15,7 +16,7 @@ export const SQL_SOURCE_SHA256 = Object.freeze([
   '740cc8c94b7e2831aae29e740282b826bee730621ab56627b03a8e1062e2ee11',
   '6dd649cc7fa4c824f6f576500a5a7e44ce65bce3123e6a4990b06353114650d1'
 ]);
-export const OWNER_MARKER = 'NOVELIGHT_POINT10X_READONLY_OWNER_V1';
+export const OWNER_MARKER = 'NOVELIGHT_POINT10X_READONLY_OWNER_V2';
 export const OWNER_FIELDS = Object.freeze(
   [
     'commentId',
@@ -24,9 +25,12 @@ export const OWNER_FIELDS = Object.freeze(
     'expiresAt',
     'headSha2762',
     'headSha2766',
+    'headSha2767',
     'issueNumber',
     'mainSha',
     'manifestDigest',
+    'mergeSha2766',
+    'mergeSha2767',
     'operation',
     'ownerId',
     'repo',
@@ -86,6 +90,10 @@ export function inspectFreshGitHubOwnerEvidence({
   mainRef,
   pr2762,
   pr2766,
+  pr2767,
+  compare2766,
+  compare2767,
+  mainRefAfter,
   now
 } = {}) {
   if (
@@ -155,12 +163,15 @@ export function inspectFreshGitHubOwnerEvidence({
     !hex(pr2762.head?.sha, 40) ||
     !rec(pr2766) ||
     !hex(pr2766.head?.sha, 40) ||
+    !rec(pr2767) ||
+    !hex(pr2767.head?.sha, 40) ||
+    !rec(mainRefAfter) ||
+    mainRefAfter.object?.sha !== mainRef.object.sha ||
+    mainRef.ref !== 'refs/heads/main' ||
+    mainRefAfter.ref !== 'refs/heads/main' ||
     pr2762.number !== 2762 ||
-    pr2766.number !== 2766 ||
     pr2762.state !== 'open' ||
-    pr2766.state !== 'open' ||
-    pr2762.draft !== true ||
-    pr2766.draft !== true
+    pr2762.draft !== true
   )
     fail('FRESH_REFS_NOT_MATCHED');
   const obj = parseExactOwnerScope(comment.body);
@@ -179,6 +190,9 @@ export function inspectFreshGitHubOwnerEvidence({
     obj.mainSha !== mainRef.object.sha ||
     obj.headSha2762 !== pr2762.head.sha ||
     obj.headSha2766 !== pr2766.head.sha ||
+    obj.headSha2767 !== pr2767.head.sha ||
+    !hex(obj.mergeSha2766, 40) ||
+    !hex(obj.mergeSha2767, 40) ||
     !Array.isArray(obj.sqlSourceSha256) ||
     JSON.stringify(obj.sqlSourceSha256) !== JSON.stringify(SQL_SOURCE_SHA256) ||
     !hex(obj.manifestDigest, 64) ||
@@ -197,7 +211,31 @@ export function inspectFreshGitHubOwnerEvidence({
     deadline > created + 20 * 60_000
   )
     fail('OWNER_EVENT_EXPIRED_OR_REPLAYED');
+  const dependency = inspectMergedPrOnFreshMain({
+    pr: pr2766,
+    comparison: compare2766,
+    number: 2766,
+    expectedHead: obj.headSha2766,
+    expectedMerge: obj.mergeSha2766,
+    mainSha: obj.mainSha,
+    approvalCreatedAt: comment.created_at
+  });
+  const admissionCode = inspectMergedPrOnFreshMain({
+    pr: pr2767,
+    comparison: compare2767,
+    number: 2767,
+    expectedHead: obj.headSha2767,
+    expectedMerge: obj.mergeSha2767,
+    mainSha: obj.mainSha,
+    approvalCreatedAt: comment.created_at
+  });
+  if (!dependency.presentOnMain || !admissionCode.presentOnMain)
+    fail('MERGE_CHAIN_INCOMPLETE');
+  // A passing synthetic ancestry shape NEVER grants GitHub-authenticated
+  // OWNER authority or consumes the independent CONTROL one-use CAS.
   return Object.freeze({
+    dependencyMergeSha: obj.mergeSha2766,
+    admissionMergeSha: obj.mergeSha2767,
     status: 'NO_GO_GITHUB_EVIDENCE_SHAPE_ONLY',
     approvalDigest: sha256(comment.body),
     commentId: comment.id,
@@ -235,13 +273,34 @@ export async function collectGitHubOwnerEvidenceReadOnly({ token, commentId }) {
     if (!response.ok) fail('GITHUB_GET_DENIED');
     return response.json();
   };
-  const [repo, issue, comment, mainRef, pr2762, pr2766] = await Promise.all([
-    get(''),
-    get('/issues/' + ISSUE_NUMBER),
-    get('/issues/comments/' + commentId),
-    get('/git/ref/heads/main'),
-    get('/pulls/2762'),
-    get('/pulls/2766')
+  const [repo, issue, comment, mainRef, pr2762, pr2766, pr2767] =
+    await Promise.all([
+      get(''),
+      get('/issues/' + ISSUE_NUMBER),
+      get('/issues/comments/' + commentId),
+      get('/git/ref/heads/main'),
+      get('/pulls/2762'),
+      get('/pulls/2766'),
+      get('/pulls/2767')
+    ]);
+  // GitHub can advertise merge_commit_sha before a merge happens.
+  // Never compare or trust a prospective SHA unless the REST PR is merged.
+  if (
+    !mainRef?.object?.sha ||
+    ![pr2766, pr2767].every(
+      (pr) =>
+        pr?.merged === true &&
+        pr.state === 'closed' &&
+        pr.draft === false &&
+        /^[0-9a-f]{40}$/u.test(pr.merge_commit_sha || '')
+    )
+  )
+    fail('MERGE_NOT_CONFIRMED');
+  const compare = (sha) =>
+    get('/compare/' + sha + '...' + mainRef.object.sha + '?per_page=1&page=1');
+  const [compare2766, compare2767] = await Promise.all([
+    compare(pr2766.merge_commit_sha),
+    compare(pr2767.merge_commit_sha)
   ]);
   const allComments = [];
   let exhausted = false;
@@ -257,5 +316,22 @@ export async function collectGitHubOwnerEvidenceReadOnly({ token, commentId }) {
     }
   }
   if (!exhausted) fail('PAGE_TRUNCATED');
-  return { repo, issue, comment, mainRef, pr2762, pr2766, allComments };
+  // Detect main movement during multi-page approval verification; no stale
+  // or cross-ref reads can be converted into a permission.
+  const mainRefAfter = await get('/git/ref/heads/main');
+  if (mainRefAfter?.object?.sha !== mainRef.object.sha)
+    fail('MAIN_MOVED_DURING_VERIFICATION');
+  return {
+    repo,
+    issue,
+    comment,
+    mainRef,
+    mainRefAfter,
+    pr2762,
+    pr2766,
+    pr2767,
+    compare2766,
+    compare2767,
+    allComments
+  };
 }

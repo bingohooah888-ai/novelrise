@@ -19,6 +19,7 @@ import {
   inspectFreshGitHubOwnerEvidence,
   parseExactOwnerScope
 } from '../scripts/scout-point10x-owner-readonly-evidence.mjs';
+import { inspectMergedPrOnFreshMain } from '../scripts/scout-point10x-merged-main-attestation.mjs';
 import {
   AUDIT_SECTION_IDS,
   EXPECTED_READER_ROLE,
@@ -49,6 +50,9 @@ const approval = () => ({
   mainSha: 'a'.repeat(40),
   headSha2762: 'b'.repeat(40),
   headSha2766: 'c'.repeat(40),
+  headSha2767: '8'.repeat(40),
+  mergeSha2766: '6'.repeat(40),
+  mergeSha2767: '7'.repeat(40),
   manifestDigest: 'd'.repeat(64),
   executorDigest: 'e'.repeat(64),
   evidencePolicyDigest: 'f'.repeat(64),
@@ -57,6 +61,25 @@ const approval = () => ({
   sqlSourceSha256: SQL_SOURCE_SHA256
 });
 const body = (v) => OWNER_MARKER + '\n' + sortedJson(v);
+const mergedFixture = (number, headSha, mergeSha) => ({
+  number,
+  state: 'closed',
+  draft: false,
+  merged: true,
+  merged_at: '2026-11-06T00:40:00Z',
+  merged_by: { id: GITHUB_OWNER_ID, login: GITHUB_OWNER_LOGIN },
+  merge_commit_sha: mergeSha,
+  head: { sha: headSha, repo: { full_name: GITHUB_REPO } },
+  base: { ref: 'main', repo: { full_name: GITHUB_REPO } }
+});
+const ancestryFixture = (mergeSha, mainSha) => ({
+  status: 'ahead',
+  ahead_by: 2,
+  behind_by: 0,
+  base_commit: { sha: mergeSha },
+  merge_base_commit: { sha: mergeSha },
+  head_commit: { sha: mainSha }
+});
 const evidence = () => {
   const a = approval();
   return {
@@ -99,19 +122,18 @@ const evidence = () => {
       repository: GITHUB_REPO,
       rerun: false
     },
-    mainRef: { object: { sha: a.mainSha } },
+    mainRef: { ref: 'refs/heads/main', object: { sha: a.mainSha } },
+    mainRefAfter: { ref: 'refs/heads/main', object: { sha: a.mainSha } },
     pr2762: {
       number: 2762,
       state: 'open',
       draft: true,
       head: { sha: a.headSha2762 }
     },
-    pr2766: {
-      number: 2766,
-      state: 'open',
-      draft: true,
-      head: { sha: a.headSha2766 }
-    },
+    pr2766: mergedFixture(2766, a.headSha2766, a.mergeSha2766),
+    pr2767: mergedFixture(2767, a.headSha2767, a.mergeSha2767),
+    compare2766: ancestryFixture(a.mergeSha2766, a.mainSha),
+    compare2767: ancestryFixture(a.mergeSha2767, a.mainSha),
     now
   };
 };
@@ -272,9 +294,11 @@ for (const [name, mutate] of [
     }
   ],
   [
-    'non-draft PR',
+    'pre-merge draft with prospective merge SHA',
     (v) => {
-      v.pr2766.draft = false;
+      v.pr2766.merged = false;
+      v.pr2766.state = 'open';
+      v.pr2766.draft = true;
     }
   ],
   [
@@ -351,7 +375,7 @@ for (const [name, mutate] of [
     mutate(v);
     assert.throws(
       () => inspectFreshGitHubOwnerEvidence(v),
-      /POINT10X_OWNER_HOLD/u
+      /POINT10X_(?:OWNER|MERGE)_HOLD/u
     );
   });
 test('GitHub read-only API entry rejects missing credentials before GET', async () => {
@@ -713,6 +737,23 @@ test('real GitHub collector sends only fixed GETs in an OFFLINE fetch stub', asy
     ['/git/ref/heads/main', fixture.mainRef],
     ['/pulls/2762', fixture.pr2762],
     ['/pulls/2766', fixture.pr2766],
+    ['/pulls/2767', fixture.pr2767],
+    [
+      '/compare/' +
+        approval().mergeSha2766 +
+        '...' +
+        approval().mainSha +
+        '?per_page=1&page=1',
+      fixture.compare2766
+    ],
+    [
+      '/compare/' +
+        approval().mergeSha2767 +
+        '...' +
+        approval().mainSha +
+        '?per_page=1&page=1',
+      fixture.compare2767
+    ],
     ['/issues/294/comments?per_page=100&page=1', fixture.allComments]
   ]);
   const originalFetch = globalThis.fetch;
@@ -738,7 +779,9 @@ test('real GitHub collector sends only fixed GETs in an OFFLINE fetch stub', asy
       token: 'synthetic-never-real-credential',
       commentId: 888123
     });
-    assert.equal(seen.length, 7);
+    assert.equal(seen.length, 11);
+    assert.equal(seen.filter((x) => x === '/git/ref/heads/main').length, 2);
+    assert.ok(seen.every((x) => !x.includes('POST') && !x.includes('DELETE')));
     assert.deepEqual(
       inspectFreshGitHubOwnerEvidence({
         ...payload,
@@ -750,4 +793,314 @@ test('real GitHub collector sends only fixed GETs in an OFFLINE fetch stub', asy
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('merged dependency: both real GitHub merge proofs remain NO-GO by design', () => {
+  const v = evidence();
+  for (const number of [2766, 2767]) {
+    const proof = inspectMergedPrOnFreshMain({
+      pr: v['pr' + number],
+      comparison: v['compare' + number],
+      number,
+      expectedHead: approval()['headSha' + number],
+      expectedMerge: approval()['mergeSha' + number],
+      mainSha: approval().mainSha,
+      approvalCreatedAt: created
+    });
+    assert.equal(proof.status, 'NO_GO_MERGED_MAIN_ANCESTRY_SHAPE_ONLY');
+    assert.equal(proof.presentOnMain, true);
+    assert.equal(proof.trustedGithubFetchVerified, false);
+    assert.equal(proof.ownerAuthenticatedForExecution, false);
+    assert.equal(proof.controlSpentConsumed, false);
+    assert.equal(proof.mayConnectStaging, false);
+  }
+});
+test('merged dependency: identical compare is valid only for exact main SHA', () => {
+  const v = evidence();
+  v.compare2766.status = 'identical';
+  v.compare2766.ahead_by = 0;
+  assert.equal(inspectFreshGitHubOwnerEvidence(v).mayConnectStaging, false);
+});
+for (const [name, alter] of [
+  [
+    'unmerged despite prefilled merge SHA',
+    (v) => {
+      v.pr2766.merged = false;
+      v.pr2766.state = 'open';
+      v.pr2766.draft = true;
+    }
+  ],
+  [
+    'open PR marked merged',
+    (v) => {
+      v.pr2766.state = 'open';
+    }
+  ],
+  [
+    'draft flag post-merge',
+    (v) => {
+      v.pr2766.draft = true;
+    }
+  ],
+  [
+    'merge commit fabricated',
+    (v) => {
+      v.pr2766.merge_commit_sha = '9'.repeat(40);
+    }
+  ],
+  [
+    'PR head rewritten',
+    (v) => {
+      v.pr2766.head.sha = '9'.repeat(40);
+    }
+  ],
+  [
+    'PR head repo spoofed',
+    (v) => {
+      v.pr2766.head.repo.full_name = 'other/novelrise';
+    }
+  ],
+  [
+    'PR base repo spoofed',
+    (v) => {
+      v.pr2766.base.repo.full_name = 'other/novelrise';
+    }
+  ],
+  [
+    'PR base branch wrong',
+    (v) => {
+      v.pr2766.base.ref = 'staging';
+    }
+  ],
+  [
+    'missing merged at',
+    (v) => {
+      v.pr2766.merged_at = null;
+    }
+  ],
+  [
+    'merge after owner comment',
+    (v) => {
+      v.pr2766.merged_at = '2026-11-06T01:01:00Z';
+    }
+  ],
+  [
+    'missing GitHub merger',
+    (v) => {
+      v.pr2766.merged_by = null;
+    }
+  ],
+  [
+    'invalid GitHub merger',
+    (v) => {
+      v.pr2766.merged_by.id = 0;
+    }
+  ],
+  [
+    'wrong dependency PR number',
+    (v) => {
+      v.pr2766.number = 123;
+    }
+  ],
+  [
+    'lookalike main compare',
+    (v) => {
+      v.compare2766.head_commit.sha = '9'.repeat(40);
+    }
+  ],
+  [
+    'wrong compare base',
+    (v) => {
+      v.compare2766.base_commit.sha = '9'.repeat(40);
+    }
+  ],
+  [
+    'wrong merge base',
+    (v) => {
+      v.compare2766.merge_base_commit.sha = '9'.repeat(40);
+    }
+  ],
+  [
+    'compare behind',
+    (v) => {
+      v.compare2766.status = 'behind';
+    }
+  ],
+  [
+    'compare diverged',
+    (v) => {
+      v.compare2766.status = 'diverged';
+    }
+  ],
+  [
+    'compare ahead-by zero',
+    (v) => {
+      v.compare2766.ahead_by = 0;
+    }
+  ],
+  [
+    'compare behind-by nonzero',
+    (v) => {
+      v.compare2766.behind_by = 2;
+    }
+  ],
+  [
+    'identical with nonzero ahead-by',
+    (v) => {
+      v.compare2766.status = 'identical';
+    }
+  ],
+  [
+    'missing comparison',
+    (v) => {
+      v.compare2766 = null;
+    }
+  ],
+  [
+    'main drift between reads',
+    (v) => {
+      v.mainRefAfter.object.sha = '9'.repeat(40);
+    }
+  ],
+  [
+    'main wrong branch',
+    (v) => {
+      v.mainRef.ref = 'refs/heads/old-main';
+    }
+  ],
+  [
+    'self PR not merged',
+    (v) => {
+      v.pr2767.merged = false;
+    }
+  ],
+  [
+    'self PR merge SHA different',
+    (v) => {
+      v.pr2767.merge_commit_sha = '9'.repeat(40);
+    }
+  ],
+  [
+    'self PR not on main',
+    (v) => {
+      v.compare2767.status = 'behind';
+    }
+  ],
+  [
+    'self PR head stale',
+    (v) => {
+      v.pr2767.head.sha = '9'.repeat(40);
+    }
+  ],
+  [
+    'self PR merge after approval',
+    (v) => {
+      v.pr2767.merged_at = '2026-11-06T01:02:00Z';
+    }
+  ],
+  [
+    'approval dependency SHA swapped',
+    (v) => {
+      const a = approval();
+      a.mergeSha2766 = '9'.repeat(40);
+      v.comment.body = body(a);
+    }
+  ],
+  [
+    'approval own SHA swapped',
+    (v) => {
+      const a = approval();
+      a.headSha2767 = '9'.repeat(40);
+      v.comment.body = body(a);
+    }
+  ],
+  [
+    'approval own merge SHA missing',
+    (v) => {
+      const a = approval();
+      delete a.mergeSha2767;
+      v.comment.body = body(a);
+    }
+  ],
+  [
+    'replay with old main',
+    (v) => {
+      const a = approval();
+      a.mainSha = '9'.repeat(40);
+      v.comment.body = body(a);
+    }
+  ],
+  [
+    'evidence after modified owner comment',
+    (v) => {
+      v.comment.updated_at = '2026-11-06T01:01:00Z';
+    }
+  ],
+  [
+    'incomplete GitHub comment history',
+    (v) => {
+      v.allComments.pop();
+    }
+  ]
+])
+  test('merge attestation HOLD: ' + name, () => {
+    const v = evidence();
+    alter(v);
+    assert.throws(
+      () => inspectFreshGitHubOwnerEvidence(v),
+      /POINT10X_(?:OWNER|MERGE)_HOLD/u
+    );
+  });
+test('GitHub GET collector refuses open Draft BEFORE any compare, no DB calls', async () => {
+  const fixture = evidence();
+  fixture.pr2766.merged = false;
+  fixture.pr2766.state = 'open';
+  fixture.pr2766.draft = true;
+  const base = 'https://api.github.com/repos/' + GITHUB_REPO;
+  const routes = new Map([
+    ['', fixture.repo],
+    ['/issues/294', fixture.issue],
+    ['/issues/comments/888123', fixture.comment],
+    ['/git/ref/heads/main', fixture.mainRef],
+    ['/pulls/2762', fixture.pr2762],
+    ['/pulls/2766', fixture.pr2766],
+    ['/pulls/2767', fixture.pr2767]
+  ]);
+  const originalFetch = globalThis.fetch;
+  const seen = [];
+  globalThis.fetch = async (url, init) => {
+    seen.push(url.slice(base.length));
+    assert.equal(init.method, 'GET');
+    assert.equal(init.redirect, 'error');
+    assert.ok(routes.has(url.slice(base.length)));
+    return { ok: true, json: async () => routes.get(url.slice(base.length)) };
+  };
+  try {
+    await assert.rejects(
+      () =>
+        collectGitHubOwnerEvidenceReadOnly({
+          token: 'synthetic-never-real-credential',
+          commentId: 888123
+        }),
+      /POINT10X_OWNER_HOLD:MERGE_NOT_CONFIRMED/u
+    );
+    assert.equal(seen.length, 7);
+    assert.equal(
+      seen.some((url) => url.includes('compare/')),
+      false
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('legacy OWNER V1 marker is rejected after adding merged-main approval pins', () => {
+  assert.equal(OWNER_MARKER, 'NOVELIGHT_POINT10X_READONLY_OWNER_V2');
+  assert.throws(
+    () =>
+      parseExactOwnerScope(
+        'NOVELIGHT_POINT10X_READONLY_OWNER_V1\n' + sortedJson(approval())
+      ),
+    /POINT10X_OWNER_HOLD:MARKER_OR_SIZE/u
+  );
 });

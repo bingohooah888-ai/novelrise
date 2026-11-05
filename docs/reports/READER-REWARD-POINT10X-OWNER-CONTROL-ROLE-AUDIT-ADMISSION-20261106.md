@@ -42,3 +42,30 @@
 - 次に実施可能なのはOWNERによる、**この独立Draft PRのSHA／安全面／main統合可否**と、CONTROL独立primary導入／GitHub trusted-main event／監査鍵・retention方針の**別途設計承認**。main統合はそのPRの「本番承認」を別に要求し、既存自動Vercel Production deployの可能性を説明する。統合許可はStaging read-only実行許可ではない。
 
 **最終結論：非稼働の最小セキュリティ部品とCONTROL SQL候補のレビューに進める。OWNER本人認証の実環境成功、CONTROL spent消費、Staging実観測、Production反映はいずれも未実施。NO-GO継続。**
+
+## 5. 2026-11-06 OWNER統合後・merge祖先認証の契約修正（今回の追加）
+
+**既存PR #2767への局所修正。main統合や実DB／CONTROL実行は一切行わない。**
+
+### 実際に確認した問題
+
+- 修正前 `inspectFreshGitHubOwnerEvidence` は依存PR #2766の `state=open && draft=true` を要求していた。しかしPR #2766をmain統合するとその両条件は失われる。これは将来のread-only承認で必ずHOLDとなる矛盾。
+- GitHub RESTで実際に、**Open/DraftのPR #2766でも `merge_commit_sha` が存在する**ことを確認した。従って「merge SHAがある＝本番main到達済み」として扱うことを禁止。
+- 独立した既存の統合済PR #2764では `merged=true`、`state=closed`、`merged_at`、`merge_commit_sha=0e4f3f594193d137d582fb693703ffdfe1d1cfd3` が返った。同じSHA同士をGitHub Compare APIで比較すると `status=identical`、`behind_by=0`、`ahead_by=0` になる実在応答を確認した。**この確認は将来の承認を発行・消費しない。**
+
+### 修正後の契約（OFFLINE/NO-GOのまま）
+
+1. GitHub RESTの最新PR情報から **#2766依存コードと#2767検証コード自身**について、固定の `head.sha`、`merge_commit_sha`、`merged=true`、`state=closed`、`draft=false`、`merged_at`、`merged_by`、親repo・base mainを検証する。`merge_commit_sha` の存在だけでは合格させない。
+2. `GET /compare/{mergeSha}...{currentMainSha}?per_page=1&page=1` をGitHubから読み取り専用で取得し、`base_commit.sha`、`merge_base_commit.sha`、`head_commit.sha`、`status=ahead/identical`、`behind_by=0`、`ahead_by` の整合を必須にする。squash mergeでもGitHubが認証した統合commitがmainの祖先であれば検証できる。PR head commit自体がmainに含まれるとは仮定しない。
+3. main refをGitHubから**二回**取得して同一SHAを要求する。Issue #294のOWNER本人ID／comment immutable性／全ページ件数・単調ID／created event／TTL／固定11-query manifest／source SQL digest／runCount=1を維持する。
+4. OWNER承認tupleに `headSha2767`、`mergeSha2766`、`mergeSha2767` を必須追加し、**新marker `NOVELIGHT_POINT10X_READONLY_OWNER_V2`** とする。旧V1コメント、未統合時の承認、古いHEAD/merge SHA/変更後mainの再利用を拒否。両PR統合後に別の真正OWNER作成イベントが必要である。
+5. ローカル形状検証の成功結果は依然 `NO_GO_GITHUB_EVIDENCE_SHAPE_ONLY`。GitHub RESTレスポンスを合成したテストのPASSはtrusted-mainの実実行者認証ではない。CONTROL spentの原子的消費、Staging最小権限の実ACL・実接続、独立監査の保管は引き続き**未実装・未実証**。成功した合成値でもStaging/Production実行はできない。
+
+### 必須の次段階／安全な統合順序
+
+- #2766と#2767は**別PR・別HEADで個別の「本番承認」**が必要。各main統合に伴うVercel自動Productionビルドの可能性を先に説明する。
+- 将来は#2766と#2767の両方がGitHub上で正式統合済みかつmainの祖先であること、新規OWNER V2承認のSHA tupleが**その時点の最新main**と一致することを確かめてから、独立CONTROL primary spent CASへ進む設計とする。しかし今はauth event workflowやCONTROL DB adapterを**接続していない**。
+- GitHub RESTの現時点一覧から**削除済みコメントの完全な履歴**は証明できない。単純な件数一致だけで過去削除が存在しなかったとは宣言しない。将来は独立監査の改竄耐性のあるイベント保管を別途要する。
+- 本PRでは `docs/plans/POINT10X-INDEPENDENT-CONTROL-CAS-CANDIDATE-20261106.sql` の内容を変更しない。V2 contractの導入前は権限のない設計レビューのみであり、OWNER承認／CONTROL初期化／migration／DB接続／Staging/Production操作・デプロイは0回。
+
+**最終判定：矛盾解消のコード契約と負例テストに限りGO候補。実際のOWNER認証・CONTROL CAS・read-only Staging・永続cutoverはNO-GO。**
