@@ -31,7 +31,7 @@ const event = () => ({
   eventName: 'issue_comment',
   issueNumber: CONFIG.issue,
   mainSha: 'a'.repeat(40),
-  ownerScopeMarker: 'NOVELIGHT_POINT10X_READONLY_OWNER_V2',
+  ownerScopeMarker: 'NOVELIGHT_POINT10X_READONLY_OWNER_V3',
   repository: CONFIG.repo,
   repositoryOwnerId: CONFIG.ownerId,
   runAttempt: 1,

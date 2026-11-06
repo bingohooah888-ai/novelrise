@@ -31,6 +31,7 @@ import {
 const hash = (x) => createHash('sha256').update(x).digest('hex');
 const now = '2026-11-06T01:03:00Z';
 const created = '2026-11-06T01:00:00Z';
+const COMMENT_ID = 888123;
 const sortedJson = (x) =>
   JSON.stringify(
     Object.fromEntries(
@@ -42,7 +43,6 @@ const sortedJson = (x) =>
 const approval = () => ({
   repo: GITHUB_REPO,
   issueNumber: ISSUE_NUMBER,
-  commentId: 888123,
   ownerId: GITHUB_OWNER_ID,
   scope: SCOPE,
   operation: OPERATION,
@@ -99,7 +99,7 @@ const evidence = () => {
       repository_url: 'https://api.github.com/repos/' + GITHUB_REPO
     },
     comment: {
-      id: a.commentId,
+      id: COMMENT_ID,
       user: { id: GITHUB_OWNER_ID, login: GITHUB_OWNER_LOGIN, type: 'User' },
       author_association: 'OWNER',
       issue_url:
@@ -111,11 +111,11 @@ const evidence = () => {
       updated_at: created,
       body: body(a)
     },
-    allComments: [{ id: 123 }, { id: 124 }, { id: a.commentId }],
+    allComments: [{ id: 123 }, { id: 124 }, { id: COMMENT_ID }],
     trigger: {
       eventName: 'issue_comment',
       action: 'created',
-      commentId: a.commentId,
+      commentId: COMMENT_ID,
       issueNumber: ISSUE_NUMBER,
       actorId: GITHUB_OWNER_ID,
       actorLogin: GITHUB_OWNER_LOGIN,
@@ -1094,8 +1094,40 @@ test('GitHub GET collector refuses open Draft BEFORE any compare, no DB calls', 
   }
 });
 
-test('legacy OWNER V1 marker is rejected after adding merged-main approval pins', () => {
-  assert.equal(OWNER_MARKER, 'NOVELIGHT_POINT10X_READONLY_OWNER_V2');
+test('approval body is creatable before GitHub allocates the comment ID', () => {
+  const prepared = approval();
+  assert.equal(Object.hasOwn(prepared, 'commentId'), false);
+  const first = evidence();
+  const second = evidence();
+  second.comment.id = 900001;
+  second.trigger.commentId = 900001;
+  second.allComments[2].id = 900001;
+  assert.equal(first.comment.body, second.comment.body);
+  const result = inspectFreshGitHubOwnerEvidence(second);
+  assert.equal(result.commentId, 900001);
+  assert.equal(result.status, 'NO_GO_GITHUB_EVIDENCE_SHAPE_ONLY');
+  assert.equal(result.ownerAuthenticatedForExecution, false);
+  assert.equal(result.controlSpentConsumed, false);
+});
+
+test('user-supplied comment ID is rejected even when it matches GitHub', () => {
+  assert.throws(
+    () => parseExactOwnerScope(body({ ...approval(), commentId: COMMENT_ID })),
+    /POINT10X_OWNER_HOLD:NONCANONICAL_OR_DUPLICATE_FIELDS/u
+  );
+});
+
+test('previous V2 owner comments are rejected by the new V3 contract', () => {
+  assert.throws(
+    () =>
+      parseExactOwnerScope(
+        'NOVELIGHT_POINT10X_READONLY_OWNER_V2\n' + sortedJson(approval())
+      ),
+    /POINT10X_OWNER_HOLD:MARKER_OR_SIZE/u
+  );
+});
+test('legacy OWNER V1 marker is rejected after adding event-bound V3 approval pins', () => {
+  assert.equal(OWNER_MARKER, 'NOVELIGHT_POINT10X_READONLY_OWNER_V3');
   assert.throws(
     () =>
       parseExactOwnerScope(
