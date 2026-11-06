@@ -41,13 +41,80 @@ test('matching metadata is still not an authenticated approval', () => {
   assert.equal(result.authorizesPreviewCreation, false);
 });
 // prettier-ignore
-test('stale Preview cannot be used for current-main paid trial', () => {
+test('stale staging branch is explicitly blocked before Preview even with six existing env names', () => {
   const result = inspect020705PreviewPrecreation({
     scope, currentMain: main,
+    branchHead: {
+      repository: scope.repository, branch: scope.branch,
+      sha: 'b'.repeat(40)
+    },
+    envMetadata: [
+      'SUPABASE_URL', 'NOVELIGHT_STAGING_SUPABASE_URL',
+      'NOVELIGHT_AI_ENABLED', 'NOVELIGHT_AI_REVIEW_ENABLED',
+      'NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED',
+      'NOVELIGHT_AI_020705_ONE_SHOT_ENABLED'
+    ].map((key) => ({key, target: ['preview'], gitBranch: scope.branch}))
+  });
+  assert.equal(result.status, 'STAGING_BRANCH_SHA_MISMATCH');
+  assert.equal(result.branchHeadMatchesMain, false);
+  assert.equal(result.authorizesPreviewCreation, false);
+  assert.equal(result.missingBranchScopedEnvNames.length, 3);
+  assert.deepEqual(result.missingBranchScopedEnvNames, [
+    'SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY',
+    'NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY'
+  ]);
+});
+
+test('branch head matching latest main does not itself authorize deployment', () => {
+  const result = inspect020705PreviewPrecreation({
+    scope,
+    currentMain: main,
+    branchHead: {
+      repository: scope.repository,
+      branch: scope.branch,
+      sha: scope.mainSha
+    },
+    envMetadata: []
+  });
+  assert.equal(result.branchHeadStatus, 'STAGING_BRANCH_MATCHES_CURRENT_MAIN');
+  assert.equal(result.branchHeadMatchesMain, true);
+  assert.equal(result.authorizesPreviewCreation, false);
+});
+
+test('spoofed branch metadata is denied and missing branch evidence is not treated as matching', () => {
+  const noEvidence = inspect020705PreviewPrecreation({
+    scope,
+    currentMain: main
+  });
+  assert.equal(noEvidence.branchHeadStatus, 'BRANCH_HEAD_NOT_VERIFIED');
+  assert.equal(noEvidence.branchHeadMatchesMain, false);
+  assert.throws(
+    () =>
+      inspect020705PreviewPrecreation({
+        scope,
+        currentMain: main,
+        branchHead: {
+          repository: 'wrong/other',
+          branch: scope.branch,
+          sha: scope.mainSha
+        }
+      }),
+    /AI_020705_PREVIEW_PREFLIGHT_DENIED/u
+  );
+});
+
+test('stale Preview cannot be used for current-main paid trial', () => {
+  const result = inspect020705PreviewPrecreation({
+    scope,
+    currentMain: main,
     existingPreview: {
-      id: 'dpl_synthetic123', repository: scope.repository,
-      projectRef: scope.stagingProjectRef, branch: scope.branch,
-      sha: 'b'.repeat(40), state: 'READY', target: 'preview'
+      id: 'dpl_synthetic123',
+      repository: scope.repository,
+      projectRef: scope.stagingProjectRef,
+      branch: scope.branch,
+      sha: 'b'.repeat(40),
+      state: 'READY',
+      target: 'preview'
     }
   });
   assert.equal(result.status, 'EXISTING_PREVIEW_SHA_MISMATCH');
