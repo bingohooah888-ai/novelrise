@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { URL } from 'node:url';
 import { readFileSync, existsSync } from 'node:fs';
 
 const sql = readFileSync(
