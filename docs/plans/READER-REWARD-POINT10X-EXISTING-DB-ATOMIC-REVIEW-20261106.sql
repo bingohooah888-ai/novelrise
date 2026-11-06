@@ -78,7 +78,7 @@ BEGIN
 END;
 $precheck$;
 
--- Full-row before-snapshots; no hard-coded historic Staging row counts.
+-- Full-row before-snapshots; progress is limited to Point badges, without fixed Staging row counts.
 CREATE TEMP TABLE nl10_before_ledger ON COMMIT DROP AS
   SELECT id, point_value old_value, to_jsonb(t) old_row
   FROM public.scout_point_ledger t;
@@ -87,7 +87,8 @@ CREATE TEMP TABLE nl10_before_badges ON COMMIT DROP AS
     metric_key old_metric, to_jsonb(t) old_row FROM public.scout_badge_definitions t;
 CREATE TEMP TABLE nl10_before_progress ON COMMIT DROP AS
   SELECT user_id, badge_id, progress_value old_value, to_jsonb(t) old_row
-  FROM public.user_scout_badges t;
+  FROM public.user_scout_badges t
+  WHERE badge_id IN ('reader_point_100','reader_point_500');
 CREATE TEMP TABLE nl10_before_operator ON COMMIT DROP AS
   SELECT id, amount old_value, to_jsonb(t) old_row
   FROM public.scout_point_operator_actions t;
@@ -176,11 +177,11 @@ BEGIN
           THEN b.old_target*10::bigint ELSE b.old_target END),true))
   THEN RAISE EXCEPTION 'NL10_BADGE_MISMATCH'; END IF;
   IF EXISTS (SELECT 1 FROM nl10_before_progress b
-    FULL JOIN public.user_scout_badges t USING (user_id,badge_id)
+    FULL JOIN (SELECT * FROM public.user_scout_badges
+      WHERE badge_id IN ('reader_point_100','reader_point_500')) t
+      USING (user_id,badge_id)
     WHERE b.user_id IS NULL OR t.user_id IS NULL OR to_jsonb(t) IS DISTINCT FROM
-      CASE WHEN b.badge_id IN ('reader_point_100','reader_point_500')
-        THEN jsonb_set(b.old_row,'{progress_value}',to_jsonb(b.old_value*10::bigint),true)
-        ELSE b.old_row END)
+      jsonb_set(b.old_row,'{progress_value}',to_jsonb(b.old_value*10::bigint),true))
   THEN RAISE EXCEPTION 'NL10_PROGRESS_MISMATCH'; END IF;
   IF EXISTS (SELECT 1 FROM nl10_before_operator b
     FULL JOIN public.scout_point_operator_actions t USING (id)
