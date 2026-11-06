@@ -114,7 +114,10 @@ test('failure diagnostics reveal only fixed stage and exception type after clean
   assert.match(source, /\$stage = 'CREATE_USER'/u);
   assert.match(source, /\$stage = 'CREATE_PARENT'/u);
   assert.match(source, /\$stage = 'VERIFY_FINAL_USER'/u);
-  assert.doesNotMatch(source, /\$failureType = \$_\.Exception\.Message|Write-(Output|Host)\s+\$_|\$Error\[0\]/u);
+  assert.doesNotMatch(
+    source,
+    /\$failureType = \$_\.Exception\.Message|Write-(Output|Host)\s+\$_|\$Error\[0\]/u
+  );
 });
 
 test('rollback never recursively removes unrelated files or modifies existing NLO', () => {
