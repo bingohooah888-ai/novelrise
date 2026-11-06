@@ -44,7 +44,7 @@ test('monthly allowances use GB-month, Class A and Class B independently', () =>
   assert.equal(R2_FREE_ALLOWANCE.classBOperations, 10_000_000);
   const decision = evaluateR2CostGuard(snapshot(), { now });
   assert.equal(decision.state, 'normal');
-  assert.equal(decision.admissionPermitted, true);
+  assert.equal(decision.admissionPermitted, false);
   assert.equal(decision.stopConfirmed, false);
 });
 
@@ -62,7 +62,7 @@ test('70%, 85% and 90% boundaries are inclusive', () => {
       classBOperations: 0
     });
     assert.equal(decision.state, expected);
-    assert.equal(decision.admissionPermitted, fraction < 0.9);
+    assert.equal(decision.admissionPermitted, false);
     assert.equal(decision.limitingMetric, 'storageGbMonth');
   }
 });
@@ -216,7 +216,7 @@ test('authenticated status requests use no-store, no redirect, never expose secr
     now
   });
   assert.equal(response.state, 'normal');
-  assert.equal(response.admissionPermitted, true);
+  assert.equal(response.admissionPermitted, false);
   assert.equal(JSON.stringify(response).includes(token), false);
 });
 

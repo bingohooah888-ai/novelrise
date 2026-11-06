@@ -128,9 +128,9 @@ export function evaluateR2CostGuard(snapshot, { now = Date.now() } = {}) {
     severity,
     stopRequired: stopRequired || stopConfirmed,
     stopConfirmed,
-    // This is a policy decision, NOT an admission token. Actual writes
-    // must pass an atomic reservation before any R2 billable operation.
-    admissionPermitted: !stopRequired && !stopConfirmed,
+    // A read-only snapshot can NEVER authorize a billable operation. A
+    // separate atomic, durable pre-operation reservation is mandatory.
+    admissionPermitted: false,
     maxPercent: Math.round(maxPercent * 10) / 10,
     limitingMetric,
     metrics,
