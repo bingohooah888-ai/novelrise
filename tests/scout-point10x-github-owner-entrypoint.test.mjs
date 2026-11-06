@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 import { test } from 'node:test';
 import {
+  classifySafePoint10xHold,
   executeOwnerReadOnlyPreflight,
   validateTrustedMainEvent
 } from '../scripts/scout-point10x-github-owner-entrypoint.mjs';
@@ -249,4 +250,31 @@ test('no token or supplied event body is ever used as a logger input', () => {
   assert.doesNotMatch(workflow, /issues: write/u);
   assert.doesNotMatch(workflow, /workflow_dispatch:/u);
   assert.doesNotMatch(workflow, /STAGING_DATABASE_URL|CONTROL_DATABASE_URL/u);
+});
+
+test('safe log classifier emits known merge HOLD without logging secrets', () => {
+  assert.equal(
+    classifySafePoint10xHold(
+      new Error('POINT10X_MERGE_HOLD:MAIN_ANCESTRY_NOT_PROVEN')
+    ),
+    'POINT10X_MERGE_HOLD:MAIN_ANCESTRY_NOT_PROVEN'
+  );
+  assert.equal(
+    classifySafePoint10xHold(
+      new Error('POINT10X_OWNER_HOLD:COMMENT_HISTORY_INCOMPLETE')
+    ),
+    'POINT10X_OWNER_HOLD:COMMENT_HISTORY_INCOMPLETE'
+  );
+  const secret = 'super-secret-jwt-value-123';
+  for (const error of [
+    new Error(secret),
+    new Error('POINT10X_MERGE_HOLD:' + secret),
+    new Error('POINT10X_OWNER_HOLD:UNLISTED_FAKE_CODE'),
+    new Error('POINT10X_EVENT_HOLD:UNTRUSTED_RUN_IDENTITY\n' + secret),
+    null
+  ]) {
+    const output = classifySafePoint10xHold(error);
+    assert.equal(output, 'POINT10X_EVENT_HOLD:UNCLASSIFIED');
+    assert.equal(output.includes(secret), false);
+  }
 });
