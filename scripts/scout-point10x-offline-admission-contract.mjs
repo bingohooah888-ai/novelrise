@@ -97,7 +97,7 @@ export function inspectTrustedMainEventShape(event, expectedMainSha) {
     event.workflowRef !== CONFIG.workflowRef ||
     event.mainSha !== expectedMainSha ||
     event.workflowSha !== expectedMainSha ||
-    event.ownerScopeMarker !== 'NOVELIGHT_POINT10X_READONLY_OWNER_V2' ||
+    event.ownerScopeMarker !== 'NOVELIGHT_POINT10X_READONLY_OWNER_V3' ||
     !Number.isSafeInteger(event.commentId) ||
     event.commentId <= 0 ||
     !/^[0-9a-f-]{36}$/u.test(event.deliveryId) ||
