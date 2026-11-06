@@ -106,6 +106,17 @@ test('creation remains disabled, non-admin and limited to two scoped directories
   assert.match(source, /VAULT_NOT_EMPTY/u);
 });
 
+test('failure diagnostics reveal only fixed stage and exception type after cleanup', () => {
+  assert.match(source, /\$failureStage = \$stage/u);
+  assert.match(source, /\$failureType = \$_\.Exception\.GetType\(\)\.Name/u);
+  assert.match(source, /GATEB_FAILURE_STAGE=/u);
+  assert.match(source, /GATEB_FAILURE_EXCEPTION_TYPE=/u);
+  assert.match(source, /\$stage = 'CREATE_USER'/u);
+  assert.match(source, /\$stage = 'CREATE_PARENT'/u);
+  assert.match(source, /\$stage = 'VERIFY_FINAL_USER'/u);
+  assert.doesNotMatch(source, /\$failureType = \$_\.Exception\.Message|Write-(Output|Host)\s+\$_|\$Error\[0\]/u);
+});
+
 test('rollback never recursively removes unrelated files or modifies existing NLO', () => {
   assert.match(source, /\[IO\.Directory\]::Delete\(\$Vault, \$false\)/u);
   assert.match(source, /\[IO\.Directory\]::Delete\(\$Parent, \$false\)/u);

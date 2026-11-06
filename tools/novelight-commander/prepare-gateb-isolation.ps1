@@ -154,20 +154,27 @@ $createdSid = $null
 $secret = $null
 $success = $false
 $rollbackIncomplete = $false
+# Fixed, non-secret diagnostic markers. Never print exception messages or local identifiers.
+$stage = 'GENERATE_PASSWORD'
+$failureStage = 'NONE'
+$failureType = 'NONE'
 
 try {
   # One disabled non-admin user. The password cannot be recovered from
   # console, disk or logs; a later separately approved admin reset is needed
   # before any runner can use this account.
   $secret = New-EphemeralGateBPassword
+  $stage = 'CREATE_USER'
   $newUser = New-LocalUser -Name $Account -Password $secret -Disabled `
     -AccountNeverExpires -Description 'NOVELIGHT Gate B isolated (disabled pending new OWNER approval)' `
     -ErrorAction Stop
   $createdUser = $true
+  $stage = 'VERIFY_NEW_USER'
   $createdSid = $newUser.SID
   if (-not $createdSid) { throw 'ACCOUNT_SID_MISSING' }
   if ($newUser.Enabled -ne $false) { throw 'ACCOUNT_NOT_DISABLED' }
 
+  $stage = 'CHECK_ADMIN_GROUP'
   $admins = @(Get-LocalGroupMember -SID $AdminSid.Value -ErrorAction Stop)
   if (@($admins | Where-Object { $_.SID.Value -eq $createdSid.Value }).Count -gt 0) {
     throw 'ACCOUNT_IS_ADMIN'
@@ -175,28 +182,39 @@ try {
 
   # Create with restricted ACL at creation time: no broad inherited Users
   # grant, including the short interval before post-creation verification.
+  $stage = 'BUILD_PARENT_ACL'
   $parentAcl = New-GateBDirectoryAcl -Member $createdSid -ForParent $true
+  $stage = 'CREATE_PARENT'
   [IO.Directory]::CreateDirectory($Parent, $parentAcl) | Out-Null
   $createdParent = $true
+  $stage = 'BUILD_CHILD_ACL'
   $vaultAcl = New-GateBDirectoryAcl -Member $createdSid -ForParent $false
+  $stage = 'CREATE_CHILD'
   [IO.Directory]::CreateDirectory($Vault, $vaultAcl) | Out-Null
   $createdVault = $true
 
+  $stage = 'VERIFY_PARENT_ACL'
   Assert-GateBDirectoryAcl -Path $Parent -Member $createdSid -ForParent $true
+  $stage = 'VERIFY_CHILD_ACL'
   Assert-GateBDirectoryAcl -Path $Vault -Member $createdSid -ForParent $false
+  $stage = 'VERIFY_CHILD_EMPTY'
   if ([IO.Directory]::GetFileSystemEntries($Vault).Length -ne 0) {
     throw 'VAULT_NOT_EMPTY'
   }
+  $stage = 'VERIFY_PARENT_CONTENTS'
   if ([IO.Directory]::GetFileSystemEntries($Parent).Length -ne 1) {
     throw 'PARENT_UNEXPECTED_CONTENT'
   }
+  $stage = 'VERIFY_FINAL_USER'
   $newUser = Get-LocalUser -Name $Account -ErrorAction Stop
   if ($newUser.SID.Value -ne $createdSid.Value -or $newUser.Enabled) {
     throw 'ACCOUNT_CHANGED'
   }
   $success = $true
 } catch {
-  # Never leak exceptions: OS errors can contain sensitive local data.
+  # Exception messages can contain sensitive local data: output fixed stage + type ONLY.
+  $failureStage = $stage
+  $failureType = $_.Exception.GetType().Name
   $success = $false
 } finally {
   if ($null -ne $secret) { $secret.Dispose(); $secret = $null }
@@ -236,6 +254,8 @@ if ($success) {
   Write-Output 'GATEB_DISABLED_ACCOUNT_AND_EMPTY_VAULT_CREATED_VERIFIED'
   exit 0
 }
+Write-Output ('GATEB_FAILURE_STAGE=' + $failureStage)
+Write-Output ('GATEB_FAILURE_EXCEPTION_TYPE=' + $failureType)
 if ($rollbackIncomplete) {
   Write-Output 'GATEB_PARTIAL_STATE_MANUAL_RECONCILIATION_REQUIRED'
   exit 4
