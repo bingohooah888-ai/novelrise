@@ -135,6 +135,45 @@ export async function executeOwnerReadOnlyPreflight({
   });
 }
 
+// Only approved static error codes may reach logs; no raw error or secret.
+const SAFE_HOLD_CODES = new Set([
+  'POINT10X_EVENT_HOLD:MISSING_EVENT_OR_ENV',
+  'POINT10X_EVENT_HOLD:UNTRUSTED_RUN_IDENTITY',
+  'POINT10X_EVENT_HOLD:UNTRUSTED_OWNER_EVENT',
+  'POINT10X_EVENT_HOLD:EVENT_PATH_REQUIRED',
+  'POINT10X_EVENT_HOLD:EVENT_JSON_INVALID',
+  'POINT10X_EVENT_HOLD:EPHEMERAL_GITHUB_TOKEN_REQUIRED',
+  'POINT10X_EVENT_HOLD:EVIDENCE_VERDICT_UNTRUSTED',
+  'POINT10X_OWNER_HOLD:MARKER_OR_SIZE',
+  'POINT10X_OWNER_HOLD:JSON_INVALID',
+  'POINT10X_OWNER_HOLD:NONCANONICAL_OR_DUPLICATE_FIELDS',
+  'POINT10X_OWNER_HOLD:REPO_OWNER',
+  'POINT10X_OWNER_HOLD:ISSUE_IDENTITY',
+  'POINT10X_OWNER_HOLD:COMMENT_IDENTITY_OR_EDIT',
+  'POINT10X_OWNER_HOLD:COMMENT_HISTORY_INCOMPLETE',
+  'POINT10X_OWNER_HOLD:TRIGGER_UNTRUSTED',
+  'POINT10X_OWNER_HOLD:FRESH_REFS_NOT_MATCHED',
+  'POINT10X_OWNER_HOLD:SCOPE_OR_DIGEST_DRIFT',
+  'POINT10X_OWNER_HOLD:OWNER_EVENT_EXPIRED_OR_REPLAYED',
+  'POINT10X_OWNER_HOLD:MERGE_CHAIN_INCOMPLETE',
+  'POINT10X_OWNER_HOLD:FETCH_INPUT',
+  'POINT10X_OWNER_HOLD:GITHUB_GET_DENIED',
+  'POINT10X_OWNER_HOLD:MERGE_NOT_CONFIRMED',
+  'POINT10X_OWNER_HOLD:PAGE_INVALID',
+  'POINT10X_OWNER_HOLD:PAGE_TRUNCATED',
+  'POINT10X_OWNER_HOLD:MAIN_MOVED_DURING_VERIFICATION',
+  'POINT10X_MERGE_HOLD:INVALID_PINNED_INPUTS',
+  'POINT10X_MERGE_HOLD:PR_NOT_AUTHENTICATED_AS_MERGED',
+  'POINT10X_MERGE_HOLD:APPROVAL_PRECEDES_MERGE',
+  'POINT10X_MERGE_HOLD:MAIN_ANCESTRY_NOT_PROVEN'
+]);
+export function classifySafePoint10xHold(error) {
+  const message = error?.message;
+  return typeof message === 'string' && SAFE_HOLD_CODES.has(message)
+    ? message
+    : 'POINT10X_EVENT_HOLD:UNCLASSIFIED';
+}
+
 async function main() {
   try {
     const result = await executeOwnerReadOnlyPreflight();
@@ -142,11 +181,7 @@ async function main() {
   } catch (error) {
     // Never log exception objects, response payloads, owner comment contents
     // or any credential. Only bounded hardcoded classifications.
-    const reason =
-      typeof error?.message === 'string' &&
-      /^POINT10X_(?:EVENT|OWNER)_HOLD:[A-Z0-9_]{2,70}$/u.test(error.message)
-        ? error.message
-        : 'POINT10X_EVENT_HOLD:UNCLASSIFIED';
+    const reason = classifySafePoint10xHold(error);
     process.stderr.write(reason + '\n');
     process.exitCode = 1;
   }

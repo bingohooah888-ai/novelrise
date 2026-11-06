@@ -73,12 +73,28 @@ const mergedFixture = (number, headSha, mergeSha) => ({
   base: { ref: 'main', repo: { full_name: GITHUB_REPO } }
 });
 const ancestryFixture = (mergeSha, mainSha) => ({
+  // GitHub Compare REST fields verified on 2026-11-06 (no head_commit).
+  url:
+    'https://api.github.com/repos/' +
+    GITHUB_REPO +
+    '/compare/' +
+    mergeSha +
+    '...' +
+    mainSha,
+  html_url:
+    'https://github.com/' +
+    GITHUB_REPO +
+    '/compare/' +
+    mergeSha +
+    '...' +
+    mainSha,
   status: 'ahead',
   ahead_by: 2,
   behind_by: 0,
+  total_commits: 2,
   base_commit: { sha: mergeSha },
   merge_base_commit: { sha: mergeSha },
-  head_commit: { sha: mainSha }
+  commits: [{ sha: '4'.repeat(40) }, { sha: mainSha }]
 });
 const evidence = () => {
   const a = approval();
@@ -743,7 +759,7 @@ test('real GitHub collector sends only fixed GETs in an OFFLINE fetch stub', asy
         approval().mergeSha2766 +
         '...' +
         approval().mainSha +
-        '?per_page=1&page=1',
+        '?per_page=100&page=1',
       fixture.compare2766
     ],
     [
@@ -751,7 +767,7 @@ test('real GitHub collector sends only fixed GETs in an OFFLINE fetch stub', asy
         approval().mergeSha2767 +
         '...' +
         approval().mainSha +
-        '?per_page=1&page=1',
+        '?per_page=100&page=1',
       fixture.compare2767
     ],
     ['/issues/294/comments?per_page=100&page=1', fixture.allComments]
@@ -795,6 +811,39 @@ test('real GitHub collector sends only fixed GETs in an OFFLINE fetch stub', asy
   }
 });
 
+test('actual 2026-11-06 GitHub REST Compare shape proves main without head_commit', () => {
+  const main = '2e4d1658d4852d27d7803a431f330e83ccc9add4';
+  const merge = 'fa324d64262b72c18b90d856b6e071e79f16910a';
+  const head = 'ebb7511311646ec34361d181ac8b59a21830f63c';
+  const comparison = ancestryFixture(merge, main);
+  comparison.ahead_by = 3;
+  comparison.total_commits = 3;
+  comparison.commits = [
+    { sha: 'f9431a9381fe78225d8553aa527a05effd5ff219' },
+    { sha: 'ff58694e9e5feb4b705f145d37a3db36e3924b7b' },
+    { sha: main }
+  ];
+  assert.equal(Object.hasOwn(comparison, 'head_commit'), false);
+  const params = {
+    pr: mergedFixture(2766, head, merge),
+    comparison,
+    number: 2766,
+    expectedHead: head,
+    expectedMerge: merge,
+    mainSha: main,
+    approvalCreatedAt: '2026-11-06T12:43:53Z'
+  };
+  const result = inspectMergedPrOnFreshMain(params);
+  assert.equal(result.presentOnMain, true);
+  assert.equal(result.ownerAuthenticatedForExecution, false);
+  assert.equal(result.controlSpentConsumed, false);
+  assert.equal(result.mayConnectStaging, false);
+  comparison.commits.pop();
+  assert.throws(
+    () => inspectMergedPrOnFreshMain(params),
+    /POINT10X_MERGE_HOLD:MAIN_ANCESTRY_NOT_PROVEN/u
+  );
+});
 test('merged dependency: both real GitHub merge proofs remain NO-GO by design', () => {
   const v = evidence();
   for (const number of [2766, 2767]) {
@@ -815,11 +864,34 @@ test('merged dependency: both real GitHub merge proofs remain NO-GO by design', 
     assert.equal(proof.mayConnectStaging, false);
   }
 });
-test('merged dependency: identical compare is valid only for exact main SHA', () => {
+test('identical compare requires exact main as merge commit', () => {
   const v = evidence();
   v.compare2766.status = 'identical';
   v.compare2766.ahead_by = 0;
-  assert.equal(inspectFreshGitHubOwnerEvidence(v).mayConnectStaging, false);
+  v.compare2766.total_commits = 0;
+  v.compare2766.commits = [];
+  assert.throws(
+    () => inspectFreshGitHubOwnerEvidence(v),
+    /POINT10X_MERGE_HOLD:MAIN_ANCESTRY_NOT_PROVEN/u
+  );
+  const same = 'a'.repeat(40);
+  const valid = inspectMergedPrOnFreshMain({
+    pr: mergedFixture(2766, approval().headSha2766, same),
+    comparison: {
+      ...ancestryFixture(same, same),
+      status: 'identical',
+      ahead_by: 0,
+      total_commits: 0,
+      commits: []
+    },
+    number: 2766,
+    expectedHead: approval().headSha2766,
+    expectedMerge: same,
+    mainSha: same,
+    approvalCreatedAt: created
+  });
+  assert.equal(valid.presentOnMain, true);
+  assert.equal(valid.mayConnectStaging, false);
 });
 for (const [name, alter] of [
   [
@@ -905,7 +977,44 @@ for (const [name, alter] of [
   [
     'lookalike main compare',
     (v) => {
-      v.compare2766.head_commit.sha = '9'.repeat(40);
+      v.compare2766.commits.at(-1).sha = '9'.repeat(40);
+    }
+  ],
+  [
+    'compare API URL points to wrong main',
+    (v) => {
+      v.compare2766.url =
+        'https://api.github.com/repos/other/repo/compare/a...b';
+    }
+  ],
+  [
+    'compare HTML URL points to wrong ref',
+    (v) => {
+      v.compare2766.html_url = 'https://github.com/other/repo/compare/a...b';
+    }
+  ],
+  [
+    'compare list is truncated',
+    (v) => {
+      v.compare2766.commits.pop();
+    }
+  ],
+  [
+    'compare total commits is fabricated',
+    (v) => {
+      v.compare2766.total_commits = 3;
+    }
+  ],
+  [
+    'compare has duplicate commits',
+    (v) => {
+      v.compare2766.commits[0].sha = v.compare2766.commits[1].sha;
+    }
+  ],
+  [
+    'compare contains invalid SHA',
+    (v) => {
+      v.compare2766.commits[0].sha = 'not-a-sha';
     }
   ],
   [
