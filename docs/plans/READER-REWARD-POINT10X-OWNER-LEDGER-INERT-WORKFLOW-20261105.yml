@@ -1,0 +1,69 @@
+# NOVELIGHT beta Scout Point x10 — INERT WORKFLOW BLUEPRINT, DO NOT INSTALL.
+# NOT in .github/workflows. NO workflow events, secrets, database, or network use.
+# To build a real one, separate OWNER approval of a fresh SHA/scope is required,
+# plus independent trusted-main implementation and a new security review.
+name: NOVELIGHT Point10x Atomic (INERT REVIEW TEMPLATE)
+"on": {}
+permissions:
+  contents: read
+concurrency:
+  # Future Issue #294 Staging mutation workflows must share a serialized lock.
+  # GitHub issue comments are NOT a transactional compare-and-swap primitive.
+  group: novelight-issue294-staging-atomic-review-inert
+  cancel-in-progress: false
+jobs:
+  never-run:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: INERT - no execution or credentials
+        run: echo 'Design template only; no Staging approval or executor exists.'
+
+# Future trusted-main design checkpoints (comments ONLY, never executable):
+# 01. Use issue_comment.created for the exact existing Issue #294 only.
+# 02. Never trust pull_request head workflow or scripts; checkout trusted main.
+# 03. Authenticate real GitHub actor/triggering_actor/OWNER association and issue.
+# 04. Resolve fresh main, Draft PR head, canonical JSON and exact scope/mode.
+# 05. Fetch EVERY Issue #294 ledger page; reject missing, duplicate or invalid.
+# 06. Serialize all Issue #294 Staging mutations with a reviewed shared lock.
+#     LOCK TOPOLOGY IS STILL UNPROVEN: old admit, old stage and this template
+#     have different groups. A GitHub concurrency string is NOT durable CAS.
+# 06a. Before GitHub CLAIMED or Staging secrets, reserve a single-use approval
+#      with an independent linearizable durable CAS: exact request comment ID,
+#      operation ID, scope/mode, main+candidate HEAD, run ID, and a persisted
+#      monotonically increasing fencing token in ONE transaction. Unique keys
+#      must cover replay and the shared all-Point-writer mutation domain.
+#      All scopes/old executors that can mutate that domain must use the fence.
+#      No real adapter/storage/permissions are implemented in this template.
+# 06b. CAS acknowledgement lost or crash before GitHub CLAIMED must HOLD;
+#      do not treat absent Issue comments as an unused approval or auto-retry.
+# 07. Post CLAIMED via trusted main code, then re-read and verify one new claim.
+# 08. Access Staging secrets ONLY after the claim is proven persisted.
+# 09. Check dedicated Staging identity and full backup + independent restore.
+#     Phase06 OFFLINE contract: verify immutable complete dump and manifest,
+#     independently restored isolated Postgres, same locked source watermark,
+#     exact XP/Point/Badge/Operator relation digests, function/ACL/trigger.
+#     This blueprint CANNOT create, decrypt, inspect or restore any backup.
+# 10. Fence every legacy/new Point writer, retry, Cron, Edge and service_role.
+#     All 9 known classes must show pause+admission closure, inflight/queue/
+#     retry/outbox/unacked zero, old token denied at Data Plane, two stable
+#     independent read-only samples; GitHub concurrency alone is insufficient.
+#     Unknown/ambiguous COMMIT => HOLD. Confirmed COMMIT => forward repair;
+#     any valid post-snapshot award/reversal/XP => no stale backup restore.
+#     All fixture flags remain untrusted; no executable restore is authorized.
+# 11. Verify private marker and SECURITY DEFINER exact RPC one-token diff.
+#     Phase07 OFFLINE model: private marker + exact 5pt -> 50pt RPC must
+#     share ONE SERIALIZABLE transaction with all five locked relations.
+#     Preserve trigger, owner/ACL, empty search_path, and event keys.
+#     Approval spent and fencing epoch are prerequisites, never authority.
+# 12. Verify full-row integrity, RLS, ACL, event keys, reversals, no hidden writers.
+#     Reject duplicate Point/XP events, overflow, source/HEAD drift and
+#     unknown badge metric; 12 fault checkpoints MUST fail closed.
+#     COMMIT uncertain => HOLD, do not replay conversion or release writers.
+# 13. Independent rollback proof versus persistent Staging require DIFFERENT scopes.
+# 14. Resolve ambiguous commits via read-only marker/journal requery; never retry.
+# 15. In a trusted-main finally branch, mark CONSUMED on all terminal outcomes.
+# 16. If CLAIM/CONSUMED posting fails, stop and require manual audited review.
+# 17. Never auto-restore a stale backup after valid new Point grants.
+# 18. No Production DB writes, main merge or deployment from this design.
