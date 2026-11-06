@@ -15,7 +15,8 @@ import {
 } from './scout-point10x-owner-readonly-evidence.mjs';
 
 const WORKFLOW_REF =
-  GITHUB_REPO + '/.github/workflows/scout-point10x-readonly.yml@refs/heads/main';
+  GITHUB_REPO +
+  '/.github/workflows/scout-point10x-readonly.yml@refs/heads/main';
 const hex40 = (value) =>
   typeof value === 'string' && /^[0-9a-f]{40}$/u.test(value);
 const object = (value) =>

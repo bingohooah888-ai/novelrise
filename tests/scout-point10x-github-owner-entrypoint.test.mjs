@@ -51,15 +51,60 @@ test('valid created OWNER event is still an identity candidate, not authorizatio
 });
 
 const invalid = [
-  ['wrong repo', (e) => { e.repository.full_name = 'attacker/repo'; }],
-  ['wrong owner ID', (e) => { e.sender.id = 11; }],
-  ['false author claim', (e) => { e.comment.author_association = 'NONE'; }],
-  ['edited comment', (e) => { e.comment.updated_at = '2026-11-06T10:01:00Z'; }],
-  ['wrong issue', (e) => { e.issue.number = 10; }],
-  ['pr comment', (e) => { e.issue.pull_request = { url: 'x' }; }],
-  ['comment changed', (e) => { e.comment.body = 'some other text'; }],
-  ['edited event', (e) => { e.action = 'edited'; }],
-  ['sender is different', (e) => { e.comment.user.id = 11; }],
+  [
+    'wrong repo',
+    (e) => {
+      e.repository.full_name = 'attacker/repo';
+    }
+  ],
+  [
+    'wrong owner ID',
+    (e) => {
+      e.sender.id = 11;
+    }
+  ],
+  [
+    'false author claim',
+    (e) => {
+      e.comment.author_association = 'NONE';
+    }
+  ],
+  [
+    'edited comment',
+    (e) => {
+      e.comment.updated_at = '2026-11-06T10:01:00Z';
+    }
+  ],
+  [
+    'wrong issue',
+    (e) => {
+      e.issue.number = 10;
+    }
+  ],
+  [
+    'pr comment',
+    (e) => {
+      e.issue.pull_request = { url: 'x' };
+    }
+  ],
+  [
+    'comment changed',
+    (e) => {
+      e.comment.body = 'some other text';
+    }
+  ],
+  [
+    'edited event',
+    (e) => {
+      e.action = 'edited';
+    }
+  ],
+  [
+    'sender is different',
+    (e) => {
+      e.comment.user.id = 11;
+    }
+  ]
 ];
 for (const [name, change] of invalid) {
   test('reject event: ' + name, () => {
@@ -72,12 +117,42 @@ for (const [name, change] of invalid) {
   });
 }
 const invalidEnvs = [
-  ['rerun', (e) => { e.GITHUB_RUN_ATTEMPT = '2'; }],
-  ['wrong ref', (e) => { e.GITHUB_REF = 'refs/heads/feature/evil'; }],
-  ['wrong SHA', (e) => { e.GITHUB_SHA = 'c'.repeat(40); }],
-  ['untrusted workflow', (e) => { e.GITHUB_WORKFLOW_REF = 'another.yml'; }],
-  ['wrong actor', (e) => { e.GITHUB_ACTOR_ID = '1'; }],
-  ['rerun by other actor', (e) => { e.GITHUB_TRIGGERING_ACTOR = 'someone'; }]
+  [
+    'rerun',
+    (e) => {
+      e.GITHUB_RUN_ATTEMPT = '2';
+    }
+  ],
+  [
+    'wrong ref',
+    (e) => {
+      e.GITHUB_REF = 'refs/heads/feature/evil';
+    }
+  ],
+  [
+    'wrong SHA',
+    (e) => {
+      e.GITHUB_SHA = 'c'.repeat(40);
+    }
+  ],
+  [
+    'untrusted workflow',
+    (e) => {
+      e.GITHUB_WORKFLOW_REF = 'another.yml';
+    }
+  ],
+  [
+    'wrong actor',
+    (e) => {
+      e.GITHUB_ACTOR_ID = '1';
+    }
+  ],
+  [
+    'rerun by other actor',
+    (e) => {
+      e.GITHUB_TRIGGERING_ACTOR = 'someone';
+    }
+  ]
 ];
 for (const [name, change] of invalidEnvs) {
   test('reject execution environment: ' + name, () => {
@@ -159,7 +234,10 @@ test('fake positive verifier can never authorize staging or CONTROL', async () =
 });
 test('no token or supplied event body is ever used as a logger input', () => {
   const workflow = readFileSync(
-    new URL('../.github/workflows/scout-point10x-readonly.yml', import.meta.url),
+    new URL(
+      '../.github/workflows/scout-point10x-readonly.yml',
+      import.meta.url
+    ),
     'utf8'
   );
   assert.match(workflow, /issue_comment:/u);
