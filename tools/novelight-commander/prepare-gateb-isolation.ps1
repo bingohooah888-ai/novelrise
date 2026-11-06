@@ -12,6 +12,7 @@ $ErrorActionPreference = 'Stop'
 
 $TargetHost = 'DESKTOP-8Q4GFC8'
 $Account = 'NOVELIGHT-GateB'
+$AccountDescription = 'NOVELIGHT Gate B isolated (disabled)'
 $Parent = 'C:\ProgramData\NOVELIGHT'
 $Vault = 'C:\ProgramData\NOVELIGHT\GateB'
 $ExpectedApproval = 'CREATE_ONE_DISABLED_GATEB_USER_AND_TWO_DIRECTORIES'
@@ -131,6 +132,8 @@ if ($env:ProgramData -ine 'C:\ProgramData') { $ok = $false }
 if (-not (Test-SafePath 'C:\ProgramData')) { $ok = $false }
 if ((Test-Path -LiteralPath $Parent) -or (Test-Path -LiteralPath $Vault)) { $ok = $false }
 if ($null -ne (Get-LocalUser -Name $Account -ErrorAction SilentlyContinue)) { $ok = $false }
+# Native New-LocalUser Description parameter validates a maximum of 48 characters.
+if ($AccountDescription.Length -lt 1 -or $AccountDescription.Length -gt 48) { $ok = $false }
 if (-not (Get-Command New-LocalUser -ErrorAction SilentlyContinue) -or
     -not (Get-Command Remove-LocalUser -ErrorAction SilentlyContinue)) { $ok = $false }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -166,7 +169,7 @@ try {
   $secret = New-EphemeralGateBPassword
   $stage = 'CREATE_USER'
   $newUser = New-LocalUser -Name $Account -Password $secret -Disabled `
-    -AccountNeverExpires -Description 'NOVELIGHT Gate B isolated (disabled pending new OWNER approval)' `
+    -AccountNeverExpires -Description $AccountDescription `
     -ErrorAction Stop
   $createdUser = $true
   $stage = 'VERIFY_NEW_USER'

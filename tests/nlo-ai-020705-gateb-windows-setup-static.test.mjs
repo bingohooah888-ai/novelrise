@@ -80,6 +80,17 @@ test('cryptographic random strong password is not printed or persisted', () => {
   );
 });
 
+test('account description satisfies Windows 48-character binder limit', () => {
+  const found = source.match(/\$AccountDescription = '([^']+)'/u);
+  assert.ok(found, 'fixed account description must exist');
+  assert.ok(found[1].length > 0 && found[1].length <= 48);
+  assert.match(
+    source,
+    /if \(\$AccountDescription\.Length -lt 1 -or \$AccountDescription\.Length -gt 48\)/u
+  );
+  assert.match(source, /-Description \$AccountDescription/u);
+});
+
 test('creation remains disabled, non-admin and limited to two scoped directories', () => {
   assert.equal(
     (source.match(/New-LocalUser -Name \$Account -Password \$secret/g) || [])
