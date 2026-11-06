@@ -295,7 +295,9 @@ export async function collectGitHubOwnerEvidenceReadOnly({ token, commentId }) {
   )
     fail('MERGE_NOT_CONFIRMED');
   const compare = (sha) =>
-    get('/compare/' + sha + '...' + mainRef.object.sha + '?per_page=1&page=1');
+    get(
+      '/compare/' + sha + '...' + mainRef.object.sha + '?per_page=100&page=1'
+    );
   const [compare2766, compare2767] = await Promise.all([
     compare(pr2766.merge_commit_sha),
     compare(pr2767.merge_commit_sha)
