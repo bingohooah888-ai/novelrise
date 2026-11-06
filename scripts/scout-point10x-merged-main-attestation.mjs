@@ -53,19 +53,38 @@ export function inspectMergedPrOnFreshMain({
     mergedAt > approvalAt
   )
     fail('APPROVAL_PRECEDES_MERGE');
-  // GitHub reports a merge_commit_sha for some UNMERGED PRs too.
-  // Only a merged=true, closed, non-Draft record plus ancestry may pass.
+  // GitHub Compare REST has no head_commit. Require exact canonical
+  // base...head URLs PLUS complete, byte-pinned ancestry facts.
+  // Reject partial first-page results rather than trusting their last SHA.
+  const comparePath = expectedMerge + '...' + mainSha;
+  const compareApiUrl =
+    'https://api.github.com/repos/' +
+    MERGE_PROOF_REPO +
+    '/compare/' +
+    comparePath;
+  const compareHtmlUrl =
+    'https://github.com/' + MERGE_PROOF_REPO + '/compare/' + comparePath;
+  const commits = comparison?.commits;
   if (
     !record(comparison) ||
+    comparison.url !== compareApiUrl ||
+    comparison.html_url !== compareHtmlUrl ||
     comparison.base_commit?.sha !== expectedMerge ||
     comparison.merge_base_commit?.sha !== expectedMerge ||
-    comparison.head_commit?.sha !== mainSha ||
     !['identical', 'ahead'].includes(comparison.status) ||
     !Number.isSafeInteger(comparison.ahead_by) ||
+    !Number.isSafeInteger(comparison.total_commits) ||
     comparison.ahead_by < 0 ||
+    comparison.total_commits !== comparison.ahead_by ||
     comparison.behind_by !== 0 ||
-    (comparison.status === 'identical' && comparison.ahead_by !== 0) ||
-    (comparison.status === 'ahead' && comparison.ahead_by < 1)
+    !Array.isArray(commits) ||
+    commits.length !== comparison.total_commits ||
+    commits.some((c) => !record(c) || !sha40(c.sha)) ||
+    new Set(commits.map((c) => c.sha)).size !== commits.length ||
+    (comparison.status === 'identical' &&
+      (comparison.ahead_by !== 0 || expectedMerge !== mainSha)) ||
+    (comparison.status === 'ahead' &&
+      (comparison.ahead_by < 1 || commits.at(-1)?.sha !== mainSha))
   )
     fail('MAIN_ANCESTRY_NOT_PROVEN');
   return Object.freeze({
