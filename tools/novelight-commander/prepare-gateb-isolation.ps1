@@ -49,7 +49,8 @@ function New-GateBDirectoryAcl {
 function Assert-GateBDirectoryAcl {
   param(
     [string]$Path,
-    [Security.Principal.SecurityIdentifier]$Member
+    [Security.Principal.SecurityIdentifier]$Member,
+    [bool]$ForParent
   )
   if (-not (Test-SafePath $Path)) { throw 'PATH_UNSAFE' }
   $acl = [IO.Directory]::GetAccessControl($Path)
@@ -74,6 +75,30 @@ function Assert-GateBDirectoryAcl {
     if (@($rules | Where-Object { $_.IdentityReference.Value -eq $sid }).Count -ne 1) {
       throw 'ACL_MISSING_REQUIRED_IDENTITY'
     }
+  }
+  foreach ($sid in @($AdminSid.Value, $SystemSid.Value)) {
+    $grant = @($rules | Where-Object { $_.IdentityReference.Value -eq $sid })[0]
+    if (($grant.FileSystemRights -band [Security.AccessControl.FileSystemRights]::FullControl) -ne
+        [Security.AccessControl.FileSystemRights]::FullControl) {
+      throw 'ACL_SYSTEM_ADMIN_NOT_FULL'
+    }
+  }
+  $memberGrant = @($rules | Where-Object {
+    $_.IdentityReference.Value -eq $Member.Value
+  })[0]
+  $expected = if ($ForParent) {
+    [Security.AccessControl.FileSystemRights]::ReadAndExecute
+  } else {
+    [Security.AccessControl.FileSystemRights]::Modify
+  }
+  if (($memberGrant.FileSystemRights -band $expected) -ne $expected -or
+      ($memberGrant.FileSystemRights -band [Security.AccessControl.FileSystemRights]::ChangePermissions) -ne 0 -or
+      ($memberGrant.FileSystemRights -band [Security.AccessControl.FileSystemRights]::TakeOwnership) -ne 0) {
+    throw 'ACL_MEMBER_EXCESSIVE_OR_INSUFFICIENT'
+  }
+  if ($ForParent -and
+      ($memberGrant.FileSystemRights -band [Security.AccessControl.FileSystemRights]::Write) -ne 0) {
+    throw 'ACL_PARENT_WRITABLE_BY_MEMBER'
   }
 }
 function New-EphemeralGateBPassword {
@@ -157,8 +182,8 @@ try {
   [IO.Directory]::CreateDirectory($Vault, $vaultAcl) | Out-Null
   $createdVault = $true
 
-  Assert-GateBDirectoryAcl -Path $Parent -Member $createdSid
-  Assert-GateBDirectoryAcl -Path $Vault -Member $createdSid
+  Assert-GateBDirectoryAcl -Path $Parent -Member $createdSid -ForParent $true
+  Assert-GateBDirectoryAcl -Path $Vault -Member $createdSid -ForParent $false
   if ([IO.Directory]::GetFileSystemEntries($Vault).Length -ne 0) {
     throw 'VAULT_NOT_EMPTY'
   }

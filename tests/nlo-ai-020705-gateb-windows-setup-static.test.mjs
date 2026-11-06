@@ -100,6 +100,9 @@ test('creation remains disabled, non-admin and limited to two scoped directories
   assert.match(source, /'S-1-5-18'/u); // SYSTEM
   assert.match(source, /'ReadAndExecute'/u);
   assert.match(source, /'Modify'/u);
+  assert.match(source, /ACL_SYSTEM_ADMIN_NOT_FULL/u);
+  assert.match(source, /ACL_MEMBER_EXCESSIVE_OR_INSUFFICIENT/u);
+  assert.match(source, /ACL_PARENT_WRITABLE_BY_MEMBER/u);
   assert.match(source, /VAULT_NOT_EMPTY/u);
 });
 
