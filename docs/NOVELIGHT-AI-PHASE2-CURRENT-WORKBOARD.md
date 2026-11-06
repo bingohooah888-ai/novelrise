@@ -1,12 +1,12 @@
 # NOVELIGHT AI 工程②（02-07-05）— 継続用・唯一の現状ボード
 
-**最終内容確認：2026-11-05 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
+**最終内容確認：2026-11-07 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 03f64b14138ec5c6a90c0d8231a0784f878e78fa
+source_main: 724f594ab8733f4a15ac4523900f59552bb9c11a
 source_master_blob: 91d11fa367b7de64990b13397b13d4bb6e3c0230
 phase: 02-07-05
-last_reviewed_jst: 2026-11-05
+last_reviewed_jst: 2026-11-07
 <!-- CONTINUITY_FINGERPRINT_END -->
 
 ## 0. 最初に結論を確認する
@@ -46,6 +46,19 @@ last_reviewed_jst: 2026-11-05
 `LOCAL_ONLY:gatea-a2-p4-formal-audit-20261105.md`、
 `LOCAL_ONLY:gatea-a2-p3-v8r3-readonly-observer-preapproval-20261105.md`、
 `LOCAL_ONLY:gatea-a2-p3-v8r3-observation-live-preflight-safe-stop-20261105.md`。
+
+## 2.5 Gate B Windows隔離環境：2026-11-07 実機作成済み／再実行禁止
+
+**Windowsローカル隔離環境の作成のみが完了。Gate B全体はNO-GOのまま。** 新しい一回限り承認なく、作成スクリプトを再実行しない。
+
+- 固定PC：`DESKTOP-8Q4GFC8`。実行コード：Draft PR #2778、Git HEAD `49ac65cc61322a6b2a917c11f25542b56b30d069`、スクリプトSHA-256 `01d3fd35d67264d95716da436de8f2ccd67c5c4b62e5ce8718ea7402a6982d11`。PRはDraft・未統合。Productionへ反映していない。
+- OWNERが管理者PowerShellで新しい一回限り承認を使用し、`GATEB_PREFLIGHT_READY_NO_MUTATION`、`GATEB_DISABLED_ACCOUNT_AND_EMPTY_VAULT_CREATED_VERIFIED`、`GATEB_APPLY_SUCCESS` を確認。
+- 別の**管理者PowerShell**読み取り専用検証で `GATEB_INDEPENDENT_READONLY_VERIFIED` を確認。無効・非管理者のアカウント1件、親子フォルダ各1件、保護ACLの指定3主体、対象SIDの親ReadAndExecute・子Modify、親に子のみ・子は空を検証。画面証拠はOWNERのチャット内。GitHub/ログへアップロードしない。
+- Remote Desktop Commander（NLOとは別）の読み取り専用照合でも無効・非管理者アカウントを確認。非管理者接続は子フォルダにアクセス拒否されたため、独立した子ACLの詳細証拠は上記の管理者PowerShell検証に基づく。
+- 作成時の暗号学的乱数パスワードは表示・保存されておらず復元できない。専用ユーザーは意図的に無効。実認証・資格保管・Runner実行の証明にはならない。
+- 関連Draft PR #2774のDPAPI経路は合成資格の自己テスト専用。同一ユーザーによるDPAPI復号は別OSユーザー/独立ホストの保護を証明しない。
+
+**今後の未承認条件：** 専用OSユーザー認証／実行主体の安全設計、資格の最小権限保管、Staging許可／Production拒否、保護Preview/Runner。アカウント有効化、パスワードリセット、タスク登録、実PAT/Secret登録、Staging/Production変更には各対象を限定した新規OWNER承認を要する。
 
 ## 3. 次の作業優先順位（単発の後片付けに没頭しない）
 
