@@ -141,9 +141,38 @@ test('no stale fixed Staging row counts; full row before-after checks remain', (
       sql.includes('NL10_' + target.toUpperCase()) || target === 'badges'
     );
   }
-  assert.equal((sql.match(/FULL JOIN public\./g) || []).length, 4);
+  assert.equal((sql.match(/FULL JOIN public\./g) || []).length, 3);
+  assert.equal((sql.match(/\bFULL JOIN\b/g) || []).length, 4);
   assert.ok(sql.includes('to_jsonb(t) IS DISTINCT FROM'));
   assert.match(sql, /nl10_before_rpc/);
+});
+
+test('Point progress snapshot and full join cover only changed badge rows', () => {
+  const target = "badge_id IN ('reader_point_100','reader_point_500')";
+  const snapshot = sql.slice(
+    sql.indexOf('CREATE TEMP TABLE nl10_before_progress'),
+    sql.indexOf('CREATE TEMP TABLE nl10_before_operator')
+  );
+  assert.ok(snapshot.includes('FROM public.user_scout_badges t'));
+  assert.ok(snapshot.includes('WHERE ' + target));
+
+  const comparison = sql.slice(
+    sql.indexOf('IF EXISTS (SELECT 1 FROM nl10_before_progress'),
+    sql.indexOf("THEN RAISE EXCEPTION 'NL10_PROGRESS_MISMATCH'")
+  );
+  assert.ok(
+    comparison.includes('FULL JOIN (SELECT * FROM public.user_scout_badges')
+  );
+  assert.ok(comparison.includes('WHERE ' + target + ') t'));
+  assert.match(comparison, /b\.user_id IS NULL OR t\.user_id IS NULL/);
+  assert.match(
+    comparison,
+    /to_jsonb\(t\) IS DISTINCT FROM\s+jsonb_set\(b\.old_row,'\{progress_value\}',to_jsonb\(b\.old_value\*10::bigint\),true\)/
+  );
+  assert.match(
+    sql,
+    /UPDATE public\.user_scout_badges SET progress_value=progress_value\*10::bigint\s+WHERE badge_id IN \('reader_point_100','reader_point_500'\)/
+  );
 });
 
 test('replay, overflow and unexpected schema/state fail closed', () => {
