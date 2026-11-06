@@ -1,0 +1,49 @@
+name: Point10x OWNER Facts (read-only / never authorizes Staging)
+
+# Only validates a fresh trusted-main OWNER event using official GitHub REST.
+# Not an approval claim, CONTROL transaction, Staging read, or Point switch.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: point10x-owner-readonly-${{ github.event.comment.id }}
+  cancel-in-progress: false
+
+jobs:
+  owner-facts-only:
+    if: >-
+      github.repository == 'bingohooah888-ai/novelrise' &&
+      github.event.issue.number == 294 &&
+      github.event.issue.pull_request == null &&
+      github.event.comment.user.id == 317436651 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_POINT10X_READONLY_OWNER_V3')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted main without credential persistence
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Setup pinned Node major
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Inspect GitHub OWNER evidence without using database secrets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/scout-point10x-github-owner-entrypoint.mjs
