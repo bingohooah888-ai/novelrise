@@ -16,10 +16,9 @@ export const SQL_SOURCE_SHA256 = Object.freeze([
   '740cc8c94b7e2831aae29e740282b826bee730621ab56627b03a8e1062e2ee11',
   '6dd649cc7fa4c824f6f576500a5a7e44ce65bce3123e6a4990b06353114650d1'
 ]);
-export const OWNER_MARKER = 'NOVELIGHT_POINT10X_READONLY_OWNER_V2';
+export const OWNER_MARKER = 'NOVELIGHT_POINT10X_READONLY_OWNER_V3';
 export const OWNER_FIELDS = Object.freeze(
   [
-    'commentId',
     'evidencePolicyDigest',
     'executorDigest',
     'expiresAt',
@@ -180,7 +179,6 @@ export function inspectFreshGitHubOwnerEvidence({
     !fields.every((k) => Object.hasOwn(obj, k)) ||
     obj.repo !== GITHUB_REPO ||
     obj.issueNumber !== ISSUE_NUMBER ||
-    obj.commentId !== comment.id ||
     obj.ownerId !== GITHUB_OWNER_ID ||
     obj.scope !== SCOPE ||
     obj.operation !== OPERATION ||
