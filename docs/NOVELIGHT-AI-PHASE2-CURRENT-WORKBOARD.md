@@ -1,12 +1,12 @@
 # NOVELIGHT AI 工程②（02-07-05）— 継続用・唯一の現状ボード
 
-**最終内容確認：2026-11-05 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
+**最終内容確認：2026-11-06 JST／Git追跡の継続ボード（source_mainは今回の読み取り専用監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 03f64b14138ec5c6a90c0d8231a0784f878e78fa
+source_main: 2e4d1658d4852d27d7803a431f330e83ccc9add4
 source_master_blob: 91d11fa367b7de64990b13397b13d4bb6e3c0230
 phase: 02-07-05
-last_reviewed_jst: 2026-11-05
+last_reviewed_jst: 2026-11-06
 <!-- CONTINUITY_FINGERPRINT_END -->
 
 ## 0. 最初に結論を確認する
@@ -27,6 +27,27 @@ last_reviewed_jst: 2026-11-05
 | E：品質・工程②判定 | 未実施 | 誤読/根拠/同意/原価/プライバシーを評価し、管理人試用・一般公開はさらに別承認 |
 
 正式な判定基準：`docs/NOVELIGHT-AI-PHASE2-CLOSEOUT-GATES.md`、`docs/NOVELIGHT-MASTER.md`、`AGENTS.md`。
+
+## 1.5 2026-11-06 読み取り専用・最新の重要差分
+
+基準: latest main `2e4d1658d4852d27d7803a431f330e83ccc9add4`（GitHub Branch API、Vercel Production READY一致）。MASTER blob `91d11fa367b7de64990b13397b13d4bb6e3c0230`／AGENTS blobは前回と同一。既存 Gate A2-P2 synthetic / SQL 6件 / Cron停止のPASSは再実行していない。
+
+- **Gate A**: A2合成3シナリオ・SQL6件・Cron停止は過去の証拠に留める。独立Watchdogの実Runner死亡、実停止／資格revoke／cleanup／外部zero censusは引き続き未実証。A2旧DO3件は削除せず保留。Cloudflare上で本件の新しいlive検証は未実施。
+- **Gate B — 正確な現在の障害**: GitHub remote `staging/ai-02-07-05-gatebc-20261105` のHEADは旧 `0e4f3f594193d137d582fb693703ffdfe1d1cfd3`。最新mainとは不一致。Vercel project `prj_SmotUNrcyuUntdWTayzWeJ8eQGqe` / team `team_2XFgtRCPJQ6pbrEa4mOLQAEx` で同ブランチの新Previewは0件（read-only deployments filter）。Git自動Previewは禁止の設定。ブランチ専用Preview ENV名は6件存在（`SUPABASE_URL`, `NOVELIGHT_STAGING_SUPABASE_URL`, `NOVELIGHT_AI_ENABLED`, `NOVELIGHT_AI_REVIEW_ENABLED`, `NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED`, `NOVELIGHT_AI_020705_ONE_SHOT_ENABLED`）。必要な `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY` の3名は不在。**変数の実値は取得せず、scope・保護・Secretの正しさは未実証**。
+- **Supabase Staging**: プロジェクト `wmlzjgvxgoyrovdhbqbg` のユーザー開示済みDashboardを読み取り専用で参照でき、Healthy、最新migration欄に `novelight_ai_020705_one_shot_claim` と表示。一方、現在接続中のSupabase MCP list_projectsはProduction `fiepaguycecrredwrcwx` のみを表示し、Stagingに対する list_branches は権限エラー。Dashboardの表示は実JWT/DB write/権限分離の実証ではない。
+- **Gate C**: `protected-stage-executor.mjs` と独立Watchdog候補は現状**アダプター注入が前提の休眠・offline契約**。既存 workflow `ai-020705-owner-staging-paid-trial.yml` は offline preflight専用。ライブの実資格・外部停止権限・原子的claimとの接続は未実装／未実証。過去合成PASSを繰り返さない。
+- **R2コストガード**: Cloudflare R2サブスクリプションはユーザー本人が契約済み。無料枠の利用状況は確認時0。D1 `novelight-ai-r2-cost-guard-ledger` が別途の1回限り承認で**1個だけ作成済み**（D1テーブル0、利用0）。コストガードPR [#2770](https://github.com/bingohooah888-ai/novelrise/pull/2770) はDraft未統合、自動停止はまだ実稼働していない。これを工程② Gate A～E完了の代用にしない。新しいスキーマ／Worker／Bucket／Secrets等には個別承認が必要。
+- **正式完了ゲート**: A/B/C/D/EすべてNO-GO、0/5は完了ゲート数であり工数率ではない。Gate Dの実モデル1回有料処理とGate E品質判定はまだ未実施。
+
+### 完了へのクリティカルパス（新規承認前に一括点検）
+
+1. **A/Cを並行**: 既存offline部品を再利用し、実Watchdogの分離された権限・生存監視・強制停止・不可逆cleanupの限定実行計画と保護Runnerの実アダプターを明確化。無料枠／料金・資格scopeの事実が揃わなければliveにしない。
+2. **B**: Staging用scope証明→Staging資格readの個別許可→不足するPreview専用3変数の個別create許可→現在mainと一致するStagingブランチ／Preview生成の個別ステージング承認を順守。**旧SHAブランチを現行Previewとして扱わない**。認証値・ロール・Protection/Production絶縁と費用は読み取りだけで可能な範囲を先に一括確認。
+3. **C実証**: 承認済みPreviewと保護Runner、独立Watchdog、原子的one-shot、実JWT、失敗時回復、残留0件を正確なStaging scopeで検証。
+4. **D**: A/B/C通過後のみ、1合成作品1話1 chunk、1回・10円以下・原則no-retryの別承認で実モデル試験。
+5. **E**: 引用根拠・誤読・同意・原価・プライバシーを判定。管理人試用や一般公開は別承認。
+
+**完成時期について**: 実環境実証の所要時間・承認間隔の実測がなく、日付の確約は根拠不足。最短の判断基準は上記順番で各Gateの実証記録が揃うこと。次の実作業の承認は1回限り・正確な対象SHA／環境を指定して出す。新規Preview・権限・Secret・Productionを今回の文書更新から自動承認しない。
 
 ## 2. Gate Aで「済んだ」こと／やり直してはいけないこと
 
