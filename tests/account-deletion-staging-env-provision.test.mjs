@@ -505,8 +505,14 @@ test('invalid target, missing protected secret, Stripe failure and partial inven
           verifyStripe: async () => {
             if (entry.stripeFail) throw new Error('missing test prices');
             return entry.stripeWrongIds
-              ? { standardPriceId: 'price_' + '1'.repeat(20), premiumPriceId: 'price_' + '1'.repeat(20) }
-              : { standardPriceId: 'price_' + '1'.repeat(20), premiumPriceId: 'price_' + '2'.repeat(20) };
+              ? {
+                  standardPriceId: 'price_' + '1'.repeat(20),
+                  premiumPriceId: 'price_' + '1'.repeat(20)
+                }
+              : {
+                  standardPriceId: 'price_' + '1'.repeat(20),
+                  premiumPriceId: 'price_' + '2'.repeat(20)
+                };
           },
           fetchImpl: async (url, options) => {
             if (options.method === 'POST') post += 1;
