@@ -23,7 +23,11 @@ const MISSING = Object.freeze([
 ]);
 const PLANS = Object.freeze([
   { key: 'standard', lookup: 'novelight_standard_monthly_jpy', amount: 980 },
-  { key: 'premium', lookup: 'novelight_premium_beta_2026_monthly_jpy', amount: 480 }
+  {
+    key: 'premium',
+    lookup: 'novelight_premium_beta_2026_monthly_jpy',
+    amount: 480
+  }
 ]);
 
 function fail(code) {
@@ -240,7 +244,11 @@ export async function provisionAccountDeletionEnv({
       value: env.STAGING_SUPABASE_SECRET_KEY,
       type: 'sensitive'
     },
-    { key: 'STRIPE_SECRET_KEY', value: env.STRIPE_TEST_SECRET_KEY, type: 'sensitive' },
+    {
+      key: 'STRIPE_SECRET_KEY',
+      value: env.STRIPE_TEST_SECRET_KEY,
+      type: 'sensitive'
+    },
     {
       key: 'STRIPE_STANDARD_PRICE_ID',
       value: verified.standardPriceId,
@@ -255,7 +263,8 @@ export async function provisionAccountDeletionEnv({
     ...item,
     target: ['preview'],
     gitBranch: FIX_BRANCH,
-    comment: 'Account deletion #82: approved one-use protected Staging provisioning only'
+    comment:
+      'Account deletion #82: approved one-use protected Staging provisioning only'
   }));
 
   const url = new URL(path, 'https://api.vercel.com');
@@ -287,7 +296,10 @@ export async function provisionAccountDeletionEnv({
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   provisionAccountDeletionEnv({ env: process.env })
     .then((result) => {
       console.log(
@@ -311,7 +323,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     })
     .catch(() => {
       // NEVER print error.message, API bodies or secrets in logs.
-      console.error('ACCOUNT_ENV_PROVISION_DENIED: safe verification or provisioning failed.');
+      console.error(
+        'ACCOUNT_ENV_PROVISION_DENIED: safe verification or provisioning failed.'
+      );
       process.exitCode = 1;
     });
 }
