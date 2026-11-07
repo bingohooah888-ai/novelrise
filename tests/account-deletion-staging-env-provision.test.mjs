@@ -3,9 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { REVIEWED_FILES } from '../scripts/account-deletion-preview-admission.mjs';
-import {
-  admitAccountEnvProvision
-} from '../scripts/account-deletion-staging-env-admission.mjs';
+import { admitAccountEnvProvision } from '../scripts/account-deletion-staging-env-admission.mjs';
 import {
   assertProvisioningInventory,
   provisionAccountDeletionEnv,
@@ -38,7 +36,12 @@ const final = [
     'STRIPE_SECRET_KEY',
     'STRIPE_STANDARD_PRICE_ID',
     'STRIPE_PREMIUM_PRICE_ID'
-  ].map((key) => ({ key, type: 'sensitive', gitBranch: REF, target: ['preview'] }))
+  ].map((key) => ({
+    key,
+    type: 'sensitive',
+    gitBranch: REF,
+    target: ['preview']
+  }))
 ];
 
 function admissionFixture() {
@@ -51,12 +54,14 @@ function admissionFixture() {
     url: 'https://api.github.com/repos/' + REPO + '/issues/188',
     user: { login: OWNER }
   };
-  const approval = PREFIX + JSON.stringify({
-    scope: 'account-deletion-env-provision',
-    mainSha: MAIN,
-    candidateSha: HEAD,
-    confirmation: 'STAGING APPROVED'
-  });
+  const approval =
+    PREFIX +
+    JSON.stringify({
+      scope: 'account-deletion-env-provision',
+      mainSha: MAIN,
+      candidateSha: HEAD,
+      confirmation: 'STAGING APPROVED'
+    });
   return {
     event: {
       repository: { full_name: REPO },
@@ -121,8 +126,18 @@ function testPrice({ plan, lookup, amount, n }) {
 
 function pricesFixture() {
   return [
-    testPrice({ plan: 'standard', lookup: 'novelight_standard_monthly_jpy', amount: 980, n: 1 }),
-    testPrice({ plan: 'premium', lookup: 'novelight_premium_beta_2026_monthly_jpy', amount: 480, n: 2 })
+    testPrice({
+      plan: 'standard',
+      lookup: 'novelight_standard_monthly_jpy',
+      amount: 980,
+      n: 1
+    }),
+    testPrice({
+      plan: 'premium',
+      lookup: 'novelight_premium_beta_2026_monthly_jpy',
+      amount: 480,
+      n: 2
+    })
   ];
 }
 
@@ -152,71 +167,144 @@ test('valid exact reviewed PR and unused OWNER issue grant one env provisioning'
 
 test('closed, locked, unsigned, forked, drifted, unreviewed or duplicate approvals deny', () => {
   const mutations = [
-    (f) => { f.issue.state = 'closed'; },
-    (f) => { f.issue.locked = true; },
-    (f) => { f.event.comment.author_association = 'CONTRIBUTOR'; },
-    (f) => { f.event.comment.user.login = 'not-owner'; },
-    (f) => { f.event.issue.number = 187; },
-    (f) => { f.mainRef.object.sha = 'c'.repeat(40); },
-    (f) => { f.checkedOutSha = 'c'.repeat(40); },
-    (f) => { f.pr.base.sha = 'c'.repeat(40); },
-    (f) => { f.pr.head.sha = 'c'.repeat(40); },
-    (f) => { f.pr.head.repo.full_name = 'other/repo'; },
-    (f) => { f.pr.draft = false; },
-    (f) => { f.compare.behind_by = 1; },
-    (f) => { f.compare.files[0].sha = 'c'.repeat(40); },
-    (f) => { f.compare.files.push({ filename: 'evil.js' }); },
-    (f) => { f.ledgerPages = []; },
-    (f) => { f.ledgerPages = [Array.from({ length: 100 }, () => ({ body: 'other' }))]; },
     (f) => {
-      f.ledgerPages = [[{ body: 'NOVELIGHT_STAGING_ACCOUNT_DELETE_ENV_CLAIMED ' +
-        JSON.stringify({
-          requestCommentId: '1234',
-          mainSha: MAIN,
-          candidateSha: HEAD,
-          runId: '9900'
-        }) }]];
+      f.issue.state = 'closed';
     },
     (f) => {
-      f.ledgerPages = [[{ body: 'NOVELIGHT_STAGING_ACCOUNT_DELETE_ENV_CONSUMED ' +
+      f.issue.locked = true;
+    },
+    (f) => {
+      f.event.comment.author_association = 'CONTRIBUTOR';
+    },
+    (f) => {
+      f.event.comment.user.login = 'not-owner';
+    },
+    (f) => {
+      f.event.issue.number = 187;
+    },
+    (f) => {
+      f.mainRef.object.sha = 'c'.repeat(40);
+    },
+    (f) => {
+      f.checkedOutSha = 'c'.repeat(40);
+    },
+    (f) => {
+      f.pr.base.sha = 'c'.repeat(40);
+    },
+    (f) => {
+      f.pr.head.sha = 'c'.repeat(40);
+    },
+    (f) => {
+      f.pr.head.repo.full_name = 'other/repo';
+    },
+    (f) => {
+      f.pr.draft = false;
+    },
+    (f) => {
+      f.compare.behind_by = 1;
+    },
+    (f) => {
+      f.compare.files[0].sha = 'c'.repeat(40);
+    },
+    (f) => {
+      f.compare.files.push({ filename: 'evil.js' });
+    },
+    (f) => {
+      f.ledgerPages = [];
+    },
+    (f) => {
+      f.ledgerPages = [Array.from({ length: 100 }, () => ({ body: 'other' }))];
+    },
+    (f) => {
+      f.ledgerPages = [
+        [
+          {
+            body:
+              'NOVELIGHT_STAGING_ACCOUNT_DELETE_ENV_CLAIMED ' +
+              JSON.stringify({
+                requestCommentId: '1234',
+                mainSha: MAIN,
+                candidateSha: HEAD,
+                runId: '9900'
+              })
+          }
+        ]
+      ];
+    },
+    (f) => {
+      f.ledgerPages = [
+        [
+          {
+            body:
+              'NOVELIGHT_STAGING_ACCOUNT_DELETE_ENV_CONSUMED ' +
+              JSON.stringify({
+                requestCommentId: '1234',
+                mainSha: MAIN,
+                candidateSha: HEAD,
+                runId: '9900',
+                result: 'failure'
+              })
+          }
+        ]
+      ];
+    },
+    (f) => {
+      f.event.comment.body =
+        'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_APPROVE {}';
+    },
+    (f) => {
+      f.event.comment.body = PREFIX + '{}';
+    },
+    (f) => {
+      f.event.comment.body =
+        PREFIX +
         JSON.stringify({
-          requestCommentId: '1234',
+          scope: 'account-deletion-preview',
           mainSha: MAIN,
           candidateSha: HEAD,
-          runId: '9900',
-          result: 'failure'
-        }) }]];
-    },
-    (f) => { f.event.comment.body = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_APPROVE {}'; },
-    (f) => { f.event.comment.body = PREFIX + '{}'; },
-    (f) => {
-      f.event.comment.body = PREFIX + JSON.stringify({
-        scope: 'account-deletion-preview',
-        mainSha: MAIN,
-        candidateSha: HEAD,
-        confirmation: 'STAGING APPROVED'
-      });
+          confirmation: 'STAGING APPROVED'
+        });
     }
   ];
   for (const [index, mutation] of mutations.entries()) {
     const f = admissionFixture();
     mutation(f);
-    assert.throws(() => admitAccountEnvProvision(f), DENY, 'negative case ' + index);
+    assert.throws(
+      () => admitAccountEnvProvision(f),
+      DENY,
+      'negative case ' + index
+    );
   }
 });
 
 test('inventory is exactly four before, eight after, and branch-only preview', () => {
-  assert.equal(assertProvisioningInventory(initial, 'before').configuredKeys, 4);
+  assert.equal(
+    assertProvisioningInventory(initial, 'before').configuredKeys,
+    4
+  );
   assert.equal(assertProvisioningInventory(final, 'after').configuredKeys, 8);
   const wrong = [
     [initial.slice(1), 'before'],
     [[...initial, ...final.slice(4)], 'before'],
     [[...initial, ...initial.slice(0, 1)], 'before'],
-    [initial.map((v, i) => i === 0 ? { ...v, gitBranch: null } : v), 'before'],
-    [initial.map((v, i) => i === 0 ? { ...v, target: ['production'] } : v), 'before'],
-    [initial.map((v, i) => i === 0 ? { ...v, value: 'https://fiepaguycecrredwrcwx.supabase.co' } : v), 'before'],
+    [
+      initial.map((v, i) => (i === 0 ? { ...v, gitBranch: null } : v)),
+      'before'
+    ],
+    [
+      initial.map((v, i) => (i === 0 ? { ...v, target: ['production'] } : v)),
+      'before'
+    ],
+    [
+      initial.map((v, i) =>
+        i === 0
+          ? { ...v, value: 'https://fiepaguycecrredwrcwx.supabase.co' }
+          : v
+      ),
+      'before'
+    ],
     [final.slice(0, 7), 'after'],
-    [final.map((v, i) => i === 7 ? { ...v, type: 'plain' } : v), 'after']
+    [final.map((v, i) => (i === 7 ? { ...v, type: 'plain' } : v)), 'after']
   ];
   for (const [envs, stage] of wrong) {
     assert.throws(() => assertProvisioningInventory(envs, stage), FAIL);
@@ -229,17 +317,40 @@ test('Stripe requires two distinct active test prices, expected amounts and meta
     premiumPriceId: 'price_' + '2'.repeat(20)
   });
   const mutations = [
-    (v) => { v[0].livemode = true; },
-    (v) => { v[1].active = false; },
-    (v) => { v[1].unit_amount = 1980; },
-    (v) => { v[0].currency = 'usd'; },
-    (v) => { v[0].recurring.interval = 'year'; },
-    (v) => { v[1].product.livemode = true; },
-    (v) => { v[0].metadata.novelight_plan = 'premium'; v[0].product.metadata.novelight_plan = 'premium'; },
-    (v) => { v[1].id = v[0].id; },
-    (v) => { v[1].product.id = v[0].product.id; },
-    (v) => { v[1].lookup_key = v[0].lookup_key; },
-    (v) => { v.pop(); }
+    (v) => {
+      v[0].livemode = true;
+    },
+    (v) => {
+      v[1].active = false;
+    },
+    (v) => {
+      v[1].unit_amount = 1980;
+    },
+    (v) => {
+      v[0].currency = 'usd';
+    },
+    (v) => {
+      v[0].recurring.interval = 'year';
+    },
+    (v) => {
+      v[1].product.livemode = true;
+    },
+    (v) => {
+      v[0].metadata.novelight_plan = 'premium';
+      v[0].product.metadata.novelight_plan = 'premium';
+    },
+    (v) => {
+      v[1].id = v[0].id;
+    },
+    (v) => {
+      v[1].product.id = v[0].product.id;
+    },
+    (v) => {
+      v[1].lookup_key = v[0].lookup_key;
+    },
+    (v) => {
+      v.pop();
+    }
   ];
   for (const [index, mutation] of mutations.entries()) {
     const v = pricesFixture();
@@ -254,11 +365,14 @@ test('Stripe uses GET only, TEST key only, no search results leak', async () => 
     'sk_test_' + 'a'.repeat(20),
     async (url, options) => {
       seen.push({ url: String(url), options });
-      return { ok: true, json: async () => ({
-        object: 'list',
-        has_more: false,
-        data: pricesFixture()
-      }) };
+      return {
+        ok: true,
+        json: async () => ({
+          object: 'list',
+          has_more: false,
+          data: pricesFixture()
+        })
+      };
     }
   );
   assert.equal(seen.length, 1);
@@ -267,9 +381,10 @@ test('Stripe uses GET only, TEST key only, no search results leak', async () => 
   assert.equal(seen[0].options.redirect, 'error');
   assert.equal(prices.standardPriceId, 'price_' + '1'.repeat(20));
   await assert.rejects(
-    () => retrieveStripeTestPrices('sk_live_' + 'a'.repeat(20), async () => {
-      throw new Error('must not request live Stripe');
-    }),
+    () =>
+      retrieveStripeTestPrices('sk_live_' + 'a'.repeat(20), async () => {
+        throw new Error('must not request live Stripe');
+      }),
     FAIL
   );
 });
@@ -287,12 +402,16 @@ test('Supabase verifies STAGING-only privileged credentials read-only', async ()
     true
   );
   assert.equal(seen.length, 1);
-  assert.match(seen[0].url, /^https:\/\/wmlzjgvxgoyrovdhbqbg\.supabase\.co\/auth\/v1\/admin\/users/u);
+  assert.match(
+    seen[0].url,
+    /^https:\/\/wmlzjgvxgoyrovdhbqbg\.supabase\.co\/auth\/v1\/admin\/users/u
+  );
   assert.equal(seen[0].options.method, 'GET');
   await assert.rejects(
-    () => verifyStagingAdminKey('sk_live_wrong', async () => {
-      throw new Error('must not reach Supabase');
-    }),
+    () =>
+      verifyStagingAdminKey('sk_live_wrong', async () => {
+        throw new Error('must not reach Supabase');
+      }),
     FAIL
   );
 });
@@ -306,7 +425,10 @@ test('only after both verified service credentials and prices may POST four bran
       teamId: 'team_2XFgtRCPJQ6pbrEa4mOLQAEx',
       projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe'
     }),
-    verifySupabase: async () => { seen.push('supabase'); return true; },
+    verifySupabase: async () => {
+      seen.push('supabase');
+      return true;
+    },
     verifyStripe: async () => {
       seen.push('stripe');
       return {
@@ -316,7 +438,10 @@ test('only after both verified service credentials and prices may POST four bran
     },
     fetchImpl: async (url, options) => {
       if (options.method === 'GET') {
-        return { ok: true, json: async () => ({ envs: posts.length ? final : initial }) };
+        return {
+          ok: true,
+          json: async () => ({ envs: posts.length ? final : initial })
+        };
       }
       posts.push(JSON.parse(options.body));
       seen.push('post');
@@ -326,17 +451,32 @@ test('only after both verified service credentials and prices may POST four bran
   assert.equal(result.createdKeys.length, 4);
   assert.deepEqual(seen, ['supabase', 'stripe', 'post']);
   assert.equal(posts.length, 1);
-  assert.deepEqual(posts[0].map((v) => v.key), final.slice(4).map((v) => v.key));
-  assert.equal(posts[0].every((v) =>
-    v.gitBranch === REF && v.target.join() === 'preview' && v.type === 'sensitive'
-  ), true);
+  assert.deepEqual(
+    posts[0].map((v) => v.key),
+    final.slice(4).map((v) => v.key)
+  );
+  assert.equal(
+    posts[0].every(
+      (v) =>
+        v.gitBranch === REF &&
+        v.target.join() === 'preview' &&
+        v.type === 'sensitive'
+    ),
+    true
+  );
 });
 
 test('invalid target, missing protected secret, Stripe failure and partial inventory cause zero mutations', async () => {
   const base = credentialsFixture();
   const cases = [
     { env: { ...base, APPROVED_MAIN_SHA: 'c'.repeat(40) }, input: initial },
-    { env: { ...base, STAGING_SUPABASE_URL: 'https://fiepaguycecrredwrcwx.supabase.co' }, input: initial },
+    {
+      env: {
+        ...base,
+        STAGING_SUPABASE_URL: 'https://fiepaguycecrredwrcwx.supabase.co'
+      },
+      input: initial
+    },
     { env: base, input: final },
     { env: base, input: initial, scopeWrong: true },
     { env: base, input: initial, stripeFail: true },
@@ -345,25 +485,29 @@ test('invalid target, missing protected secret, Stripe failure and partial inven
   for (const entry of cases) {
     let post = 0;
     await assert.rejects(
-      () => provisionAccountDeletionEnv({
-        env: entry.env,
-        resolveScope: async () => ({
-          teamId: entry.scopeWrong ? 'bad-team' : 'team_2XFgtRCPJQ6pbrEa4mOLQAEx',
-          projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe'
+      () =>
+        provisionAccountDeletionEnv({
+          env: entry.env,
+          resolveScope: async () => ({
+            teamId: entry.scopeWrong
+              ? 'bad-team'
+              : 'team_2XFgtRCPJQ6pbrEa4mOLQAEx',
+            projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe'
+          }),
+          verifySupabase: async () => {
+            if (entry.supabaseFail)
+              throw new Error('secret is not valid for Staging');
+            return true;
+          },
+          verifyStripe: async () => {
+            if (entry.stripeFail) throw new Error('missing test prices');
+            return { standardPriceId: 'price_1', premiumPriceId: 'price_2' };
+          },
+          fetchImpl: async (url, options) => {
+            if (options.method === 'POST') post += 1;
+            return { ok: true, json: async () => ({ envs: entry.input }) };
+          }
         }),
-        verifySupabase: async () => {
-          if (entry.supabaseFail) throw new Error('secret is not valid for Staging');
-          return true;
-        },
-        verifyStripe: async () => {
-          if (entry.stripeFail) throw new Error('missing test prices');
-          return { standardPriceId: 'price_1', premiumPriceId: 'price_2' };
-        },
-        fetchImpl: async (url, options) => {
-          if (options.method === 'POST') post += 1;
-          return { ok: true, json: async () => ({ envs: entry.input }) };
-        }
-      }),
       /./u
     );
     assert.equal(post, 0);
@@ -372,7 +516,10 @@ test('invalid target, missing protected secret, Stripe failure and partial inven
 
 test('workflow is OWNER ledger-only, protected staging and never Preview/Production', () => {
   const workflow = readFileSync(
-    new URL('../.github/workflows/account-deletion-staging-env-provision.yml', import.meta.url),
+    new globalThis.URL(
+      '../.github/workflows/account-deletion-staging-env-provision.yml',
+      import.meta.url
+    ),
     'utf8'
   );
   assert.match(workflow, /issue_comment:/u);
