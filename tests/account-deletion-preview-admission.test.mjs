@@ -6,9 +6,7 @@ import {
   REVIEWED_FILES,
   assertAccountDeletionPreviewAdmission
 } from '../scripts/account-deletion-preview-admission.mjs';
-import {
-  assertAccountPreviewEnvironment
-} from '../scripts/account-deletion-preview-env-readiness.mjs';
+import { assertAccountPreviewEnvironment } from '../scripts/account-deletion-preview-env-readiness.mjs';
 
 const owner = 'bingohooah888-ai';
 const repo = owner + '/novelrise';
@@ -37,12 +35,14 @@ function approvalFixture() {
       id: 1002,
       author_association: 'OWNER',
       user: { login: owner },
-      body: 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_APPROVE ' + JSON.stringify({
-        scope: 'account-deletion-preview',
-        mainSha,
-        candidateSha,
-        confirmation: 'STAGING APPROVED'
-      })
+      body:
+        'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_APPROVE ' +
+        JSON.stringify({
+          scope: 'account-deletion-preview',
+          mainSha,
+          candidateSha,
+          confirmation: 'STAGING APPROVED'
+        })
     },
     main: { object: { sha: mainSha } },
     pr: {
@@ -109,13 +109,22 @@ test('only exact OWNER, PR, main, blobs and unused approval pass', () => {
 });
 
 test('closed or locked ledger never allows a Preview', () => {
-  for (const changed of ['event_closed', 'live_closed', 'event_locked', 'live_locked']) {
+  for (const changed of [
+    'event_closed',
+    'live_closed',
+    'event_locked',
+    'live_locked'
+  ]) {
     const f = approvalFixture();
     if (changed === 'event_closed') f.issue.state = 'closed';
     if (changed === 'live_closed') f.liveIssue.state = 'closed';
     if (changed === 'event_locked') f.issue.locked = true;
     if (changed === 'live_locked') f.liveIssue.locked = true;
-    assert.throws(() => assertAccountDeletionPreviewAdmission(f), DENY, changed);
+    assert.throws(
+      () => assertAccountDeletionPreviewAdmission(f),
+      DENY,
+      changed
+    );
   }
 });
 
@@ -127,28 +136,54 @@ test('reject invalid author, issue and non-owner PR', () => {
     if (changed === 'prOwner') f.pr.user.login = 'another-user';
     if (changed === 'fork') f.pr.head.repo.full_name = 'other/repo';
     if (changed === 'branch') f.pr.head.ref = 'another-branch';
-    assert.throws(() => assertAccountDeletionPreviewAdmission(f), DENY, changed);
+    assert.throws(
+      () => assertAccountDeletionPreviewAdmission(f),
+      DENY,
+      changed
+    );
   }
 });
 
 test('reject main/head drift, unreviewed file and modified blob', () => {
-  for (const changed of ['main', 'head', 'base', 'diverged', 'extra', 'blob', 'missing']) {
+  for (const changed of [
+    'main',
+    'head',
+    'base',
+    'diverged',
+    'extra',
+    'blob',
+    'missing'
+  ]) {
     const f = approvalFixture();
     if (changed === 'main') f.main.object.sha = 'f'.repeat(40);
     if (changed === 'head') f.pr.head.sha = 'f'.repeat(40);
     if (changed === 'base') f.pr.base.sha = 'f'.repeat(40);
     if (changed === 'diverged') f.compare.behind_by = 1;
     if (changed === 'extra') {
-      f.compare.files.push({ filename: 'backdoor.js', sha: 'f'.repeat(40), status: 'added' });
+      f.compare.files.push({
+        filename: 'backdoor.js',
+        sha: 'f'.repeat(40),
+        status: 'added'
+      });
     }
     if (changed === 'blob') f.compare.files[0].sha = 'f'.repeat(40);
     if (changed === 'missing') f.compare.files.pop();
-    assert.throws(() => assertAccountDeletionPreviewAdmission(f), DENY, changed);
+    assert.throws(
+      () => assertAccountDeletionPreviewAdmission(f),
+      DENY,
+      changed
+    );
   }
 });
 
 test('reject reused, incomplete or malformed ledger', () => {
-  for (const changed of ['claimed', 'consumed', 'empty', 'incomplete', 'malformed']) {
+  for (const changed of [
+    'claimed',
+    'consumed',
+    'empty',
+    'incomplete',
+    'malformed'
+  ]) {
     const f = approvalFixture();
     const claimed = {
       requestCommentId: '1002',
@@ -157,21 +192,39 @@ test('reject reused, incomplete or malformed ledger', () => {
       runId: '5678'
     };
     if (changed === 'claimed') {
-      f.ledgerPages = [[{
-        body: 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CLAIMED ' +
-          JSON.stringify(claimed)
-      }]];
+      f.ledgerPages = [
+        [
+          {
+            body:
+              'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CLAIMED ' +
+              JSON.stringify(claimed)
+          }
+        ]
+      ];
     }
     if (changed === 'consumed') {
-      f.ledgerPages = [[{
-        body: 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CONSUMED ' +
-          JSON.stringify({ ...claimed, result: 'failure' })
-      }]];
+      f.ledgerPages = [
+        [
+          {
+            body:
+              'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CONSUMED ' +
+              JSON.stringify({ ...claimed, result: 'failure' })
+          }
+        ]
+      ];
     }
     if (changed === 'empty') f.ledgerPages = [];
-    if (changed === 'incomplete') f.ledgerPages = [Array.from({ length: 100 }, () => ({ body: 'log' }))];
-    if (changed === 'malformed') f.ledgerPages = [[{ body: 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CLAIMED bad' }]];
-    assert.throws(() => assertAccountDeletionPreviewAdmission(f), DENY, changed);
+    if (changed === 'incomplete')
+      f.ledgerPages = [Array.from({ length: 100 }, () => ({ body: 'log' }))];
+    if (changed === 'malformed')
+      f.ledgerPages = [
+        [{ body: 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CLAIMED bad' }]
+      ];
+    assert.throws(
+      () => assertAccountDeletionPreviewAdmission(f),
+      DENY,
+      changed
+    );
   }
 });
 
@@ -184,18 +237,30 @@ test('reject extra approval payload field, wrong scope and absent confirmation',
     if (changed === 'scope') request.scope = 'full-smoke';
     if (changed === 'confirmation') request.confirmation = 'YES';
     f.comment.body = prefix + JSON.stringify(request);
-    assert.throws(() => assertAccountDeletionPreviewAdmission(f), DENY, changed);
+    assert.throws(
+      () => assertAccountDeletionPreviewAdmission(f),
+      DENY,
+      changed
+    );
   }
 });
 
 test('Preview environment requires all eight exact branch-only entries', () => {
   assert.equal(assertAccountPreviewEnvironment(envFixture()).ready, true);
-  for (const changed of ['unscoped', 'wrongBranch', 'missing', 'prodUrl', 'badType', 'duplicate']) {
+  for (const changed of [
+    'unscoped',
+    'wrongBranch',
+    'missing',
+    'prodUrl',
+    'badType',
+    'duplicate'
+  ]) {
     const f = envFixture();
     if (changed === 'unscoped') f.envs[0].gitBranch = null;
     if (changed === 'wrongBranch') f.envs[1].gitBranch = 'main';
     if (changed === 'missing') f.envs.pop();
-    if (changed === 'prodUrl') f.envs[0].value = 'https://fiepaguycecrredwrcwx.supabase.co';
+    if (changed === 'prodUrl')
+      f.envs[0].value = 'https://fiepaguycecrredwrcwx.supabase.co';
     if (changed === 'badType') f.envs[2].type = 'plain';
     if (changed === 'duplicate') f.envs.push({ ...f.envs[0] });
     assert.throws(() => assertAccountPreviewEnvironment(f), ENV_DENY, changed);
@@ -204,7 +269,10 @@ test('Preview environment requires all eight exact branch-only entries', () => {
 
 test('workflow remains OWNER-approved, closed-ledger denied and cost guarded', () => {
   const workflow = readFileSync(
-    new URL('../.github/workflows/account-deletion-candidate-preview.yml', import.meta.url),
+    new URL(
+      '../.github/workflows/account-deletion-candidate-preview.yml',
+      import.meta.url
+    ),
     'utf8'
   );
   assert.match(workflow, /issue_comment:/u);
@@ -213,7 +281,10 @@ test('workflow remains OWNER-approved, closed-ledger denied and cost guarded', (
   assert.match(workflow, /author_association == 'OWNER'/u);
   assert.match(workflow, /scripts\/account-deletion-preview-admission\.mjs/u);
   assert.match(workflow, /ACCOUNT_DELETE_PREVIEW_CLAIMED/u);
-  assert.match(workflow, /scripts\/account-deletion-preview-env-readiness\.mjs/u);
+  assert.match(
+    workflow,
+    /scripts\/account-deletion-preview-env-readiness\.mjs/u
+  );
   assert.match(workflow, /scripts\/vercel-preview-deployment\.mjs/u);
   assert.match(workflow, /scripts\/verify-staging-deployment\.mjs/u);
   assert.match(workflow, /ACCOUNT_DELETE_PREVIEW_CONSUMED/u);
