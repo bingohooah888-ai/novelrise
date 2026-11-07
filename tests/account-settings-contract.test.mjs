@@ -49,7 +49,14 @@ test('account settings verifies the logged-in user before rendering private emai
     /client\.auth\.updateUser\(\{email:newEmail\},\{emailRedirectTo\}\)/u
   );
   assert.match(account, /現在のメールアドレスと新しいメールアドレスの両方/u);
-  assert.doesNotMatch(account, /client\.auth\.getSession\(\)/u);
+  // Private email still uses server-verified getUser(); deletion may read the
+  // existing session token because the server independently verifies its JWT.
+  const initScript = account.slice(
+    account.indexOf('async function init(){'),
+    account.indexOf("emailForm.addEventListener('submit'")
+  );
+  assert.doesNotMatch(initScript, /client\\.auth\\.getSession\\(\\)/u);
+  assert.match(account, /client\\.auth\\.getSession\\(\\)/u);
   assert.doesNotMatch(account, /client\.auth\.signInWithPassword/u);
   assert.doesNotMatch(account, /user\.new_email|email_change_sent_at/u);
   assert.doesNotMatch(account, /NovelightClient/u);
