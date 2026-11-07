@@ -407,6 +407,7 @@ test('Supabase verifies STAGING-only privileged credentials read-only', async ()
     /^https:\/\/wmlzjgvxgoyrovdhbqbg\.supabase\.co\/auth\/v1\/admin\/users/u
   );
   assert.equal(seen[0].options.method, 'GET');
+  assert.equal(Object.hasOwn(seen[0].options.headers, 'Authorization'), false);
   await assert.rejects(
     () =>
       verifyStagingAdminKey('sk_live_wrong', async () => {
@@ -480,7 +481,9 @@ test('invalid target, missing protected secret, Stripe failure and partial inven
     { env: base, input: final },
     { env: base, input: initial, scopeWrong: true },
     { env: base, input: initial, stripeFail: true },
-    { env: base, input: initial, supabaseFail: true }
+    { env: base, input: initial, supabaseFail: true },
+    { env: base, input: initial, supabaseFalse: true },
+    { env: base, input: initial, stripeWrongIds: true }
   ];
   for (const entry of cases) {
     let post = 0;
@@ -497,11 +500,13 @@ test('invalid target, missing protected secret, Stripe failure and partial inven
           verifySupabase: async () => {
             if (entry.supabaseFail)
               throw new Error('secret is not valid for Staging');
-            return true;
+            return entry.supabaseFalse ? false : true;
           },
           verifyStripe: async () => {
             if (entry.stripeFail) throw new Error('missing test prices');
-            return { standardPriceId: 'price_1', premiumPriceId: 'price_2' };
+            return entry.stripeWrongIds
+              ? { standardPriceId: 'price_' + '1'.repeat(20), premiumPriceId: 'price_' + '1'.repeat(20) }
+              : { standardPriceId: 'price_' + '1'.repeat(20), premiumPriceId: 'price_' + '2'.repeat(20) };
           },
           fetchImpl: async (url, options) => {
             if (options.method === 'POST') post += 1;
