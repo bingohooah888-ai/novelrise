@@ -334,7 +334,7 @@ test('deletion failures expose a support reference and only sanitized stage meta
   assert.equal(response.state.body.error, 'ACCOUNT_DELETE_FAILED');
   assert.match(
     response.state.body.requestId,
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
   );
   assert.equal(captured.length, 1);
   assert.equal(captured[0][0], 'account deletion failed');
