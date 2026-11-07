@@ -239,7 +239,9 @@ export async function provisionAccountDeletionEnv({
 
   // No mutation unless BOTH independent service credentials and Stripe
   // TEST prices are verified. API responses are not logged or persisted.
-  if ((await verifySupabase(env.STAGING_SUPABASE_SECRET_KEY, fetchImpl)) !== true) {
+  if (
+    (await verifySupabase(env.STAGING_SUPABASE_SECRET_KEY, fetchImpl)) !== true
+  ) {
     fail('STAGING_SECRET_NOT_VERIFIED');
   }
   const verified = await verifyStripe(env.STRIPE_TEST_SECRET_KEY, fetchImpl);
