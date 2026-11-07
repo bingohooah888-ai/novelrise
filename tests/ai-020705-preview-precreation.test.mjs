@@ -28,9 +28,20 @@ test('missing new preview never permits creation or execution', () => {
   assert.ok(result.missingBranchScopedEnvNames.includes('SUPABASE_URL'));
 });
 // prettier-ignore
-test('matching metadata is still not an authenticated approval', () => {
+test('matching metadata with branch env still never grants approval', () => {
+  const requiredNames = [
+    'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SECRET_KEY',
+    'NOVELIGHT_STAGING_SUPABASE_URL',
+    'NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY',
+    'NOVELIGHT_AI_ENABLED', 'NOVELIGHT_AI_REVIEW_ENABLED',
+    'NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED',
+    'NOVELIGHT_AI_020705_ONE_SHOT_ENABLED'
+  ];
   const result = inspect020705PreviewPrecreation({
     scope, currentMain: main,
+    envMetadata: requiredNames.map(key => ({
+      key, target: ['preview'], gitBranch: scope.branch
+    })),
     existingPreview: {
       id: 'dpl_synthetic123', repository: scope.repository,
       projectRef: scope.stagingProjectRef, branch: scope.branch,
@@ -38,7 +49,35 @@ test('matching metadata is still not an authenticated approval', () => {
     }
   });
   assert.equal(result.status, 'PREVIEW_METADATA_MATCHES_REQUIRES_INDEPENDENT_APPROVAL');
+  assert.deepEqual(result.missingBranchScopedEnvNames, []);
   assert.equal(result.authorizesPreviewCreation, false);
+});
+
+test('matching Preview with missing branch env remains NO-GO', () => {
+  const result = inspect020705PreviewPrecreation({
+    scope,
+    currentMain: main,
+    envMetadata: [
+      {
+        key: 'SUPABASE_URL',
+        target: ['preview'],
+        gitBranch: 'staging/ai-02-07-05-old'
+      }
+    ],
+    existingPreview: {
+      id: 'dpl_synthetic123',
+      repository: scope.repository,
+      projectRef: scope.stagingProjectRef,
+      branch: scope.branch,
+      sha: SHA,
+      state: 'READY',
+      target: 'preview'
+    }
+  });
+  assert.equal(result.status, 'PREVIEW_BRANCH_ENV_INCOMPLETE_NO_GO');
+  assert.equal(result.missingBranchScopedEnvNames.length, 9);
+  assert.equal(result.authorizesStagingWrite, false);
+  assert.equal(result.authorizesPaidCall, false);
 });
 // prettier-ignore
 test('stale Preview cannot be used for current-main paid trial', () => {

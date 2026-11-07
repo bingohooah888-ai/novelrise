@@ -36,11 +36,18 @@ export async function inspect020705ProtectedRunnerOffline({
     episodeId: approved.episodeId
   });
   const checked = [];
+  let blocked = false;
   for (const name of PROOFS) {
-    // Every check is read-only by CONTRACT. Its callback must be supplied
-    // by a future authenticated runner; this does not verify provenance.
+    // Stop at the first failed observation. In particular, never request
+    // downstream consent/billing evidence after a SHA or protection mismatch.
+    // These callbacks remain offline/read-only and unauthenticated here.
+    if (blocked) {
+      checked.push(Object.freeze({name, verified: false, skipped: true}));
+      continue;
+    }
     const valid = await verifiers[name](scope);
-    checked.push(Object.freeze({name, verified: valid === true}));
+    blocked = valid !== true;
+    checked.push(Object.freeze({name, verified: valid === true, skipped: false}));
   }
   const passed = checked.every(x => x.verified);
   return Object.freeze({
