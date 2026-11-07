@@ -15,13 +15,41 @@ const CONSUMED = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CONSUMED ';
 // The reviewed account deletion PR content blobs at cc3edc2. Changing one
 // requires a separate trusted-main review of this allowlist (never self-expand).
 export const REVIEWED_FILES = Object.freeze([
-  { path: 'account-settings.html', status: 'modified', sha: 'd73bda6d16f7519c6518aae1590ef0e901b3bd78' },
-  { path: 'api/_lib/delete-account.js', status: 'modified', sha: 'eb6d403f1e0764aa398237e64d15cfe4ffbca1bf' },
-  { path: 'docs/ACCOUNT-DELETION-OPERATIONS.md', status: 'added', sha: '7d25da889282712e536b77b76bab118b04c4555d' },
-  { path: 'docs/DOCUMENT-SOURCE-OF-TRUTH.md', status: 'modified', sha: '2686dfe327fd146f0272c0c4d4364c5904760805' },
-  { path: 'tests/account-deletion-api.test.mjs', status: 'modified', sha: '6068fd2ea3feca1547ac349a1c58c1e0e977c700' },
-  { path: 'tests/account-deletion-page.test.mjs', status: 'modified', sha: 'cdeacf38856ea5fd2d9def3b3668629cc2db0e2d' },
-  { path: 'tests/account-settings-contract.test.mjs', status: 'modified', sha: 'd418856c57eb6c6b47f65e568d4951fe38bf4fb2' }
+  {
+    path: 'account-settings.html',
+    status: 'modified',
+    sha: 'd73bda6d16f7519c6518aae1590ef0e901b3bd78'
+  },
+  {
+    path: 'api/_lib/delete-account.js',
+    status: 'modified',
+    sha: 'eb6d403f1e0764aa398237e64d15cfe4ffbca1bf'
+  },
+  {
+    path: 'docs/ACCOUNT-DELETION-OPERATIONS.md',
+    status: 'added',
+    sha: '7d25da889282712e536b77b76bab118b04c4555d'
+  },
+  {
+    path: 'docs/DOCUMENT-SOURCE-OF-TRUTH.md',
+    status: 'modified',
+    sha: '2686dfe327fd146f0272c0c4d4364c5904760805'
+  },
+  {
+    path: 'tests/account-deletion-api.test.mjs',
+    status: 'modified',
+    sha: '6068fd2ea3feca1547ac349a1c58c1e0e977c700'
+  },
+  {
+    path: 'tests/account-deletion-page.test.mjs',
+    status: 'modified',
+    sha: 'cdeacf38856ea5fd2d9def3b3668629cc2db0e2d'
+  },
+  {
+    path: 'tests/account-settings-contract.test.mjs',
+    status: 'modified',
+    sha: 'd418856c57eb6c6b47f65e568d4951fe38bf4fb2'
+  }
 ]);
 
 function deny(reason) {
@@ -29,12 +57,20 @@ function deny(reason) {
 }
 
 function exactKeys(value, fields) {
-  return value && typeof value === 'object' && !Array.isArray(value) &&
-    Object.keys(value).sort().join(',') === [...fields].sort().join(',');
+  return (
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.keys(value).sort().join(',') === [...fields].sort().join(',')
+  );
 }
 
 function parseMarker(body, prefix, fields) {
-  if (typeof body !== 'string' || body.length > 2048 || !body.startsWith(prefix)) {
+  if (
+    typeof body !== 'string' ||
+    body.length > 2048 ||
+    !body.startsWith(prefix)
+  ) {
     deny('unknown approval marker');
   }
   let value;
@@ -48,63 +84,101 @@ function parseMarker(body, prefix, fields) {
 }
 
 export function assertAccountDeletionPreviewAdmission({
-  repository, issue, liveIssue, comment, main, pr, compare, ledgerPages
+  repository,
+  issue,
+  liveIssue,
+  comment,
+  main,
+  pr,
+  compare,
+  ledgerPages
 }) {
-  if (repository !== REPO ||
-      issue?.number !== 188 || issue?.url !== ISSUE_URL ||
-      issue?.state !== 'open' || issue?.locked === true ||
-      issue?.title !== TITLE || issue?.pull_request ||
-      issue?.user?.login !== OWNER ||
-      !Number.isSafeInteger(issue?.id) || issue.id <= 0 ||
-      liveIssue?.id !== issue.id || liveIssue?.number !== 188 ||
-      liveIssue?.url !== ISSUE_URL || liveIssue?.state !== 'open' ||
-      liveIssue?.locked === true || liveIssue?.title !== TITLE ||
-      liveIssue?.pull_request || liveIssue?.user?.login !== OWNER) {
+  if (
+    repository !== REPO ||
+    issue?.number !== 188 ||
+    issue?.url !== ISSUE_URL ||
+    issue?.state !== 'open' ||
+    issue?.locked === true ||
+    issue?.title !== TITLE ||
+    issue?.pull_request ||
+    issue?.user?.login !== OWNER ||
+    !Number.isSafeInteger(issue?.id) ||
+    issue.id <= 0 ||
+    liveIssue?.id !== issue.id ||
+    liveIssue?.number !== 188 ||
+    liveIssue?.url !== ISSUE_URL ||
+    liveIssue?.state !== 'open' ||
+    liveIssue?.locked === true ||
+    liveIssue?.title !== TITLE ||
+    liveIssue?.pull_request ||
+    liveIssue?.user?.login !== OWNER
+  ) {
     deny('control issue is closed, locked, or not authenticated');
   }
-  if (!Number.isSafeInteger(comment?.id) || comment.id <= 0 ||
-      comment?.user?.login !== OWNER ||
-      comment?.author_association !== 'OWNER') {
+  if (
+    !Number.isSafeInteger(comment?.id) ||
+    comment.id <= 0 ||
+    comment?.user?.login !== OWNER ||
+    comment?.author_association !== 'OWNER'
+  ) {
     deny('not an OWNER-authored approval');
   }
   const approved = parseMarker(comment.body, PREFIX, [
-    'scope', 'mainSha', 'candidateSha', 'confirmation'
+    'scope',
+    'mainSha',
+    'candidateSha',
+    'confirmation'
   ]);
-  if (approved.scope !== 'account-deletion-preview' ||
-      approved.confirmation !== 'STAGING APPROVED' ||
-      !SHA.test(approved.mainSha) || !SHA.test(approved.candidateSha) ||
-      approved.mainSha === approved.candidateSha ||
-      main?.object?.sha !== approved.mainSha) {
+  if (
+    approved.scope !== 'account-deletion-preview' ||
+    approved.confirmation !== 'STAGING APPROVED' ||
+    !SHA.test(approved.mainSha) ||
+    !SHA.test(approved.candidateSha) ||
+    approved.mainSha === approved.candidateSha ||
+    main?.object?.sha !== approved.mainSha
+  ) {
     deny('approval scope or exact current main mismatch');
   }
 
-  if (pr?.number !== PR_NUMBER || pr?.state !== 'open' ||
-      pr?.draft !== true || pr?.merged === true ||
-      pr?.user?.login !== OWNER ||
-      pr?.base?.ref !== 'main' || pr?.base?.sha !== approved.mainSha ||
-      pr?.head?.sha !== approved.candidateSha ||
-      pr?.head?.ref !== PR_REF ||
-      pr?.head?.repo?.full_name !== REPO) {
+  if (
+    pr?.number !== PR_NUMBER ||
+    pr?.state !== 'open' ||
+    pr?.draft !== true ||
+    pr?.merged === true ||
+    pr?.user?.login !== OWNER ||
+    pr?.base?.ref !== 'main' ||
+    pr?.base?.sha !== approved.mainSha ||
+    pr?.head?.sha !== approved.candidateSha ||
+    pr?.head?.ref !== PR_REF ||
+    pr?.head?.repo?.full_name !== REPO
+  ) {
     deny('candidate PR identity, base, or head drift');
   }
 
-  if (compare?.status !== 'ahead' || compare.behind_by !== 0 ||
-      compare.base_commit?.sha !== approved.mainSha ||
-      !Number.isSafeInteger(compare.total_commits) ||
-      compare.total_commits < 1 || compare.total_commits > 250 ||
-      compare.ahead_by !== compare.total_commits ||
-      !Array.isArray(compare.commits) ||
-      compare.commits.length !== compare.total_commits ||
-      compare.commits.at(-1)?.sha !== approved.candidateSha ||
-      !Array.isArray(compare.files) ||
-      compare.files.length !== REVIEWED_FILES.length) {
+  if (
+    compare?.status !== 'ahead' ||
+    compare.behind_by !== 0 ||
+    compare.base_commit?.sha !== approved.mainSha ||
+    !Number.isSafeInteger(compare.total_commits) ||
+    compare.total_commits < 1 ||
+    compare.total_commits > 250 ||
+    compare.ahead_by !== compare.total_commits ||
+    !Array.isArray(compare.commits) ||
+    compare.commits.length !== compare.total_commits ||
+    compare.commits.at(-1)?.sha !== approved.candidateSha ||
+    !Array.isArray(compare.files) ||
+    compare.files.length !== REVIEWED_FILES.length
+  ) {
     deny('candidate ancestry or changed-file count is unverified');
   }
 
   const actualFiles = new Map();
   for (const file of compare.files) {
-    if (!file || typeof file.filename !== 'string' ||
-        actualFiles.has(file.filename)) {
+    if (
+      !file ||
+      typeof file.filename !== 'string' ||
+      actualFiles.has(file.filename)
+    ) {
       deny('invalid or repeated candidate file');
     }
     actualFiles.set(file.filename, file);
@@ -116,19 +190,29 @@ export function assertAccountDeletionPreviewAdmission({
     }
   }
 
-  if (!Array.isArray(ledgerPages) || ledgerPages.length < 1 ||
-      ledgerPages.length > 50 ||
-      !ledgerPages.every((page) => Array.isArray(page) && page.length <= 100) ||
-      ledgerPages.at(-1).length >= 100) {
+  if (
+    !Array.isArray(ledgerPages) ||
+    ledgerPages.length < 1 ||
+    ledgerPages.length > 50 ||
+    !ledgerPages.every((page) => Array.isArray(page) && page.length <= 100) ||
+    ledgerPages.at(-1).length >= 100
+  ) {
     deny('approval ledger pagination incomplete');
   }
   for (const entry of ledgerPages.flat()) {
-    if (!entry || typeof entry.body !== 'string') deny('malformed ledger entry');
+    if (!entry || typeof entry.body !== 'string')
+      deny('malformed ledger entry');
     const marker = entry.body.startsWith(CLAIMED)
-      ? CLAIMED : entry.body.startsWith(CONSUMED) ? CONSUMED : null;
+      ? CLAIMED
+      : entry.body.startsWith(CONSUMED)
+        ? CONSUMED
+        : null;
     if (!marker) continue;
     const record = parseMarker(entry.body, marker, [
-      'requestCommentId', 'mainSha', 'candidateSha', 'runId',
+      'requestCommentId',
+      'mainSha',
+      'candidateSha',
+      'runId',
       ...(marker === CONSUMED ? ['result'] : [])
     ]);
     if (String(record.requestCommentId) === String(comment.id)) {
@@ -143,7 +227,10 @@ export function assertAccountDeletionPreviewAdmission({
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   try {
     const paths = process.argv.slice(2);
     if (paths.length !== 6) deny('six read-only evidence files required');
