@@ -18,7 +18,11 @@ function deny() {
 }
 
 function parseMarker(body, prefix, keys) {
-  if (typeof body !== 'string' || body.length > 2048 || !body.startsWith(prefix)) {
+  if (
+    typeof body !== 'string' ||
+    body.length > 2048 ||
+    !body.startsWith(prefix)
+  ) {
     deny();
   }
   let value;
@@ -116,7 +120,8 @@ export function admitAccountEnvProvision({
   }
   const actual = new Map();
   for (const file of compare.files) {
-    if (!file || typeof file.filename !== 'string' || actual.has(file.filename)) deny();
+    if (!file || typeof file.filename !== 'string' || actual.has(file.filename))
+      deny();
     actual.set(file.filename, file);
   }
   for (const file of REVIEWED_FILES) {
@@ -159,7 +164,10 @@ export function admitAccountEnvProvision({
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   try {
     if (process.argv.length !== 9) deny();
     const paths = process.argv.slice(2, 8);
