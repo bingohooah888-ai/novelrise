@@ -50,37 +50,48 @@ export function verifyTrustedDispatch(env) {
   return Object.freeze({ sha: env.EXPECTED_MAIN_SHA, scope: READONLY_SCOPE });
 }
 
-export function inspectManagementRecords(branchResponse, projectResponse) {
+// Supabase's Preview Branch is NOT a regular Project and must never be
+// queried through /v1/projects/{stagingRef}. Only the two documented,
+// credential-free-in-response parent Branch metadata endpoints are allowed.
+// This is a branch identity gate, not proof of the actual PostgreSQL server:
+// that separate proof requires an authenticated verify-full TLS connection.
+export function inspectManagementRecords(branchResponse, namedBranchResponse) {
   const branches = Array.isArray(branchResponse)
     ? branchResponse
     : branchResponse?.branches;
   if (!Array.isArray(branches)) stop('BRANCH_LIST_UNAVAILABLE');
-  const matches = branches.filter(
-    (x) =>
-      x?.project_ref === EXPECTED_STAGING &&
-      x?.parent_project_ref === EXPECTED_PARENT &&
-      x?.is_default === false &&
-      x?.name === 'staging' &&
-      x?.preview_project_status === 'ACTIVE_HEALTHY'
+  // Refuse ambiguous or replaced staging records (including name/ref collisions).
+  const candidates = branches.filter(
+    (entry) =>
+      entry?.name === 'staging' || entry?.project_ref === EXPECTED_STAGING
   );
-  if (matches.length !== 1) stop('STAGING_BRANCH_UNPROVEN');
-  if (!object(projectResponse)) stop('STAGING_PROJECT_NOT_FOUND');
-  const projectRef = projectResponse.ref ?? projectResponse.id;
-  if (
-    projectRef !== EXPECTED_STAGING ||
-    projectResponse.status !== 'ACTIVE_HEALTHY' ||
-    !object(projectResponse.database) ||
-    projectResponse.database.host !==
-      'db.' + EXPECTED_STAGING + '.supabase.co' ||
-    !Number.isInteger(Number(projectResponse.database.postgres_engine)) ||
-    Number(projectResponse.database.postgres_engine) < 17
-  )
-    stop('STAGING_PROJECT_IDENTITY_MISMATCH');
+  if (candidates.length !== 1) stop('STAGING_BRANCH_UNPROVEN');
+  const listed = candidates[0];
+  if (!object(namedBranchResponse)) stop('STAGING_BRANCH_DETAIL_UNAVAILABLE');
+  const named = namedBranchResponse;
+  const expectedId = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/u;
+  const matches = (branch) =>
+    object(branch) &&
+    typeof branch.id === 'string' &&
+    expectedId.test(branch.id) &&
+    branch.name === 'staging' &&
+    branch.project_ref === EXPECTED_STAGING &&
+    branch.parent_project_ref === EXPECTED_PARENT &&
+    branch.is_default === false &&
+    branch.preview_project_status === 'ACTIVE_HEALTHY' &&
+    branch.persistent === false &&
+    branch.with_data === false;
+  if (!matches(listed) || !matches(named) || listed.id !== named.id)
+    stop('STAGING_BRANCH_IDENTITY_MISMATCH');
   return Object.freeze({
+    // Two independently requested parent-scoped management views agree.
     managementVerified: true,
     ref: EXPECTED_STAGING,
-    expectedDbHost: projectResponse.database.host,
-    postgresMajor: Number(projectResponse.database.postgres_engine)
+    parentRef: EXPECTED_PARENT,
+    branchId: named.id,
+    // Derived pinned identity hostname, NOT a Management API DB-host claim.
+    expectedDbHost: 'db.' + EXPECTED_STAGING + '.supabase.co',
+    postgresVersionVerified: false
   });
 }
 
@@ -164,7 +175,7 @@ export async function fetchManagementEvidence(token, fetchImpl = fetch) {
     if (!response.ok)
       stop(
         response.status === 404
-          ? 'MANAGEMENT_PROJECT_NOT_FOUND'
+          ? 'MANAGEMENT_BRANCH_NOT_FOUND'
           : 'MANAGEMENT_HTTP_NOT_OK'
       );
     try {
@@ -173,9 +184,12 @@ export async function fetchManagementEvidence(token, fetchImpl = fetch) {
       stop('MANAGEMENT_JSON_INVALID');
     }
   }
+  // Both documented endpoints return Branch metadata only; never call
+  // /v1/branches/{id} (branch config may contain credentials), nor
+  // /v1/projects/{stagingRef} (Preview is not a regular Project).
   return {
     branches: await get('projects/' + EXPECTED_PARENT + '/branches'),
-    project: await get('projects/' + EXPECTED_STAGING)
+    branch: await get('projects/' + EXPECTED_PARENT + '/branches/staging')
   };
 }
 
@@ -296,7 +310,7 @@ async function runStage38() {
   // A pinned existing candidate is necessary but cannot serve as auth.
   compilePinnedCutoverReview();
   const data = await fetchManagementEvidence(env.SUPABASE_ACCESS_TOKEN);
-  const management = inspectManagementRecords(data.branches, data.project);
+  const management = inspectManagementRecords(data.branches, data.branch);
   const route = inspectConnectionRoute(env, management);
   const result = runSafeReadOnlyQuery({ env, route });
   return Object.freeze({
