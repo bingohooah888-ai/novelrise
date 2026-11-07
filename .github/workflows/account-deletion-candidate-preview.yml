@@ -84,6 +84,7 @@ jobs:
     timeout-minutes: 35
     permissions:
       contents: read
+      issues: read
       pull-requests: read
     env:
       GH_TOKEN: ${{ github.token }}
