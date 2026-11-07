@@ -20,7 +20,9 @@ test('account deletion requires an exact typed confirmation before calling the s
   );
   assert.match(account, /fetch\('\/api\/delete-account'/u);
   assert.match(account, /confirmation:DELETE_CONFIRMATION/u);
-  assert.match(account, /client\.auth\.refreshSession\(\)/u);
+  assert.match(account, /client\.auth\.getSession\(\)/u);
+  assert.doesNotMatch(account, /client\.auth\.refreshSession\(\)/u);
+  assert.match(account, /照会番号:/u);
   assert.match(account, /client\.auth\.signOut\(\{scope:'local'\}\)/u);
 });
 
