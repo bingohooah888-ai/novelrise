@@ -55,8 +55,8 @@ test('account settings verifies the logged-in user before rendering private emai
     account.indexOf('async function init(){'),
     account.indexOf("emailForm.addEventListener('submit'")
   );
-  assert.doesNotMatch(initScript, /client\\.auth\\.getSession\\(\\)/u);
-  assert.match(account, /client\\.auth\\.getSession\\(\\)/u);
+  assert.doesNotMatch(initScript, /client\.auth\.getSession\(\)/u);
+  assert.match(account, /client\.auth\.getSession\(\)/u);
   assert.doesNotMatch(account, /client\.auth\.signInWithPassword/u);
   assert.doesNotMatch(account, /user\.new_email|email_change_sent_at/u);
   assert.doesNotMatch(account, /NovelightClient/u);
