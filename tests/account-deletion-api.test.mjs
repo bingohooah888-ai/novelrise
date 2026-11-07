@@ -346,7 +346,10 @@ test('account deletion failures log safe metadata', async () => {
   assert.equal(captured[0][1].stage, 'storage_illustrations');
   assert.equal(captured[0][1].code, 'UNCLASSIFIED');
   assert.equal(captured[0][1].status, null);
-  assert.doesNotMatch(JSON.stringify(captured), /verified-user|storage failed/iu);
+  assert.doesNotMatch(
+    JSON.stringify(captured),
+    /verified-user|storage failed/iu
+  );
 });
 
 test('Auth FK failures log only safe metadata', async () => {
