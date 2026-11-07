@@ -420,8 +420,10 @@ test('Supabase verifies STAGING-only privileged credentials read-only', async ()
 test('only after both verified service credentials and prices may POST four branch values', async () => {
   const posts = [];
   const seen = [];
+  const stages = [];
   const result = await provisionAccountDeletionEnv({
     env: credentialsFixture(),
+    reportStage: (phase) => stages.push(phase),
     resolveScope: async () => ({
       teamId: 'team_2XFgtRCPJQ6pbrEa4mOLQAEx',
       projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe'
@@ -451,6 +453,17 @@ test('only after both verified service credentials and prices may POST four bran
   });
   assert.equal(result.createdKeys.length, 4);
   assert.deepEqual(seen, ['supabase', 'stripe', 'post']);
+  assert.deepEqual(stages, [
+    'CONTEXT',
+    'VERCEL_SCOPE',
+    'VERCEL_INVENTORY',
+    'SUPABASE_ADMIN',
+    'STRIPE_TEST_PRICES',
+    'VERCEL_PREVIEW_WRITE',
+    'POST_WRITE_VERIFY',
+    'COMPLETE'
+  ]);
+  assert.equal(stages.some((stage) => /sb_secret_|sk_test_|Bearer|price_/.test(stage)), false);
   assert.equal(posts.length, 1);
   assert.deepEqual(
     posts[0].map((v) => v.key),
@@ -487,10 +500,12 @@ test('invalid target, missing protected secret, Stripe failure and partial inven
   ];
   for (const entry of cases) {
     let post = 0;
+    const stages = [];
     await assert.rejects(
       () =>
         provisionAccountDeletionEnv({
           env: entry.env,
+          reportStage: (phase) => stages.push(phase),
           resolveScope: async () => ({
             teamId: entry.scopeWrong
               ? 'bad-team'
@@ -522,6 +537,8 @@ test('invalid target, missing protected secret, Stripe failure and partial inven
       /./u
     );
     assert.equal(post, 0);
+    assert.equal(stages.includes('VERCEL_PREVIEW_WRITE'), false);
+    assert.equal(stages.every((stage) => ['CONTEXT', 'VERCEL_SCOPE', 'VERCEL_INVENTORY', 'SUPABASE_ADMIN', 'STRIPE_TEST_PRICES'].includes(stage)), true);
   }
 });
 
