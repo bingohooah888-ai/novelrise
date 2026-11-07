@@ -463,7 +463,10 @@ test('only after both verified service credentials and prices may POST four bran
     'POST_WRITE_VERIFY',
     'COMPLETE'
   ]);
-  assert.equal(stages.some((stage) => /sb_secret_|sk_test_|Bearer|price_/.test(stage)), false);
+  assert.equal(
+    stages.some((stage) => /sb_secret_|sk_test_|Bearer|price_/.test(stage)),
+    false
+  );
   assert.equal(posts.length, 1);
   assert.deepEqual(
     posts[0].map((v) => v.key),
@@ -538,7 +541,18 @@ test('invalid target, missing protected secret, Stripe failure and partial inven
     );
     assert.equal(post, 0);
     assert.equal(stages.includes('VERCEL_PREVIEW_WRITE'), false);
-    assert.equal(stages.every((stage) => ['CONTEXT', 'VERCEL_SCOPE', 'VERCEL_INVENTORY', 'SUPABASE_ADMIN', 'STRIPE_TEST_PRICES'].includes(stage)), true);
+    assert.equal(
+      stages.every((stage) =>
+        [
+          'CONTEXT',
+          'VERCEL_SCOPE',
+          'VERCEL_INVENTORY',
+          'SUPABASE_ADMIN',
+          'STRIPE_TEST_PRICES'
+        ].includes(stage)
+      ),
+      true
+    );
   }
 });
 
