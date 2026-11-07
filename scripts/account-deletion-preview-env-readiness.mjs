@@ -25,14 +25,23 @@ function deny() {
 // A pre-cost gate; only inspects metadata and public-class URL fields.
 // Do not return/log any Vercel secrets, keys, or price identifiers.
 export function assertAccountPreviewEnvironment({ envs, branch, expectedUrl }) {
-  if (branch !== PREVIEW_BRANCH || expectedUrl !== STAGING_URL ||
-      expectedUrl === PROD_URL || !Array.isArray(envs)) {
+  if (
+    branch !== PREVIEW_BRANCH ||
+    expectedUrl !== STAGING_URL ||
+    expectedUrl === PROD_URL ||
+    !Array.isArray(envs)
+  ) {
     deny();
   }
   const variables = new Map();
   for (const item of envs) {
-    if (!item || item.gitBranch !== branch ||
-        !Array.isArray(item.target) || !item.target.includes('preview')) continue;
+    if (
+      !item ||
+      item.gitBranch !== branch ||
+      !Array.isArray(item.target) ||
+      !item.target.includes('preview')
+    )
+      continue;
     if (!REQUIRED_BRANCH_VARIABLES.includes(item.key)) continue;
     if (variables.has(item.key)) deny();
     variables.set(item.key, item);
@@ -68,10 +77,13 @@ export async function checkAccountPreviewEnvironment({
 } = {}) {
   const branch = env.STAGING_PREVIEW_REF;
   const expectedUrl = env.STAGING_EXPECTED_SUPABASE_URL;
-  if (branch !== PREVIEW_BRANCH || expectedUrl !== STAGING_URL ||
-      env.STAGING_E2E_READY !== 'true' ||
-      !env.STAGING_EXPECTED_PUBLISHABLE_KEY ||
-      !env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+  if (
+    branch !== PREVIEW_BRANCH ||
+    expectedUrl !== STAGING_URL ||
+    env.STAGING_E2E_READY !== 'true' ||
+    !env.STAGING_EXPECTED_PUBLISHABLE_KEY ||
+    !env.VERCEL_AUTOMATION_BYPASS_SECRET
+  ) {
     deny();
   }
   const token = env.VERCEL_API_TOKEN;
@@ -103,19 +115,25 @@ export async function checkAccountPreviewEnvironment({
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  checkAccountPreviewEnvironment().then((result) => {
-    console.log(
-      'Reviewed candidate Preview environment preflight passed: ' +
-      result.requiredVariableCount + ' branch-only variable classes.'
-    );
-  }).catch((error) => {
-    // Do not stringify the external API response or credential-bearing errors.
-    console.error(
-      error.message.startsWith('ACCOUNT_PREVIEW_ENV_DENIED')
-        ? error.message
-        : 'ACCOUNT_PREVIEW_ENV_DENIED: network or metadata verification failed.'
-    );
-    process.exitCode = 1;
-  });
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  checkAccountPreviewEnvironment()
+    .then((result) => {
+      console.log(
+        'Reviewed candidate Preview environment preflight passed: ' +
+          result.requiredVariableCount +
+          ' branch-only variable classes.'
+      );
+    })
+    .catch((error) => {
+      // Do not stringify the external API response or credential-bearing errors.
+      console.error(
+        error.message.startsWith('ACCOUNT_PREVIEW_ENV_DENIED')
+          ? error.message
+          : 'ACCOUNT_PREVIEW_ENV_DENIED: network or metadata verification failed.'
+      );
+      process.exitCode = 1;
+    });
 }
