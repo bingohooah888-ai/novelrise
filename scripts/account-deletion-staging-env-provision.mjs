@@ -159,7 +159,7 @@ export async function verifyStagingAdminKey(secret, fetchImpl) {
   if (
     typeof secret !== 'string' ||
     !(
-      /^sb_secret_[A-Za-z0-9]+$/u.test(secret) ||
+      /^sb_secret_[A-Za-z0-9_]{8,}$/u.test(secret) ||
       /^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u.test(secret)
     )
   ) {
@@ -169,7 +169,11 @@ export async function verifyStagingAdminKey(secret, fetchImpl) {
   const url = STAGING_URL + '/auth/v1/admin/users?page=1&per_page=1';
   const response = await fetchImpl(url, {
     method: 'GET',
-    headers: { apikey: secret, Authorization: 'Bearer ' + secret },
+    // Modern opaque secrets belong in apikey, never a JWT Bearer header.
+    // Legacy service_role JWTs still require Authorization for Auth admin.
+    headers: secret.startsWith('sb_secret_')
+      ? { apikey: secret }
+      : { apikey: secret, Authorization: 'Bearer ' + secret },
     redirect: 'error',
     signal: AbortSignal.timeout(20_000)
   });
@@ -235,8 +239,17 @@ export async function provisionAccountDeletionEnv({
 
   // No mutation unless BOTH independent service credentials and Stripe
   // TEST prices are verified. API responses are not logged or persisted.
-  await verifySupabase(env.STAGING_SUPABASE_SECRET_KEY, fetchImpl);
+  if ((await verifySupabase(env.STAGING_SUPABASE_SECRET_KEY, fetchImpl)) !== true) {
+    fail('STAGING_SECRET_NOT_VERIFIED');
+  }
   const verified = await verifyStripe(env.STRIPE_TEST_SECRET_KEY, fetchImpl);
+  if (
+    !PRICE_ID.test(verified?.standardPriceId || '') ||
+    !PRICE_ID.test(verified?.premiumPriceId || '') ||
+    verified.standardPriceId === verified.premiumPriceId
+  ) {
+    fail('STRIPE_TEST_PRICES_NOT_VERIFIED');
+  }
 
   const requestBody = [
     {
