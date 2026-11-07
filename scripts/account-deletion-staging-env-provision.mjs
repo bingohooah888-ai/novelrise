@@ -200,8 +200,10 @@ export async function provisionAccountDeletionEnv({
   fetchImpl = globalThis.fetch,
   resolveScope = resolveVercelProjectScope,
   verifySupabase = verifyStagingAdminKey,
-  verifyStripe = retrieveStripeTestPrices
+  verifyStripe = retrieveStripeTestPrices,
+  reportStage = () => {}
 }) {
+  reportStage('CONTEXT');
   if (
     env.GITHUB_REPOSITORY !== REPO ||
     env.STAGING_PREVIEW_REF !== FIX_BRANCH ||
@@ -220,6 +222,7 @@ export async function provisionAccountDeletionEnv({
     fail('VERCEL_CREDENTIAL_REQUIRED');
   }
 
+  reportStage('VERCEL_SCOPE');
   const scope = await resolveScope({
     fetchImpl,
     token: env.VERCEL_API_TOKEN,
@@ -229,6 +232,7 @@ export async function provisionAccountDeletionEnv({
     fail('VERCEL_TARGET_MISMATCH');
   }
   const path = '/v10/projects/' + encodeURIComponent(PROJECT_ID) + '/env';
+  reportStage('VERCEL_INVENTORY');
   const inventory = await vercelGet(
     fetchImpl,
     path,
@@ -239,11 +243,13 @@ export async function provisionAccountDeletionEnv({
 
   // No mutation unless BOTH independent service credentials and Stripe
   // TEST prices are verified. API responses are not logged or persisted.
+  reportStage('SUPABASE_ADMIN');
   if (
     (await verifySupabase(env.STAGING_SUPABASE_SECRET_KEY, fetchImpl)) !== true
   ) {
     fail('STAGING_SECRET_NOT_VERIFIED');
   }
+  reportStage('STRIPE_TEST_PRICES');
   const verified = await verifyStripe(env.STRIPE_TEST_SECRET_KEY, fetchImpl);
   if (
     !PRICE_ID.test(verified?.standardPriceId || '') ||
@@ -284,6 +290,7 @@ export async function provisionAccountDeletionEnv({
 
   const url = new URL(path, 'https://api.vercel.com');
   url.searchParams.set('teamId', TEAM_ID);
+  reportStage('VERCEL_PREVIEW_WRITE');
   const response = await fetchImpl(url, {
     method: 'POST',
     headers: {
@@ -296,6 +303,7 @@ export async function provisionAccountDeletionEnv({
   });
   requireSafeResponse(response);
 
+  reportStage('POST_WRITE_VERIFY');
   const postInventory = await vercelGet(
     fetchImpl,
     path,
@@ -303,6 +311,7 @@ export async function provisionAccountDeletionEnv({
     FIX_BRANCH
   );
   assertProvisioningInventory(postInventory, 'after');
+  reportStage('COMPLETE');
   return Object.freeze({
     branch: FIX_BRANCH,
     createdKeys: [...MISSING],
@@ -315,7 +324,11 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  provisionAccountDeletionEnv({ env: process.env })
+  provisionAccountDeletionEnv({
+    env: process.env,
+    // Only fixed stage names are emitted; never print a secret or API error body.
+    reportStage: (stage) => console.log('ACCOUNT_ENV_STAGE_' + stage)
+  })
     .then((result) => {
       console.log(
         'ACCOUNT_ENV_PROVISION_OK: four branch-only values; two validated TEST prices; no Preview deployment.'
