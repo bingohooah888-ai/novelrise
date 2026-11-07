@@ -183,7 +183,9 @@
       deleteDialogStatus.classList.remove('error');
       deleteDialogStatus.textContent='アカウントを削除しています...';
       try{
-        const {data,error}=await client.auth.refreshSession();
+        // getSession refreshes only an expired session. A forced refresh on every
+        // deletion attempt can race with the other auth client on this page.
+        const {data,error}=await client.auth.getSession();
         const accessToken=data?.session?.access_token;
         if(error||!accessToken)throw error||Object.assign(new Error('Auth session missing'),{status:401});
         const response=await fetch('/api/delete-account',{
@@ -192,12 +194,22 @@
           body:JSON.stringify({confirmation:DELETE_CONFIRMATION})
         });
         if(response.status===401){goToLogin();return}
-        if(!response.ok)throw Object.assign(new Error('Account deletion failed'),{status:response.status});
+        if(!response.ok){
+          const body=await response.json().catch(()=>null);
+          throw Object.assign(new Error('Account deletion failed'),{
+            status:response.status,
+            requestId:typeof body?.requestId==='string'?body.requestId:''
+          });
+        }
         try{await client.auth.signOut({scope:'local'})}catch(signOutError){console.warn('local sign out after deletion failed',{name:signOutError?.name||null})}
         location.replace('index.html?account=deleted');
       }catch(error){
         console.error('account deletion request failed',{status:error?.status||null,name:error?.name||null});
-        deleteDialogStatus.textContent='アカウント削除を完了できませんでした。処理が途中まで進んでいる可能性があるため、解決しない場合はお問い合わせください。';
+        if(sessionExpired(error)){goToLogin();return}
+        const requestId=String(error?.requestId||'');
+        const reference=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(requestId)
+          ? ' 照会番号: '+requestId : '';
+        deleteDialogStatus.textContent='アカウント削除を完了できませんでした。処理が途中まで進んでいる可能性があるため、解決しない場合はお問い合わせください。'+reference;
         deleteDialogStatus.classList.add('error');
         deleteStatus.textContent='アカウント削除を完了できませんでした。';
         deleteStatus.classList.add('error');

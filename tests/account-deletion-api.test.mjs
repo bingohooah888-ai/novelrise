@@ -277,7 +277,8 @@ test('Stripe cancellation failure blocks all destructive account deletion work',
   await handler(request(), response.res);
 
   assert.equal(response.state.statusCode, 500);
-  assert.deepEqual(response.state.body, { error: 'ACCOUNT_DELETE_FAILED' });
+  assert.equal(response.state.body.error, 'ACCOUNT_DELETE_FAILED');
+  assert.match(response.state.body.requestId, /^[0-9a-f-]{36}$/iu);
   assert.deepEqual(calls.storage, []);
   assert.deepEqual(
     calls.queries.filter((call) => call.type === 'delete'),
@@ -313,4 +314,60 @@ test('Auth deletion failure is surfaced instead of falsely reporting success', a
 
   assert.equal(response.state.statusCode, 500);
   assert.deepEqual(calls.authDeletes, ['verified-user']);
+});
+
+test('account deletion failures log safe metadata', async () => {
+  const { handler } = dependencies({
+    storageErrorBucket: 'episode-illustrations'
+  });
+  const response = responseState();
+  const captured = [];
+  const original = console.error;
+  console.error = (...args) => captured.push(args);
+  try {
+    await handler(request(), response.res);
+  } finally {
+    console.error = original;
+  }
+
+  assert.equal(response.state.statusCode, 500);
+  assert.equal(response.state.body.error, 'ACCOUNT_DELETE_FAILED');
+  assert.match(
+    response.state.body.requestId,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
+  );
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0][0], 'account deletion failed');
+  assert.deepEqual(
+    Object.keys(captured[0][1]).sort(),
+    ['requestId', 'stage', 'code', 'status'].sort()
+  );
+  assert.equal(captured[0][1].requestId, response.state.body.requestId);
+  assert.equal(captured[0][1].stage, 'storage_illustrations');
+  assert.equal(captured[0][1].code, 'UNCLASSIFIED');
+  assert.equal(captured[0][1].status, null);
+  assert.doesNotMatch(
+    JSON.stringify(captured),
+    /verified-user|storage failed/iu
+  );
+});
+
+test('Auth FK failures log only safe metadata', async () => {
+  const authError = new Error('private database detail');
+  authError.code = '23503';
+  const { handler } = dependencies({ authDeleteError: authError });
+  const response = responseState();
+  const captured = [];
+  const original = console.error;
+  console.error = (...args) => captured.push(args);
+  try {
+    await handler(request(), response.res);
+  } finally {
+    console.error = original;
+  }
+
+  assert.equal(response.state.statusCode, 500);
+  assert.equal(captured[0][1].stage, 'auth_user');
+  assert.equal(captured[0][1].code, '23503');
+  assert.doesNotMatch(JSON.stringify(captured), /private database detail/iu);
 });

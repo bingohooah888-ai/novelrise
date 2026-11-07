@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 const CONFIRMATION_TEXT = 'アカウントを削除';
 const TERMINAL_SUBSCRIPTION_STATUSES = new Set([
   'canceled',
@@ -103,25 +105,29 @@ async function collectDeletionTargets(supabase, userId) {
   };
 }
 
-async function deleteUserData(supabase, userId) {
+async function deleteUserData(supabase, userId, onStage) {
+  onStage('db_episode_illustrations');
   const illustrationDelete = await supabase
     .from('episode_illustrations')
     .delete()
     .eq('owner_user_id', userId);
   if (illustrationDelete.error) throw illustrationDelete.error;
 
+  onStage('db_novels');
   const novelsDelete = await supabase
     .from('novels')
     .delete()
     .eq('user_id', userId);
   if (novelsDelete.error) throw novelsDelete.error;
 
+  onStage('db_episodes');
   const episodesDelete = await supabase
     .from('episodes')
     .delete()
     .eq('user_id', userId);
   if (episodesDelete.error) throw episodesDelete.error;
 
+  onStage('auth_user');
   const authDelete = await supabase.auth.admin.deleteUser(userId);
   if (authDelete.error) throw authDelete.error;
 }
@@ -146,31 +152,56 @@ export function createDeleteAccountHandler({ stripe, supabase }) {
       return res.status(400).json({ error: 'CONFIRMATION_REQUIRED' });
     }
 
+    // No user email, JWT, storage path, or vendor error message is logged.
+    const requestId = randomUUID();
+    let stage = 'collect_targets';
     try {
       const targets = await collectDeletionTargets(supabase, user.id);
 
+      stage = 'cancel_billing';
       await cancelStripeSubscriptions(stripe, targets.profile);
+      stage = 'storage_avatars';
       await removeStoragePaths(supabase, 'author-avatars', targets.avatarPaths);
+      stage = 'storage_illustrations';
       await removeStoragePaths(
         supabase,
         'episode-illustrations',
         targets.illustrationPaths
       );
+      stage = 'storage_thumbnails';
       await removeStoragePaths(
         supabase,
         'novel-thumbnail-renders',
         targets.renderPaths
       );
-      await deleteUserData(supabase, user.id);
+      await deleteUserData(supabase, user.id, (step) => {
+        stage = step;
+      });
 
       return res.status(200).json({ ok: true });
     } catch (error) {
+      const candidateCode = String(error?.code || '').toUpperCase();
+      const safeCode = /^[A-Z0-9_]{1,64}$/u.test(candidateCode)
+        ? candidateCode
+        : 'UNCLASSIFIED';
+      const candidateStatus = Number(error?.status);
+      const safeStatus =
+        Number.isInteger(candidateStatus) &&
+        candidateStatus >= 400 &&
+        candidateStatus <= 599
+          ? candidateStatus
+          : null;
+
       console.error('account deletion failed', {
-        userId: user.id,
-        name: error?.name || null,
-        message: error?.message || null
+        requestId,
+        stage,
+        code: safeCode,
+        status: safeStatus
       });
-      return res.status(500).json({ error: 'ACCOUNT_DELETE_FAILED' });
+      return res.status(500).json({
+        error: 'ACCOUNT_DELETE_FAILED',
+        requestId
+      });
     }
   };
 }
