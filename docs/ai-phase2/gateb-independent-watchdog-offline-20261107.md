@@ -43,5 +43,14 @@
 - 第2段階：別プロセスの実停止能力と2回以上のHeartbeat/再起動・異常終了評価を完了してから、合成DPAPI専用ユーザーのパスワード再設定・一時有効化・再無効化・新規プロファイル片付けを、別の固定SHA/一回限り承認で行う。
 - 第3段階：無効状態の独立確認後、Watchdog自体のタスク解除と保護フォルダ削除を別の対象限定承認で実施し、残留ゼロ・他NLO不変を確認する。
 
+## 2026-11-07 GUARD_ONLY登録後の障害と修正候補
+
+- OWNERの一回限り承認による実機 `Arm` は**登録まで実施済み**。`GATEB_WATCHDOG_FAILURE_STAGE=VERIFY_INDEPENDENT_SYSTEM_HEARTBEAT`、タスク終了コード3、Heartbeat未生成。旧承認は消費済みであり**Arm再実行禁止**。
+- OWNER管理者PowerShellの読み取り専用診断でタスク登録・SYSTEM指定、保護ACL/所有者、SID・GUARD_ONLY状態、旧Workerハッシュ一致を確認。ユーザーは引き続き無効。
+- **根本原因：Windows PowerShellの変数は大文字・小文字を区別しない**。旧Worker冒頭の `$Account = 'NOVELIGHT-GateB'` が `$account = $null` により破壊され、`Get-LocalUser -Name $Account` がnullを受け取って$trusted確定前に失敗することを非破壊メモリ内再現で確認。
+- 新Workerはアカウント名の定数を `$TargetAccountName` に改名し、Get-LocalUser参照3箇所を修正。manager内のWorker SHAピンも変更する。**installed workerは旧ハッシュのまま**であり、ローカルGit修正はOS側のタスク・ファイルに自動反映されない。
+- 復旧は**新たな対象限定OWNER承認でのみ**、既存タスク1件の一時停止・旧Workerハッシュの照合・保護ディレクトリ内の原子的差替え・タスク再開・Heartbeat検証を実施できる。未承認でのファイル更新、タスク再起動、無効ユーザーの有効化は禁止。
+- この原因修正でSYSTEM実機Heartbeatの成功を保証しない。二度の独立Heartbeatとユーザー無効状態を別途観測するまでNO-GO。
+
 **追加クラウド費用0円。** Cloudflare、Supabase、Vercel、Staging/Production、実資格、有料AIは今回禁止。Draft PRはmainへ統合しない。
 参考：Microsoft Learn / ScheduledTasks / New-ScheduledTaskTrigger（Once RepetitionInterval、AtStartup）。

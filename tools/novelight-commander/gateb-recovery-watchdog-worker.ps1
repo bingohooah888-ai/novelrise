@@ -8,7 +8,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $Root = 'C:\ProgramData\NOVELIGHT\GateB-Watchdog'
-$Account = 'NOVELIGHT-GateB'
+$TargetAccountName = 'NOVELIGHT-GateB'
 $ExpectedHost = 'DESKTOP-8Q4GFC8'
 $AdminSid = 'S-1-5-32-544'
 $SystemSid = 'S-1-5-18'
@@ -35,7 +35,7 @@ try {
       $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -cne $AdminSid) {
     throw 'UNTRUSTED_ACL'
   }
-  $account = Get-LocalUser -Name $Account -ErrorAction Stop
+  $account = Get-LocalUser -Name $TargetAccountName -ErrorAction Stop
   if (-not $account.SID) { throw 'MISSING_SID' }
   $expected = @($AdminSid, $SystemSid, $account.SID.Value)
   $rules = @($acl.GetAccessRules(
@@ -121,7 +121,7 @@ try {
 
   if ($mustDisable -and $account.Enabled) {
     Disable-LocalUser -SID $account.SID -ErrorAction Stop
-    $account = Get-LocalUser -Name $Account -ErrorAction Stop
+    $account = Get-LocalUser -Name $TargetAccountName -ErrorAction Stop
   }
   if ($mustDisable -and $account.Enabled) { throw 'DISABLE_UNCONFIRMED' }
   if (-not $account.Enabled) { $status = 'WATCHDOG_DISABLED_CONFIRMED' }
@@ -130,7 +130,7 @@ try {
   if ($trusted -and $null -ne $account -and $account.Enabled) {
     try {
       Disable-LocalUser -SID $account.SID -ErrorAction Stop
-      $account = Get-LocalUser -Name $Account -ErrorAction Stop
+      $account = Get-LocalUser -Name $TargetAccountName -ErrorAction Stop
     } catch {
       $status = 'WATCHDOG_RECOVERY_UNCONFIRMED'
     }

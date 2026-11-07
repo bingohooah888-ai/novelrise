@@ -25,8 +25,15 @@ const worker = join(
   'novelight-commander',
   'gateb-recovery-watchdog-worker.ps1'
 );
+const repair = join(
+  root,
+  'tools',
+  'novelight-commander',
+  'gateb-watchdog-worker-one-shot-repair.ps1'
+);
 const msrc = readFileSync(manager, 'utf8');
 const wsrc = readFileSync(worker, 'utf8');
+const rsrc = readFileSync(repair, 'utf8');
 const scope = {
   mode: 'OFFLINE_SIMULATE',
   host: 'DESKTOP-8Q4GFC8',
@@ -189,6 +196,39 @@ test('cleanup requires a disabled account and fixed owned task/files', () => {
 test('all live attempts from pure model are rejected', () => {
   assert.throws(runLiveGateBWatchdog, /NOT_AUTHORIZED/u);
 });
+test('case-insensitive PowerShell user object never overwrites pinned account name', () => {
+  const name = wsrc.match(/^\$(\w+) = 'NOVELIGHT-GateB'$/mu)?.[1];
+  assert.equal(name, 'TargetAccountName');
+  assert.notEqual(name.toLowerCase(), 'account');
+  assert.equal(
+    (wsrc.match(/Get-LocalUser -Name \$TargetAccountName\b/gmu) || []).length,
+    3
+  );
+  assert.doesNotMatch(wsrc, /Get-LocalUser -Name \$Account\b/iu);
+  assert.match(wsrc, /^\$account = \$null$/mu);
+});
+
+test(
+  'Windows name binding survives case-insensitive PowerShell variables',
+  {
+    skip: process.platform !== 'win32'
+  },
+  () => {
+    const r = spawnSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        "$TargetAccountName='NOVELIGHT-GateB';$account=$null;" +
+          "if($TargetAccountName -cne 'NOVELIGHT-GateB'){exit 3};exit 0"
+      ],
+      { windowsHide: true, encoding: 'utf8', timeout: 5000 }
+    );
+    assert.equal(r.status, 0);
+  }
+);
+
 test('worker source is SYSTEM/SID/ACL locked and never reads secrets', () => {
   assert.match(wsrc, /S-1-5-18/u);
   assert.match(wsrc, /GetAccessControl/u);
@@ -247,13 +287,54 @@ test('owned cleanup stops only matching task and refuses existing profile', () =
   assert.doesNotMatch(msrc, /Remove-Item.*-Recurse/iu);
 });
 
+test('one-shot repair pins old and corrected worker hashes and same task', () => {
+  const oldHash = rsrc.match(/\$OldWorkerSha256 = '([a-f0-9]{64})'/u)?.[1];
+  const newHash = rsrc.match(/\$NewWorkerSha256 = '([a-f0-9]{64})'/u)?.[1];
+  assert.equal(
+    oldHash,
+    '766b91d8238572fcbbcefcc2edf825d0d32d29ae2e2bb6d9136845cc3bece5d5'
+  );
+  assert.equal(
+    newHash,
+    createHash('sha256').update(readFileSync(worker)).digest('hex')
+  );
+  assert.match(msrc, new RegExp(newHash, 'u'));
+  assert.match(
+    rsrc,
+    /REPAIR_ONE_EXISTING_GATEB_WATCHDOG_WORKER_AND_RESTART_TASK/u
+  );
+  assert.match(rsrc, /NOVELIGHT-GateB-Independent-Recovery/u);
+  assert.match(rsrc, /GUARD_ONLY/u);
+  assert.match(rsrc, /INSTALLED_WORKER_NOT_OLD_PINNED_VERSION/u);
+  assert.match(rsrc, /REPAIR_LEFTOVERS_EXIST/u);
+});
+
+test('repair cannot alter user accounts, create tasks or touch cloud', () => {
+  assert.match(rsrc, /Disable-ScheduledTask -TaskName \$TaskName/u);
+  assert.match(rsrc, /Enable-ScheduledTask -TaskName \$TaskName/u);
+  assert.match(rsrc, /Start-ScheduledTask -TaskName \$TaskName/u);
+  assert.match(
+    rsrc,
+    /\[IO\.File\]::Replace\(\$TemporaryWorker, \$InstalledWorker, \$BackupWorker\)/u
+  );
+  assert.match(rsrc, /SYSTEM_HEARTBEAT_NOT_ATTESTED/u);
+  assert.match(
+    rsrc,
+    /GATEB_WATCHDOG_REPAIR_STOP_NO_RETRY_MANUAL_RECONCILIATION/u
+  );
+  assert.doesNotMatch(
+    rsrc,
+    /Enable-LocalUser|Set-LocalUser|Remove-LocalUser|New-LocalUser|Register-ScheduledTask|Unregister-ScheduledTask|Invoke-RestMethod|Invoke-WebRequest|Get-Clipboard|Set-Clipboard|Read-Host|Supabase|Cloudflare|Vercel/iu
+  );
+});
+
 test(
-  'Windows PowerShell parser sees both scripts without syntax errors',
+  'Windows PowerShell parser sees all three scripts without syntax errors',
   {
     skip: process.platform !== 'win32'
   },
   () => {
-    for (const file of [manager, worker]) {
+    for (const file of [manager, worker, repair]) {
       const quoted = file.replaceAll("'", "''");
       const command = [
         '$t=$null;$e=$null',
@@ -297,6 +378,28 @@ test(
     assert.equal(b.stdout.trim(), 'GATEB_WATCHDOG_OFFLINE_INSPECT_ONLY');
   }
 );
+test(
+  'Windows unprivileged repair Preflight safely refuses any task mutation',
+  { skip: process.platform !== 'win32' },
+  () => {
+    const who = execFileSync('whoami', ['/groups'], {
+      encoding: 'utf8',
+      windowsHide: true
+    });
+    if (/S-1-16-12288/u.test(who)) return;
+    const r = spawnSync(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-File', repair, '-Mode', 'Preflight'],
+      { windowsHide: true, encoding: 'utf8', timeout: 7000 }
+    );
+    assert.equal(r.status, 3);
+    assert.match(
+      r.stdout,
+      /GATEB_WATCHDOG_REPAIR_STOP_NO_RETRY_MANUAL_RECONCILIATION/u
+    );
+  }
+);
+
 test(
   'Windows non-admin preflight refuses admin-only task plan',
   {
