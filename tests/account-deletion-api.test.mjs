@@ -316,7 +316,7 @@ test('Auth deletion failure is surfaced instead of falsely reporting success', a
   assert.deepEqual(calls.authDeletes, ['verified-user']);
 });
 
-test('deletion failures expose a support reference and only sanitized stage metadata', async () => {
+test('account deletion failures log safe metadata', async () => {
   const { handler } = dependencies({
     storageErrorBucket: 'episode-illustrations'
   });
@@ -349,10 +349,10 @@ test('deletion failures expose a support reference and only sanitized stage meta
   assert.doesNotMatch(JSON.stringify(captured), /verified-user|storage failed/iu);
 });
 
-test('Auth foreign-key failures report their stage without database error messages', async () => {
-  const { handler } = dependencies({
-    authDeleteError: Object.assign(new Error('private database detail'), { code: '23503' })
-  });
+test('Auth FK failures log only safe metadata', async () => {
+  const authError = new Error('private database detail');
+  authError.code = '23503';
+  const { handler } = dependencies({ authDeleteError: authError });
   const response = responseState();
   const captured = [];
   const original = console.error;
