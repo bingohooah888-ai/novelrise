@@ -239,6 +239,47 @@ export const SAFE_IDENTITY_SQL = [
   'ROLLBACK;'
 ].join(' ');
 
+// Classify psql failures in process only; discard native diagnostics.
+// Never return, log, serialize or persist stderr, addresses, credentials,
+// process error messages or raw connection failures. Unknown means HOLD.
+export function classifyPsqlFailure(child) {
+  const code = child?.error?.code;
+  if (code === 'ENOENT' || code === 'EACCES' || code === 'EPERM')
+    return 'PSQL_EXECUTABLE_UNAVAILABLE';
+  if (code === 'ETIMEDOUT') return 'PSQL_TIMEOUT';
+  // psql exit 3 is a SQL/script failure when ON_ERROR_STOP=1.
+  if (child?.status === 3) return 'PSQL_SQL_ERROR';
+
+  // Spawned psql stderr is only inspected locally for known libpq phrases.
+  // Do not include any portion in returned values or thrown errors.
+  const details =
+    typeof child?.stderr === 'string' ? child.stderr.slice(0, 8192) : '';
+  if (
+    /(?:certificate verify failed|certificate verification failed|self[- ]signed certificate|unable to get local issuer certificate|unknown ca|root certificate file|server certificate|certificate does not match|ssl error:.*certificate|sslrootcert|sslmode.*(?:invalid|unsupported))/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TLS_CERTIFICATE_FAILURE';
+  if (
+    /(?:password authentication failed|no password supplied|fe_sendauth|sasl authentication failed|scram authentication failed|pam authentication failed|pg_hba\.conf|authentication failed)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_AUTHENTICATION_FAILURE';
+  if (
+    /(?:timeout expired|connection timed out|operation timed out|could not connect to server:.*timeout)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TIMEOUT';
+  if (
+    /(?:could not translate host name|name or service not known|temporary failure in name resolution|getaddrinfo|nodename nor servname provided|connection refused|network is unreachable|no route to host|could not connect to server|server closed the connection unexpectedly)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_DNS_OR_NETWORK_FAILURE';
+  return 'PSQL_FAILURE_UNCLASSIFIED';
+}
 function runSafeReadOnlyQuery({ env, route }) {
   if (
     !route ||
@@ -286,10 +327,10 @@ function runSafeReadOnlyQuery({ env, route }) {
         windowsHide: true
       }
     );
-  } catch {
-    stop('PSQL_EXECUTION_FAILED');
+  } catch (error) {
+    stop(classifyPsqlFailure({ error }));
   }
-  if (child?.status !== 0 || child.error) stop('PSQL_OR_TLS_CONNECTION_FAILED');
+  if (child?.status !== 0 || child.error) stop(classifyPsqlFailure(child));
   let result;
   try {
     result = JSON.parse(String(child.stdout).trim());
