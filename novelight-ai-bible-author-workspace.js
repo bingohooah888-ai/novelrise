@@ -133,7 +133,7 @@
     const checks = [];
     let pending = 0;
     const registered = new Map();
-    for (const character of payload.characters) {
+    for (const [characterIndex, character] of payload.characters.entries()) {
       const aliases = [character.name, ...(character.aliases ?? [])];
       const unique = new Set(
         aliases.map((value) => value.trim().toLocaleLowerCase('ja-JP'))
@@ -141,13 +141,13 @@
       for (const name of unique) {
         if (!name) continue;
         const first = registered.get(name);
-        if (first !== undefined && first !== character.name) {
+        if (first !== undefined && first !== characterIndex) {
           checks.push({
             title: '人物名・別名の重複',
             detail: '「' + name + '」が複数の人物に登録されています。'
           });
         } else if (first === undefined) {
-          registered.set(name, character.name);
+          registered.set(name, characterIndex);
         }
       }
     }
@@ -168,7 +168,11 @@
         });
       }
     }
-    return { pending, checks: checks.slice(0, 100), remaining: Math.max(0, checks.length - 100) };
+    return {
+      pending,
+      checks: checks.slice(0, 100),
+      remaining: Math.max(0, checks.length - 100)
+    };
   }
 
   function render({ target, payload, doc = target?.ownerDocument || root.document } = {}) {
