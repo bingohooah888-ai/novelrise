@@ -292,3 +292,118 @@ test('workflow remains OWNER-approved, closed-ledger denied and cost guarded', (
   assert.doesNotMatch(workflow, /workflow_dispatch:/u);
   assert.doesNotMatch(workflow, /pull_request:\s*\n/u);
 });
+
+test('Free Preview uses a distinct exact OWNER one-shot scope and unchanged seven reviewed blobs', () => {
+  const fixture = approvalFixture();
+  const prefix = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_APPROVE ';
+  const body = {
+    scope: 'account-deletion-free-preview',
+    mainSha,
+    candidateSha,
+    confirmation: 'STAGING APPROVED'
+  };
+  fixture.comment.body = prefix + JSON.stringify(body);
+  assert.deepEqual(assertAccountDeletionPreviewAdmission(fixture), {
+    mainSha,
+    candidateSha,
+    previewRef: branch,
+    requestCommentId: '1002',
+    approvalMode: 'free-preview'
+  });
+
+  for (const change of ['scope', 'blob', 'owner', 'main', 'extra']) {
+    const invalid = globalThis.structuredClone(fixture);
+    if (change === 'scope') {
+      invalid.comment.body =
+        prefix +
+        JSON.stringify({
+          ...body,
+          scope: 'account-deletion-preview'
+        });
+    }
+    if (change === 'blob') invalid.compare.files[0].sha = 'f'.repeat(40);
+    if (change === 'owner') invalid.comment.user.login = 'attacker';
+    if (change === 'main') invalid.main.object.sha = 'f'.repeat(40);
+    if (change === 'extra') {
+      invalid.comment.body = prefix + JSON.stringify({ ...body, bypass: true });
+    }
+    assert.throws(
+      () => assertAccountDeletionPreviewAdmission(invalid),
+      DENY,
+      change
+    );
+  }
+
+  const reused = globalThis.structuredClone(fixture);
+  reused.ledgerPages = [
+    [
+      {
+        body:
+          'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED ' +
+          JSON.stringify({
+            requestCommentId: '1002',
+            mainSha,
+            candidateSha,
+            runId: '1'
+          })
+      }
+    ]
+  ];
+  assert.throws(() => assertAccountDeletionPreviewAdmission(reused), DENY);
+
+  const other = globalThis.structuredClone(fixture);
+  other.comment.body =
+    'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_APPROVE ' +
+    JSON.stringify(body);
+  assert.throws(() => assertAccountDeletionPreviewAdmission(other), DENY);
+});
+
+test('Free-only Preview requires six exact branch variables while paid gate still requires eight', () => {
+  const free = envFixture();
+  free.mode = 'free';
+  free.envs = free.envs.filter((entry) => !entry.key.includes('PRICE_ID'));
+  assert.equal(assertAccountPreviewEnvironment(free).requiredVariableCount, 6);
+  assert.throws(
+    () => assertAccountPreviewEnvironment({ ...free, mode: 'standard' }),
+    ENV_DENY
+  );
+  for (const change of [
+    'missingSecret',
+    'missingTestKey',
+    'prod',
+    'scope',
+    'mode'
+  ]) {
+    const invalid = globalThis.structuredClone(free);
+    if (change === 'missingSecret') {
+      invalid.envs = invalid.envs.filter(
+        (v) => v.key !== 'SUPABASE_SECRET_KEY'
+      );
+    }
+    if (change === 'missingTestKey') {
+      invalid.envs = invalid.envs.filter((v) => v.key !== 'STRIPE_SECRET_KEY');
+    }
+    if (change === 'prod') {
+      invalid.expectedUrl = 'https://fiepaguycecrredwrcwx.supabase.co';
+    }
+    if (change === 'scope') invalid.envs[0].gitBranch = 'main';
+    if (change === 'mode') invalid.mode = 'unknown';
+    assert.throws(() => assertAccountPreviewEnvironment(invalid), ENV_DENY);
+  }
+});
+
+test('Free Preview workflow can never run account deletion or a live proof', () => {
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/account-deletion-candidate-preview.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(workflow, /ACCOUNT_DELETE_FREE_PREVIEW_APPROVE/u);
+  assert.match(workflow, /ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED/u);
+  assert.match(workflow, /ACCOUNT_DELETE_FREE_PREVIEW_CONSUMED/u);
+  assert.match(workflow, /STAGING_DELETE_FREE_MODE:/u);
+  assert.doesNotMatch(workflow, /account-deletion-free-live-proof/u);
+  assert.doesNotMatch(workflow, /\/api\/delete-account/u);
+});
