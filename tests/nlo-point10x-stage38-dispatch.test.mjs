@@ -42,13 +42,15 @@ const approval = () => ({
   updated_at: when,
   user: owner,
   author_association: 'OWNER',
-  body: 'NOVELIGHT_STAGING_APPROVE ' + JSON.stringify({
-    requestId: req().requestId,
-    mainSha: sha,
-    scope: C.scope,
-    stagingRef: C.stagingRef,
-    confirmation: C.approvalConfirmation
-  })
+  body:
+    'NOVELIGHT_STAGING_APPROVE ' +
+    JSON.stringify({
+      requestId: req().requestId,
+      mainSha: sha,
+      scope: C.scope,
+      stagingRef: C.stagingRef,
+      confirmation: C.approvalConfirmation
+    })
 });
 
 function fixture(changes = {}) {
@@ -63,13 +65,18 @@ function fixture(changes = {}) {
     if (method === 'GET' && path.endsWith('/git/ref/heads/main')) {
       return { object: { sha: changes.mainSha || sha } };
     }
-    if (method === 'GET' && path.includes('/actions/workflows/') &&
-        !path.includes('/runs?')) {
-      return changes.workflow || {
-        name: 'NOVELIGHT Point10x Staging identity (manual read-only)',
-        path: C.workflowPath,
-        state: 'active'
-      };
+    if (
+      method === 'GET' &&
+      path.includes('/actions/workflows/') &&
+      !path.includes('/runs?')
+    ) {
+      return (
+        changes.workflow || {
+          name: 'NOVELIGHT Point10x Staging identity (manual read-only)',
+          path: C.workflowPath,
+          state: 'active'
+        }
+      );
     }
     if (method === 'GET' && path.includes('/contents/')) {
       return {
@@ -81,8 +88,10 @@ function fixture(changes = {}) {
             : C.diagnosticBlobSha
       };
     }
-    if (method === 'GET' && path === '/repos/' + C.repo +
-        '/issues/' + C.stagingApprovalIssue) {
+    if (
+      method === 'GET' &&
+      path === '/repos/' + C.repo + '/issues/' + C.stagingApprovalIssue
+    ) {
       return {
         number: C.stagingApprovalIssue,
         state: 'open',
@@ -142,11 +151,18 @@ test('valid OWNER request is SHA/scope/ref/approval-bound', () => {
     validatePoint10xDispatchRequest(req(), source(), nowMs).mainSha,
     sha
   );
-  assert.equal(validatePoint10xApproval(approval(), {
-    requestId: req().requestId,
-    mainSha: sha,
-    approvalCommentId: 1234
-  }, nowMs), true);
+  assert.equal(
+    validatePoint10xApproval(
+      approval(),
+      {
+        requestId: req().requestId,
+        mainSha: sha,
+        approvalCommentId: 1234
+      },
+      nowMs
+    ),
+    true
+  );
 });
 
 test('only owner and immutable recent commands can be accepted', () => {
@@ -158,16 +174,21 @@ test('only owner and immutable recent commands can be accepted', () => {
     { issue_url: issueUrl + '999' }
   ]) {
     assert.throws(
-      () => validatePoint10xDispatchRequest(req(), {
-        ...source(),
-        ...change
-      }, nowMs),
+      () =>
+        validatePoint10xDispatchRequest(
+          req(),
+          {
+            ...source(),
+            ...change
+          },
+          nowMs
+        ),
       /OWNER_REQUEST_UNVERIFIED/
     );
   }
   assert.throws(
-    () => validatePoint10xDispatchRequest(req(), source(),
-      nowMs + 20 * 60 * 1000),
+    () =>
+      validatePoint10xDispatchRequest(req(), source(), nowMs + 20 * 60 * 1000),
     /OWNER_REQUEST_UNVERIFIED/
   );
 });
@@ -183,15 +204,15 @@ test('reject SHA, scope, target, confirmation, extra args and wrong action', () 
   ]) {
     const request = req();
     request.args = { ...request.args, ...patch };
-    assert.throws(() => validatePoint10xDispatchRequest(
-      request, source(), nowMs
-    ), /REQUEST_(SCOPE|SHAPE)/);
+    assert.throws(
+      () => validatePoint10xDispatchRequest(request, source(), nowMs),
+      /REQUEST_(SCOPE|SHAPE)/
+    );
   }
   const differentAction = req();
   differentAction.action = 'production_dispatch';
   assert.throws(
-    () => validatePoint10xDispatchRequest(differentAction,
-      source(), nowMs),
+    () => validatePoint10xDispatchRequest(differentAction, source(), nowMs),
     /REQUEST_SHAPE/
   );
 });
@@ -208,10 +229,15 @@ test('approval must be a separate exact OWNER Staging ledger record', () => {
     { body: approval().body.replace('STAGING APPROVED', 'NOT APPROVED') }
   ]) {
     assert.throws(
-      () => validatePoint10xApproval({
-        ...approval(),
-        ...changed
-      }, bound, nowMs),
+      () =>
+        validatePoint10xApproval(
+          {
+            ...approval(),
+            ...changed
+          },
+          bound,
+          nowMs
+        ),
       /STAGING_APPROVAL_(UNVERIFIED|SHAPE|MISMATCH)/
     );
   }
@@ -223,12 +249,17 @@ test('one valid approval claims first, dispatches exactly once with fixed inputs
   assert.equal(result.status, 'DISPATCH_ACCEPTED_UNVERIFIED_STAGING_RESULT');
   assert.equal(result.productionMutation, false);
   assert.equal(result.secretValuesExposed, false);
-  const writes = f.calls.filter(c => c.method === 'POST');
+  const writes = f.calls.filter((c) => c.method === 'POST');
   assert.equal(writes.length, 2);
   assert.match(writes[0].path, /issues\/188\/comments$/);
-  assert.match(writes[0].body.body, /^NOVELIGHT_POINT10X_STAGE38_DISPATCH_CLAIM /);
-  assert.equal(writes[1].path, '/repos/' + C.repo +
-    '/actions/workflows/' + C.workflow + '/dispatches');
+  assert.match(
+    writes[0].body.body,
+    /^NOVELIGHT_POINT10X_STAGE38_DISPATCH_CLAIM /
+  );
+  assert.equal(
+    writes[1].path,
+    '/repos/' + C.repo + '/actions/workflows/' + C.workflow + '/dispatches'
+  );
   assert.deepEqual(writes[1].body, {
     ref: 'main',
     inputs: {
@@ -239,13 +270,13 @@ test('one valid approval claims first, dispatches exactly once with fixed inputs
   });
   assert.equal(f.getRunCount(), 2);
   await assert.rejects(run(f), /ALREADY_CLAIMED/);
-  assert.equal(f.calls.filter(c => c.path.endsWith('/dispatches')).length, 1);
+  assert.equal(f.calls.filter((c) => c.path.endsWith('/dispatches')).length, 1);
 });
 
 test('wrong owner credential refuses before writing anything', async () => {
   const f = fixture({ identity: { login: 'other', id: 9 } });
   await assert.rejects(run(f), /OWNER_TOKEN_UNVERIFIED/);
-  assert.equal(f.calls.filter(c => c.method === 'POST').length, 0);
+  assert.equal(f.calls.filter((c) => c.method === 'POST').length, 0);
 });
 
 test('main drift, workflow drift, source drift fail without dispatch', async () => {
@@ -255,8 +286,11 @@ test('main drift, workflow drift, source drift fail without dispatch', async () 
     { wrongSource: true }
   ]) {
     const f = fixture(changed);
-    await assert.rejects(run(f), /MAIN_SHA_DRIFT|WORKFLOW_UNVERIFIED|SOURCE_SHA_DRIFT/);
-    assert.equal(f.calls.filter(c => c.method === 'POST').length, 0);
+    await assert.rejects(
+      run(f),
+      /MAIN_SHA_DRIFT|WORKFLOW_UNVERIFIED|SOURCE_SHA_DRIFT/
+    );
+    assert.equal(f.calls.filter((c) => c.method === 'POST').length, 0);
   }
 });
 
@@ -264,16 +298,16 @@ test('prior workflow run or saturated ledger prevents claims', async () => {
   for (const changed of [{ previousRun: true }, { fullLedger: true }]) {
     const f = fixture(changed);
     await assert.rejects(run(f), /ALREADY_DISPATCHED|LEDGER_CAPACITY/);
-    assert.equal(f.calls.filter(c => c.method === 'POST').length, 0);
+    assert.equal(f.calls.filter((c) => c.method === 'POST').length, 0);
   }
 });
 
 test('failed dispatch consumes durable claim; never automatically retries', async () => {
   const f = fixture({ dispatchError: true });
   await assert.rejects(run(f), /GITHUB_PERMISSION_DENIED/);
-  assert.equal(f.calls.filter(c => c.path.endsWith('/dispatches')).length, 1);
+  assert.equal(f.calls.filter((c) => c.path.endsWith('/dispatches')).length, 1);
   await assert.rejects(run(f), /ALREADY_CLAIMED/);
-  assert.equal(f.calls.filter(c => c.path.endsWith('/dispatches')).length, 1);
+  assert.equal(f.calls.filter((c) => c.path.endsWith('/dispatches')).length, 1);
   const safe = JSON.stringify(f.comments);
   assert.doesNotMatch(safe, /TEST_SECRET_DONT_LEAK/);
 });
