@@ -70,19 +70,42 @@ export function inspectManagementRecords(branchResponse, namedBranchResponse) {
   if (!object(namedBranchResponse)) stop('STAGING_BRANCH_DETAIL_UNAVAILABLE');
   const named = namedBranchResponse;
   const expectedId = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/u;
-  const matches = (branch) =>
-    object(branch) &&
-    typeof branch.id === 'string' &&
-    expectedId.test(branch.id) &&
-    branch.name === 'staging' &&
-    branch.project_ref === EXPECTED_STAGING &&
-    branch.parent_project_ref === EXPECTED_PARENT &&
-    branch.is_default === false &&
-    branch.preview_project_status === 'ACTIVE_HEALTHY' &&
-    branch.persistent === false &&
-    branch.with_data === false;
-  if (!matches(listed) || !matches(named) || listed.id !== named.id)
-    stop('STAGING_BRANCH_IDENTITY_MISMATCH');
+  // Diagnose every failed invariant in one run without exposing API values.
+  // The fields, views and booleans below are fixed, non-secret vocabulary.
+  const identityChecks = [
+    ['id', (value) => typeof value === 'string' && expectedId.test(value)],
+    ['name', (value) => value === 'staging'],
+    ['project_ref', (value) => value === EXPECTED_STAGING],
+    ['parent_project_ref', (value) => value === EXPECTED_PARENT],
+    ['is_default', (value) => value === false],
+    ['preview_project_status', (value) => value === 'ACTIVE_HEALTHY'],
+    ['persistent', (value) => value === false],
+    ['with_data', (value) => value === false]
+  ];
+  const mismatches = [];
+  for (const [view, branch] of [
+    ['list', listed],
+    ['named', named]
+  ]) {
+    for (const [field, isExpected] of identityChecks) {
+      const present = Object.hasOwn(branch, field);
+      if (!present || !isExpected(branch[field]))
+        mismatches.push({ view, field, present, matchesExpected: false });
+    }
+  }
+  if (listed.id !== named.id)
+    mismatches.push({
+      view: 'crosscheck',
+      field: 'id',
+      present: Object.hasOwn(listed, 'id') && Object.hasOwn(named, 'id'),
+      matchesExpected: false
+    });
+  if (mismatches.length) {
+    const error = new Error('STAGE38_HOLD:STAGING_BRANCH_IDENTITY_MISMATCH');
+    error.safeCode = 'STAGING_BRANCH_IDENTITY_MISMATCH';
+    error.safeDiagnostics = mismatches;
+    throw error;
+  }
   return Object.freeze({
     // Two independently requested parent-scoped management views agree.
     managementVerified: true,
@@ -343,6 +366,13 @@ if (
             ? error.safeCode
             : 'UNEXPECTED_ERROR';
         console.error('STAGE38_HOLD:' + code);
+        if (
+          code === 'STAGING_BRANCH_IDENTITY_MISMATCH' &&
+          Array.isArray(error.safeDiagnostics)
+        )
+          console.error(
+            'STAGE38_IDENTITY_FIELDS:' + JSON.stringify(error.safeDiagnostics)
+          );
         process.exitCode = 1;
       });
   }

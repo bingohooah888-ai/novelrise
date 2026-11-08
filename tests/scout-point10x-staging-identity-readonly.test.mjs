@@ -117,6 +117,52 @@ test('safe parent Branch list plus named Branch GET attest to the same Staging r
   assert.equal(Object.hasOwn(result, 'password'), false);
 });
 
+test('Supabase list array with independent branch statuses still validates only pinned fields', () => {
+  const m = management();
+  const records = m.branches.branches;
+  records[1].status = 'CREATING_PROJECT';
+  const proof = inspectManagementRecords(records, m.branch);
+  assert.equal(proof.managementVerified, true);
+  assert.equal(proof.branchId, branchId);
+});
+
+test('all missing named identity fields are classified without leaking values', () => {
+  for (const field of [
+    'id',
+    'name',
+    'project_ref',
+    'parent_project_ref',
+    'is_default',
+    'preview_project_status',
+    'persistent',
+    'with_data'
+  ]) {
+    const m = management();
+    delete m.branch[field];
+    let failure;
+    try {
+      inspectManagementRecords(m.branches, m.branch);
+    } catch (error) {
+      failure = error;
+    }
+    assert.equal(failure?.safeCode, 'STAGING_BRANCH_IDENTITY_MISMATCH');
+    assert.ok(
+      failure.safeDiagnostics.some(
+        (entry) =>
+          entry.view === 'named' &&
+          entry.field === field &&
+          entry.present === false &&
+          entry.matchesExpected === false
+      ),
+      field
+    );
+    assert.doesNotMatch(
+      JSON.stringify(failure.safeDiagnostics),
+      /fiepaguycecrredwrcwx|wmlzjgvxgoyrovdhbqbg/u
+    );
+  }
+});
+
 test('missing or malformed Branch detail fails closed', () => {
   const m = management();
   for (const bad of [null, undefined, [], {}, { name: 'staging' }]) {
@@ -170,6 +216,51 @@ test('listed branch must itself be healthy and exactly one non-default Staging',
   assert.throws(
     () => inspectManagementRecords(collidingRef.branches, collidingRef.branch),
     hold
+  );
+});
+
+test('mismatch diagnostic gathers all failures from both views but never raw values', () => {
+  const m = management();
+  m.branches.branches[1].with_data = 'false';
+  m.branch.project_ref = 'SYNTHETIC_SECRET_MUST_NOT_PRINT';
+  m.branch.is_default = 'false';
+  delete m.branch.parent_project_ref;
+  m.branch.id = 'a6470780-fdae-40ab-965d-c2ae885af7a6';
+  let failure;
+  try {
+    inspectManagementRecords(m.branches, m.branch);
+  } catch (error) {
+    failure = error;
+  }
+  assert.equal(failure?.safeCode, 'STAGING_BRANCH_IDENTITY_MISMATCH');
+  assert.deepEqual(failure.safeDiagnostics, [
+    { view: 'list', field: 'with_data', present: true, matchesExpected: false },
+    {
+      view: 'named',
+      field: 'project_ref',
+      present: true,
+      matchesExpected: false
+    },
+    {
+      view: 'named',
+      field: 'parent_project_ref',
+      present: false,
+      matchesExpected: false
+    },
+    {
+      view: 'named',
+      field: 'is_default',
+      present: true,
+      matchesExpected: false
+    },
+    { view: 'crosscheck', field: 'id', present: true, matchesExpected: false }
+  ]);
+  assert.doesNotMatch(
+    JSON.stringify({
+      message: failure.message,
+      fields: failure.safeDiagnostics
+    }),
+    /SYNTHETIC_SECRET_MUST_NOT_PRINT|fiepaguycecrredwrcwx|wmlzjgvxgoyrovdhbqbg/u
   );
 });
 
