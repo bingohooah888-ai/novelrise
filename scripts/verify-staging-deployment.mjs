@@ -95,7 +95,33 @@ function assertObject(value, name) {
   }
 }
 
+function freeAccountProofMode(env) {
+  if (env.STAGING_DELETE_FREE_MODE !== 'true') {
+    if (
+      env.STAGING_DELETE_FREE_MODE &&
+      env.STAGING_DELETE_FREE_MODE !== 'false'
+    ) {
+      fail('CONFIG_DRIFT', 'unknown account deletion proof mode.');
+    }
+    return false;
+  }
+  if (
+    env.STAGING_TRIGGER !== 'approval_comment' ||
+    env.GITHUB_REPOSITORY !== 'bingohooah888-ai/novelrise' ||
+    env.STAGING_PREVIEW_REF !==
+      'fix/inquiry-82-account-deletion-diagnostics-20261107' ||
+    ![
+      'account-deletion-free-preview',
+      'account-deletion-free-proof'
+    ].includes(env.STAGING_FREE_APPROVAL_SCOPE)
+  ) {
+    fail('CONFIG_DRIFT', 'free-only proof requires exact OWNER gate context.');
+  }
+  return true;
+}
+
 function validateEnvironmentFacts({ facts, baseUrl, expectedRevision, env }) {
+  const freeOnly = freeAccountProofMode(env);
   assertObject(facts, 'environment facts');
 
   if (facts.commitSha !== expectedRevision) {
@@ -162,8 +188,9 @@ function validateEnvironmentFacts({ facts, baseUrl, expectedRevision, env }) {
     );
   }
   if (
-    facts.stripe.standardPricePresent !== true ||
-    facts.stripe.premiumPricePresent !== true
+    !freeOnly &&
+    (facts.stripe.standardPricePresent !== true ||
+      facts.stripe.premiumPricePresent !== true)
   ) {
     fail('CONFIG_DRIFT', 'deployed Staging Stripe Price configuration is incomplete.');
   }
