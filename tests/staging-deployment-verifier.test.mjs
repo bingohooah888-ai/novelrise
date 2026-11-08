@@ -220,17 +220,19 @@ test('Free-only approved Preview accepts absent prices but requires isolated Sta
   t.mock.method(globalThis, 'fetch', async (url) => {
     requests.push(url);
     return new globalThis.Response(
-      JSON.stringify(facts({
-        supabase: {
-          ...facts().supabase,
-          url: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
-        },
-        stripe: {
-          secretKeyMode: 'test',
-          standardPricePresent: false,
-          premiumPricePresent: false
-        }
-      })),
+      JSON.stringify(
+        facts({
+          supabase: {
+            ...facts().supabase,
+            url: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          },
+          stripe: {
+            secretKeyMode: 'test',
+            standardPricePresent: false,
+            premiumPricePresent: false
+          }
+        })
+      ),
       { status: 200 }
     );
   });
@@ -268,22 +270,27 @@ test('Free-only approved Preview accepts absent prices but requires isolated Sta
 test('Free-only Preview still rejects live Stripe credentials and absent Supabase admin key', async (t) => {
   let stripeMode = 'live';
   let serverSecretPresent = true;
-  t.mock.method(globalThis, 'fetch', async () =>
-    new globalThis.Response(
-      JSON.stringify(facts({
-        stripe: {
-          secretKeyMode: stripeMode,
-          standardPricePresent: false,
-          premiumPricePresent: false
-        },
-        supabase: {
-          ...facts().supabase,
-          url: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
-          serverSecretPresent
-        }
-      })),
-      { status: 200 }
-    )
+  t.mock.method(
+    globalThis,
+    'fetch',
+    async () =>
+      new globalThis.Response(
+        JSON.stringify(
+          facts({
+            stripe: {
+              secretKeyMode: stripeMode,
+              standardPricePresent: false,
+              premiumPricePresent: false
+            },
+            supabase: {
+              ...facts().supabase,
+              url: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
+              serverSecretPresent
+            }
+          })
+        ),
+        { status: 200 }
+      )
   );
   const free = strictEnvironment({
     STAGING_TRIGGER: 'approval_comment',
