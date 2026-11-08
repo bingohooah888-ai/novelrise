@@ -36,7 +36,7 @@ function stripeFixture({
 } = {}) {
   const requests = [];
   async function fetchImpl(url, opts) {
-    const path = new URL(url).pathname;
+    const path = new globalThis.URL(url).pathname;
     requests.push({ path, url: String(url), opts });
     if (path === '/v1/account') {
       return apiResponse(accountStatus, {
@@ -406,14 +406,14 @@ test('only exact OWNER, open #188, reviewed seven blobs, latest main and unused 
 
 test('workflow uses protected staging and unique OWNER ledger, never preview or billing writes', () => {
   const workflow = readFileSync(
-    new URL(
+    new globalThis.URL(
       '../.github/workflows/account-deletion-stripe-test-identity-readonly.yml',
       import.meta.url
     ),
     'utf8'
   );
   const probe = readFileSync(
-    new URL(
+    new globalThis.URL(
       '../scripts/account-deletion-stripe-test-identity-readonly.mjs',
       import.meta.url
     ),
