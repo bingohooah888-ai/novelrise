@@ -12,6 +12,11 @@ const deleteMigration = readFileSync(
 );
 const ui = readFileSync('novelight-episode-illustrations.js', 'utf8');
 const rls = readFileSync('tests/rls/episode-inline-illustrations.sql', 'utf8');
+const rollback = readFileSync(
+  'supabase/rollback/20261108154048_protect_episode_illustration_active_references_rollback.sql',
+  'utf8'
+);
+const replay = readFileSync('scripts/run-migration-replay.sh', 'utf8');
 
 test('all episode insert and manuscript updates validate active illustration references', () => {
   assert.match(
@@ -63,4 +68,23 @@ test('RLS integration exercises valid markers and rejects missing or deleted ref
   assert.match(rls, /Missing illustration reference unexpectedly saved/);
   assert.match(rls, /Deleted illustration reference unexpectedly saved/);
   assert.match(rls, /when foreign_key_violation then null/);
+});
+
+test('historical illustration replay removes new guard before dropping the old schema', () => {
+  assert.match(
+    rollback,
+    /drop trigger if exists novelight_validate_episode_illustration_refs/
+  );
+  assert.match(
+    rollback,
+    /drop function if exists public\.novelight_validate_episode_illustration_refs/
+  );
+  assert.match(
+    replay,
+    /supabase\/rollback\/20261108154048_protect_episode_illustration_active_references_rollback\.sql[\s\S]*supabase\/rollback\/20260920093847_episode_inline_illustrations_rollback\.sql/
+  );
+  assert.match(
+    rls,
+    /Skip latest reference guard in historical schema rollback fixture/
+  );
 });

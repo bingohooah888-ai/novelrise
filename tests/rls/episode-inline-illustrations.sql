@@ -239,7 +239,6 @@ $$;
 -- Exercise the database guard as a privileged internal draft-write,
 -- independently of editor RLS (the UI permissions are covered above).
 reset role;
-set constraints public.novelight_validate_episode_illustration_refs immediate;
 
 do $$
 declare
@@ -248,6 +247,27 @@ declare
   v_original_content text;
   v_updated_rows integer;
 begin
+  if not exists (
+    select 1 from pg_catalog.pg_trigger
+     where tgrelid = 'public.episodes'::regclass
+       and tgname = 'novelight_validate_episode_illustration_refs'
+       and not tgisinternal
+  ) then
+    raise notice 'Skip latest reference guard in historical schema rollback fixture';
+    return;
+  end if;
+
+  -- Legacy illustration fixtures include a placeholder UUID prior to upload.
+  -- Remove that placeholder before checking the final, actual registered asset.
+  update public.episodes
+     set content = pg_catalog.replace(
+       content,
+       '[[NOVELIGHT_ILLUSTRATION:83000000-0000-4000-8000-000000000101]]',
+       ''
+     )
+   where id = 830001;
+  set constraints public.novelight_validate_episode_illustration_refs immediate;
+
   select content into v_original_content
     from public.episodes where id = 830001;
 
