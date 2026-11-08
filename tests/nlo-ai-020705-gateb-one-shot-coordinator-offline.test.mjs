@@ -15,19 +15,13 @@ const src = readFileSync(
   'utf8'
 );
 
-test('Plan rejects, Apply always rejects; unreachable trial only declared', () => {
+test('Plan denies live work; Apply requires protected installed owner permit', () => {
   assert.match(src, /\[ValidateSet\('Plan','Apply'\)\]/u);
   assert.match(src, /GATEB_DPAPI_ONE_SHOT_OFFLINE_CONTRACT_ONLY/u);
-  assert.match(
-    src,
-    /GATEB_DPAPI_ONE_SHOT_LIVE_BLOCKED_REQUIRES_NEW_APPROVAL_AND_SYSTEM_RESCUE/u
-  );
-  assert.match(src, /function Invoke-UnreachableAuthorizedTrial/u);
-  assert.equal(
-    (src.match(/Invoke-UnreachableAuthorizedTrial/gu) ?? []).length,
-    1
-  );
-  assert.match(src, /exit 4\s*$/u);
+  assert.match(src, /Assert-GateBDpapiOwnerPermit/u);
+  assert.match(src, /function Invoke-ApprovedOneShotTrial/u);
+  assert.equal((src.match(/Invoke-ApprovedOneShotTrial/gu) ?? []).length, 2);
+  assert.match(src, /GATEB_DPAPI_ONE_SHOT_NO_GO_NO_RETRY/u);
 });
 test('only fixed host, user, watchdog and old installed worker hash', () => {
   for (const v of [
@@ -71,9 +65,7 @@ test('atomic guarded state writes require parent PID plus UTC birth', () => {
 test('independent SYSTEM heartbeat must observe PARENT_ALIVE before enable', () => {
   assert.match(src, /function Wait-IndependentArmedHeartbeat/u);
   assert.match(src, /reasonCode -ceq 'PARENT_ALIVE'/u);
-  const body = src.slice(
-    src.indexOf('function Invoke-UnreachableAuthorizedTrial')
-  );
+  const body = src.slice(src.indexOf('function Invoke-ApprovedOneShotTrial'));
   assert.ok(
     body.indexOf('Wait-IndependentArmedHeartbeat') <
       body.indexOf('Enable-LocalUser')
@@ -88,9 +80,7 @@ test('two target logon processes use loaded profile and marker proof', () => {
   assert.match(src, /GATEB_DPAPI_TARGET_SECOND_PROCESS_PASS/u);
 });
 test('disable account before cross-SID cryptographic refusal', () => {
-  const body = src.slice(
-    src.indexOf('function Invoke-UnreachableAuthorizedTrial')
-  );
+  const body = src.slice(src.indexOf('function Invoke-ApprovedOneShotTrial'));
   assert.ok(
     body.indexOf('Disable-TargetOnce') < body.indexOf('Invoke-CrossSidProbe')
   );
@@ -112,7 +102,7 @@ test('no live cloud, task registration, PAT or logging private values', () => {
 });
 test('guard expiry and startup are not mistaken for autonomous recovery', () => {
   assert.match(src, /INDEPENDENT_RESCUE_AND_NEW_OWNER_PERMIT_REQUIRED/u);
-  assert.match(src, /worker only disables users/u);
+  assert.match(src, /INDEPENDENT_RESCUE_AND_NEW_OWNER_PERMIT_REQUIRED/u);
   assert.match(src, /MaxEnabledSeconds=240/u);
   assert.match(src, /ACCOUNT_ENABLED_LEASE_EXPIRED/u);
 });
@@ -137,8 +127,8 @@ test('parent kill rescue is a distinct SYSTEM-only SHA-pinned path', () => {
   assert.match(rescue, /CHILD_PROCESS_REMAINS/u);
   assert.match(rescue, /LOGON_SESSION_RESIDUE/u);
   assert.match(rescue, /File\]::Replace\(\$temp,\$State/u);
-  assert.match(rescue, /GATEB_DPAPI_SYSTEM_RESCUE_NOT_ARMED_NO_OS_CHANGES/u);
-  assert.match(rescue, /exit 4\s*$/u);
+  assert.match(rescue, /GATEB_DPAPI_SYSTEM_RESCUE_NO_GO_/u);
+  assert.match(rescue, /function Invoke-AuthorizedSystemRecovery/u);
 });
 test('guard manifest is created atomically before live state activation', () => {
   assert.match(src, /gateb-dpapi-arm-manifest\.json/u);
@@ -161,7 +151,7 @@ test('receipts are written by SID to Vault, not protected SYSTEM directory', () 
 });
 test('unhandled control error tries exactly one local disable and clears password', () => {
   const controller = src.slice(
-    src.indexOf('function Invoke-UnreachableAuthorizedTrial')
+    src.indexOf('function Invoke-ApprovedOneShotTrial')
   );
   assert.match(controller, /try \{/u);
   assert.match(controller, /\} finally \{/u);

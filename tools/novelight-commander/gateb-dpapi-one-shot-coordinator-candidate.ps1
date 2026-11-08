@@ -309,15 +309,92 @@ function Restore-GuardAtomicallyAfterProof {
   [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-restore-backup'))
   $null=Read-PinnedGuard 'GUARD_ONLY'
 }
-# Internal integration sketch only. It is intentionally NOT called in Plan or
-# Apply. An independent SYSTEM supervisor and expiry/child-session cleanup are
-# still prerequisites before enabling; the existing worker only disables users.
-function Invoke-UnreachableAuthorizedTrial {
+function Assert-ProtectedRescueIsReady {
+  $rescueTask='NOVELIGHT-GateB-DPAPI-Independent-Rescue'
+  $rescue=Join-Path $Root 'gateb-dpapi-system-rescue.ps1'
+  $expectedArgs='-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+
+    $rescue+'" -Mode Recover'
+  $t=Get-ScheduledTask -TaskName $rescueTask -TaskPath '\' -ErrorAction Stop
+  if($t.State -notin @('Ready','Running') -or
+    $t.Principal.UserId -notin @('SYSTEM','NT AUTHORITY\SYSTEM','S-1-5-18') -or
+    $t.Principal.LogonType.ToString() -cne 'ServiceAccount' -or
+    @($t.Actions).Count -ne 1 -or
+    $t.Actions[0].Execute -ine $PowerShell -or
+    $t.Actions[0].Arguments -cne $expectedArgs){throw 'RESCUE_TASK_NOT_PINNED'}
+  $triggers=@($t.Triggers)
+  if(@($triggers|Where-Object {$_.CimClass.CimClassName -match 'BootTrigger'}).Count -ne 1 -or
+    @($triggers|Where-Object {$_.CimClass.CimClassName -match 'CalendarTrigger'}).Count -ne 1){
+    throw 'RESCUE_TASK_TRIGGER_DRIFT'
+  }
+  if((Get-ScheduledTaskInfo -TaskName $rescueTask -TaskPath '\').LastTaskResult -ne 0){
+    throw 'SYSTEM_RESCUE_LAST_RUN_FAILED'
+  }
+  $hbPath=Join-Path $Root 'gateb-dpapi-system-rescue-heartbeat.json'
+  Assert-Leaf $hbPath
+  $hb=ConvertFrom-Json ([IO.File]::ReadAllText($hbPath)) -ErrorAction Stop
+  $when=[datetime]::Parse([string]$hb.checkedUtc).ToUniversalTime()
+  if($hb.version -ne 1 -or $hb.host -cne $HostPin -or
+    $hb.sid -cne $Sid -or $hb.task -cne $TaskName -or
+    [int]$hb.sequence -lt 1 -or
+    $hb.status -cne 'IDLE_DISABLED' -or
+    $when -lt [datetime]::UtcNow.AddSeconds(-150) -or
+    $when -gt [datetime]::UtcNow.AddSeconds(5)){
+    throw 'SYSTEM_RESCUE_NOT_ATTESTED'
+  }
+  return $hb
+}
+function Wait-RescueArmedHeartbeat([int]$PreviousSequence) {
+  $deadline=[datetime]::UtcNow.AddSeconds(82)
+  $hbPath=Join-Path $Root 'gateb-dpapi-system-rescue-heartbeat.json'
+  while([datetime]::UtcNow -lt $deadline){
+    Start-Sleep -Seconds 2
+    try {
+      $hb=ConvertFrom-Json ([IO.File]::ReadAllText($hbPath)) -ErrorAction Stop
+      $at=[datetime]::Parse([string]$hb.checkedUtc).ToUniversalTime()
+      if($hb.version -eq 1 -and $hb.host -ceq $HostPin -and
+        $hb.sid -ceq $Sid -and $hb.task -ceq $TaskName -and
+        [int]$hb.sequence -gt $PreviousSequence -and
+        $hb.status -ceq 'ARMED_PARENT_ALIVE' -and
+        $at -ge [datetime]::UtcNow.AddSeconds(-150)){
+        return $hb
+      }
+    }catch{}
+  }
+  throw 'INDEPENDENT_SYSTEM_RESCUE_HEARTBEAT_MISSING'
+}
+function Wait-GuardOnlyRestoredHeartbeats([int]$OldSeq,[int]$RescueSeq) {
+  $deadline=[datetime]::UtcNow.AddSeconds(85)
+  $path=Join-Path $Root 'gateb-dpapi-system-rescue-heartbeat.json'
+  while([datetime]::UtcNow -lt $deadline){
+    Start-Sleep -Seconds 2
+    try {
+      $existing=Read-FreshHeartbeat
+      $other=ConvertFrom-Json ([IO.File]::ReadAllText($path)) -ErrorAction Stop
+      $when=[datetime]::Parse([string]$other.checkedUtc).ToUniversalTime()
+      if([int]$existing.sequence -gt $OldSeq -and
+        $existing.reasonCode -ceq 'GUARD_ONLY' -and
+        $existing.observedDisabled -eq $true -and
+        $other.version -eq 1 -and $other.sid -ceq $Sid -and
+        [int]$other.sequence -gt $RescueSeq -and
+        $other.status -ceq 'IDLE_DISABLED' -and
+        $when -ge [datetime]::UtcNow.AddSeconds(-150)){
+        Assert-PinnedLocalUser $true
+        return $true
+      }
+    }catch{}
+  }
+  throw 'INDEPENDENT_GUARD_ONLY_RESTORE_HEARTBEATS_MISSING'
+}
+# This implementation is connected exclusively through the approved protected
+# Apply entrypoint after hash-pinned, admin-owned permit and rescue attestation.
+# It must not be invoked directly from a local development worktree.
+function Invoke-ApprovedOneShotTrial {
   param([bool]$IndependentRescueReady,[bool]$FutureSignedOwnerPermitReady)
   if(-not $IndependentRescueReady -or -not $FutureSignedOwnerPermitReady){
     throw 'INDEPENDENT_RESCUE_AND_NEW_OWNER_PERMIT_REQUIRED'
   }
   $before=Assert-Preflight
+  $rescueBefore=Assert-ProtectedRescueIsReady
   $cred=$null
   $disableFailed=$false
   try {
@@ -327,8 +404,9 @@ function Invoke-UnreachableAuthorizedTrial {
     $cred=New-InMemoryTargetCredential
     $self=Get-Process -Id $PID -ErrorAction Stop
     $guard=Arm-GuardAtomically $PID ($self.StartTime.ToUniversalTime().ToString('o'))
-    $null=Wait-IndependentArmedHeartbeat ([int]$before.sequence)
-    # Must only enable after independently verified armed SYSTEM Watchdog.
+    $oldWatchdogArmed=Wait-IndependentArmedHeartbeat ([int]$before.sequence)
+    $rescueArmed=Wait-RescueArmedHeartbeat ([int]$rescueBefore.sequence)
+    # Must only enable after BOTH independently verified SYSTEM monitors.
     Enable-LocalUser -Name $AccountName -ErrorAction Stop
     $script:EnabledByCoordinator=$true
     $startEnabled=[datetime]::UtcNow
@@ -341,7 +419,8 @@ function Invoke-UnreachableAuthorizedTrial {
     Assert-ProcessAndSessionZero
     Invoke-CrossSidProbe
     Restore-GuardAtomicallyAfterProof
-    $script:Result='CANDIDATE_SEQUENCE_COMPLETED_NOT_INDEPENDENTLY_ATTESTED'
+    $null=Wait-GuardOnlyRestoredHeartbeats ([int]$oldWatchdogArmed.sequence) ([int]$rescueArmed.sequence)
+    $script:Result='CANDIDATE_SEQUENCE_COMPLETED_WITH_BOTH_HEARTBEATS'
   } finally {
     # Best-effort emergency disable on this shell; parent kill bypasses finally.
     # Separate SYSTEM guard + rescue remain mandatory.
@@ -352,10 +431,42 @@ function Invoke-UnreachableAuthorizedTrial {
     if($disableFailed){throw 'EMERGENCY_DISABLE_NOT_CONFIRMED'}
   }
 }
-# Critical: blocked LIVE entrypoint and no fallback unapproved OS operations.
+# Explicitly protected future Apply entrypoint. In the current offline
+# development worktree, installation and owner permit DO NOT exist.
 if($Mode -eq 'Plan'){
   Write-Output 'GATEB_DPAPI_ONE_SHOT_OFFLINE_CONTRACT_ONLY'
   exit 2
 }
-Write-Output 'GATEB_DPAPI_ONE_SHOT_LIVE_BLOCKED_REQUIRES_NEW_APPROVAL_AND_SYSTEM_RESCUE'
-exit 4
+try {
+  $installed=Join-Path $Root 'gateb-dpapi-one-shot-coordinator.ps1'
+  if([IO.Path]::GetFullPath($PSCommandPath) -cne $installed){
+    throw 'NOT_PROTECTED_INSTALL'
+  }
+  if($env:COMPUTERNAME -cne $HostPin){throw 'WRONG_HOST'}
+  $principal=[Security.Principal.WindowsPrincipal]::new(
+    [Security.Principal.WindowsIdentity]::GetCurrent())
+  if(-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){
+    throw 'ADMIN_ONLY'
+  }
+  $target=Get-LocalUser -Name $AccountName -ErrorAction Stop
+  if(-not $target.SID){throw 'TARGET_SID_NOT_FOUND'}
+  $script:Sid=$target.SID.Value
+  $permitPath=Join-Path $Root 'gateb-dpapi-owner-permit.json'
+  $module=Join-Path $Root 'gateb-dpapi-approval-contract.ps1'
+  Assert-Leaf $module
+  . $module
+  $raw=ConvertFrom-Json ([IO.File]::ReadAllText($permitPath)) -ErrorAction Stop
+  $null=Assert-GateBDpapiOwnerPermit -PermitPath $permitPath -ScriptDirectory $Root -ExpectedHead ([string]$raw.head) -TargetSid $Sid -ExpectedTask 'NOVELIGHT-GateB-DPAPI-Independent-Rescue' -RequireUnexpired
+  $null=Assert-ProtectedRescueIsReady
+  Invoke-ApprovedOneShotTrial -IndependentRescueReady $true -FutureSignedOwnerPermitReady $true
+  if($script:Result -cne 'CANDIDATE_SEQUENCE_COMPLETED_WITH_BOTH_HEARTBEATS'){
+    throw 'COMPLETION_EVIDENCE_MISSING'
+  }
+  Write-Output 'GATEB_DPAPI_ONE_SHOT_LOCAL_EVIDENCE_PASS_REQUIRES_OWNER_REVIEW'
+  exit 0
+} catch {
+  # The independent SYSTEM worker/rescue must enforce recovery after an
+  # interrupted process. Any failure consumes the one shot if previously used.
+  Write-Output 'GATEB_DPAPI_ONE_SHOT_NO_GO_NO_RETRY'
+  exit 3
+}

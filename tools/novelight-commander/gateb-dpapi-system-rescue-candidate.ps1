@@ -133,9 +133,86 @@ function Invoke-IndependentSystemGuardRestore {
   # The separate regular SYSTEM Watchdog heartbeat still must independently
   # attest GUARD_ONLY and disabled account. No profile or proof is deleted.
 }
+function Write-RescueHeartbeat([string]$Status) {
+  $hb=Join-Path $Root 'gateb-dpapi-system-rescue-heartbeat.json'
+  $sequence=1
+  if([IO.File]::Exists($hb)){
+    try {
+      $prior=ConvertFrom-Json ([IO.File]::ReadAllText($hb)) -ErrorAction Stop
+      if($prior.version -eq 1 -and $prior.host -ceq $HostPin -and
+        $prior.sid -ceq $Sid -and [int]$prior.sequence -ge 1){
+        $sequence=[int]$prior.sequence+1
+      }
+    }catch{throw 'RESCUE_HEARTBEAT_UNTRUSTED'}
+  }
+  $data=[ordered]@{version=1;host=$HostPin;sid=$Sid;task=$TaskName;
+    sequence=$sequence;status=$Status;checkedUtc=[datetime]::UtcNow.ToString('o')}
+  $temp=Join-Path $Root ('gateb-rescue-heartbeat-stage-'+[guid]::NewGuid().ToString('N'))
+  $stream=[IO.File]::Open($temp,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+  try {
+    $bytes=[Text.Encoding]::UTF8.GetBytes(($data|ConvertTo-Json -Compress))
+    $stream.Write($bytes,0,$bytes.Length);$stream.Flush($true)
+  }finally{$stream.Dispose()}
+  if([IO.File]::Exists($hb)){
+    [IO.File]::Replace($temp,$hb,$null)
+  }else{
+    [IO.File]::Move($temp,$hb)
+  }
+}
+function Invoke-AuthorizedSystemRecovery {
+  $script:Stage='AUTHORIZED_SYSTEM'
+  if($env:COMPUTERNAME -cne $HostPin -or
+    [Security.Principal.WindowsIdentity]::GetCurrent().User.Value -cne $SystemSid){
+    throw 'SYSTEM_ONLY'
+  }
+  $installed=Join-Path $Root 'gateb-dpapi-system-rescue.ps1'
+  if([IO.Path]::GetFullPath($PSCommandPath) -cne $installed){
+    throw 'NOT_PROTECTED_INSTALL'
+  }
+  $targetUser=Get-LocalUser -Name $Account -ErrorAction Stop
+  if(-not $targetUser.SID){throw 'TARGET_SID_NOT_FOUND'}
+  $script:Sid=$targetUser.SID.Value
+  $module=Join-Path $Root 'gateb-dpapi-approval-contract.ps1'
+  Assert-PinnedLeaf $module
+  . $module
+  $permitPath=Join-Path $Root 'gateb-dpapi-owner-permit.json'
+  $json=ConvertFrom-Json ([IO.File]::ReadAllText($permitPath)) -ErrorAction Stop
+  $null=Assert-GateBDpapiOwnerPermit -PermitPath $permitPath -ScriptDirectory $Root -ExpectedHead ([string]$json.head) -TargetSid $Sid -ExpectedTask 'NOVELIGHT-GateB-DPAPI-Independent-Rescue'
+  $script:Stage='STATE'
+  Assert-PinnedRoot
+  Assert-PinnedLeaf $State
+  $state=ConvertFrom-Json ([IO.File]::ReadAllText($State)) -ErrorAction Stop
+  if($state.version -ne 1 -or $state.host -cne $HostPin -or
+    $state.sid -cne $Sid -or $state.taskName -cne $TaskName){
+    throw 'STATE_SCOPE_DRIFT'
+  }
+  if($state.phase -ceq 'GUARD_ONLY'){
+    if($targetUser.Enabled){throw 'IDLE_TARGET_ENABLED'}
+    Write-RescueHeartbeat 'IDLE_DISABLED'
+    return 'IDLE'
+  }
+  if($state.phase -cne 'GUARDED_TEST'){throw 'UNKNOWN_PHASE'}
+  $scope=Get-RescueScope
+  if(-not (Confirm-ScopeExpiredOrParentDead $scope)){
+    Write-RescueHeartbeat 'ARMED_PARENT_ALIVE'
+    return 'ARMED'
+  }
+  # This branch runs independently of the originating parent.
+  $script:Stage='RESTORE'
+  Invoke-IndependentSystemGuardRestore
+  Write-RescueHeartbeat 'RESTORED_GUARD_ONLY'
+  return 'RESTORED'
+}
 if($Mode -eq 'Inspect'){
   Write-Output 'GATEB_DPAPI_SYSTEM_RESCUE_OFFLINE_ONLY'
   exit 2
 }
-Write-Output 'GATEB_DPAPI_SYSTEM_RESCUE_NOT_ARMED_NO_OS_CHANGES'
-exit 4
+try {
+  $out=Invoke-AuthorizedSystemRecovery
+  Write-Output ('GATEB_DPAPI_SYSTEM_RESCUE_'+$out)
+  exit 0
+} catch {
+  # Keep the separately installed Watchdog as the independent disable guard.
+  Write-Output ('GATEB_DPAPI_SYSTEM_RESCUE_NO_GO_'+$Stage)
+  exit 3
+}
