@@ -29,6 +29,19 @@
     .novelight-ai-workspace-warning { padding:10px; border-left:3px solid #aa792f; background:#fff; }
     .novelight-ai-workspace-source { font-size:12px; color:#526273; -webkit-text-fill-color:#526273; }
 
+    .novelight-ai-workspace-category, .novelight-ai-workspace-order { width:100%; padding:11px 14px; border:1px solid #b6c5d1; border-radius:10px; background:#f8fafc; color:#182b3c; -webkit-text-fill-color:#182b3c; }
+    .novelight-ai-workspace-category { grid-column:1/-1; }
+    .novelight-ai-workspace-category:focus-visible, .novelight-ai-workspace-order:focus-visible { outline:3px solid #d7b65b; outline-offset:2px; }
+    .novelight-ai-workspace-story-index { grid-column:1/-1; padding:16px; border:1px solid #c7d5df; border-radius:12px; background:#edf3f7; color:#22384a; -webkit-text-fill-color:#22384a; }
+    .novelight-ai-workspace-story-index h3 { margin:0 0 8px; font-size:17px; }
+    .novelight-ai-workspace-story-index > p { margin:8px 0 14px; line-height:1.7; overflow-wrap:anywhere; }
+    .novelight-ai-workspace-story-rows { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:12px; }
+    .novelight-ai-workspace-story-group { min-width:0; padding:12px; border:1px solid #d0dbe4; border-radius:10px; background:#fff; }
+    .novelight-ai-workspace-story-group h4 { margin:0 0 10px; font-size:15px; }
+    .novelight-ai-workspace-story-row { padding:9px 0; border-bottom:1px solid #dde5ec; line-height:1.7; overflow-wrap:anywhere; }
+    .novelight-ai-workspace-section[hidden] { display:none; }
+    @media(max-width:800px){ .novelight-ai-workspace-story-rows { grid-template-columns:minmax(0,1fr); } }
+
     .novelight-ai-workspace-result { margin:0; font-size:13px; }
     .novelight-ai-workspace-section { min-width:0; padding:16px; border:1px solid #c8d2db; border-radius:14px; background:#f8fafc; color:#182b3c; -webkit-text-fill-color:#182b3c; }
     .novelight-ai-workspace-section h3 { margin:0 0 12px; font-size:17px; overflow-wrap:anywhere; }
