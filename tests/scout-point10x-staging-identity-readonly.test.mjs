@@ -15,7 +15,11 @@ import {
   fetchManagementEvidence,
   validateCatalogReadOnlyJson,
   SAFE_IDENTITY_SQL,
-  classifyPsqlFailure
+  classifyPsqlFailure,
+  OFFICIAL_SUPABASE_CA_DER_SHA256,
+  OFFICIAL_SUPABASE_CA_PEM_SHA256,
+  OFFICIAL_SUPABASE_CA_FILE_PATH,
+  verifyPinnedSupabaseRootCa
 } from '../scripts/scout-point10x-staging-identity-readonly.mjs';
 
 const mainSha = 'b'.repeat(40);
@@ -329,7 +333,7 @@ test('existing dedicated route validator is reused, not mistaken for TLS proof',
   );
   const route = inspectConnectionRoute(e, proof);
   assert.equal(route.sslMode, 'verify-full');
-  assert.equal(route.rootCert, 'system');
+  assert.equal(route.rootCert, 'official-supabase-root-2021-pinned');
   assert.equal(route.host, 'db.' + EXPECTED_STAGING + '.supabase.co');
   assert.equal(Object.hasOwn(route, 'password'), false);
   assert.equal(Object.hasOwn(route, 'databaseUrl'), false);
@@ -362,6 +366,39 @@ test('existing dedicated route validator is reused, not mistaken for TLS proof',
   );
 });
 
+test('Staging session pooler preserves exact hostname and pinned CA under verify-full', () => {
+  const proof = inspectManagementRecords(
+    management().branches,
+    management().branch
+  );
+  const e = env();
+  const host = 'aws-0-ap-northeast-1.pooler.supabase.com';
+  const base =
+    'postgresql://postgres.' + EXPECTED_STAGING + ':synthetic-password@';
+  e.STAGING_DATABASE_URL = base + host + ':5432/postgres';
+  const route = inspectConnectionRoute(e, proof);
+  assert.equal(route.connectionMode, 'session-pooler');
+  assert.equal(route.host, host);
+  assert.equal(route.port, '5432');
+  assert.equal(route.sslMode, 'verify-full');
+  assert.equal(route.rootCert, 'official-supabase-root-2021-pinned');
+  assert.equal(Object.hasOwn(route, 'password'), false);
+  for (const wrong of [
+    base + host + ':6543/postgres',
+    base + 'aws-0-evil.example.com:5432/postgres',
+    'postgresql://postgres.' +
+      EXPECTED_PARENT +
+      ':synthetic-password@' +
+      host +
+      ':5432/postgres'
+  ]) {
+    const candidate = { ...e, STAGING_DATABASE_URL: wrong };
+    assert.throws(
+      () => inspectConnectionRoute(candidate, proof),
+      /STAGE38_HOLD:/u
+    );
+  }
+});
 test('management API uses ONLY parent-scoped list and by-name GET in fixed order', async () => {
   const m = management();
   const urls = [];
@@ -694,6 +731,43 @@ test('TLS details win over generic network wrappers but never hide a SQL/script 
     'PSQL_FAILURE_UNCLASSIFIED'
   );
 });
+test('official Supabase public CA root is pinned; modification fails closed', () => {
+  const pem = readFileSync(OFFICIAL_SUPABASE_CA_FILE_PATH, 'utf8');
+  assert.equal(verifyPinnedSupabaseRootCa(pem), true);
+  assert.equal(
+    OFFICIAL_SUPABASE_CA_DER_SHA256,
+    '807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa'
+  );
+  assert.equal(
+    OFFICIAL_SUPABASE_CA_PEM_SHA256,
+    '700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7'
+  );
+  const invalid = [
+    '',
+    null,
+    undefined,
+    pem + 'SYNTHETIC_UNTRUSTED_TRAILER',
+    pem.replace('-----BEGIN CERTIFICATE-----', '-----BEGIN PRIVATE KEY-----'),
+    pem.replace(/(?<=-----BEGIN CERTIFICATE-----\n)[A-Za-z0-9]/u, 'Z'),
+    pem.replace(
+      '-----END CERTIFICATE-----',
+      '-----END UNTRUSTED CERTIFICATE-----'
+    )
+  ];
+  for (const candidate of invalid) {
+    let failure;
+    try {
+      verifyPinnedSupabaseRootCa(candidate);
+    } catch (error) {
+      failure = error;
+    }
+    assert.equal(failure?.safeCode, 'SUPABASE_OFFICIAL_CA_UNVERIFIED');
+    assert.doesNotMatch(
+      String(failure?.message),
+      /SYNTHETIC_UNTRUSTED_TRAILER|BEGIN PRIVATE KEY/iu
+    );
+  }
+});
 test('fixed catalog SQL is read-only; executable runner remains internal only', () => {
   assert.match(SAFE_IDENTITY_SQL, /^BEGIN READ ONLY; SELECT /u);
   assert.match(SAFE_IDENTITY_SQL, /ROLLBACK;$/u);
@@ -709,7 +783,8 @@ test('fixed catalog SQL is read-only; executable runner remains internal only', 
     'utf8'
   );
   assert.match(source, /PGSSLMODE: 'verify-full'/u);
-  assert.match(source, /PGSSLROOTCERT: 'system'/u);
+  assert.match(source, /PGSSLROOTCERT: caPath/u);
+  assert.match(source, /const caPath = verifiedSupabaseRootCaPath\(\)/u);
   assert.match(source, /default_transaction_read_only=on/u);
   assert.match(source, /delete childEnv\.STAGING_DATABASE_URL;/u);
   assert.match(source, /delete childEnv\.SUPABASE_ACCESS_TOKEN;/u);
