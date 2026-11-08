@@ -254,8 +254,36 @@ export function classifyPsqlFailure(child) {
   // Do not include any portion in returned values or thrown errors.
   const details =
     typeof child?.stderr === 'string' ? child.stderr.slice(0, 8192) : '';
+  // Exact libpq categories only. A generic TLS failure must not be
+  // misreported as proof of CA or hostname failure. This is a diagnosis
+  // of safe error phrases, not verification of the remote certificate.
   if (
-    /(?:certificate verify failed|certificate verification failed|self[- ]signed certificate|unable to get local issuer certificate|unknown ca|root certificate file|server certificate|certificate does not match|ssl error:.*certificate|sslrootcert|sslmode.*(?:invalid|unsupported))/iu.test(
+    /(?:server certificate for .* does not match host name|certificate does not match host(?: ?name)?|host(?: ?name)? .* does not match (?:the )?server certificate|hostname mismatch|no alternative certificate subject name matches)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TLS_HOSTNAME_MISMATCH';
+  if (
+    /(?:root certificate file.*(?:does not exist|not found|no such file|could not read|could not open|not readable|is missing)|could not (?:load|read|open) (?:the )?root certificate|sslrootcert.*(?:does not exist|not found|unreadable))/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TLS_CA_FILE_UNAVAILABLE';
+  if (
+    /(?:invalid value .*sslrootcert|unsupported .*sslrootcert|sslrootcert.*(?:invalid|unsupported)|invalid sslmode value|sslmode.*(?:invalid|unsupported)|server does not support SSL|SSL is not enabled on the server)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TLS_CONFIGURATION_REJECTED';
+  if (
+    /(?:certificate verify failed|certificate verification failed|self[- ]signed certificate|unable to get local issuer certificate|unknown ca|certificate has expired|certificate revoked|unable to verify the first certificate|certificate chain incomplete)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TLS_CHAIN_REJECTED';
+  // Ambiguous TLS and older libpq messages remain generic and fail-closed.
+  if (
+    /(?:root certificate file|server certificate|certificate does not match|ssl error:.*certificate|sslrootcert|sslmode.*(?:invalid|unsupported)|TLS handshake|SSL handshake)/iu.test(
       details
     )
   )
