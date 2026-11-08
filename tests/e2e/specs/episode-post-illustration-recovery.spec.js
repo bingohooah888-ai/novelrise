@@ -754,3 +754,59 @@ test('existing draft edit: two immediate illustration requests mount once', asyn
   await page.waitForTimeout(350);
   expect(page.__editorCalls).toBe(1);
 });
+
+test('new post: physical double-click keeps the drawer open and permits normal dismissal', async ({
+  page,
+  isMobile
+}) => {
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').dblclick({ delay: 60 });
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  await expect(page.locator('#settingsDrawer')).toHaveAttribute(
+    'aria-hidden',
+    'false'
+  );
+  expect(page.__editorCalls).toBe(1);
+  expect(await page.evaluate(() => globalThis.__draftSaves || 0)).toBe(1);
+  await page.waitForTimeout(650);
+  if (isMobile) await page.locator('#closeDrawer').click();
+  else await page.locator('#drawerBackdrop').click();
+  await expect(page.locator('#settingsDrawer')).toHaveAttribute(
+    'aria-hidden',
+    'true'
+  );
+});
+
+test('new post: physical double-click during slow autosave keeps one editor', async ({
+  page
+}) => {
+  await openNewPost(page);
+  await page.evaluate(() => {
+    globalThis.__testDraftSaveDelayMs = 450;
+  });
+  await expect
+    .poll(() => page.evaluate(() => globalThis.__draftSaves || 0))
+    .toBe(1);
+  await page.locator('#openIllustrationEditor').dblclick({ delay: 60 });
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  expect(page.__editorCalls).toBe(1);
+});
+
+test('existing draft edit: physical double-click keeps illustration drawer open', async ({
+  page
+}) => {
+  await openEditIllustrationFixture(page);
+  await page.locator('#openIllustrationEditor').dblclick({ delay: 60 });
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  await expect(page.locator('#settingsDrawer')).toHaveAttribute(
+    'aria-hidden',
+    'false'
+  );
+  expect(page.__editorCalls).toBe(1);
+});
