@@ -68,3 +68,16 @@ test('does not modify tasks, passwords, state, unrelated accounts or cloud resou
   );
   assert.doesNotMatch(ps, /\b(?:stripe|supabase|vercel|cloudflare)\b/i);
 });
+
+test('excludes only vanished transient PIDs while live unknown owner remains NO-GO', () => {
+  assert.match(ps, /Get-CimInstance Win32_Process -Filter/);
+  assert.match(
+    ps,
+    /if \(\$stillPresent\.Count -ne 0\) \{ throw 'OWNER_CENSUS_UNVERIFIED' \}/
+  );
+  assert.match(
+    ps,
+    /if \(\[string\]\$owner\.Sid -ceq \$Sid\) \{ throw 'TARGET_PROCESS_PRESENT' \}/
+  );
+  assert.match(ps, /PROFILE_AND_PROCESS_CENSUS/);
+});

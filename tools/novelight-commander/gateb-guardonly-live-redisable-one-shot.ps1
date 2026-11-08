@@ -48,11 +48,23 @@ function Assert-ZeroResidue {
   }
   foreach ($p in @(Get-CimInstance Win32_Process -ErrorAction Stop)) {
     if ([int]$p.ProcessId -in @(0,4)) { continue }
-    $owner=Invoke-CimMethod -InputObject $p -MethodName GetOwnerSid -ErrorAction Stop
-    if ($owner.ReturnValue -ne 0 -or [string]::IsNullOrWhiteSpace([string]$owner.Sid)) {
-      throw 'OWNER_CENSUS_UNVERIFIED'
+    # A process may exit between snapshot and GetOwnerSid. Confirm the PID
+    # no longer exists before excluding it; live/unknown owners remain NO-GO.
+    $owner=$null
+    try {
+      $owner=Invoke-CimMethod -InputObject $p -MethodName GetOwnerSid -ErrorAction Stop
+    } catch {
+      $owner=$null
     }
-    if ([string]$owner.Sid -ceq $Sid) { throw 'TARGET_PROCESS_PRESENT' }
+    if ($null -ne $owner -and $owner.ReturnValue -eq 0 -and
+      -not [string]::IsNullOrWhiteSpace([string]$owner.Sid)) {
+      if ([string]$owner.Sid -ceq $Sid) { throw 'TARGET_PROCESS_PRESENT' }
+      continue
+    }
+    $stillPresent=@(Get-CimInstance Win32_Process -Filter (
+      'ProcessId=' + [int]$p.ProcessId
+    ) -ErrorAction Stop)
+    if ($stillPresent.Count -ne 0) { throw 'OWNER_CENSUS_UNVERIFIED' }
   }
 }
 function Check-Nlo([bool]$TakeBaseline) {
@@ -84,6 +96,7 @@ function Assert-Baseline {
   if (@($admins | Where-Object {$_.SID.Value -ceq $Sid}).Count -ne 0) {
     throw 'TARGET_IS_ADMIN'
   }
+  $script:Stage='PROFILE_AND_PROCESS_CENSUS'
   Assert-ZeroResidue
   $script:Stage='PROTECTED_ROOT'
   $dir=Get-Item -LiteralPath $Root -Force -ErrorAction Stop
