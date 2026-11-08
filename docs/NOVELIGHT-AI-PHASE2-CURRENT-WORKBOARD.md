@@ -1,12 +1,12 @@
 # NOVELIGHT AI 工程②（02-07-05）— 継続用・唯一の現状ボード
 
-**最終内容確認：2026-11-05 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
+**最終内容確認：2026-11-09 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 03f64b14138ec5c6a90c0d8231a0784f878e78fa
+source_main: 9e7edb66cb83c061b048c2873450d3e50b6e8be3
 source_master_blob: 91d11fa367b7de64990b13397b13d4bb6e3c0230
 phase: 02-07-05
-last_reviewed_jst: 2026-11-05
+last_reviewed_jst: 2026-11-09
 <!-- CONTINUITY_FINGERPRINT_END -->
 
 ## 0. 最初に結論を確認する
@@ -15,6 +15,14 @@ last_reviewed_jst: 2026-11-05
 - 「工程②が20～30％」は根拠となる工数計測がない以前の推測。**確定した進捗率として使わない。**
 - 正式完了ゲート **A～Eのうち、現時点の完了判定は0/5**。これは工数進捗0%を意味しない。実装済みコード・単体試験は別軸で進んでいる。
 - **Aの合成試験部分がPASSでもGate A全体はNO-GO**。B/Cの安全な準備を並行して進めてよいが、Gate A未完を隠してB/C/Dのクラウド操作を実行しない。
+
+## 0.1 2026-11-09：AI機能開発の並行レーン（最新Owner方針）
+
+- OWNERの最新指示：Gate Bの第4回Windows DPAPI実機試験・保護ファイル更新は凍結し、新しい試験回数を増やさない。第1～3回の証拠とGUARD_ONLYを維持する。
+- ノベルバイブルのAPI・作者向け試作・同意管理の既存実装は再利用する。Gate A～Eは正式0/5 NO-GOで、実AI課金、外部API、Staging/Production公開を許可したものではない。
+- 並行する作者向け改善は、端末内で完結する原稿の文章セルフチェック（入力漏れ、括弧、仮置き文字、長文段落）から実施する。既存の「公開チェック」を置き換えず、AI校正・誤字脱字検出・作品の評価と誤称しない。投稿/保存のブロックも行わない。
+- 新たなオフライン機能は最新main起点の専用ブランチと独立Draft PRで扱う。DPAPI専用Draft PR #2774には混在させない。各機能の本番反映・有料AI・実データ操作には別承認が必要。
+- 今回のmain差分は、2026-11-05基準以降のillustrations・account deletion・Point10x・NLO更新などで、Novel Bible APIと評価ロジック本体に差分がないことを確認。MASTER blob `91d11fa367b7de64990b13397b13d4bb6e3c0230` は同一。
 
 ## 1. 一覧：工程②の実際の完了条件
 
