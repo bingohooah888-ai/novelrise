@@ -413,3 +413,25 @@ test('review totals include items omitted from the capped notice list', () => {
   assert.match(target.textContent, /AI候補：120件・要確認項目：360件/);
   assert.match(target.textContent, /ほか 260 件の確認ポイントがあります/);
 });
+
+test('author can mark local review items without writing or accepting facts', () => {
+  const payload = fixture();
+  payload.characters.push({ name: '蒼', aliases: ['青い鍵の持ち主'] });
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const button = nodes(target, 'button')[0];
+  assert.equal(nodes(target, 'button').length, 1);
+  assert.equal(button.attributes['aria-pressed'], 'false');
+  assert.match(target.textContent, /この画面だけの確認済み：0\/1件（保存されません）/);
+  button.listeners.get('click')();
+  assert.equal(button.attributes['aria-pressed'], 'true');
+  assert.match(target.textContent, /この画面だけの確認済み：1\/1件（保存されません）/);
+  button.listeners.get('click')();
+  assert.equal(button.attributes['aria-pressed'], 'false');
+  assert.match(target.textContent, /この画面だけの確認済み：0\/1件（保存されません）/);
+  button.listeners.get('click')();
+  assert.equal(render({ target, payload }), true);
+  assert.match(target.textContent, /この画面だけの確認済み：0\/1件（保存されません）/);
+  assert.equal(payload.facts[0].suggestions.length, 1);
+  assert.equal(payload.characters[1].name, '蒼');
+});
