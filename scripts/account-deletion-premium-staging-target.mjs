@@ -22,6 +22,11 @@ function deny() {
   throw new Error('PREMIUM_STAGING_TARGET_DENIED');
 }
 
+// Only fixed, non-sensitive stage names are allowed in diagnostic output.
+function denyStage(stage) {
+  throw new Error('PREMIUM_STAGING_TARGET_DENIED_' + stage);
+}
+
 export function checkPremiumTargetContext(env) {
   if (
     env.GITHUB_REPOSITORY !== REPO ||
@@ -116,14 +121,17 @@ export function validatePremiumPreviewFacts(facts, env) {
         .update(env.STAGING_SUPABASE_PUBLISHABLE_KEY)
         .digest('hex') ||
     facts?.stripe?.secretKeyMode !== 'test' ||
-    facts?.stripe?.standardPricePresent === true ||
-    facts?.stripe?.premiumPricePresent === true
+    // Legacy price ID env variables may exist on Preview, but this E2E
+    // must ignore their values and use only the strict TEST lookup key.
+    // Keep the runtime response contract strict (actual booleans required).
+    typeof facts?.stripe?.standardPricePresent !== 'boolean' ||
+    typeof facts?.stripe?.premiumPricePresent !== 'boolean'
   )
     deny();
   return Object.freeze({ verified: true, staging: STAGING, origin });
 }
 
-async function getJson(url, headers, fetchImpl) {
+async function getJson(url, headers, fetchImpl, stage = 'INVENTORY') {
   let response;
   try {
     response = await fetchImpl(url, {
@@ -133,13 +141,13 @@ async function getJson(url, headers, fetchImpl) {
       signal: AbortSignal.timeout(20000)
     });
   } catch {
-    deny();
+    denyStage(stage + '_NETWORK');
   }
-  if (!response?.ok) deny();
+  if (!response?.ok) denyStage(stage + '_HTTP');
   try {
     return await response.json();
   } catch {
-    deny();
+    denyStage(stage + '_JSON');
   }
 }
 
@@ -197,9 +205,15 @@ export async function verifyPremiumPreview({
       Accept: 'application/json',
       'x-vercel-protection-bypass': env.VERCEL_AUTOMATION_BYPASS_SECRET
     },
-    fetchImpl
+    fetchImpl,
+    'FACTS'
   );
-  const verified = validatePremiumPreviewFacts(facts, env);
+  let verified;
+  try {
+    verified = validatePremiumPreviewFacts(facts, env);
+  } catch {
+    denyStage('FACTS_CONTRACT');
+  }
   // Vercel Secrets can be write-only. Attest the actual deployed TEST account
   // inside Preview instead of attempting to decrypt or export its secret.
   const identity = await getJson(
@@ -210,14 +224,15 @@ export async function verifyPremiumPreview({
       'x-novelight-expected-account-sha256':
         env.STRIPE_TEST_EXPECTED_ACCOUNT_SHA256
     },
-    fetchImpl
+    fetchImpl,
+    'ACCOUNT_PROOF'
   );
   if (
     !identity ||
     Object.keys(identity).length !== 1 ||
     identity.accountMatch !== true
   )
-    deny();
+    denyStage('ACCOUNT_PROOF_CONTRACT');
   return verified;
 }
 
@@ -238,9 +253,16 @@ if (
   } else {
     action()
       .then(() => console.log('PREMIUM_STAGING_TARGET_VERIFIED'))
-      .catch(() => {
-        // No decrypted settings or API payloads are ever logged.
-        console.error('PREMIUM_STAGING_TARGET_DENIED');
+      .catch((error) => {
+        // No raw errors, URLs, secrets, response bodies or account IDs in logs.
+        // Emit a fixed diagnostic only for read-only Preview proof stages.
+        const safeStage =
+          /^PREMIUM_STAGING_TARGET_DENIED_(?:FACTS|ACCOUNT_PROOF)_(?:NETWORK|HTTP|JSON|CONTRACT)$/u;
+        console.error(
+          safeStage.test(error?.message || '')
+            ? error.message
+            : 'PREMIUM_STAGING_TARGET_DENIED'
+        );
         process.exitCode = 1;
       });
   }
