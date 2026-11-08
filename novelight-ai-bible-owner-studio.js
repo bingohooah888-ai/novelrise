@@ -46,7 +46,7 @@
       const section = doc.createElement('section');
       section.className = 'panel novelight-ai-bible-owner-section';
       section.setAttribute('aria-label', '作品カルテ（管理人限定・非公開）');
-      const content = doc.createElement('pre');
+      const content = doc.createElement('div');
       content.className = 'novelight-ai-bible-owner-content';
       content.hidden = true;
       section.appendChild(content);
