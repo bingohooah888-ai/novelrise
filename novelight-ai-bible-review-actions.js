@@ -54,7 +54,8 @@
       !Array.isArray(payload.candidates) ||
       payload.candidates.length > 100 ||
       !payload.candidates.every(validItem)
-    ) return false;
+    )
+      return false;
     const ids = payload.candidates.map((item) => positive(item.id));
     return new Set(ids).size === ids.length;
   }
@@ -83,11 +84,7 @@
     const first = await client.auth.getSession();
     const session = !first.error && first.data?.session;
     const token = session?.access_token;
-    if (
-      session?.user?.id !== ownerId ||
-      typeof token !== 'string' ||
-      !token
-    ) {
+    if (session?.user?.id !== ownerId || typeof token !== 'string' || !token) {
       return false;
     }
     const url = '/api/ai-owner-bible-review?novel_id=' + id;
@@ -223,10 +220,7 @@
       list.textContent = '保留中の候補はありません。';
     }
     const listener = client.auth.onAuthStateChange((_event, next) => {
-      if (
-        next?.user?.id !== ownerId ||
-        next?.access_token !== token
-      ) {
+      if (next?.user?.id !== ownerId || next?.access_token !== token) {
         clear();
       }
     });
