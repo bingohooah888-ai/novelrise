@@ -3,7 +3,8 @@ import test from 'node:test';
 
 import '../novelight-ai-bible-author-workspace.js';
 
-const { render, toSections } = globalThis.NovelightAiBibleAuthorWorkspace;
+const { render, toSections, localReviewSummary } =
+  globalThis.NovelightAiBibleAuthorWorkspace;
 
 class FakeElement {
   constructor(tagName = 'div', ownerDocument = null) {
@@ -137,7 +138,7 @@ test('local search filters the cards but never mutates the source data', () => {
   input.value = '青い鍵';
   input.listeners.get('input')();
   assert.equal(cards.filter((card) => !card.hidden).length, 2);
-  assert.match(target.textContent, /検索結果：2件/);
+  assert.match(target.textContent, /絞り込み結果：2件/);
   assert.equal(payload.facts[0].suggestions.length, 1);
   input.value = '';
   input.listeners.get('input')();
@@ -173,4 +174,69 @@ test('an empty, valid Bible displays section-specific empty states', () => {
   assert.equal(nodes(target, 'article').length, 0);
   assert.equal(target.textContent.match(/登録情報はありません/g).length, 6);
   assert.match(target.textContent, /登録情報：0件/);
+});
+
+test('author status filter keeps pending candidates separate from author canon', () => {
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload: fixture() }), true);
+  const status = nodes(target, 'select')[0];
+  const cards = nodes(target, 'article');
+  assert.equal(
+    status.attributes['aria-label'],
+    '作品カルテの確認状態で絞り込み'
+  );
+  status.value = 'review';
+  status.listeners.get('change')();
+  assert.equal(cards.filter((card) => !card.hidden).length, 2);
+  assert.match(target.textContent, /絞り込み結果：2件/);
+  status.value = 'author';
+  status.listeners.get('change')();
+  assert.equal(cards.filter((card) => !card.hidden).length, 4);
+  assert.equal(target.hidden, false);
+});
+
+test('offline review flags overlaps and distinct duplicate names without implying an AI verdict', () => {
+  const payload = fixture();
+  payload.characters.push({ name: '蒼', aliases: ['青い鍵の持ち主'] });
+  payload.facts[1].suggestions.push({
+    payload: { summary: '夏の夜', evidence: '夏の夜' }
+  });
+  payload.facts[1].confirmed.push({
+    payload: { summary: '春の朝', evidence: '' }
+  });
+  const result = localReviewSummary(payload);
+  assert.equal(result.pending, 2);
+  assert.deepEqual(
+    result.checks.map((entry) => entry.title),
+    ['人物名・別名の重複', '確定設定との重複候補', '複数の確定記録']
+  );
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  assert.match(target.textContent, /機械的な重複の確認のみ行います/);
+  assert.match(target.textContent, /AI候補：2件・要確認項目：3件/);
+  assert.equal(nodes(target, 'aside').length, 1);
+  assert.deepEqual(
+    payload.facts[1].confirmed.map((row) => row.payload.summary),
+    ['春の朝', '春の朝']
+  );
+});
+
+test('duplicate aliases within one character are not mistaken for separate people', () => {
+  const payload = fixture();
+  payload.characters[0].aliases.push('凛');
+  const result = localReviewSummary(payload);
+  assert.deepEqual(result.checks, []);
+});
+
+test('source metadata is labeled as an ID and never mistaken for a chapter number', () => {
+  const payload = fixture();
+  payload.facts[0].suggestions[0].sourceEpisodeId = 734;
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  assert.match(target.textContent, /参照エピソードID：734/);
+  assert.doesNotMatch(target.textContent, /第734話/);
+  payload.facts[0].suggestions[0].sourceEpisodeId = -1;
+  assert.equal(render({ target, payload }), false);
+  assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
 });
