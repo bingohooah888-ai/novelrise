@@ -11,6 +11,7 @@ const deleteMigration = readFileSync(
   'utf8'
 );
 const ui = readFileSync('novelight-episode-illustrations.js', 'utf8');
+const rls = readFileSync('tests/rls/episode-inline-illustrations.sql', 'utf8');
 
 test('all episode insert and manuscript updates validate active illustration references', () => {
   assert.match(
@@ -52,4 +53,14 @@ test('illustration UI does not misrepresent saved metadata and preserves retry i
   assert.match(ui, /insert\.disabled = busy/);
   assert.match(ui, /mountedState\.retryPending = true/);
   assert.match(ui, /state\.assets = state\.assets\.filter/);
+});
+
+test('RLS integration exercises valid markers and rejects missing or deleted references', () => {
+  assert.match(
+    rls,
+    /set constraints public\.novelight_validate_episode_illustration_refs immediate/i
+  );
+  assert.match(rls, /Missing illustration reference unexpectedly saved/);
+  assert.match(rls, /Deleted illustration reference unexpectedly saved/);
+  assert.match(rls, /when foreign_key_violation then null/);
 });

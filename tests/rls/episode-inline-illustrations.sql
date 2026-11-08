@@ -236,5 +236,50 @@ begin
 end
 $$;
 
+-- Force the deferrable reference guard now; do not allow ROLLBACK to hide errors.
+set constraints public.novelight_validate_episode_illustration_refs immediate;
+
+do $$
+declare
+  v_id uuid := current_setting('novelight.test.illustration_id')::uuid;
+  v_marker text := '[[NOVELIGHT_ILLUSTRATION:' || v_id::text || ']]';
+  v_original_content text;
+begin
+  select content into v_original_content
+    from public.episodes where id = 830001;
+
+  if pg_catalog.strpos(v_original_content, v_marker) = 0 then
+    raise exception 'Registered illustration marker was not restored to the body';
+  end if;
+
+  -- Missing assets must be blocked on direct episode updates.
+  begin
+    update public.episodes
+       set content = v_original_content || E'\n'
+            || '[[NOVELIGHT_ILLUSTRATION:83000000-0000-4000-8000-000000000999]]'
+     where id = 830001;
+    raise exception 'Missing illustration reference unexpectedly saved';
+  exception when foreign_key_violation then null;
+  end;
+
+  -- Remove the reference, delete the asset, then verify re-insertion fails.
+  update public.episodes
+     set content = pg_catalog.replace(content, v_marker, '')
+   where id = 830001;
+  if not public.novelight_delete_episode_illustration(
+    830001, 830001, v_id,
+    '83000000-0000-0000-0000-000000000001'
+  ) then
+    raise exception 'Expected logical deletion to succeed after removal';
+  end if;
+
+  begin
+    update public.episodes set content = v_original_content where id = 830001;
+    raise exception 'Deleted illustration reference unexpectedly saved';
+  exception when foreign_key_violation then null;
+  end;
+end
+$$;
+
 reset role;
 rollback;
