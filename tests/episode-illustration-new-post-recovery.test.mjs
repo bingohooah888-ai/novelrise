@@ -37,9 +37,33 @@ function harness(statuses = []) {
       for (const handler of this.listeners[event.type] || []) handler(event);
     }
     querySelector(selector) {
-      return selector === '[data-illustration-count]'
-        ? (this.count ||= { textContent: '' })
-        : null;
+      if (selector === '[data-illustration-count]') {
+        return (this.count ||= { textContent: '' });
+      }
+      const matches = (node) =>
+        (selector === 'input[type="file"]' &&
+          node.tag === 'input' &&
+          node.type === 'file') ||
+        (selector === 'input[type="text"]' &&
+          node.tag === 'input' &&
+          node.type === 'text') ||
+        (selector === 'button' && node.tag === 'button') ||
+        (selector === '.episode-illustration-upload-note' &&
+          node.className === 'episode-illustration-upload-note');
+      const visit = (node) => {
+        for (const child of node.children || []) {
+          if (matches(child)) return child;
+          const nested = visit(child);
+          if (nested) return nested;
+        }
+        return null;
+      };
+      return visit(this);
+    }
+    contains(node) {
+      return (
+        this === node || this.children.some((child) => child.contains?.(node))
+      );
     }
   }
   document.createElement = (tag) => new Element(tag);
