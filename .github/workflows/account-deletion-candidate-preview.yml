@@ -155,7 +155,6 @@ jobs:
             echo 'Free-only scope never executes an account deletion request.'
           } >> "$GITHUB_STEP_SUMMARY"
 
-
   free_proof:
     name: Exact existing Staging Preview, one fresh Free user, authenticated deletion, residue and cleanup
     needs: admit
