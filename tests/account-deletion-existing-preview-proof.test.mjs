@@ -91,7 +91,9 @@ test('Free proof rejects wrong branch, wrong repo, non-READY, Production and unr
   const inputs = [
     deployment({ meta: { ...deployment().meta, githubCommitRef: 'main' } }),
     deployment({ meta: { ...deployment().meta, githubRepo: 'other-repo' } }),
-    deployment({ meta: { ...deployment().meta, githubCommitSha: 'b'.repeat(40) } }),
+    deployment({
+      meta: { ...deployment().meta, githubCommitSha: 'b'.repeat(40) }
+    }),
     deployment({ state: 'BUILDING' }),
     deployment({ target: 'production' }),
     deployment({ url: 'novelrise.vercel.app' }),
