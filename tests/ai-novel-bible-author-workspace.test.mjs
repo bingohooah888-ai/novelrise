@@ -378,3 +378,38 @@ test('invalid story index input never escapes fail-closed validation', () => {
   assert.equal(storyIndex(payload), null);
   assert.equal(localReviewSummary(payload), null);
 });
+
+test('unrecognized inherited fact kind fails closed rather than throwing', () => {
+  const payload = fixture();
+  payload.facts[0].kind = '__proto__';
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload: fixture() }), true);
+  assert.equal(toSections(payload), null);
+  assert.equal(storyIndex(payload), null);
+  assert.equal(render({ target, payload }), false);
+  assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
+});
+
+test('review totals include items omitted from the capped notice list', () => {
+  const payload = { characters: [], notes: [], facts: [] };
+  for (let i = 0; i < 120; i += 1) {
+    payload.facts.push({
+      kind: 'event',
+      key: '出来事 ' + i,
+      confirmed: [
+        { payload: { summary: '確定', evidence: '' } },
+        { payload: { summary: '確定', evidence: '' } }
+      ],
+      suggestions: [{ payload: { summary: '候補', evidence: '' } }]
+    });
+  }
+  const review = localReviewSummary(payload);
+  assert.equal(review.checks.length, 100);
+  assert.equal(review.remaining, 260);
+  assert.equal(review.pending, 120);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  assert.match(target.textContent, /AI候補：120件・要確認項目：360件/);
+  assert.match(target.textContent, /ほか 260 件の確認ポイントがあります/);
+});
