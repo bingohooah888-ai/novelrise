@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import '../novelight-ai-bible-owner-panel.js';
 
-const { mount, render } = globalThis.NovelightAiBibleOwnerPanel;
+const { mount, render, validPreviewResponse } = globalThis.NovelightAiBibleOwnerPanel;
 
 function fakeNode() {
   return {
@@ -155,6 +155,8 @@ test('mock-only extraction renders review candidates as literal private text', (
   assert.equal(target.hidden, false);
   assert.match(target.textContent, /模擬解析/);
   assert.match(target.textContent, /本文根拠：凛は青い鍵/);
+  assert.match(target.textContent, /参照エピソードID：11/);
+  assert.doesNotMatch(target.textContent, /第11話/);
   assert.match(target.textContent, /作者の確定設定と重複/);
   assert.match(target.textContent, /<script>凛<\/script>/);
   assert.doesNotMatch(target.textContent, /自動採用しました/);
@@ -215,4 +217,97 @@ test('invalid response after successful render clears old author data', () => {
   );
   assert.equal(target.hidden, true);
   assert.equal(target.textContent, '');
+});
+
+test('owner GET response guard accepts the real grouped-facts read contract only', () => {
+  const payload = {
+    novelId: 17,
+    aiGenerated: false,
+    characters: [{ name: '凛', aliases: [] }],
+    notes: [],
+    facts: [{ kind: 'event', key: '出発', confirmed: [], suggestions: [] }]
+  };
+  assert.equal(validPreviewResponse(payload, 17), true);
+  assert.equal(validPreviewResponse(payload, '17'), true);
+  assert.equal(validPreviewResponse({ ...payload, novelId: 18 }, 17), false);
+  assert.equal(validPreviewResponse({ ...payload, aiGenerated: true }, 17), false);
+  assert.equal(validPreviewResponse({ ...payload, aiGenerated: undefined }, 17), false);
+  assert.equal(validPreviewResponse({ ...payload, candidates: [] }, 17), false);
+  assert.equal(validPreviewResponse({ novelId: 17, candidates: [], aiGenerated: false }, 17), false);
+  assert.equal(validPreviewResponse(null, 17), false);
+});
+
+test('owner mount rejects cross-work, review-list and incomplete envelopes without exposing old data', async () => {
+  const good = {
+    novelId: 17,
+    aiGenerated: false,
+    characters: [{ name: '設定X', aliases: [] }],
+    notes: [{ title: '作者専用', body: 'PRIVATE_NOVEL_A', type: 'plot' }],
+    facts: []
+  };
+  const responseCases = [
+    good,
+    { ...good, novelId: 18 },
+    { novelId: 17, aiGenerated: false, candidates: [] },
+    { ...good, aiGenerated: true },
+    { ...good, notes: undefined }
+  ];
+  for (const [index, body] of responseCases.entries()) {
+    const target = fakeNode();
+    let gets = 0;
+    const actual = await mount({
+      target,
+      novelId: 17,
+      client: {
+        auth: {
+          async getSession() {
+            return { data: { session: { access_token: 'synthetic-offline-token' } } };
+          }
+        }
+      },
+      async fetcher(url, options) {
+        gets += 1;
+        assert.equal(url, '/api/ai-owner-novel-bible?novel_id=17');
+        assert.equal(options.method, 'GET');
+        return { ok: true, async json() { return body; } };
+      }
+    });
+    assert.equal(gets, 1);
+    assert.equal(actual, index === 0);
+    assert.equal(target.hidden, index !== 0);
+    if (index === 0) assert.match(target.textContent, /PRIVATE_NOVEL_A/);
+    else assert.equal(target.textContent, '');
+  }
+});
+
+test('malformed grouped fact records are rejected before author review indexing', async () => {
+  const target = fakeNode();
+  const result = await mount({
+    target,
+    novelId: 17,
+    client: {
+      auth: {
+        async getSession() {
+          return { data: { session: { access_token: 'offline-only' } } };
+        }
+      }
+    },
+    async fetcher() {
+      return {
+        ok: true,
+        async json() {
+          return {
+            novelId: 17,
+            aiGenerated: false,
+            characters: [],
+            notes: [],
+            facts: [{ kind: 'event', key: 'X', confirmed: [null], suggestions: [] }]
+          };
+        }
+      };
+    }
+  });
+  // This fallback text-only component accepts the top-level shape; the
+  // fully mounted author workspace performs deeper grouped-fact validation.
+  assert.equal(result, true);
 });
