@@ -126,6 +126,63 @@ test('Supabase list array with independent branch statuses still validates only 
   assert.equal(proof.branchId, branchId);
 });
 
+test('named Branch GET may omit preview_project_status when list is ACTIVE_HEALTHY', () => {
+  const m = management();
+  delete m.branch.preview_project_status;
+  const proof = inspectManagementRecords(m.branches, m.branch);
+  assert.equal(proof.managementVerified, true);
+  assert.equal(proof.branchId, branchId);
+});
+
+test('named Branch GET must reject a present unhealthy preview_project_status', () => {
+  for (const value of ['INACTIVE', 'PAUSED', null, undefined, false]) {
+    const m = management();
+    m.branch.preview_project_status = value;
+    let failure;
+    try {
+      inspectManagementRecords(m.branches, m.branch);
+    } catch (error) {
+      failure = error;
+    }
+    assert.equal(failure?.safeCode, 'STAGING_BRANCH_IDENTITY_MISMATCH');
+    assert.ok(
+      failure.safeDiagnostics.some(
+        (entry) =>
+          entry.view === 'named' &&
+          entry.field === 'preview_project_status' &&
+          entry.present === true &&
+          entry.matchesExpected === false
+      )
+    );
+  }
+});
+
+test('list Branch preview_project_status remains mandatory even if named GET omits it', () => {
+  for (const value of ['MISSING', 'INACTIVE', null, undefined, false]) {
+    const m = management();
+    delete m.branch.preview_project_status;
+    if (value === 'MISSING')
+      delete m.branches.branches[1].preview_project_status;
+    else m.branches.branches[1].preview_project_status = value;
+    let failure;
+    try {
+      inspectManagementRecords(m.branches, m.branch);
+    } catch (error) {
+      failure = error;
+    }
+    assert.equal(failure?.safeCode, 'STAGING_BRANCH_IDENTITY_MISMATCH');
+    assert.ok(
+      failure.safeDiagnostics.some(
+        (entry) =>
+          entry.view === 'list' &&
+          entry.field === 'preview_project_status' &&
+          entry.present === (value !== 'MISSING') &&
+          entry.matchesExpected === false
+      )
+    );
+  }
+});
+
 test('all missing named identity fields are classified without leaking values', () => {
   for (const field of [
     'id',
@@ -133,7 +190,6 @@ test('all missing named identity fields are classified without leaking values', 
     'project_ref',
     'parent_project_ref',
     'is_default',
-    'preview_project_status',
     'persistent',
     'with_data'
   ]) {

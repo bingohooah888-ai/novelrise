@@ -89,6 +89,10 @@ export function inspectManagementRecords(branchResponse, namedBranchResponse) {
   ]) {
     for (const [field, isExpected] of identityChecks) {
       const present = Object.hasOwn(branch, field);
+      // Supabase named Branch GET may omit this summary-only health field.
+      // The list must supply ACTIVE_HEALTHY; a present named value must match.
+      if (view === 'named' && field === 'preview_project_status' && !present)
+        continue;
       if (!present || !isExpected(branch[field]))
         mismatches.push({ view, field, present, matchesExpected: false });
     }
