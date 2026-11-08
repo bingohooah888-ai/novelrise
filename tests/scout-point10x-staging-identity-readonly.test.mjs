@@ -512,6 +512,58 @@ test('synthetic catalog shape cannot claim live Staging authority', () => {
     );
 });
 
+
+test('catalog failures disclose only fixed condition names, never SQL values', () => {
+  const valid = {
+    database: 'postgres',
+    dbRole: 'postgres',
+    postgresMajor: 17,
+    ssl: true,
+    tables: EXPECTED_TABLES.length,
+    cronExtension: false,
+    rankCronFunction: false
+  };
+  const cases = [
+    [{ database: 'SYNTHETIC_SECRET' }, 'DATABASE_NAME'],
+    [{ dbRole: 'SYNTHETIC_SECRET' }, 'DATABASE_ROLE'],
+    [{ ssl: false }, 'SSL_ACTIVE'],
+    [{ postgresMajor: 16 }, 'POSTGRES_MAJOR_VERSION'],
+    [{ tables: -1 }, 'TABLE_COUNT_RANGE'],
+    [{ tables: EXPECTED_TABLES.length + 1 }, 'TABLE_COUNT_RANGE'],
+    [{ cronExtension: 'SYNTHETIC_SECRET' }, 'CRON_EXTENSION_TYPE'],
+    [{ rankCronFunction: 'SYNTHETIC_SECRET' }, 'RANK_CRON_FUNCTION_TYPE']
+  ];
+  for (const [changes, expectedName] of cases) {
+    assert.throws(
+      () => validateCatalogReadOnlyJson({ ...valid, ...changes }),
+      (error) => {
+        assert.equal(error?.safeCode, 'SERVER_IDENTITY_OR_SCHEMA_INVALID');
+        assert.deepEqual(error.safeDiagnostics, [expectedName]);
+        assert.doesNotMatch(
+          JSON.stringify(error.safeDiagnostics),
+          /SYNTHETIC_SECRET|postgres|password|dbRole/iu
+        );
+        return true;
+      }
+    );
+  }
+  assert.throws(() => validateCatalogReadOnlyJson(null), (error) => {
+    assert.deepEqual(error.safeDiagnostics, ['CATALOG_RESULT_SHAPE']);
+    return true;
+  });
+  assert.throws(
+    () => validateCatalogReadOnlyJson({
+      ...valid,
+      database: 'SYNTHETIC_SECRET',
+      ssl: false
+    }),
+    (error) => {
+      assert.deepEqual(error.safeDiagnostics, ['DATABASE_NAME', 'SSL_ACTIVE']);
+      return true;
+    }
+  );
+});
+
 test('psql failures map to a fixed safe code without exposing native details', () => {
   const cases = [
     [
