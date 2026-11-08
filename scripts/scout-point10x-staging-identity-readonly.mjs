@@ -433,20 +433,34 @@ function runSafeReadOnlyQuery({ env, route }) {
 
 // This exported shape-only validator never proves a real connection.
 export function validateCatalogReadOnlyJson(result) {
-  if (
-    !object(result) ||
-    result.database !== 'postgres' ||
-    result.dbRole !== 'postgres' ||
-    result.ssl !== true ||
-    !Number.isInteger(result.postgresMajor) ||
-    result.postgresMajor < 17 ||
-    !Number.isInteger(result.tables) ||
-    result.tables < 0 ||
-    result.tables > EXPECTED_TABLES.length ||
-    typeof result.cronExtension !== 'boolean' ||
-    typeof result.rankCronFunction !== 'boolean'
-  )
-    stop('SERVER_IDENTITY_OR_SCHEMA_INVALID');
+  // All emitted names are fixed constants; never include catalog values.
+  const failedChecks = !object(result)
+    ? ['CATALOG_RESULT_SHAPE']
+    : [
+        ['DATABASE_NAME', result.database === 'postgres'],
+        ['DATABASE_ROLE', result.dbRole === 'postgres'],
+        ['SSL_ACTIVE', result.ssl === true],
+        [
+          'POSTGRES_MAJOR_VERSION',
+          Number.isInteger(result.postgresMajor) && result.postgresMajor >= 17
+        ],
+        [
+          'TABLE_COUNT_RANGE',
+          Number.isInteger(result.tables) &&
+            result.tables >= 0 &&
+            result.tables <= EXPECTED_TABLES.length
+        ],
+        ['CRON_EXTENSION_TYPE', typeof result.cronExtension === 'boolean'],
+        ['RANK_CRON_FUNCTION_TYPE', typeof result.rankCronFunction === 'boolean']
+      ]
+        .filter(([, passes]) => !passes)
+        .map(([name]) => name);
+  if (failedChecks.length > 0) {
+    const error = new Error('STAGE38_HOLD:SERVER_IDENTITY_OR_SCHEMA_INVALID');
+    error.safeCode = 'SERVER_IDENTITY_OR_SCHEMA_INVALID';
+    error.safeDiagnostics = failedChecks;
+    throw error;
+  }
   return Object.freeze({
     status: 'NO_GO_SYNTHETIC_CATALOG_SHAPE_ONLY',
     stagingRef: EXPECTED_STAGING,
@@ -508,6 +522,13 @@ if (
         )
           console.error(
             'STAGE38_IDENTITY_FIELDS:' + JSON.stringify(error.safeDiagnostics)
+          );
+        if (
+          code === 'SERVER_IDENTITY_OR_SCHEMA_INVALID' &&
+          Array.isArray(error.safeDiagnostics)
+        )
+          console.error(
+            'STAGE38_FAILED_CHECKS:' + JSON.stringify(error.safeDiagnostics)
           );
         process.exitCode = 1;
       });
