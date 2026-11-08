@@ -221,6 +221,10 @@ test('Free-only approved Preview accepts absent prices but requires isolated Sta
     requests.push(url);
     return new globalThis.Response(
       JSON.stringify(facts({
+        supabase: {
+          ...facts().supabase,
+          url: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+        },
         stripe: {
           secretKeyMode: 'test',
           standardPricePresent: false,
@@ -233,6 +237,7 @@ test('Free-only approved Preview accepts absent prices but requires isolated Sta
   const free = strictEnvironment({
     STAGING_TRIGGER: 'approval_comment',
     CANONICAL_STAGING_URL: BASE_URL,
+    STAGING_EXPECTED_SUPABASE_URL: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
     GITHUB_REPOSITORY: 'bingohooah888-ai/novelrise',
     STAGING_PREVIEW_REF: 'fix/inquiry-82-account-deletion-diagnostics-20261107',
     STAGING_DELETE_FREE_MODE: 'true',
@@ -273,6 +278,7 @@ test('Free-only Preview still rejects live Stripe credentials and absent Supabas
         },
         supabase: {
           ...facts().supabase,
+          url: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
           serverSecretPresent
         }
       })),
@@ -282,6 +288,7 @@ test('Free-only Preview still rejects live Stripe credentials and absent Supabas
   const free = strictEnvironment({
     STAGING_TRIGGER: 'approval_comment',
     CANONICAL_STAGING_URL: BASE_URL,
+    STAGING_EXPECTED_SUPABASE_URL: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
     GITHUB_REPOSITORY: 'bingohooah888-ai/novelrise',
     STAGING_PREVIEW_REF: 'fix/inquiry-82-account-deletion-diagnostics-20261107',
     STAGING_DELETE_FREE_MODE: 'true',
