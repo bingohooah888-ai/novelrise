@@ -113,11 +113,13 @@ function Assert-ExistingTasks {
  foreach($name in @('heartbeat.json','gateb-dpapi-system-rescue-heartbeat.json')){
   Leaf (Join-Path $Root $name)
   $hb=ConvertFrom-Json ([IO.File]::ReadAllText((Join-Path $Root $name))) -ErrorAction Stop
-  Must ($hb.sid -ceq $Sid -or $name -eq 'heartbeat.json') 'RESCUE_HEARTBEAT_SID_DRIFT'
   Must ([datetime]::Parse([string]$hb.checkedUtc).ToUniversalTime() -gt [datetime]::UtcNow.AddSeconds(-150)) 'HEARTBEAT_STALE'
   if($name -eq 'heartbeat.json'){
+   # The normal watchdog heartbeat intentionally has no SID field.
    Must ($hb.reasonCode -ceq 'GUARD_ONLY' -and $hb.observedDisabled -eq $true) 'WATCHDOG_NOT_IDLE'
   }else{
+   # SYSTEM rescue heartbeat must still attest the exact target SID.
+   Must ($hb.sid -ceq $Sid) 'RESCUE_HEARTBEAT_SID_DRIFT'
    Must ($hb.status -ceq 'IDLE_DISABLED') 'RESCUE_NOT_IDLE'
   }
  }
@@ -265,7 +267,9 @@ if($Mode -eq 'Preflight'){
   Write-Output 'GATEB_ATTEMPT3_PREFLIGHT_READONLY_PASS'
   exit 0
  }catch{
-  Write-Output 'GATEB_ATTEMPT3_PREFLIGHT_READONLY_NO_GO'
+  $code=[string]$_.Exception.Message
+  if($code -notmatch '^[A-Z][A-Z_0-9]{2,100}$'){$code='UNCLASSIFIED_PREFLIGHT_FAILURE'}
+  Write-Output ('GATEB_ATTEMPT3_PREFLIGHT_READONLY_NO_GO_CODE='+$code)
   exit 3
  }
 }
