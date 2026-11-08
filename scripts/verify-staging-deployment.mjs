@@ -62,7 +62,11 @@ function resolveTarget(env) {
     fail('CONFIG_DRIFT', 'unknown Staging deployment verification trigger.');
   }
 
-  const parsed = parseOrigin('Staging deployment URL', candidate, '.vercel.app');
+  const parsed = parseOrigin(
+    'Staging deployment URL',
+    candidate,
+    '.vercel.app'
+  );
   if (parsed.hostname === VERCEL_INTERNAL_PRODUCTION_HOST) {
     fail('CONFIG_DRIFT', 'refusing the Production Vercel host.');
   }
@@ -91,7 +95,10 @@ function publishableFingerprint(value) {
 
 function assertObject(value, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    fail('CONFIG_DRIFT', `${name} is unavailable in deployed environment facts.`);
+    fail(
+      'CONFIG_DRIFT',
+      `${name} is unavailable in deployed environment facts.`
+    );
   }
 }
 
@@ -110,10 +117,9 @@ function freeAccountProofMode(env) {
     env.GITHUB_REPOSITORY !== 'bingohooah888-ai/novelrise' ||
     env.STAGING_PREVIEW_REF !==
       'fix/inquiry-82-account-deletion-diagnostics-20261107' ||
-    ![
-      'account-deletion-free-preview',
-      'account-deletion-free-proof'
-    ].includes(env.STAGING_FREE_APPROVAL_SCOPE) ||
+    !['account-deletion-free-preview', 'account-deletion-free-proof'].includes(
+      env.STAGING_FREE_APPROVAL_SCOPE
+    ) ||
     env.STAGING_REQUIRE_WRITE_CONFIG !== 'true' ||
     env.STAGING_EXPECTED_SUPABASE_URL !==
       'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
@@ -165,7 +171,9 @@ function validateEnvironmentFacts({ facts, baseUrl, expectedRevision, env }) {
       'deployed Supabase URL does not match GitHub-owned STAGING_SUPABASE_URL.'
     );
   }
-  if (!['publishable', 'legacy-anon'].includes(facts.supabase.publishableKeyClass)) {
+  if (
+    !['publishable', 'legacy-anon'].includes(facts.supabase.publishableKeyClass)
+  ) {
     fail(
       'CONFIG_DRIFT',
       `deployed Supabase browser key class is ${facts.supabase.publishableKeyClass || 'missing'}.`
@@ -195,7 +203,10 @@ function validateEnvironmentFacts({ facts, baseUrl, expectedRevision, env }) {
     (facts.stripe.standardPricePresent !== true ||
       facts.stripe.premiumPricePresent !== true)
   ) {
-    fail('CONFIG_DRIFT', 'deployed Staging Stripe Price configuration is incomplete.');
+    fail(
+      'CONFIG_DRIFT',
+      'deployed Staging Stripe Price configuration is incomplete.'
+    );
   }
 
   return { converged: true, observedRevision: facts.commitSha };
@@ -238,7 +249,10 @@ async function fetchFacts(baseUrl, bypassSecret) {
 export async function verifyStagingDeployment(env = process.env) {
   const expectedRevision = env.EXPECTED_REVISION || '';
   if (!COMMIT_PATTERN.test(expectedRevision)) {
-    fail('CONFIG_DRIFT', 'EXPECTED_REVISION must be an exact 40-character commit SHA.');
+    fail(
+      'CONFIG_DRIFT',
+      'EXPECTED_REVISION must be an exact 40-character commit SHA.'
+    );
   }
 
   const { baseUrl, source } = resolveTarget(env);
