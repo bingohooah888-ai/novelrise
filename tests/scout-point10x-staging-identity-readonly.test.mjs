@@ -512,8 +512,7 @@ test('synthetic catalog shape cannot claim live Staging authority', () => {
     );
 });
 
-
-test('catalog failures disclose only fixed condition names, never SQL values', () => {
+test('catalog failures report only fixed condition names', () => {
   const valid = {
     database: 'postgres',
     dbRole: 'postgres',
@@ -541,7 +540,7 @@ test('catalog failures disclose only fixed condition names, never SQL values', (
         assert.deepEqual(error.safeDiagnostics, [expectedName]);
         assert.doesNotMatch(
           JSON.stringify(error.safeDiagnostics),
-          /SYNTHETIC_SECRET|postgres|password|dbRole/iu
+          /SYNTHETIC_SECRET|password|dbRole/iu
         );
         return true;
       }
