@@ -404,6 +404,106 @@ test('Free Preview workflow can never run account deletion or a live proof', () 
   assert.match(workflow, /ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED/u);
   assert.match(workflow, /ACCOUNT_DELETE_FREE_PREVIEW_CONSUMED/u);
   assert.match(workflow, /STAGING_DELETE_FREE_MODE:/u);
-  assert.doesNotMatch(workflow, /account-deletion-free-live-proof/u);
-  assert.doesNotMatch(workflow, /\/api\/delete-account/u);
+  const preview = workflow
+    .split('\n  preview:\n')[1]
+    ?.split('\n  free_proof:\n')[0];
+  assert.ok(preview, 'Free Preview job must remain separate from JWT proof');
+  assert.doesNotMatch(preview, /account-deletion-free-live-proof/u);
+  assert.doesNotMatch(preview, /\/api\/delete-account/u);
+});
+
+test('Free JWT proof requires distinct exact-URL OWNER admission, reviewed seven blobs and an unused ledger claim', () => {
+  const f = approvalFixture();
+  const marker = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_APPROVE ';
+  const body = {
+    scope: 'account-deletion-free-proof',
+    mainSha,
+    candidateSha,
+    confirmation: 'STAGING APPROVED',
+    previewUrl: 'https://novelrise-preview-123.vercel.app'
+  };
+  f.comment.body = marker + JSON.stringify(body);
+  assert.deepEqual(assertAccountDeletionPreviewAdmission(f), {
+    mainSha,
+    candidateSha,
+    previewRef: branch,
+    requestCommentId: '1002',
+    approvalMode: 'free-proof',
+    previewUrl: body.previewUrl
+  });
+  for (const value of [
+    'http://novelrise-preview-123.vercel.app',
+    'https://novelrise.vercel.app',
+    'https://novelrise-preview-123.vercel.app/anything',
+    'https://novelrise-preview-123.vercel.app?test=1',
+    'https://bad.vercel.app.evil.com',
+    'https://example.com',
+    ''
+  ]) {
+    const invalid = globalThis.structuredClone(f);
+    invalid.comment.body =
+      marker +
+      JSON.stringify({
+        ...body,
+        previewUrl: value
+      });
+    assert.throws(
+      () => assertAccountDeletionPreviewAdmission(invalid),
+      DENY,
+      value
+    );
+  }
+  const altered = globalThis.structuredClone(f);
+  altered.compare.files[2].sha = '0'.repeat(40);
+  assert.throws(() => assertAccountDeletionPreviewAdmission(altered), DENY);
+  const replay = globalThis.structuredClone(f);
+  replay.ledgerPages = [
+    [
+      {
+        body:
+          'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_CONSUMED ' +
+          JSON.stringify({
+            requestCommentId: '1002',
+            mainSha,
+            candidateSha,
+            runId: '42',
+            result: 'failure'
+          })
+      }
+    ]
+  ];
+  assert.throws(() => assertAccountDeletionPreviewAdmission(replay), DENY);
+  const wrong = globalThis.structuredClone(f);
+  wrong.comment.user.login = 'attacker';
+  assert.throws(() => assertAccountDeletionPreviewAdmission(wrong), DENY);
+});
+
+test('existing Staging workflow keeps Preview creation and destructive JWT proof in disjoint jobs', () => {
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/account-deletion-candidate-preview.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const preview = workflow
+    .split('\n  preview:\n')[1]
+    ?.split('\n  free_proof:\n')[0];
+  const proof = workflow
+    .split('\n  free_proof:\n')[1]
+    ?.split('\n  consume:\n')[0];
+  assert.ok(preview);
+  assert.ok(proof);
+  assert.match(preview, /vercel-preview-deployment\.mjs/u);
+  assert.doesNotMatch(preview, /account-deletion-free-live-proof\.mjs/u);
+  assert.match(proof, /account-deletion-free-live-proof\.mjs/u);
+  assert.doesNotMatch(proof, /vercel-preview-deployment\.mjs/u);
+  assert.match(proof, /environment: staging/u);
+  assert.match(proof, /OWNER_APPROVED_PREVIEW_URL/u);
+  assert.match(proof, /STAGING_FREE_PROOF_APPROVED/u);
+  assert.match(proof, /resolve-existing-staging-preview\.mjs/u);
+  assert.match(proof, /verify-staging-deployment\.mjs/u);
+  assert.match(workflow, /ACCOUNT_DELETE_FREE_PROOF_CLAIMED/u);
+  assert.match(workflow, /ACCOUNT_DELETE_FREE_PROOF_CONSUMED/u);
+  assert.doesNotMatch(workflow, /workflow_dispatch:/u);
 });

@@ -17,11 +17,19 @@ const FREE_PREVIEW_CLAIMED =
   'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED ';
 const FREE_PREVIEW_CONSUMED =
   'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CONSUMED ';
+const FREE_PROOF_APPROVE =
+  'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_APPROVE ';
+const FREE_PROOF_CLAIMED =
+  'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_CLAIMED ';
+const FREE_PROOF_CONSUMED =
+  'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_CONSUMED ';
 const LEDGER_PREFIXES = Object.freeze([
   [CLAIMED, false],
   [CONSUMED, true],
   [FREE_PREVIEW_CLAIMED, false],
-  [FREE_PREVIEW_CONSUMED, true]
+  [FREE_PREVIEW_CONSUMED, true],
+  [FREE_PROOF_CLAIMED, false],
+  [FREE_PROOF_CONSUMED, true]
 ]);
 
 // The reviewed account deletion PR #2785 file blobs at b008772e5e77. Changing one
@@ -135,16 +143,29 @@ export function assertAccountDeletionPreviewAdmission({
   ) {
     deny('not an OWNER-authored approval');
   }
+  const proofOnly = comment.body.startsWith(FREE_PROOF_APPROVE);
   const freeOnly = comment.body.startsWith(FREE_PREVIEW_APPROVE);
-  const approvalMode = freeOnly ? 'free-preview' : 'standard';
+  const approvalMode = proofOnly
+    ? 'free-proof'
+    : freeOnly
+      ? 'free-preview'
+      : 'standard';
   const approved = parseMarker(
     comment.body,
-    freeOnly ? FREE_PREVIEW_APPROVE : PREFIX,
-    ['scope', 'mainSha', 'candidateSha', 'confirmation']
+    proofOnly ? FREE_PROOF_APPROVE : freeOnly ? FREE_PREVIEW_APPROVE : PREFIX,
+    [
+      'scope',
+      'mainSha',
+      'candidateSha',
+      'confirmation',
+      ...(proofOnly ? ['previewUrl'] : [])
+    ]
   );
-  const expectedScope = freeOnly
-    ? 'account-deletion-free-preview'
-    : 'account-deletion-preview';
+  const expectedScope = proofOnly
+    ? 'account-deletion-free-proof'
+    : freeOnly
+      ? 'account-deletion-free-preview'
+      : 'account-deletion-preview';
   if (
     approved.scope !== expectedScope ||
     approved.confirmation !== 'STAGING APPROVED' ||
@@ -154,6 +175,26 @@ export function assertAccountDeletionPreviewAdmission({
     main?.object?.sha !== approved.mainSha
   ) {
     deny('approval scope or exact current main mismatch');
+  }
+  if (proofOnly) {
+    let url;
+    try {
+      url = new URL(approved.previewUrl);
+    } catch {
+      deny('proof requires exact Preview HTTPS origin');
+    }
+    if (
+      typeof approved.previewUrl !== 'string' ||
+      url.origin !== approved.previewUrl ||
+      url.protocol !== 'https:' ||
+      url.hostname === 'novelrise.vercel.app' ||
+      !url.hostname.endsWith('.vercel.app') ||
+      url.username ||
+      url.password ||
+      url.port
+    ) {
+      deny('free proof must target one exact non-Production Preview origin');
+    }
   }
   if (
     pr?.number !== PR_NUMBER ||
@@ -238,7 +279,11 @@ export function assertAccountDeletionPreviewAdmission({
     candidateSha: approved.candidateSha,
     previewRef: PR_REF,
     requestCommentId: String(comment.id),
-    ...(freeOnly ? { approvalMode } : {})
+    ...(proofOnly
+      ? { approvalMode, previewUrl: approved.previewUrl }
+      : freeOnly
+        ? { approvalMode }
+        : {})
   });
 }
 
