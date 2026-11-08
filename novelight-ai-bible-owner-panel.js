@@ -16,6 +16,24 @@
     return typeof value === 'string' && value.length <= maxLength ? value : null;
   }
 
+  // Only the owner-only GET /api/ai-owner-novel-bible response belongs here.
+  // The separate /api/ai-owner-bible-review list has a different contract.
+  // This guard runs after server authorization; it does not grant access.
+  function validPreviewResponse(payload, expectedNovelId) {
+    return (
+      !!workId(expectedNovelId) &&
+      payload !== null &&
+      typeof payload === 'object' &&
+      !Array.isArray(payload) &&
+      payload.novelId === workId(expectedNovelId) &&
+      payload.aiGenerated === false &&
+      !Object.hasOwn(payload, 'candidates') &&
+      Array.isArray(payload.characters) &&
+      Array.isArray(payload.notes) &&
+      Array.isArray(payload.facts)
+    );
+  }
+
   // No HTML, template interpolation, innerHTML or DOM element creation from
   // unpublished story data: a single textContent assignment is the only sink.
   function previewText(payload) {
@@ -106,7 +124,7 @@
         return null;
       }
       lines.push(
-        '・' + kind + '：' + key + '（第' + sourceId + '話ID）',
+        '・' + kind + '：' + key + '（参照エピソードID：' + sourceId + '）',
         '  候補：' + summary,
         '  本文根拠：' + evidence
       );
@@ -168,7 +186,9 @@
         }
       );
       if (!response.ok) return false;
-      return render({ target, payload: await response.json() });
+      const payload = await response.json();
+      if (!validPreviewResponse(payload, id)) return false;
+      return render({ target, payload });
     } catch {
       return false;
     }
@@ -177,6 +197,7 @@
   root.NovelightAiBibleOwnerPanel = Object.freeze({
     mount,
     render,
-    renderMockReview
+    renderMockReview,
+    validPreviewResponse
   });
 })(globalThis);
