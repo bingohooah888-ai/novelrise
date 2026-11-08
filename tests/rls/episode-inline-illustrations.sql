@@ -236,7 +236,9 @@ begin
 end
 $$;
 
--- Force the deferrable reference guard now; do not allow ROLLBACK to hide errors.
+-- Exercise the database guard as a privileged internal draft-write,
+-- independently of editor RLS (the UI permissions are covered above).
+reset role;
 set constraints public.novelight_validate_episode_illustration_refs immediate;
 
 do $$
@@ -244,6 +246,7 @@ declare
   v_id uuid := current_setting('novelight.test.illustration_id')::uuid;
   v_marker text := '[[NOVELIGHT_ILLUSTRATION:' || v_id::text || ']]';
   v_original_content text;
+  v_updated_rows integer;
 begin
   select content into v_original_content
     from public.episodes where id = 830001;
@@ -259,6 +262,10 @@ begin
        set content = v_original_content || E'\n'
             || '[[NOVELIGHT_ILLUSTRATION:83000000-0000-4000-8000-000000000999]]'
      where id = 830001;
+    get diagnostics v_updated_rows = row_count;
+    if v_updated_rows <> 1 then
+      raise exception 'Fixture error: direct episode update affected % rows', v_updated_rows;
+    end if;
     set constraints public.novelight_validate_episode_illustration_refs immediate;
     raise exception 'Missing illustration reference unexpectedly saved';
   exception when foreign_key_violation then null;
@@ -278,6 +285,10 @@ begin
   begin
     set constraints public.novelight_validate_episode_illustration_refs deferred;
     update public.episodes set content = v_original_content where id = 830001;
+    get diagnostics v_updated_rows = row_count;
+    if v_updated_rows <> 1 then
+      raise exception 'Fixture error: deleted marker test updated % rows', v_updated_rows;
+    end if;
     set constraints public.novelight_validate_episode_illustration_refs immediate;
     raise exception 'Deleted illustration reference unexpectedly saved';
   exception when foreign_key_violation then null;
