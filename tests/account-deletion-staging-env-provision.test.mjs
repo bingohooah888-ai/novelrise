@@ -579,3 +579,128 @@ test('workflow is OWNER ledger-only, protected staging and never Preview/Product
   assert.doesNotMatch(workflow, /vercel-preview-deployment\.mjs/u);
   assert.doesNotMatch(workflow, /--prod/u);
 });
+
+test('Free environment approval retains exact OWNER, current main, seven blobs and one-shot replay protection', () => {
+  const fixture = admissionFixture();
+  const prefix = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_ENV_APPROVE ';
+  fixture.event.comment.body =
+    prefix +
+    JSON.stringify({
+      scope: 'account-deletion-free-env-provision',
+      mainSha: MAIN,
+      candidateSha: HEAD,
+      confirmation: 'STAGING APPROVED'
+    });
+  assert.deepEqual(admitAccountEnvProvision(fixture), {
+    mainSha: MAIN,
+    candidateSha: HEAD,
+    candidateRef: REF,
+    approvalCommentId: '1234',
+    approvalMode: 'free'
+  });
+  const reused = structuredClone(fixture);
+  reused.ledgerPages = [[{
+    body: 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_ENV_CONSUMED ' +
+      JSON.stringify({
+        requestCommentId: '1234',
+        mainSha: MAIN,
+        candidateSha: HEAD,
+        runId: '5',
+        result: 'failure'
+      })
+  }]];
+  assert.throws(() => admitAccountEnvProvision(reused), DENY);
+
+  const wrong = structuredClone(fixture);
+  wrong.event.comment.body =
+    prefix + JSON.stringify({
+      scope: 'account-deletion-env-provision',
+      mainSha: MAIN,
+      candidateSha: HEAD,
+      confirmation: 'STAGING APPROVED'
+    });
+  assert.throws(() => admitAccountEnvProvision(wrong), DENY);
+});
+
+test('Free environment only accepts four preexisting and six final scoped keys', () => {
+  const six = final.filter((v) => !v.key.includes('PRICE_ID'));
+  assert.equal(
+    assertProvisioningInventory(six, 'after', 'free').configuredKeys,
+    6
+  );
+  assert.throws(() => assertProvisioningInventory(six, 'after'), FAIL);
+  assert.throws(() => assertProvisioningInventory(final, 'after', 'free'), FAIL);
+  assert.throws(
+    () => assertProvisioningInventory(initial, 'after', 'free'),
+    FAIL
+  );
+});
+
+test('Free provisioning writes two isolated TEST secrets without Stripe API or prices', async () => {
+  const six = final.filter((v) => !v.key.includes('PRICE_ID'));
+  const env = {
+    ...credentialsFixture(),
+    STAGING_DELETE_FREE_MODE: 'true',
+    STAGING_FREE_APPROVAL_SCOPE: 'account-deletion-free-env-provision'
+  };
+  let remote = initial;
+  let posts = 0;
+  let priceLookups = 0;
+  const stages = [];
+  const result = await provisionAccountDeletionEnv({
+    env,
+    reportStage: (stage) => stages.push(stage),
+    resolveScope: async () => ({
+      teamId: 'team_2XFgtRCPJQ6pbrEa4mOLQAEx',
+      projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe'
+    }),
+    verifySupabase: async () => true,
+    verifyStripe: async () => {
+      priceLookups += 1;
+      throw new Error('Free provisioning must never inspect Stripe prices');
+    },
+    fetchImpl: async (url, options) => {
+      if (options.method === 'POST') {
+        posts += 1;
+        const request = JSON.parse(options.body);
+        assert.deepEqual(
+          request.map((entry) => entry.key),
+          ['SUPABASE_SECRET_KEY', 'STRIPE_SECRET_KEY']
+        );
+        assert.ok(request.every((entry) =>
+          entry.target.join() === 'preview' && entry.gitBranch === REF
+        ));
+        remote = six;
+      }
+      return { ok: true, json: async () => ({ envs: remote }) };
+    }
+  });
+  assert.deepEqual(result.createdKeys, [
+    'SUPABASE_SECRET_KEY',
+    'STRIPE_SECRET_KEY'
+  ]);
+  assert.equal(result.verifiedPriceCount, 0);
+  assert.equal(posts, 1);
+  assert.equal(priceLookups, 0);
+  assert.ok(stages.includes('STRIPE_TEST_KEY_CLASS'));
+
+  for (const badKey of ['sk_live_', '', 'invalid']) {
+    let writes = 0;
+    await assert.rejects(
+      provisionAccountDeletionEnv({
+        env: { ...env, STRIPE_TEST_SECRET_KEY: badKey },
+        resolveScope: async () => ({
+          teamId: 'team_2XFgtRCPJQ6pbrEa4mOLQAEx',
+          projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe'
+        }),
+        verifySupabase: async () => true,
+        fetchImpl: async (url, options) => {
+          if (options.method === 'POST') writes += 1;
+          return { ok: true, json: async () => ({ envs: initial }) };
+        }
+      }),
+      FAIL
+    );
+    assert.equal(writes, 0);
+  }
+});
