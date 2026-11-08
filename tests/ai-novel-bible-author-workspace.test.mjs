@@ -452,7 +452,13 @@ test('author can mark local review items without writing or accepting facts', ()
 
 test('malformed fact records fail closed without reading stale author data', () => {
   const target = new FakeElement('div', doc);
-  for (const record of [null, undefined, [], { payload: null }, { payload: [] }]) {
+  for (const record of [
+    null,
+    undefined,
+    [],
+    { payload: null },
+    { payload: [] }
+  ]) {
     const good = fixture();
     assert.equal(render({ target, payload: good }), true);
     assert.match(target.textContent, /非公開の国の歴史/);
@@ -476,7 +482,10 @@ test('legacy fact objects lacking optional excerpts do not throw during review c
 
 test('preview refuses excessive records and incomplete grouped API fields', () => {
   const payload = fixture();
-  const item = { sourceEpisodeId: 7, payload: { summary: 'メモ', evidence: '' } };
+  const item = {
+    sourceEpisodeId: 7,
+    payload: { summary: 'メモ', evidence: '' }
+  };
   payload.facts[1].confirmed = Array.from({ length: 201 }, () => item);
   assert.equal(toSections(payload), null);
   const target = new FakeElement('div', doc);
