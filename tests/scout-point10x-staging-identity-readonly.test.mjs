@@ -14,7 +14,8 @@ import {
   inspectConnectionRoute,
   fetchManagementEvidence,
   validateCatalogReadOnlyJson,
-  SAFE_IDENTITY_SQL
+  SAFE_IDENTITY_SQL,
+  classifyPsqlFailure
 } from '../scripts/scout-point10x-staging-identity-readonly.mjs';
 
 const mainSha = 'b'.repeat(40);
@@ -474,6 +475,137 @@ test('synthetic catalog shape cannot claim live Staging authority', () => {
     );
 });
 
+test('psql failures map to a fixed safe code without exposing native details', () => {
+  const cases = [
+    [
+      { error: { code: 'ENOENT', message: 'SYNTHETIC_SECRET' } },
+      'PSQL_EXECUTABLE_UNAVAILABLE'
+    ],
+    [{ error: { code: 'EACCES' } }, 'PSQL_EXECUTABLE_UNAVAILABLE'],
+    [{ error: { code: 'EPERM' } }, 'PSQL_EXECUTABLE_UNAVAILABLE'],
+    [
+      { error: { code: 'ETIMEDOUT', message: 'SYNTHETIC_SECRET' } },
+      'PSQL_TIMEOUT'
+    ],
+    [
+      {
+        status: 2,
+        stderr:
+          'psql: error: could not translate host name SYNTHETIC_SECRET to address'
+      },
+      'PSQL_DNS_OR_NETWORK_FAILURE'
+    ],
+    [
+      {
+        status: 2,
+        stderr: 'psql: error: connection refused at SYNTHETIC_SECRET'
+      },
+      'PSQL_DNS_OR_NETWORK_FAILURE'
+    ],
+    [
+      { status: 2, stderr: 'psql: error: network is unreachable' },
+      'PSQL_DNS_OR_NETWORK_FAILURE'
+    ],
+    [
+      {
+        status: 2,
+        stderr: 'psql: error: connection timed out at SYNTHETIC_SECRET'
+      },
+      'PSQL_TIMEOUT'
+    ],
+    [
+      {
+        status: 2,
+        stderr:
+          'psql: error: ssl error: certificate verify failed SYNTHETIC_SECRET'
+      },
+      'PSQL_TLS_CERTIFICATE_FAILURE'
+    ],
+    [
+      {
+        status: 2,
+        stderr: 'psql: error: root certificate file is missing SYNTHETIC_SECRET'
+      },
+      'PSQL_TLS_CERTIFICATE_FAILURE'
+    ],
+    [
+      {
+        status: 2,
+        stderr:
+          'psql: error: password authentication failed for user SYNTHETIC_SECRET'
+      },
+      'PSQL_AUTHENTICATION_FAILURE'
+    ],
+    [
+      {
+        status: 2,
+        stderr: 'psql: error: no pg_hba.conf entry for host SYNTHETIC_SECRET'
+      },
+      'PSQL_AUTHENTICATION_FAILURE'
+    ],
+    [
+      { status: 3, stderr: 'ERROR: synthetic SQL error with SYNTHETIC_SECRET' },
+      'PSQL_SQL_ERROR'
+    ],
+    [
+      { status: 1, stderr: 'SYNTHETIC_SECRET unknown native failure' },
+      'PSQL_FAILURE_UNCLASSIFIED'
+    ],
+    [
+      {
+        status: 2,
+        stderr:
+          'connection to server at SYNTHETIC_SECRET failed: unfamiliar server policy'
+      },
+      'PSQL_FAILURE_UNCLASSIFIED'
+    ],
+    [{ status: null, stderr: null }, 'PSQL_FAILURE_UNCLASSIFIED'],
+    [
+      {
+        status: 2,
+        stderr: {
+          toString() {
+            throw Error('should not be called');
+          }
+        }
+      },
+      'PSQL_FAILURE_UNCLASSIFIED'
+    ]
+  ];
+  for (const [input, code] of cases) {
+    const actual = classifyPsqlFailure(input);
+    assert.equal(actual, code);
+    assert.match(actual, /^PSQL_[A-Z_]+$/u);
+    assert.doesNotMatch(actual, /SYNTHETIC_SECRET|host|password|stderr/iu);
+  }
+});
+
+test('psql failure classification prioritizes SQL exit and TLS over generic connection text', () => {
+  assert.equal(
+    classifyPsqlFailure({
+      status: 3,
+      stderr: 'ERROR: could not translate host name SYNTHETIC_SECRET'
+    }),
+    'PSQL_SQL_ERROR'
+  );
+  assert.equal(
+    classifyPsqlFailure({
+      status: 2,
+      stderr:
+        'connection to server at SYNTHETIC_SECRET failed: SSL error: certificate verify failed'
+    }),
+    'PSQL_TLS_CERTIFICATE_FAILURE'
+  );
+  assert.equal(
+    classifyPsqlFailure({
+      status: 2,
+      stderr:
+        'connection to server at SYNTHETIC_SECRET failed: FATAL: password authentication failed'
+    }),
+    'PSQL_AUTHENTICATION_FAILURE'
+  );
+  assert.equal(classifyPsqlFailure(undefined), 'PSQL_FAILURE_UNCLASSIFIED');
+});
 test('fixed catalog SQL is read-only; executable runner remains internal only', () => {
   assert.match(SAFE_IDENTITY_SQL, /^BEGIN READ ONLY; SELECT /u);
   assert.match(SAFE_IDENTITY_SQL, /ROLLBACK;$/u);
