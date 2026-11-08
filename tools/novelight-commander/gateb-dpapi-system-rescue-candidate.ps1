@@ -1,5 +1,6 @@
-# Offline-only SOURCE for a future separate SYSTEM recovery task.
-# Recover always exits 4; no tasks or protected files are changed by this CLI.
+# Protected SYSTEM recovery source candidate. Its Inspect mode is read-only.
+# Recover is permitted only from an owner-approved, hash-pinned SYSTEM task;
+# never run it from the uninstalled development worktree.
 [CmdletBinding()]
 param([ValidateSet('Inspect','Recover')][string]$Mode='Inspect')
 Set-StrictMode -Version Latest
@@ -135,8 +136,10 @@ function Invoke-IndependentSystemGuardRestore {
 }
 function Write-RescueHeartbeat([string]$Status) {
   $hb=Join-Path $Root 'gateb-dpapi-system-rescue-heartbeat.json'
+  $backup=Join-Path $Root 'gateb-dpapi-system-rescue-heartbeat.previous.json'
   $sequence=1
   if([IO.File]::Exists($hb)){
+    Assert-PinnedLeaf $hb
     try {
       $prior=ConvertFrom-Json ([IO.File]::ReadAllText($hb)) -ErrorAction Stop
       if($prior.version -eq 1 -and $prior.host -ceq $HostPin -and
@@ -154,7 +157,10 @@ function Write-RescueHeartbeat([string]$Status) {
     $stream.Write($bytes,0,$bytes.Length);$stream.Flush($true)
   }finally{$stream.Dispose()}
   if([IO.File]::Exists($hb)){
-    [IO.File]::Replace($temp,$hb,$null)
+    # Windows PowerShell/.NET rejects a null backup path (0x80070057).
+    # Reuse one protected non-secret backup; this is safe on repeated ticks.
+    if([IO.File]::Exists($backup)){Assert-PinnedLeaf $backup}
+    [IO.File]::Replace($temp,$hb,$backup)
   }else{
     [IO.File]::Move($temp,$hb)
   }

@@ -139,3 +139,26 @@ test('permit cannot have extra, inherited, or target write ACL', () => {
   assert.match(install, /PERMIT_HAS_UNTRUSTED_ACCESS/u);
   assert.match(install, /PERMIT_TARGET_MODIFY_RIGHTS/u);
 });
+
+test('rescue recurrence validates the Windows CIM DailyTrigger, not XML CalendarTrigger name', () => {
+  // Task Scheduler XML <CalendarTrigger><ScheduleByDay> becomes
+  // Get-ScheduledTask CIM MSFT_TaskDailyTrigger on Windows.
+  assert.match(install, /<CalendarTrigger>/u);
+  assert.match(
+    coordinator,
+    /CimClass\.CimClassName -ceq 'MSFT_TaskDailyTrigger'/u
+  );
+  assert.doesNotMatch(
+    coordinator,
+    /CimClass\.CimClassName -match 'CalendarTrigger'/u
+  );
+  assert.match(coordinator, /RESCUE_TASK_TRIGGER_DRIFT/u);
+});
+
+test('SYSTEM rescue heartbeat uses a stable non-null backup for every repeat tick', () => {
+  assert.match(rescue, /gateb-dpapi-system-rescue-heartbeat\.previous\.json/u);
+  assert.match(rescue, /\[IO\.File\]::Replace\(\$temp,\$hb,\$backup\)/u);
+  assert.doesNotMatch(rescue, /\[IO\.File\]::Replace\(\$temp,\$hb,\$null\)/u);
+  assert.match(rescue, /Assert-PinnedLeaf \$backup/u);
+  assert.match(rescue, /Assert-PinnedLeaf \$hb/u);
+});

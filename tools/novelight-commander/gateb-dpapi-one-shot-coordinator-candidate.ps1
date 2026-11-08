@@ -323,7 +323,7 @@ function Assert-ProtectedRescueIsReady {
     $t.Actions[0].Arguments -cne $expectedArgs){throw 'RESCUE_TASK_NOT_PINNED'}
   $triggers=@($t.Triggers)
   if(@($triggers|Where-Object {$_.CimClass.CimClassName -match 'BootTrigger'}).Count -ne 1 -or
-    @($triggers|Where-Object {$_.CimClass.CimClassName -match 'CalendarTrigger'}).Count -ne 1){
+    @($triggers|Where-Object {$_.CimClass.CimClassName -ceq 'MSFT_TaskDailyTrigger'}).Count -ne 1){
     throw 'RESCUE_TASK_TRIGGER_DRIFT'
   }
   if((Get-ScheduledTaskInfo -TaskName $rescueTask -TaskPath '\').LastTaskResult -ne 0){
