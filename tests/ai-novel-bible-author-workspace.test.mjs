@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import '../novelight-ai-bible-author-workspace.js';
 
-const { render, toSections, localReviewSummary } =
+const { render, toSections, localReviewSummary, storyIndex, sortStoryEntries } =
   globalThis.NovelightAiBibleAuthorWorkspace;
 
 class FakeElement {
@@ -172,7 +172,7 @@ test('an empty, valid Bible displays section-specific empty states', () => {
   );
   assert.equal(nodes(target, 'section').length, 6);
   assert.equal(nodes(target, 'article').length, 0);
-  assert.equal(target.textContent.match(/登録情報はありません/g).length, 6);
+  assert.equal(target.textContent.match(/登録情報はありません/g).length, 8);
   assert.match(target.textContent, /登録情報：0件/);
 });
 
@@ -239,4 +239,120 @@ test('source metadata is labeled as an ID and never mistaken for a chapter numbe
   assert.equal(render({ target, payload }), false);
   assert.equal(target.hidden, true);
   assert.equal(target.textContent, '');
+});
+
+test('story index groups foreshadowing, timeline and events without inventing story order', () => {
+  const payload = fixture();
+  payload.facts.push({
+    kind: 'timeline',
+    key: '帰還',
+    confirmed: [{ sourceEpisodeId: 90, payload: { summary: '王都に戻る', evidence: '' } }],
+    suggestions: []
+  });
+  payload.facts[0].suggestions[0].sourceEpisodeId = 901;
+  payload.facts[1].confirmed[0].sourceEpisodeId = 101;
+  const grouped = storyIndex(payload);
+  assert.equal(grouped.foreshadowing.length, 1);
+  assert.equal(grouped.events.length, 2);
+  assert.deepEqual(grouped.foreshadowing[0].sourceEpisodeIds, [901]);
+  assert.equal(grouped.events.find((item) => item.key === '帰還').kind, 'timeline');
+  const ordered = sortStoryEntries(grouped.events, 'source-id');
+  assert.deepEqual(ordered.map((entry) => entry.key), ['帰還', '出発']);
+  assert.deepEqual(grouped.events.map((entry) => entry.key), ['出発', '帰還']);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  assert.match(target.textContent, /ID順は話数順・物語内の時系列順ではありません/);
+  assert.doesNotMatch(target.textContent, /第901話/);
+  const sort = nodes(target, 'select')[2];
+  sort.value = 'source-id';
+  sort.listeners.get('change')();
+  const groups = nodes(target, 'aside');
+  assert.equal(groups.length, 2);
+  assert.match(target.textContent, /参照エピソードID：901/);
+});
+
+test('matching exact headings only suggests possible cross-category links', () => {
+  const payload = fixture();
+  payload.facts.push({
+    kind: 'event',
+    key: ' 青い鍵 ',
+    confirmed: [],
+    suggestions: []
+  });
+  const index = storyIndex(payload);
+  assert.equal(index.foreshadowing[0].titleMatch, true);
+  assert.equal(index.events.find((entry) => entry.key.trim() === '青い鍵').titleMatch, true);
+  assert.equal(index.events.find((entry) => entry.key === '出発').titleMatch, false);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  assert.match(target.textContent, /同じ見出しの別区分あり（関連性は未判定）/);
+});
+
+test('category and status filters combine locally and hide irrelevant empty panels', () => {
+  const payload = fixture();
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const selects = nodes(target, 'select');
+  const status = selects[0];
+  const category = selects[1];
+  const cards = nodes(target, 'article');
+  category.value = 'foreshadowing';
+  category.listeners.get('change')();
+  assert.equal(cards.filter((card) => !card.hidden).length, 1);
+  assert.equal(nodes(target, 'section').filter((panel) => !panel.hidden).length, 1);
+  status.value = 'author';
+  status.listeners.get('change')();
+  assert.equal(cards.filter((card) => !card.hidden).length, 0);
+  assert.match(target.textContent, /絞り込み結果：0件/);
+  status.value = 'review';
+  status.listeners.get('change')();
+  assert.equal(cards.filter((card) => !card.hidden).length, 1);
+  category.value = 'events';
+  category.listeners.get('change')();
+  assert.equal(cards.filter((card) => !card.hidden).length, 0);
+  status.value = 'author';
+  status.listeners.get('change')();
+  assert.equal(cards.filter((card) => !card.hidden).length, 1);
+  assert.equal(payload.facts[0].suggestions.length, 1);
+});
+
+test('offline checks identify missing AI evidence and distinct confirmed statements with same source', () => {
+  const payload = fixture();
+  payload.facts[0].suggestions[0].payload.evidence = '';
+  payload.facts[1].confirmed[0].sourceEpisodeId = 91;
+  payload.facts[1].confirmed.push({
+    sourceEpisodeId: 91,
+    payload: { summary: '翌朝', evidence: '' }
+  });
+  const result = localReviewSummary(payload);
+  assert.deepEqual(result.checks.map((entry) => entry.title), [
+    'AI候補の根拠未登録',
+    '複数の確定記録',
+    '同一出典の異なる確定記述'
+  ]);
+  assert.equal(payload.facts[1].confirmed[0].payload.summary, '春の朝');
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  assert.match(target.textContent, /同じ出典IDに複数の異なる記述/);
+  assert.match(target.textContent, /設定矛盾と断定するものではありません/);
+});
+
+test('story index uses text nodes for untrusted facts and rejects invalid source IDs', () => {
+  const payload = fixture();
+  payload.facts[0].key = '<svg onload=alert(1)>';
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  assert.equal(nodes(target, 'svg').length, 0);
+  assert.match(target.textContent, /<svg onload=alert\(1\)>/);
+  payload.facts[0].suggestions[0].sourceEpisodeId = '999';
+  assert.equal(render({ target, payload }), false);
+  assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
+});
+
+test('invalid story index input never escapes fail-closed validation', () => {
+  const payload = fixture();
+  payload.facts[1].confirmed[0].payload.summary = 1234;
+  assert.equal(storyIndex(payload), null);
+  assert.equal(localReviewSummary(payload), null);
 });
