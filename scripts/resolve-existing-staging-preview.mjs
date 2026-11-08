@@ -13,7 +13,8 @@ function deploymentOrigin(deployment, expectedSha, projectId, proofRef = null) {
   const sha = deployment?.meta?.githubCommitSha ?? deployment?.gitSource?.sha;
   const state = deployment?.readyState ?? deployment?.state;
   const target = deployment?.target;
-  const gitRef = deployment?.meta?.githubCommitRef ?? deployment?.gitSource?.ref;
+  const gitRef =
+    deployment?.meta?.githubCommitRef ?? deployment?.gitSource?.ref;
   const host = deployment?.url;
 
   if (sha !== expectedSha || state !== 'READY') return null;
@@ -28,7 +29,10 @@ function deploymentOrigin(deployment, expectedSha, projectId, proofRef = null) {
     return null;
   }
   if (deployment?.projectId && deployment.projectId !== projectId) return null;
-  if (typeof host !== 'string' || !/^[a-z0-9][a-z0-9.-]*\.vercel\.app$/i.test(host)) {
+  if (
+    typeof host !== 'string' ||
+    !/^[a-z0-9][a-z0-9.-]*\.vercel\.app$/i.test(host)
+  ) {
     return null;
   }
   const origin = new URL(`https://${host}`);
@@ -50,16 +54,21 @@ export async function resolveExistingStagingPreview({
       'fix/inquiry-82-account-deletion-diagnostics-20261107' ||
       String(env.CANONICAL_STAGING_URL || '').trim())
   ) {
-    fail('free deletion proof must discover an exact SHA and branch, never trust a supplied origin.');
+    fail(
+      'free deletion proof must discover an exact SHA and branch, never trust a supplied origin.'
+    );
   }
   if (String(env.CANONICAL_STAGING_URL || '').trim()) {
     return { source: 'configured', origin: env.CANONICAL_STAGING_URL.trim() };
   }
   if (env.STAGING_TRIGGER !== 'approval_comment') {
-    fail('automatic discovery is restricted to an OWNER-approved Staging workflow.');
+    fail(
+      'automatic discovery is restricted to an OWNER-approved Staging workflow.'
+    );
   }
   const sha = env.EXPECTED_REVISION || '';
-  if (!SHA_PATTERN.test(sha)) fail('expected revision must be an exact commit SHA.');
+  if (!SHA_PATTERN.test(sha))
+    fail('expected revision must be an exact commit SHA.');
   const token = env.VERCEL_API_TOKEN || '';
   if (!token) fail('Vercel API token is unavailable for read-only discovery.');
 
@@ -86,7 +95,9 @@ export async function resolveExistingStagingPreview({
     fail('Vercel deployment inventory is malformed.');
   }
   if (inventory?.pagination?.next != null) {
-    fail('Vercel inventory is paginated; refusing incomplete Preview discovery.');
+    fail(
+      'Vercel inventory is paginated; refusing incomplete Preview discovery.'
+    );
   }
 
   const candidates = [
@@ -115,11 +126,16 @@ export async function resolveExistingStagingPreview({
   if (env.GITHUB_ENV) {
     await appendFile(env.GITHUB_ENV, `CANONICAL_STAGING_URL=${origin}\n`);
   }
-  console.log(`Discovered existing exact-revision Preview (GET-only): ${origin}`);
+  console.log(
+    `Discovered existing exact-revision Preview (GET-only): ${origin}`
+  );
   return { source: 'existing-deployment', origin };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   resolveExistingStagingPreview().catch((error) => {
     console.error(error.message);
     process.exitCode = 1;
