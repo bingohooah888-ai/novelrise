@@ -83,10 +83,22 @@ function Assert-Vault([string]$Sid) {
     [Security.Principal.SecurityIdentifier]))
   if ($rules.Count -ne 3) { throw 'UNTRUSTED_VAULT_RULES' }
   foreach ($id in @($AdminSid, $SystemSid, $Sid)) {
-    if (@($rules | Where-Object {
+    $matched = @($rules | Where-Object {
       $_.IdentityReference.Value -ceq $id -and
       $_.AccessControlType -eq 'Allow' -and -not $_.IsInherited
-    }).Count -ne 1) { throw 'UNTRUSTED_VAULT_IDENTITY' }
+    })
+    if ($matched.Count -ne 1) { throw 'UNTRUSTED_VAULT_IDENTITY' }
+    $rights = $matched[0].FileSystemRights
+    $flags = [Security.AccessControl.FileSystemRights]
+    if ($id -ceq $Sid) {
+      if (($rights -band $flags::Modify) -ne $flags::Modify -or
+        ($rights -band $flags::ChangePermissions) -ne 0 -or
+        ($rights -band $flags::TakeOwnership) -ne 0) {
+        throw 'UNTRUSTED_TARGET_VAULT_RIGHTS'
+      }
+    } elseif (($rights -band $flags::FullControl) -ne $flags::FullControl) {
+      throw 'UNTRUSTED_ADMIN_SYSTEM_VAULT_RIGHTS'
+    }
   }
 }
 function Assert-Arm([string]$Sid) {
@@ -232,6 +244,30 @@ try {
   if ($null -ne $bytes) { [array]::Clear($bytes,0,$bytes.Length) }
   if ($null -ne $hash) { $hash.Dispose() }
   # Do not delete proof or user profile here. Requires separately scoped cleanup.
+}
+# A protected launcher cannot redirect target stdout into the read-only
+# Watchdog directory. The target instead writes a fixed, NON-SECRET completion
+# receipt into its modify-ACL Vault, only after the actual DPAPI checks pass.
+# Receipt alone is not authoritative: the launcher also validates exit code,
+# installed script SHA, target SID, permit and independent watchdog proof.
+if ($Passed -and $Mode -in @('TargetCreate','TargetVerify')) {
+  $receipt = if ($Mode -ceq 'TargetCreate') {
+    Join-Path $Vault 'gateb-dpapi-target-create.receipt'
+  } else {
+    Join-Path $Vault 'gateb-dpapi-target-verify.receipt'
+  }
+  $stream = $null
+  try {
+    $stream = [IO.File]::Open($receipt,[IO.FileMode]::CreateNew,
+      [IO.FileAccess]::Write,[IO.FileShare]::None)
+    $fixed = [Text.Encoding]::ASCII.GetBytes($ResultMarker)
+    $stream.Write($fixed,0,$fixed.Length)
+    $stream.Flush($true)
+  } catch {
+    $Passed = $false
+  } finally {
+    if ($null -ne $stream) { $stream.Dispose() }
+  }
 }
 if ($Passed) {
   Write-Output $ResultMarker

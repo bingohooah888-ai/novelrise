@@ -1,0 +1,361 @@
+# NOVELIGHT Gate B: OFFLINE-only future one-shot coordinator.
+# Apply MUST remain blocked until a different OWNER-approved signed/scoped entrypoint
+# establishes HEAD/hash/permit/one-shot authorization, protected SYSTEM rescue,
+# and real Credential / profile attestation. Do not execute source-only functions.
+[CmdletBinding()]
+param([ValidateSet('Plan','Apply')][string]$Mode='Plan')
+Set-StrictMode -Version Latest
+$ErrorActionPreference='Stop'
+$HostPin='DESKTOP-8Q4GFC8'
+$AccountName='NOVELIGHT-GateB'
+$TaskName='NOVELIGHT-GateB-Independent-Recovery'
+$Root='C:\ProgramData\NOVELIGHT\GateB-Watchdog'
+$Vault='C:\ProgramData\NOVELIGHT\GateB'
+$State=Join-Path $Root 'state.json'
+$Heartbeat=Join-Path $Root 'heartbeat.json'
+$Marker=Join-Path $Root 'gateb-dpapi-one-shot-consumed.marker'
+$Original=Join-Path $Root 'state.json.dpapi-original'
+$Manifest=Join-Path $Root 'gateb-dpapi-arm-manifest.json'
+$Worker=Join-Path $Root 'watchdog.ps1'
+$Proof=Join-Path $Root 'gateb-dpapi-sid-proof.ps1'
+$PowerShell='C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+$KnownWorkerHash='78242cd888dcb3bedb0a899daf5549e21461a1b65d6a604188acdecccf78f15c'
+$AdminSid='S-1-5-32-544'
+$SystemSid='S-1-5-18'
+$MaxGuardSeconds=300
+$MaxEnabledSeconds=240
+$Sid=''
+$CurrentStage='NO_AUTHORITY'
+$KnownBefore=@{}
+$EnabledByCoordinator=$false
+$Result='NO_GO'
+
+function Assert-Leaf([string]$Path) {
+  $f=Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+  if($f.PSIsContainer -or ($f.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'UNSAFE_PATH'}
+}
+function Assert-PinnedLocalUser([bool]$Disabled) {
+  $u=Get-LocalUser -Name $AccountName -ErrorAction Stop
+  if(-not $u.SID -or $u.SID.Value -cne $Sid){throw 'TARGET_SID_CHANGED'}
+  if($Disabled -and $u.Enabled){throw 'ACCOUNT_NOT_DISABLED'}
+  $admins=@(Get-LocalGroupMember -SID $AdminSid -ErrorAction Stop)
+  if(@($admins|Where-Object {$_.SID.Value -ceq $Sid}).Count -ne 0){throw 'TARGET_ADMIN'}
+}
+function Assert-ProcessAndSessionZero {
+  $processes=@(Get-CimInstance Win32_Process -ErrorAction Stop)
+  foreach($p in $processes) {
+    if([int]$p.ProcessId -in @(0,4)){continue}
+    $owner=$null
+    try{$owner=Invoke-CimMethod -InputObject $p -MethodName GetOwnerSid -ErrorAction Stop}catch{$owner=$null}
+    if($null -ne $owner -and $owner.ReturnValue -eq 0 -and
+       -not [string]::IsNullOrWhiteSpace([string]$owner.Sid)) {
+      if([string]$owner.Sid -ceq $Sid){throw 'TARGET_CHILD_REMAINS'}
+      continue
+    }
+    if(@(Get-CimInstance Win32_Process -Filter ('ProcessId='+[int]$p.ProcessId) -ErrorAction Stop).Count -ne 0){
+      throw 'OWNER_UNVERIFIED_LIVE_PROCESS'
+    }
+  }
+  $acc=@(Get-CimInstance Win32_UserAccount -Filter ("SID='"+$Sid+"'") -ErrorAction Stop)
+  if($acc.Count -ne 1){throw 'ACCOUNT_CENSUS_UNVERIFIED'}
+  $sessions=@(Get-CimAssociatedInstance -InputObject $acc[0] -Association Win32_LoggedOnUser -ResultClassName Win32_LogonSession -ErrorAction Stop)
+  if($sessions.Count -ne 0){throw 'LOGON_SESSION_REMAINS'}
+}
+function Read-PinnedGuard([string]$Phase) {
+  Assert-Leaf $State
+  $s=ConvertFrom-Json ([IO.File]::ReadAllText($State)) -ErrorAction Stop
+  $fields=@($s.PSObject.Properties.Name)
+  $wanted=@('version','host','sid','taskName','phase','deadlineUtc','parentPid','parentStartUtc')
+  if($fields.Count -ne 8 -or @($fields|Where-Object {$_ -notin $wanted}).Count -ne 0 -or
+     $s.version -ne 1 -or $s.host -cne $HostPin -or $s.sid -cne $Sid -or
+     $s.taskName -cne $TaskName -or $s.phase -cne $Phase){throw 'UNPINNED_STATE'}
+  return $s
+}
+function Assert-ExistingSystemWatchdog {
+  $item=Get-Item $Root -Force -ErrorAction Stop
+  if(-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){
+    throw 'GUARD_DIR_INVALID'
+  }
+  $acl=[IO.Directory]::GetAccessControl($Root)
+  if(-not $acl.AreAccessRulesProtected -or
+    $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -cne $AdminSid){throw 'GUARD_ACL_DRIFT'}
+  $rules=@($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]))
+  if($rules.Count -ne 3){throw 'GUARD_ACL_COUNT_DRIFT'}
+  foreach($id in @($AdminSid,$SystemSid,$Sid)){
+    $rs=@($rules|Where-Object {$_.IdentityReference.Value -ceq $id -and
+      $_.AccessControlType -eq 'Allow' -and -not $_.IsInherited})
+    if($rs.Count -ne 1){throw 'GUARD_ACL_SID_DRIFT'}
+    $flag=[Security.AccessControl.FileSystemRights]
+    if($id -ceq $Sid -and (($rs[0].FileSystemRights -band $flag::Write) -ne 0 -or
+      ($rs[0].FileSystemRights -band $flag::Delete) -ne 0 -or
+      ($rs[0].FileSystemRights -band $flag::ChangePermissions) -ne 0)){throw 'GUARD_TARGET_WRITE'}
+  }
+  if((Get-FileHash $Worker -Algorithm SHA256).Hash.ToLowerInvariant() -cne $KnownWorkerHash){
+    throw 'WORKER_HASH_MISMATCH'
+  }
+  $t=Get-ScheduledTask -TaskName $TaskName -TaskPath '\' -ErrorAction Stop
+  $argsExpected='-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$Worker+'" -Mode Recover'
+  if($t.State -notin @('Ready','Running') -or $t.Principal.UserId -notin @('SYSTEM','NT AUTHORITY\SYSTEM','S-1-5-18') -or
+     @($t.Actions).Count -ne 1 -or $t.Actions[0].Execute -ine $PowerShell -or
+     $t.Actions[0].Arguments -cne $argsExpected){throw 'WATCHDOG_DRIFT'}
+  $timed=@($t.Triggers|Where-Object {$_.CimClass.CimClassName -match 'TimeTrigger'})
+  $boot=@($t.Triggers|Where-Object {$_.CimClass.CimClassName -match 'BootTrigger'})
+  if(@($t.Triggers).Count -ne 2 -or $timed.Count -ne 1 -or $boot.Count -ne 1){throw 'WATCHDOG_TRIGGER_DRIFT'}
+  $start=[datetime]::Parse([string]$timed[0].StartBoundary)
+  $duration=[Xml.XmlConvert]::ToTimeSpan([string]$timed[0].Repetition.Duration)
+  $interval=[Xml.XmlConvert]::ToTimeSpan([string]$timed[0].Repetition.Interval)
+  if($duration.TotalDays -ne 7 -or $interval.TotalSeconds -ne 60 -or
+     $start.Add($duration) -le (Get-Date).AddMinutes(30)){throw 'WATCHDOG_EXPIRES_SOON'}
+  if((Get-ScheduledTaskInfo -TaskName $TaskName -TaskPath '\').LastTaskResult -ne 0){throw 'WATCHDOG_LAST_RUN_FAILED'}
+}
+function Read-FreshHeartbeat {
+  Assert-Leaf $Heartbeat
+  $h=ConvertFrom-Json ([IO.File]::ReadAllText($Heartbeat)) -ErrorAction Stop
+  $at=[datetime]::Parse([string]$h.checkedUtc).ToUniversalTime()
+  if($h.version -ne 1 -or [int]$h.sequence -lt 2 -or
+    $at -lt [datetime]::UtcNow.AddSeconds(-150) -or
+    $at -gt [datetime]::UtcNow.AddSeconds(5)){throw 'WATCHDOG_HEARTBEAT_STALE'}
+  return $h
+}
+function Assert-Preflight {
+  $script:CurrentStage='PREFLIGHT'
+  $admin=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
+  if($env:COMPUTERNAME -cne $HostPin -or
+    -not $admin.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'ADMIN_HOST_REQUIRED'}
+  if((Get-Service Schedule).Status -ne 'Running'){throw 'SCHEDULER_STOPPED'}
+  $u=Get-LocalUser -Name $AccountName -ErrorAction Stop
+  if(-not $u.SID){throw 'TARGET_SID_MISSING'}
+  $script:Sid=$u.SID.Value
+  Assert-PinnedLocalUser $true
+  Assert-ExistingSystemWatchdog
+  $s=Read-PinnedGuard 'GUARD_ONLY'
+  if([int]$s.parentPid -ne 0 -or [string]$s.parentStartUtc -cne ''){throw 'GUARD_PARENT_UNEXPECTED'}
+  $h=Read-FreshHeartbeat
+  if($h.reasonCode -cne 'GUARD_ONLY' -or $h.observedDisabled -ne $true){throw 'GUARD_HEARTBEAT_UNVERIFIED'}
+  Assert-ProcessAndSessionZero
+  if(@(Get-CimInstance Win32_UserProfile -Filter ("SID='"+$Sid+"'") -ErrorAction Stop).Count -ne 0){throw 'PROFILE_ALREADY_EXISTS'}
+  if(@([IO.Directory]::GetFileSystemEntries($Vault)).Count -ne 0){throw 'VAULT_NOT_EMPTY'}
+  if([IO.File]::Exists($Marker) -or [IO.File]::Exists($Original)){throw 'ONE_SHOT_ALREADY_CONSUMED_OR_PARTIAL'}
+  return $h
+}
+function New-InMemoryTargetCredential {
+  # Future-only: requires separately approved Windows password reset.
+  # SecureString constructed without ever storing the full password as String.
+  $alphabet='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?'
+  if($alphabet.Length -ne 64){throw 'INVALID_PASSWORD_ALPHABET'}
+  $rng=[Security.Cryptography.RandomNumberGenerator]::Create()
+  $password=[Security.SecureString]::new()
+  $one=[byte[]]::new(1)
+  try {
+    for($i=0;$i -lt 48;$i++) {
+      $rng.GetBytes($one)
+      $password.AppendChar($alphabet[[int]($one[0] -band 63)])
+    }
+    $password.MakeReadOnly()
+    Set-LocalUser -SID ([Security.Principal.SecurityIdentifier]::new($Sid)) -Password $password -ErrorAction Stop
+    return [Management.Automation.PSCredential]::new(($HostPin+'\'+$AccountName),$password)
+  } finally {
+    [array]::Clear($one,0,$one.Length)
+    $rng.Dispose()
+    # The PSCredential retains its SecureString in memory for this one trial.
+    # No log, environment value, command-line or file receives the password.
+  }
+}
+function Consume-OneShotLedger {
+  $f=[IO.File]::Open($Marker,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+  try {
+    $b=[Text.Encoding]::ASCII.GetBytes('GATEB_DPAPI_ONE_SHOT_SPENT')
+    $f.Write($b,0,$b.Length)
+    $f.Flush($true)
+  } finally {$f.Dispose()}
+}
+function Arm-GuardAtomically([int]$ParentPid,[string]$ParentStartUtc) {
+  $baseline=Read-PinnedGuard 'GUARD_ONLY'
+  if([int]$baseline.parentPid -ne 0 -or $ParentPid -le 4){throw 'BAD_PARENT_PID'}
+  if([string]$ParentStartUtc -notmatch 'Z$'){throw 'BAD_PARENT_START'}
+  $active=Get-Process -Id $ParentPid -ErrorAction Stop
+  if($active.StartTime.ToUniversalTime().ToString('o') -cne $ParentStartUtc){throw 'PARENT_CHANGED'}
+  $deadline=[datetime]::UtcNow.AddSeconds($MaxGuardSeconds).ToString('yyyy-MM-ddTHH:mm:ssZ')
+  $new=[ordered]@{version=1;host=$HostPin;sid=$Sid;taskName=$TaskName;phase='GUARDED_TEST';
+    deadlineUtc=$deadline;parentPid=$ParentPid;parentStartUtc=$ParentStartUtc}
+  if([IO.File]::Exists($Original) -or [IO.File]::Exists($Manifest)){
+    throw 'ORIGINAL_OR_ARM_MANIFEST_ALREADY_PRESENT'
+  }
+  [IO.File]::Copy($State,$Original,$false)
+  $originalSha=(Get-FileHash -LiteralPath $Original -Algorithm SHA256).Hash.ToLowerInvariant()
+  $temp=Join-Path $Root 'state.json.dpapi-arm-stage'
+  if([IO.File]::Exists($temp)){throw 'UNEXPECTED_ARM_STAGE'}
+  $stream=[IO.File]::Open($temp,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+  try {
+    $b=[Text.Encoding]::UTF8.GetBytes(($new|ConvertTo-Json -Compress))
+    $stream.Write($b,0,$b.Length)
+    $stream.Flush($true)
+  }finally{$stream.Dispose()}
+  $armedSha=(Get-FileHash -LiteralPath $temp -Algorithm SHA256).Hash.ToLowerInvariant()
+  $manifest=[ordered]@{
+    version=1;host=$HostPin;sid=$Sid;taskName=$TaskName
+    originalSha256=$originalSha;guardedSha256=$armedSha
+    parentPid=$ParentPid;parentStartUtc=$ParentStartUtc;deadlineUtc=$deadline
+  }
+  # A separate SYSTEM rescuer must be able to reconstruct scope after the
+  # controller dies. Persist immutable hashes BEFORE activating guard.
+  $mf=[IO.File]::Open($Manifest,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+  try {
+    $data=[Text.Encoding]::UTF8.GetBytes(($manifest|ConvertTo-Json -Compress))
+    $mf.Write($data,0,$data.Length)
+    $mf.Flush($true)
+  } finally {$mf.Dispose()}
+  [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-arm-backup'))
+  $armed=Read-PinnedGuard 'GUARDED_TEST'
+  if([int]$armed.parentPid -ne $ParentPid){throw 'ARM_NOT_OBSERVED'}
+  return $armed
+}
+function Wait-IndependentArmedHeartbeat([int]$PriorSequence) {
+  $deadline=[datetime]::UtcNow.AddSeconds(82)
+  while([datetime]::UtcNow -lt $deadline){
+    Start-Sleep -Seconds 2
+    try {
+      $h=Read-FreshHeartbeat
+      if([int]$h.sequence -gt $PriorSequence -and
+        $h.reasonCode -ceq 'PARENT_ALIVE' -and
+        $h.observedDisabled -eq $true){return $h}
+    }catch{}
+  }
+  throw 'INDEPENDENT_ARMED_WATCHDOG_NOT_ATTESTED'
+}
+function Stop-ExactTargetChild([int]$ChildPid,[string]$StartUtc) {
+  # Future ONE-shot scoped cleanup, not blanket process termination.
+  $p=Get-Process -Id $ChildPid -ErrorAction SilentlyContinue
+  if($null -eq $p){return}
+  if($p.StartTime.ToUniversalTime().ToString('o') -cne $StartUtc){
+    throw 'CHILD_PID_REUSED_DO_NOT_STOP'
+  }
+  $obj=Get-CimInstance Win32_Process -Filter ('ProcessId='+$ChildPid) -ErrorAction Stop
+  if(@($obj).Count -ne 1){throw 'CHILD_CENSUS_UNVERIFIED'}
+  $owner=Invoke-CimMethod -InputObject $obj -MethodName GetOwnerSid -ErrorAction Stop
+  if($owner.ReturnValue -ne 0 -or [string]$owner.Sid -cne $Sid){
+    throw 'CHILD_SID_CHANGED_DO_NOT_STOP'
+  }
+  Stop-Process -Id $ChildPid -Force -ErrorAction Stop
+  Wait-Process -Id $ChildPid -Timeout 15 -ErrorAction SilentlyContinue
+  $still=Get-Process -Id $ChildPid -ErrorAction SilentlyContinue
+  if($null -ne $still -and
+    $still.StartTime.ToUniversalTime().ToString('o') -ceq $StartUtc){
+    throw 'CHILD_STOP_UNVERIFIED'
+  }
+}
+function Invoke-TargetProbe([Management.Automation.PSCredential]$Cred,[string]$Phase,[string]$MarkerFile) {
+  # The protected probe itself validates target SID, permit SHA and guard parent.
+  # Do not use S4U; load the real target user profile for CurrentUser DPAPI.
+  if($Phase -notin @('TargetCreate','TargetVerify')){throw 'BAD_PHASE'}
+  if([IO.File]::Exists($MarkerFile)){throw 'OUTPUT_ALREADY_PRESENT'}
+  $args='-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$Proof+
+    '" -Mode '+$Phase+' -OwnerApproval ONE_GATEB_DPAPI_SYNTHETIC_SID_PROOF'
+  $p=Start-Process -FilePath $PowerShell -ArgumentList $args -Credential $Cred -LoadUserProfile -PassThru -ErrorAction Stop
+  $startUtc=$p.StartTime.ToUniversalTime().ToString('o')
+  try {
+    try { Wait-Process -Id $p.Id -Timeout 55 -ErrorAction Stop }
+    catch {
+      # A hung child may retain a valid logon token even if account disables.
+      # Only this verified child PID+birth+SID may be terminated.
+      Stop-ExactTargetChild ([int]$p.Id) $startUtc
+      throw 'TARGET_CHILD_TIMEOUT_NO_GO'
+    }
+    $p.Refresh()
+    if(-not $p.HasExited -or $p.ExitCode -ne 0){throw 'TARGET_PROBE_FAILED'}
+    $wanted=if($Phase -ceq 'TargetCreate'){'GATEB_DPAPI_TARGET_CURRENTUSER_CREATE_PASS'}else{'GATEB_DPAPI_TARGET_SECOND_PROCESS_PASS'}
+    Assert-Leaf $MarkerFile
+    if(([IO.File]::ReadAllText($MarkerFile)).Trim() -cne $wanted){throw 'PROBE_EVIDENCE_UNTRUSTED'}
+  }finally{$p.Dispose()}
+}
+function Invoke-CrossSidProbe {
+  Assert-PinnedLocalUser $true
+  $out=@(& $PowerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $Proof -Mode AdminCrossSid -OwnerApproval ONE_GATEB_DPAPI_SYNTHETIC_SID_PROOF)
+  if($LASTEXITCODE -ne 0 -or @($out).Count -ne 1 -or
+    [string]$out[0] -cne 'GATEB_DPAPI_DIFFERENT_SID_DENIED_PASS'){throw 'CROSS_SID_PROOF_FAILED'}
+}
+function Disable-TargetOnce {
+  $u=Get-LocalUser -Name $AccountName -ErrorAction Stop
+  if($u.SID.Value -cne $Sid){throw 'SID_MISMATCH'}
+  if($u.Enabled){Disable-LocalUser -SID $u.SID -ErrorAction Stop}
+  Assert-PinnedLocalUser $true
+}
+function Restore-GuardAtomicallyAfterProof {
+  # Only from a future separately approved supervisor; cannot make recovery
+  # conditional on the parent process finally executing after a crash.
+  Assert-PinnedLocalUser $true
+  Assert-ProcessAndSessionZero
+  $guard=Read-PinnedGuard 'GUARDED_TEST'
+  Assert-Leaf $Manifest
+  if(-not [IO.File]::Exists($Original)){throw 'NO_ORIGINAL_GUARD'}
+  Assert-Leaf $Original
+  $manifest=ConvertFrom-Json ([IO.File]::ReadAllText($Manifest)) -ErrorAction Stop
+  if($manifest.version -ne 1 -or $manifest.host -cne $HostPin -or
+    $manifest.sid -cne $Sid -or $manifest.taskName -cne $TaskName -or
+    $manifest.parentStartUtc -cne $guard.parentStartUtc -or
+    [int]$manifest.parentPid -ne [int]$guard.parentPid -or
+    $manifest.deadlineUtc -cne $guard.deadlineUtc){throw 'UNTRUSTED_ARM_MANIFEST'}
+  $currentHash=(Get-FileHash $State -Algorithm SHA256).Hash.ToLowerInvariant()
+  $originalHash=(Get-FileHash $Original -Algorithm SHA256).Hash.ToLowerInvariant()
+  if($currentHash -cne $manifest.guardedSha256 -or
+    $originalHash -cne $manifest.originalSha256){throw 'UNKNOWN_GUARD_STATE_NO_OVERWRITE'}
+  $previous=ConvertFrom-Json ([IO.File]::ReadAllText($Original)) -ErrorAction Stop
+  if($previous.phase -cne 'GUARD_ONLY' -or
+     $previous.sid -cne $Sid -or $previous.host -cne $HostPin -or
+     [int]$previous.parentPid -ne 0){throw 'ORIGINAL_NOT_PINNED'}
+  $temp=Join-Path $Root 'state.json.dpapi-restore-stage'
+  if([IO.File]::Exists($temp)){throw 'RESTORE_STAGE_EXISTS'}
+  [IO.File]::Copy($Original,$temp,$false)
+  [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-restore-backup'))
+  $null=Read-PinnedGuard 'GUARD_ONLY'
+}
+# Internal integration sketch only. It is intentionally NOT called in Plan or
+# Apply. An independent SYSTEM supervisor and expiry/child-session cleanup are
+# still prerequisites before enabling; the existing worker only disables users.
+function Invoke-UnreachableAuthorizedTrial {
+  param([bool]$IndependentRescueReady,[bool]$FutureSignedOwnerPermitReady)
+  if(-not $IndependentRescueReady -or -not $FutureSignedOwnerPermitReady){
+    throw 'INDEPENDENT_RESCUE_AND_NEW_OWNER_PERMIT_REQUIRED'
+  }
+  $before=Assert-Preflight
+  $cred=$null
+  $disableFailed=$false
+  try {
+    # Never spend a marker, reset password, arm GUARD or enable user without
+    # the trusted controller. No currently exported entrypoint invokes this.
+    Consume-OneShotLedger
+    $cred=New-InMemoryTargetCredential
+    $self=Get-Process -Id $PID -ErrorAction Stop
+    $guard=Arm-GuardAtomically $PID ($self.StartTime.ToUniversalTime().ToString('o'))
+    $null=Wait-IndependentArmedHeartbeat ([int]$before.sequence)
+    # Must only enable after independently verified armed SYSTEM Watchdog.
+    Enable-LocalUser -Name $AccountName -ErrorAction Stop
+    $script:EnabledByCoordinator=$true
+    $startEnabled=[datetime]::UtcNow
+    Invoke-TargetProbe $cred 'TargetCreate' (Join-Path $Vault 'gateb-dpapi-target-create.receipt')
+    Invoke-TargetProbe $cred 'TargetVerify' (Join-Path $Vault 'gateb-dpapi-target-verify.receipt')
+    if([datetime]::UtcNow -gt $startEnabled.AddSeconds($MaxEnabledSeconds)){
+      throw 'ACCOUNT_ENABLED_LEASE_EXPIRED'
+    }
+    Disable-TargetOnce
+    Assert-ProcessAndSessionZero
+    Invoke-CrossSidProbe
+    Restore-GuardAtomicallyAfterProof
+    $script:Result='CANDIDATE_SEQUENCE_COMPLETED_NOT_INDEPENDENTLY_ATTESTED'
+  } finally {
+    # Best-effort emergency disable on this shell; parent kill bypasses finally.
+    # Separate SYSTEM guard + rescue remain mandatory.
+    if($script:EnabledByCoordinator) {
+      try { Disable-TargetOnce } catch { $disableFailed=$true }
+    }
+    if($null -ne $cred){$cred.Password.Dispose()}
+    if($disableFailed){throw 'EMERGENCY_DISABLE_NOT_CONFIRMED'}
+  }
+}
+# Critical: blocked LIVE entrypoint and no fallback unapproved OS operations.
+if($Mode -eq 'Plan'){
+  Write-Output 'GATEB_DPAPI_ONE_SHOT_OFFLINE_CONTRACT_ONLY'
+  exit 2
+}
+Write-Output 'GATEB_DPAPI_ONE_SHOT_LIVE_BLOCKED_REQUIRES_NEW_APPROVAL_AND_SYSTEM_RESCUE'
+exit 4

@@ -85,3 +85,12 @@ test('does not accept secrets or run network/cloud operations', () => {
   assert.match(src, /array\]::Clear\(\$plain/u);
   assert.match(src, /GATEB_DPAPI_SID_PROBE_NO_GO_/u);
 });
+
+test('target success receipt is created only after DPAPI passes and in target Vault', () => {
+  assert.match(src, /gateb-dpapi-target-create\.receipt/u);
+  assert.match(src, /gateb-dpapi-target-verify\.receipt/u);
+  assert.match(src, /FileMode\]::CreateNew/u);
+  const last = src.slice(src.indexOf('# A protected launcher cannot redirect'));
+  assert.ok(last.indexOf('if ($Passed') < last.indexOf('[IO.File]::Open('));
+  assert.match(last, /Write-Output \$ResultMarker/u);
+});
