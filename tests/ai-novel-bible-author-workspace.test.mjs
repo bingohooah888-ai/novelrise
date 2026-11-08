@@ -422,16 +422,28 @@ test('author can mark local review items without writing or accepting facts', ()
   const button = nodes(target, 'button')[0];
   assert.equal(nodes(target, 'button').length, 1);
   assert.equal(button.attributes['aria-pressed'], 'false');
-  assert.match(target.textContent, /この画面だけの確認済み：0\/1件（保存されません）/);
+  assert.match(
+    target.textContent,
+    /この画面だけの確認済み：0\/1件（保存されません）/
+  );
   button.listeners.get('click')();
   assert.equal(button.attributes['aria-pressed'], 'true');
-  assert.match(target.textContent, /この画面だけの確認済み：1\/1件（保存されません）/);
+  assert.match(
+    target.textContent,
+    /この画面だけの確認済み：1\/1件（保存されません）/
+  );
   button.listeners.get('click')();
   assert.equal(button.attributes['aria-pressed'], 'false');
-  assert.match(target.textContent, /この画面だけの確認済み：0\/1件（保存されません）/);
+  assert.match(
+    target.textContent,
+    /この画面だけの確認済み：0\/1件（保存されません）/
+  );
   button.listeners.get('click')();
   assert.equal(render({ target, payload }), true);
-  assert.match(target.textContent, /この画面だけの確認済み：0\/1件（保存されません）/);
+  assert.match(
+    target.textContent,
+    /この画面だけの確認済み：0\/1件（保存されません）/
+  );
   assert.equal(payload.facts[0].suggestions.length, 1);
   assert.equal(payload.characters[1].name, '蒼');
 });
