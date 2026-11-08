@@ -18,10 +18,18 @@ function harness(statuses = []) {
       this.hidden = false;
       this.textContent = '';
     }
-    append(...items) { this.children.push(...items); }
-    appendChild(item) { this.append(item); }
-    replaceChildren(...items) { this.children = [...items]; }
-    setAttribute(name, value) { this[name] = value; }
+    append(...items) {
+      this.children.push(...items);
+    }
+    appendChild(item) {
+      this.append(item);
+    }
+    replaceChildren(...items) {
+      this.children = [...items];
+    }
+    setAttribute(name, value) {
+      this[name] = value;
+    }
     addEventListener(name, handler) {
       (this.listeners[name] ||= []).push(handler);
     }
@@ -44,28 +52,48 @@ function harness(statuses = []) {
     return {
       status,
       ok: status === 200,
-      json: async () => status === 200
-        ? { assets: [], aiUsage: false, limit: 10, novelId: 1 }
-        : { error: 'simulated error' }
+      json: async () =>
+        status === 200
+          ? { assets: [], aiUsage: false, limit: 10, novelId: 1 }
+          : { error: 'simulated error' }
     };
   };
   runInNewContext(source, {
-    window, document, fetch,
+    window,
+    document,
+    fetch,
     console: { error: () => {} },
     setTimeout: (callback) => callback(),
-    Event: class { constructor(type) { this.type = type; } },
-    CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options?.detail; } }
+    Event: class {
+      constructor(type) {
+        this.type = type;
+      }
+    },
+    CustomEvent: class {
+      constructor(type, options) {
+        this.type = type;
+        this.detail = options?.detail;
+      }
+    }
   });
   const root = document.createElement('div');
   const textarea = document.createElement('textarea');
   textarea.value = '本文';
   const episode = { id: 123, novel_id: 1, status: 'draft', fromNewPost: true };
-  const mount = () => window.NovelightEpisodeIllustrations.mountEditor({
-    client: {}, root, episode, session: { access_token: 'fake' },
-    textarea, isOwner: true
-  });
+  const mount = () =>
+    window.NovelightEpisodeIllustrations.mountEditor({
+      client: {},
+      root,
+      episode,
+      session: { access_token: 'fake' },
+      textarea,
+      isOwner: true
+    });
   return {
-    mount, root, textarea, window,
+    mount,
+    root,
+    textarea,
+    window,
     requests: () => requests
   };
 }
@@ -86,7 +114,10 @@ test('new post retries temporary 503 and keeps inline illustration controls visi
   assert.equal(ui.root.hidden, false);
   assert.deepEqual(Array.from(result.assets), []);
   assert.ok(find(ui.root, (node) => node.textContent === '挿絵をアップロード'));
-  assert.equal(find(ui.root, (node) => node.textContent === '挿絵を再読み込み'), null);
+  assert.equal(
+    find(ui.root, (node) => node.textContent === '挿絵を再読み込み'),
+    null
+  );
 });
 
 test('authorization failures are not silently retried or hidden; manual recovery works', async () => {
@@ -96,7 +127,10 @@ test('authorization failures are not silently retried or hidden; manual recovery
   assert.equal(result.retryPending, true);
   assert.equal(ui.requests(), 1);
   assert.equal(ui.root.hidden, false);
-  const retry = find(ui.root, (node) => node.textContent === '挿絵を再読み込み');
+  const retry = find(
+    ui.root,
+    (node) => node.textContent === '挿絵を再読み込み'
+  );
   const draft = find(ui.root, (node) => node.tag === 'a');
   assert.ok(retry);
   assert.equal(draft.href, 'episode-edit.html?id=123');
@@ -108,7 +142,10 @@ test('authorization failures are not silently retried or hidden; manual recovery
 test('repeat failures retain the retry button and draft-edit fallback', async () => {
   const ui = harness([403, 403, 200]);
   await ui.mount();
-  const retry = find(ui.root, (node) => node.textContent === '挿絵を再読み込み');
+  const retry = find(
+    ui.root,
+    (node) => node.textContent === '挿絵を再読み込み'
+  );
   await retry.listeners.click[0]();
   assert.ok(find(ui.root, (node) => node === retry));
   assert.ok(find(ui.root, (node) => node.href === 'episode-edit.html?id=123'));
@@ -118,12 +155,15 @@ test('repeat failures retain the retry button and draft-edit fallback', async ()
 
 test('inserting an illustration marks the manuscript as changed', () => {
   const ui = harness();
-  const marker = '[[NOVELIGHT_ILLUSTRATION:01234567-89ab-4cde-8f01-23456789abcd]]';
+  const marker =
+    '[[NOVELIGHT_ILLUSTRATION:01234567-89ab-4cde-8f01-23456789abcd]]';
   let inputEvents = 0;
   ui.textarea.selectionStart = 1;
   ui.textarea.selectionEnd = 1;
   ui.textarea.focus = () => {};
-  ui.textarea.addEventListener('input', () => { inputEvents++; });
+  ui.textarea.addEventListener('input', () => {
+    inputEvents++;
+  });
   ui.window.NovelightEpisodeIllustrations.insertMarker(ui.textarea, marker);
   assert.ok(ui.textarea.value.includes(marker));
   assert.equal(inputEvents, 1);
