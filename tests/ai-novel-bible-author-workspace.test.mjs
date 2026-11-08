@@ -393,25 +393,27 @@ test('unrecognized inherited fact kind fails closed rather than throwing', () =>
 
 test('review totals include items omitted from the capped notice list', () => {
   const payload = { characters: [], notes: [], facts: [] };
-  for (let i = 0; i < 120; i += 1) {
+  for (let i = 0; i < 22; i += 1) {
+    payload.characters.push({ name: '人物 ' + i, aliases: ['共通の別名'] });
+  }
+  for (let i = 0; i < 80; i += 1) {
     payload.facts.push({
       kind: 'event',
       key: '出来事 ' + i,
-      confirmed: [
-        { payload: { summary: '確定', evidence: '' } },
-        { payload: { summary: '確定', evidence: '' } }
-      ],
+      confirmed: [{ payload: { summary: '確定', evidence: '' } }],
       suggestions: [{ payload: { summary: '候補', evidence: '' } }]
     });
   }
+  // 160 fact records stay within the owner API's 200-record cap:
+  // 21 duplicate-alias notices + 80 overlaps = 101 review notices.
   const review = localReviewSummary(payload);
   assert.equal(review.checks.length, 100);
-  assert.equal(review.remaining, 260);
-  assert.equal(review.pending, 120);
+  assert.equal(review.remaining, 1);
+  assert.equal(review.pending, 80);
   const target = new FakeElement('div', doc);
   assert.equal(render({ target, payload }), true);
-  assert.match(target.textContent, /AI候補：120件・要確認項目：360件/);
-  assert.match(target.textContent, /ほか 260 件の確認ポイントがあります/);
+  assert.match(target.textContent, /AI候補：80件・要確認項目：101件/);
+  assert.match(target.textContent, /ほか 1 件の確認ポイントがあります/);
 });
 
 test('author can mark local review items without writing or accepting facts', () => {
