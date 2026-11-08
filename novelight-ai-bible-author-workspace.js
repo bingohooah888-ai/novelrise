@@ -57,7 +57,8 @@
         title: name,
         detail: aliases.length ? '別名：' + aliases.join('、') : '',
         status: '作者の人物設定',
-        evidence: ''
+        evidence: '',
+        review: false
       });
     }
 
@@ -72,7 +73,8 @@
         title,
         detail: body,
         status: '作者の創作ノート（非公開）',
-        evidence: ''
+        evidence: '',
+        review: false
       });
     }
 
@@ -97,7 +99,17 @@
           const summary = bounded(record?.payload?.summary ?? '', 320);
           const evidence = bounded(record?.payload?.evidence ?? '', 160);
           if (summary === null || evidence === null) return null;
-          add(section, { title: key, detail: summary, evidence, status });
+          const id = record?.sourceEpisodeId;
+          if (id !== null && id !== undefined &&
+              (!Number.isSafeInteger(id) || id < 1)) return null;
+          add(section, {
+            title: key,
+            detail: summary,
+            evidence,
+            status,
+            review: status === 'AI抽出候補・未確定',
+            sourceEpisodeId: id ?? null
+          });
         }
       }
       // Legacy/unclassified groups are not silently called author-confirmed.
@@ -106,11 +118,57 @@
           title: key,
           detail: '',
           evidence: '',
-          status: '登録情報（確認状態未指定）'
+          status: '登録情報（確認状態未指定）',
+          review: true
         });
       }
     }
     return sections;
+  }
+
+  // A deterministic checklist, not semantic contradiction detection.
+  // No data is transmitted, and no author-confirmed record is modified.
+  function localReviewSummary(payload) {
+    if (!toSections(payload)) return null;
+    const checks = [];
+    let pending = 0;
+    const registered = new Map();
+    for (const character of payload.characters) {
+      const aliases = [character.name, ...(character.aliases ?? [])];
+      const unique = new Set(
+        aliases.map((value) => value.trim().toLocaleLowerCase('ja-JP'))
+      );
+      for (const name of unique) {
+        if (!name) continue;
+        const first = registered.get(name);
+        if (first !== undefined && first !== character.name) {
+          checks.push({
+            title: '人物名・別名の重複',
+            detail: '「' + name + '」が複数の人物に登録されています。'
+          });
+        } else if (first === undefined) {
+          registered.set(name, character.name);
+        }
+      }
+    }
+    for (const group of payload.facts) {
+      const confirmed = group.confirmed ?? [];
+      const suggestions = group.suggestions ?? [];
+      pending += suggestions.length;
+      if (confirmed.length && suggestions.length) {
+        checks.push({
+          title: '確定設定との重複候補',
+          detail: '「' + group.key + '」には確定設定と未確定候補があります。内容を確認してください。'
+        });
+      }
+      if (confirmed.length > 1) {
+        checks.push({
+          title: '複数の確定記録',
+          detail: '「' + group.key + '」に確定記録が複数あります。'
+        });
+      }
+    }
+    return { pending, checks: checks.slice(0, 100), remaining: Math.max(0, checks.length - 100) };
   }
 
   function render({ target, payload, doc = target?.ownerDocument || root.document } = {}) {
@@ -119,7 +177,8 @@
     target.hidden = true;
     target.textContent = '';
     const sections = toSections(payload);
-    if (!sections || typeof doc?.createElement !== 'function' ||
+    const review = localReviewSummary(payload);
+    if (!sections || !review || typeof doc?.createElement !== 'function' ||
         typeof target.appendChild !== 'function') return false;
 
     const create = (tag, className, content) => {
@@ -142,6 +201,32 @@
     filter.maxLength = 80;
     filter.setAttribute('aria-label', '作品カルテ内を検索');
     wrap.appendChild(filter);
+    const statusFilter = create('select', 'novelight-ai-workspace-filter');
+    statusFilter.setAttribute('aria-label', '作品カルテの確認状態で絞り込み');
+    for (const [value, title] of [
+      ['all', 'すべての設定'],
+      ['review', '確認が必要な情報'],
+      ['author', '作者が登録・確定した情報']
+    ]) {
+      const option = create('option', '', title);
+      option.value = value;
+      statusFilter.appendChild(option);
+    }
+    statusFilter.value = 'all';
+    wrap.appendChild(statusFilter);
+    const reviewSummary = create('aside', 'novelight-ai-workspace-review');
+    reviewSummary.setAttribute('aria-label', '作品カルテの確認ポイント');
+    reviewSummary.appendChild(create('h3', '', '設定の確認ポイント'));
+    reviewSummary.appendChild(create('p', '', 'AI候補：' + review.pending + '件・要確認項目：' + review.checks.length + '件'));
+    reviewSummary.appendChild(create('p', '', '機械的な重複の確認のみ行います。設定矛盾と断定するものではありません。'));
+    for (const item of review.checks) {
+      const row = create('p', 'novelight-ai-workspace-warning', item.title + '：' + item.detail);
+      reviewSummary.appendChild(row);
+    }
+    if (review.remaining) {
+      reviewSummary.appendChild(create('p', '', 'ほか ' + review.remaining + ' 件の確認ポイントがあります。'));
+    }
+    wrap.appendChild(reviewSummary);
     const feedback = create('p', 'novelight-ai-workspace-result');
     feedback.setAttribute('aria-live', 'polite');
     wrap.appendChild(feedback);
@@ -168,6 +253,12 @@
           details.appendChild(create('p', '', item.detail));
           card.appendChild(details);
         }
+        if (item.sourceEpisodeId) {
+          card.appendChild(create(
+            'p', 'novelight-ai-workspace-source',
+            '参照エピソードID：' + item.sourceEpisodeId
+          ));
+        }
         if (item.evidence) {
           const evidence = create('details', 'novelight-ai-workspace-details');
           evidence.appendChild(create('summary', '', '抽出根拠を見る'));
@@ -176,6 +267,7 @@
         }
         searchable.push({
           element: card,
+          review: item.review,
           haystack: [section.title, item.title, item.detail, item.status, item.evidence]
             .join(' ').toLocaleLowerCase('ja-JP')
         });
@@ -189,20 +281,27 @@
         .toLocaleLowerCase('ja-JP');
       let shown = 0;
       for (const item of searchable) {
-        const matches = !query || item.haystack.includes(query);
+        const matchesQuery = !query || item.haystack.includes(query);
+        const matchesStatus = statusFilter.value === 'review'
+          ? item.review
+          : statusFilter.value === 'author'
+            ? !item.review
+            : true;
+        const matches = matchesQuery && matchesStatus;
         item.element.hidden = !matches;
         if (matches) shown += 1;
       }
-      feedback.textContent = query
-        ? '検索結果：' + shown + '件'
+      feedback.textContent = query || statusFilter.value !== 'all'
+        ? '絞り込み結果：' + shown + '件'
         : '登録情報：' + searchable.length + '件';
     };
     filter.addEventListener('input', updateFilter);
+    statusFilter.addEventListener('change', updateFilter);
     updateFilter();
     target.appendChild(wrap);
     target.hidden = false;
     return true;
   }
 
-  root.NovelightAiBibleAuthorWorkspace = Object.freeze({ render, toSections });
+  root.NovelightAiBibleAuthorWorkspace = Object.freeze({ render, toSections, localReviewSummary });
 })(globalThis);
