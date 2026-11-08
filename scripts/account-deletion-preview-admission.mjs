@@ -11,6 +11,18 @@ const SHA = /^[0-9a-f]{40}$/u;
 const PREFIX = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_APPROVE ';
 const CLAIMED = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CLAIMED ';
 const CONSUMED = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CONSUMED ';
+const FREE_PREVIEW_APPROVE =
+  'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_APPROVE ';
+const FREE_PREVIEW_CLAIMED =
+  'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED ';
+const FREE_PREVIEW_CONSUMED =
+  'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CONSUMED ';
+const LEDGER_PREFIXES = Object.freeze([
+  [CLAIMED, false],
+  [CONSUMED, true],
+  [FREE_PREVIEW_CLAIMED, false],
+  [FREE_PREVIEW_CONSUMED, true]
+]);
 
 // The reviewed account deletion PR #2785 file blobs at b008772e5e77. Changing one
 // requires a separate trusted-main review of this allowlist (never self-expand).
@@ -123,14 +135,18 @@ export function assertAccountDeletionPreviewAdmission({
   ) {
     deny('not an OWNER-authored approval');
   }
-  const approved = parseMarker(comment.body, PREFIX, [
-    'scope',
-    'mainSha',
-    'candidateSha',
-    'confirmation'
-  ]);
+  const freeOnly = comment.body.startsWith(FREE_PREVIEW_APPROVE);
+  const approvalMode = freeOnly ? 'free-preview' : 'standard';
+  const approved = parseMarker(
+    comment.body,
+    freeOnly ? FREE_PREVIEW_APPROVE : PREFIX,
+    ['scope', 'mainSha', 'candidateSha', 'confirmation']
+  );
+  const expectedScope = freeOnly
+    ? 'account-deletion-free-preview'
+    : 'account-deletion-preview';
   if (
-    approved.scope !== 'account-deletion-preview' ||
+    approved.scope !== expectedScope ||
     approved.confirmation !== 'STAGING APPROVED' ||
     !SHA.test(approved.mainSha) ||
     !SHA.test(approved.candidateSha) ||
@@ -139,7 +155,6 @@ export function assertAccountDeletionPreviewAdmission({
   ) {
     deny('approval scope or exact current main mismatch');
   }
-
   if (
     pr?.number !== PR_NUMBER ||
     pr?.state !== 'open' ||
@@ -202,18 +217,17 @@ export function assertAccountDeletionPreviewAdmission({
   for (const entry of ledgerPages.flat()) {
     if (!entry || typeof entry.body !== 'string')
       deny('malformed ledger entry');
-    const marker = entry.body.startsWith(CLAIMED)
-      ? CLAIMED
-      : entry.body.startsWith(CONSUMED)
-        ? CONSUMED
-        : null;
-    if (!marker) continue;
+    const match = LEDGER_PREFIXES.find(([prefix]) =>
+      entry.body.startsWith(prefix)
+    );
+    if (!match) continue;
+    const [marker, consumed] = match;
     const record = parseMarker(entry.body, marker, [
       'requestCommentId',
       'mainSha',
       'candidateSha',
       'runId',
-      ...(marker === CONSUMED ? ['result'] : [])
+      ...(consumed ? ['result'] : [])
     ]);
     if (String(record.requestCommentId) === String(comment.id)) {
       deny('approval already claimed or consumed');
@@ -223,7 +237,8 @@ export function assertAccountDeletionPreviewAdmission({
     mainSha: approved.mainSha,
     candidateSha: approved.candidateSha,
     previewRef: PR_REF,
-    requestCommentId: String(comment.id)
+    requestCommentId: String(comment.id),
+    ...(freeOnly ? { approvalMode } : {})
   });
 }
 

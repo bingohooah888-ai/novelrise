@@ -10,6 +10,9 @@ const CANDIDATE_BRANCH = 'fix/inquiry-82-account-deletion-diagnostics-20261107';
 const APPROVE = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_ENV_APPROVE ';
 const CLAIMED = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_ENV_CLAIMED ';
 const CONSUMED = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_ENV_CONSUMED ';
+const FREE_APPROVE = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_ENV_APPROVE ';
+const FREE_CLAIMED = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_ENV_CLAIMED ';
+const FREE_CONSUMED = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_ENV_CONSUMED ';
 const SHA_PATTERN = /^[a-f0-9]{40}$/u;
 const LEDGER_FIELDS = ['requestCommentId', 'mainSha', 'candidateSha', 'runId'];
 
@@ -74,14 +77,17 @@ export function admitAccountEnvProvision({
     deny();
   }
 
-  const request = parseMarker(event.comment.body, APPROVE, [
-    'scope',
-    'mainSha',
-    'candidateSha',
-    'confirmation'
-  ]);
+  const freeOnly = event.comment.body.startsWith(FREE_APPROVE);
+  const request = parseMarker(
+    event.comment.body,
+    freeOnly ? FREE_APPROVE : APPROVE,
+    ['scope', 'mainSha', 'candidateSha', 'confirmation']
+  );
   if (
-    request.scope !== 'account-deletion-env-provision' ||
+    request.scope !==
+      (freeOnly
+        ? 'account-deletion-free-env-provision'
+        : 'account-deletion-env-provision') ||
     request.confirmation !== 'STAGING APPROVED' ||
     !SHA_PATTERN.test(request.mainSha) ||
     !SHA_PATTERN.test(request.candidateSha) ||
@@ -144,14 +150,17 @@ export function admitAccountEnvProvision({
   }
   for (const comment of ledgerPages.flat()) {
     if (!comment || typeof comment.body !== 'string') deny();
-    const prefix = comment.body.startsWith(CLAIMED)
-      ? CLAIMED
-      : comment.body.startsWith(CONSUMED)
-        ? CONSUMED
-        : null;
-    if (!prefix) continue;
-    const fields =
-      prefix === CONSUMED ? [...LEDGER_FIELDS, 'result'] : LEDGER_FIELDS;
+    const matches = [
+      [CLAIMED, false],
+      [CONSUMED, true],
+      [FREE_CLAIMED, false],
+      [FREE_CONSUMED, true]
+    ].find(([prefix]) => comment.body.startsWith(prefix));
+    if (!matches) continue;
+    const [prefix, consumed] = matches;
+    const fields = consumed
+      ? [...LEDGER_FIELDS, 'result']
+      : LEDGER_FIELDS;
     const marker = parseMarker(comment.body, prefix, fields);
     if (String(marker.requestCommentId) === String(event.comment.id)) deny();
   }
@@ -160,7 +169,8 @@ export function admitAccountEnvProvision({
     mainSha: request.mainSha,
     candidateSha: request.candidateSha,
     candidateRef: CANDIDATE_BRANCH,
-    approvalCommentId: String(event.comment.id)
+    approvalCommentId: String(event.comment.id),
+    ...(freeOnly ? { approvalMode: 'free' } : {})
   });
 }
 
