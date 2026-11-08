@@ -1825,6 +1825,19 @@ async function actionGscIndexInspect(request) {
   return runGscReadOnlyBridgeAction({ args: request.args });
 }
 
+async function actionPoint10xStage38Dispatch(request, config, sourceComment) {
+  const { dispatchPoint10xStage38Once } = await import(
+    './point10x-staging-identity-dispatch.js'
+  );
+  const token = getToken();
+  const result = await dispatchPoint10xStage38Once({
+    request,
+    sourceComment,
+    api: (method, route, body) => githubApi(token, method, route, body)
+  });
+  return JSON.stringify(result, null, 2);
+}
+
 async function actionCloudflareNloReadOnly(request) {
   const { runNloCloudflareAction } = await import('./cloudflare-readonly.js');
   const permitted = new Set([
@@ -1843,6 +1856,7 @@ async function actionCloudflareNloReadOnly(request) {
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
   ['nlo_health', actionNloHealth],
+  ['point10x_stage38_dispatch', actionPoint10xStage38Dispatch],
   ['gsc_index_inspect', actionGscIndexInspect],
   ['cloudflare_account', actionCloudflareNloReadOnly],
   ['cloudflare_workers', actionCloudflareNloReadOnly],
@@ -1877,14 +1891,14 @@ const ACTIONS = new Map([
   ['bridge_update', actionBridgeUpdate]
 ]);
 
-async function executeRequest(request, config) {
+async function executeRequest(request, config, sourceComment) {
   const handler = ACTIONS.get(request.action);
   if (!handler) {
     throw new Error(
       'Unsupported action. Allowed: ' + [...ACTIONS.keys()].join(', ')
     );
   }
-  return handler(request, config);
+  return handler(request, config, sourceComment);
 }
 
 async function postResult(config, token, request, status, details) {
@@ -1936,7 +1950,7 @@ async function processComment(comment, config, token, state) {
     }, 30000);
     busyHeartbeatTimer.unref?.();
 
-    const details = await executeRequest(request, config);
+    const details = await executeRequest(request, config, comment);
     await postResult(config, token, request, 'success', details);
     if (request.action === 'bridge_update') {
       if (!state.processedRequestIds.includes(request.requestId)) {

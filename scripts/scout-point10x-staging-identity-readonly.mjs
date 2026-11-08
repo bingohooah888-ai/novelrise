@@ -2,7 +2,9 @@
 // Staging-only diagnostic. No mutation, backup, writer control or retries.
 // Never run from a PR, import, Production, or untrusted workstation.
 import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { createHash, X509Certificate } from 'node:crypto';
+import { lstatSync, readFileSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyStagingMigrationTarget } from './verify-staging-migration-target.mjs';
 import { compilePinnedCutoverReview } from './scout-point10x-staging-cutover-adapter.mjs';
 
@@ -25,6 +27,66 @@ export const READONLY_DIAGNOSTIC_IMPLEMENTED = true; // NEVER enables the Point 
 
 function stop(code) {
   throw Object.assign(new Error('STAGE38_HOLD:' + code), { safeCode: code });
+}
+// Public Supabase root CA obtained from the official Studio Dashboard
+// certificate_url configuration. The Dashboard's prod distribution applies
+// to all hosted projects, including the NOVELIGHT Staging preview branch.
+// This is a public trust anchor, NOT a credential, leaf certificate, or key.
+// Never dynamically download or trust an unpinned CA at diagnostic runtime.
+export const OFFICIAL_SUPABASE_CA_DER_SHA256 =
+  '807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa';
+export const OFFICIAL_SUPABASE_CA_PEM_SHA256 =
+  '700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7';
+export const OFFICIAL_SUPABASE_CA_FILE_PATH = fileURLToPath(
+  new URL('../certificates/supabase-root-2021.crt', import.meta.url)
+);
+
+export function verifyPinnedSupabaseRootCa(pem) {
+  try {
+    if (
+      typeof pem !== 'string' ||
+      !/^-----BEGIN CERTIFICATE-----\r?\n(?:[A-Za-z0-9+/=]+\r?\n)+-----END CERTIFICATE-----\r?\n?$/u.test(
+        pem
+      ) ||
+      createHash('sha256').update(pem, 'utf8').digest('hex') !==
+        OFFICIAL_SUPABASE_CA_PEM_SHA256
+    )
+      stop('SUPABASE_OFFICIAL_CA_UNVERIFIED');
+    const cert = new X509Certificate(pem);
+    const now = Date.now();
+    const from = Date.parse(cert.validFrom);
+    const to = Date.parse(cert.validTo);
+    if (
+      createHash('sha256').update(cert.raw).digest('hex') !==
+        OFFICIAL_SUPABASE_CA_DER_SHA256 ||
+      cert.ca !== true ||
+      !cert.subject.includes('CN=Supabase Root 2021 CA') ||
+      cert.issuer !== cert.subject ||
+      !Number.isFinite(from) ||
+      !Number.isFinite(to) ||
+      from > now ||
+      to <= now ||
+      !cert.verify(cert.publicKey)
+    )
+      stop('SUPABASE_OFFICIAL_CA_UNVERIFIED');
+  } catch {
+    stop('SUPABASE_OFFICIAL_CA_UNVERIFIED');
+  }
+  return true;
+}
+
+function verifiedSupabaseRootCaPath() {
+  try {
+    const info = lstatSync(OFFICIAL_SUPABASE_CA_FILE_PATH);
+    if (!info.isFile() || info.isSymbolicLink())
+      stop('SUPABASE_OFFICIAL_CA_UNVERIFIED');
+    verifyPinnedSupabaseRootCa(
+      readFileSync(OFFICIAL_SUPABASE_CA_FILE_PATH, 'utf8')
+    );
+    return OFFICIAL_SUPABASE_CA_FILE_PATH;
+  } catch {
+    stop('SUPABASE_OFFICIAL_CA_UNVERIFIED');
+  }
 }
 const hex40 = (value) =>
   typeof value === 'string' && /^[a-f0-9]{40}$/u.test(value);
@@ -70,19 +132,46 @@ export function inspectManagementRecords(branchResponse, namedBranchResponse) {
   if (!object(namedBranchResponse)) stop('STAGING_BRANCH_DETAIL_UNAVAILABLE');
   const named = namedBranchResponse;
   const expectedId = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/u;
-  const matches = (branch) =>
-    object(branch) &&
-    typeof branch.id === 'string' &&
-    expectedId.test(branch.id) &&
-    branch.name === 'staging' &&
-    branch.project_ref === EXPECTED_STAGING &&
-    branch.parent_project_ref === EXPECTED_PARENT &&
-    branch.is_default === false &&
-    branch.preview_project_status === 'ACTIVE_HEALTHY' &&
-    branch.persistent === false &&
-    branch.with_data === false;
-  if (!matches(listed) || !matches(named) || listed.id !== named.id)
-    stop('STAGING_BRANCH_IDENTITY_MISMATCH');
+  // Diagnose every failed invariant in one run without exposing API values.
+  // The fields, views and booleans below are fixed, non-secret vocabulary.
+  const identityChecks = [
+    ['id', (value) => typeof value === 'string' && expectedId.test(value)],
+    ['name', (value) => value === 'staging'],
+    ['project_ref', (value) => value === EXPECTED_STAGING],
+    ['parent_project_ref', (value) => value === EXPECTED_PARENT],
+    ['is_default', (value) => value === false],
+    ['preview_project_status', (value) => value === 'ACTIVE_HEALTHY'],
+    ['persistent', (value) => value === false],
+    ['with_data', (value) => value === false]
+  ];
+  const mismatches = [];
+  for (const [view, branch] of [
+    ['list', listed],
+    ['named', named]
+  ]) {
+    for (const [field, isExpected] of identityChecks) {
+      const present = Object.hasOwn(branch, field);
+      // Supabase named Branch GET may omit this summary-only health field.
+      // The list must supply ACTIVE_HEALTHY; a present named value must match.
+      if (view === 'named' && field === 'preview_project_status' && !present)
+        continue;
+      if (!present || !isExpected(branch[field]))
+        mismatches.push({ view, field, present, matchesExpected: false });
+    }
+  }
+  if (listed.id !== named.id)
+    mismatches.push({
+      view: 'crosscheck',
+      field: 'id',
+      present: Object.hasOwn(listed, 'id') && Object.hasOwn(named, 'id'),
+      matchesExpected: false
+    });
+  if (mismatches.length) {
+    const error = new Error('STAGE38_HOLD:STAGING_BRANCH_IDENTITY_MISMATCH');
+    error.safeCode = 'STAGING_BRANCH_IDENTITY_MISMATCH';
+    error.safeDiagnostics = mismatches;
+    throw error;
+  }
   return Object.freeze({
     // Two independently requested parent-scoped management views agree.
     managementVerified: true,
@@ -149,7 +238,7 @@ export function inspectConnectionRoute(env, management) {
     username: decodeURIComponent(parsed.username),
     // Password is deliberately NOT returned by this inspector.
     sslMode: 'verify-full',
-    rootCert: 'system'
+    rootCert: 'official-supabase-root-2021-pinned'
   });
 }
 
@@ -212,14 +301,118 @@ export const SAFE_IDENTITY_SQL = [
   'ROLLBACK;'
 ].join(' ');
 
+// Classify psql failures in process only; discard native diagnostics.
+// Never return, log, serialize or persist stderr, addresses, credentials,
+// process error messages or raw connection failures. Unknown means HOLD.
+export function classifyPsqlFailure(child) {
+  const code = child?.error?.code;
+  if (code === 'ENOENT' || code === 'EACCES' || code === 'EPERM')
+    return 'PSQL_EXECUTABLE_UNAVAILABLE';
+  if (code === 'ETIMEDOUT') return 'PSQL_TIMEOUT';
+  // psql exit 3 is a SQL/script failure when ON_ERROR_STOP=1.
+  if (child?.status === 3) return 'PSQL_SQL_ERROR';
+
+  // Spawned psql stderr is only inspected locally for known libpq phrases.
+  // Do not include any portion in returned values or thrown errors.
+  const details =
+    typeof child?.stderr === 'string' ? child.stderr.slice(0, 8192) : '';
+  // Exact libpq categories only. A generic TLS failure must not be
+  // misreported as proof of CA or hostname failure. This is a diagnosis
+  // of safe error phrases, not verification of the remote certificate.
+  if (
+    /(?:server certificate for .* does not match host name|certificate does not match host(?: ?name)?|host(?: ?name)? .* does not match (?:the )?server certificate|hostname mismatch|no alternative certificate subject name matches)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TLS_HOSTNAME_MISMATCH';
+  if (
+    /(?:root certificate file.*(?:does not exist|not found|no such file|could not read|could not open|not readable|is missing)|could not (?:load|read|open) (?:the )?root certificate|sslrootcert.*(?:does not exist|not found|unreadable))/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TLS_CA_FILE_UNAVAILABLE';
+  if (
+    /(?:invalid value .*sslrootcert|unsupported .*sslrootcert|sslrootcert.*(?:invalid|unsupported)|invalid sslmode value|sslmode.*(?:invalid|unsupported)|server does not support SSL|SSL is not enabled on the server)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TLS_CONFIGURATION_REJECTED';
+  if (
+    /(?:certificate verify failed|certificate verification failed|self[- ]signed certificate|unable to get local issuer certificate|unknown ca|certificate has expired|certificate revoked|unable to verify the first certificate|certificate chain incomplete)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TLS_CHAIN_REJECTED';
+  // Ambiguous TLS and older libpq messages remain generic and fail-closed.
+  if (
+    /(?:root certificate file|server certificate|certificate does not match|ssl error:.*certificate|sslrootcert|sslmode.*(?:invalid|unsupported)|TLS handshake|SSL handshake)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TLS_CERTIFICATE_FAILURE';
+  if (
+    /(?:password authentication failed|no password supplied|fe_sendauth|sasl authentication failed|scram authentication failed|pam authentication failed|pg_hba\.conf|authentication failed)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_AUTHENTICATION_FAILURE';
+  if (
+    /(?:timeout expired|connection timed out|operation timed out|could not connect to server:.*timeout)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_TIMEOUT';
+  if (
+    /(?:could not translate host name|name or service not known|temporary failure in name resolution|getaddrinfo|nodename nor servname provided|connection refused|network is unreachable|no route to host|could not connect to server|server closed the connection unexpectedly)/iu.test(
+      details
+    )
+  )
+    return 'PSQL_DNS_OR_NETWORK_FAILURE';
+  return 'PSQL_FAILURE_UNCLASSIFIED';
+}
+// psql/libpq reports TLS on its own client socket. pg_stat_ssl instead
+// reports the PostgreSQL backend socket, a different hop behind Supavisor.
+// Never expose raw \conninfo: it can contain host and user information.
+export function extractVerifiedPsqlClientTlsJson(stdout) {
+  if (typeof stdout !== 'string' || Buffer.byteLength(stdout, 'utf8') > 8192)
+    stop('CLIENT_TLS_EVIDENCE_INVALID');
+  const rows = stdout.trim().split(/\r?\n/u);
+  const json = rows.at(-1);
+  const tlsLines = rows
+    .slice(0, -1)
+    .filter((line) => line.startsWith('SSL connection ('));
+  const sslPattern =
+    /^SSL connection \(protocol: TLSv1\.[23], cipher: [A-Za-z0-9_-]+, compression: off(?:, ALPN: [A-Za-z0-9_-]+)?\)$/u;
+  if (
+    rows.length < 3 ||
+    typeof json !== 'string' ||
+    !json.startsWith('{') ||
+    !json.endsWith('}') ||
+    tlsLines.length !== 1 ||
+    !sslPattern.test(tlsLines[0])
+  )
+    stop('CLIENT_TLS_EVIDENCE_INVALID');
+  return json;
+}
+
+// Both hops must satisfy existing security requirements. pg_stat_ssl=false
+// behind a pooler is NOT a false positive to be overridden: it means the
+// PostgreSQL upstream link has not been proven TLS-protected.
+export function validateStagingTlsBoundary(catalog, connectionMode) {
+  if (connectionMode === 'session-pooler' && catalog?.ssl === false)
+    stop('POOLER_UPSTREAM_SSL_UNVERIFIED');
+  return validateCatalogReadOnlyJson(catalog);
+}
+
 function runSafeReadOnlyQuery({ env, route }) {
   if (
     !route ||
     route.sslMode !== 'verify-full' ||
-    route.rootCert !== 'system' ||
+    route.rootCert !== 'official-supabase-root-2021-pinned' ||
     !env.STAGING_DATABASE_URL
   )
     stop('TLS_ROUTE_UNVERIFIED');
+  const caPath = verifiedSupabaseRootCaPath();
   const parsed = new URL(env.STAGING_DATABASE_URL);
   const childEnv = {
     ...env,
@@ -229,7 +422,8 @@ function runSafeReadOnlyQuery({ env, route }) {
     PGPASSWORD: decodeURIComponent(parsed.password),
     PGDATABASE: 'postgres',
     PGSSLMODE: 'verify-full',
-    PGSSLROOTCERT: 'system',
+    LC_ALL: 'C',
+    PGSSLROOTCERT: caPath,
     PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=4000'
   };
   // Neither URL nor token is placed in command args, logs, stdout or artifacts.
@@ -248,6 +442,8 @@ function runSafeReadOnlyQuery({ env, route }) {
         '-v',
         'ON_ERROR_STOP=1',
         '-c',
+        '\\conninfo',
+        '-c',
         SAFE_IDENTITY_SQL
       ],
       {
@@ -259,39 +455,56 @@ function runSafeReadOnlyQuery({ env, route }) {
         windowsHide: true
       }
     );
-  } catch {
-    stop('PSQL_EXECUTION_FAILED');
+  } catch (error) {
+    stop(classifyPsqlFailure({ error }));
   }
-  if (child?.status !== 0 || child.error) stop('PSQL_OR_TLS_CONNECTION_FAILED');
+  if (child?.status !== 0 || child.error) stop(classifyPsqlFailure(child));
   let result;
   try {
-    result = JSON.parse(String(child.stdout).trim());
+    result = JSON.parse(extractVerifiedPsqlClientTlsJson(child.stdout));
   } catch {
     stop('PSQL_IDENTITY_OUTPUT_INVALID');
   }
-  return validateCatalogReadOnlyJson(result);
+  return validateStagingTlsBoundary(result, route.connectionMode);
 }
 
 // This exported shape-only validator never proves a real connection.
 export function validateCatalogReadOnlyJson(result) {
-  if (
-    !object(result) ||
-    result.database !== 'postgres' ||
-    result.dbRole !== 'postgres' ||
-    result.ssl !== true ||
-    !Number.isInteger(result.postgresMajor) ||
-    result.postgresMajor < 17 ||
-    !Number.isInteger(result.tables) ||
-    result.tables < 0 ||
-    result.tables > EXPECTED_TABLES.length ||
-    typeof result.cronExtension !== 'boolean' ||
-    typeof result.rankCronFunction !== 'boolean'
-  )
-    stop('SERVER_IDENTITY_OR_SCHEMA_INVALID');
+  // All emitted names are fixed constants; never include catalog values.
+  const failedChecks = !object(result)
+    ? ['CATALOG_RESULT_SHAPE']
+    : [
+        ['DATABASE_NAME', result.database === 'postgres'],
+        ['DATABASE_ROLE', result.dbRole === 'postgres'],
+        ['SSL_ACTIVE', result.ssl === true],
+        [
+          'POSTGRES_MAJOR_VERSION',
+          Number.isInteger(result.postgresMajor) && result.postgresMajor >= 17
+        ],
+        [
+          'TABLE_COUNT_RANGE',
+          Number.isInteger(result.tables) &&
+            result.tables >= 0 &&
+            result.tables <= EXPECTED_TABLES.length
+        ],
+        ['CRON_EXTENSION_TYPE', typeof result.cronExtension === 'boolean'],
+        [
+          'RANK_CRON_FUNCTION_TYPE',
+          typeof result.rankCronFunction === 'boolean'
+        ]
+      ]
+        .filter(([, passes]) => !passes)
+        .map(([name]) => name);
+  if (failedChecks.length > 0) {
+    const error = new Error('STAGE38_HOLD:SERVER_IDENTITY_OR_SCHEMA_INVALID');
+    error.safeCode = 'SERVER_IDENTITY_OR_SCHEMA_INVALID';
+    error.safeDiagnostics = failedChecks;
+    throw error;
+  }
   return Object.freeze({
     status: 'NO_GO_SYNTHETIC_CATALOG_SHAPE_ONLY',
     stagingRef: EXPECTED_STAGING,
-    tlsValidation: 'verify-full-system-ca',
+    tlsValidation: 'verify-full-supabase-official-root-2021',
     postgresMajor: result.postgresMajor,
     targetTablePresenceCount: result.tables,
     targetTableExpectedCount: EXPECTED_TABLES.length,
@@ -343,6 +556,20 @@ if (
             ? error.safeCode
             : 'UNEXPECTED_ERROR';
         console.error('STAGE38_HOLD:' + code);
+        if (
+          code === 'STAGING_BRANCH_IDENTITY_MISMATCH' &&
+          Array.isArray(error.safeDiagnostics)
+        )
+          console.error(
+            'STAGE38_IDENTITY_FIELDS:' + JSON.stringify(error.safeDiagnostics)
+          );
+        if (
+          code === 'SERVER_IDENTITY_OR_SCHEMA_INVALID' &&
+          Array.isArray(error.safeDiagnostics)
+        )
+          console.error(
+            'STAGE38_FAILED_CHECKS:' + JSON.stringify(error.safeDiagnostics)
+          );
         process.exitCode = 1;
       });
   }

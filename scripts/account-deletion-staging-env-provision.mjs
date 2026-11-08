@@ -15,6 +15,7 @@ const PRESENT = Object.freeze([
   'SUPABASE_PUBLISHABLE_KEY',
   'NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY'
 ]);
+const FREE_MISSING = Object.freeze(['SUPABASE_SECRET_KEY', 'STRIPE_SECRET_KEY']);
 const MISSING = Object.freeze([
   'SUPABASE_SECRET_KEY',
   'STRIPE_SECRET_KEY',
@@ -58,12 +59,23 @@ function exactlyOneBranchValue(all, key) {
   return item;
 }
 
-export function assertProvisioningInventory(envs, stage = 'before') {
-  if (!Array.isArray(envs) || !['before', 'after'].includes(stage)) {
+export function assertProvisioningInventory(
+  envs,
+  stage = 'before',
+  mode = 'standard'
+) {
+  if (
+    !Array.isArray(envs) ||
+    !['before', 'after'].includes(stage) ||
+    !['standard', 'free'].includes(mode)
+  ) {
     fail('ENV_SCOPE_DRIFT');
   }
   const branchOnly = envs.filter((item) => item?.gitBranch === FIX_BRANCH);
-  const expected = stage === 'before' ? PRESENT : [...PRESENT, ...MISSING];
+  const expected =
+    stage === 'before'
+      ? PRESENT
+      : [...PRESENT, ...(mode === 'free' ? FREE_MISSING : MISSING)];
   if (
     branchOnly.length !== expected.length ||
     branchOnly.some((item) => !expected.includes(item.key))
@@ -204,6 +216,16 @@ export async function provisionAccountDeletionEnv({
   reportStage = () => {}
 }) {
   reportStage('CONTEXT');
+  const freeOnly = env.STAGING_DELETE_FREE_MODE === 'true';
+  if (
+    (env.STAGING_DELETE_FREE_MODE &&
+      !['true', 'false'].includes(env.STAGING_DELETE_FREE_MODE)) ||
+    (freeOnly &&
+      env.STAGING_FREE_APPROVAL_SCOPE !==
+        'account-deletion-free-env-provision')
+  ) {
+    fail('RUN_CONTEXT_MISMATCH');
+  }
   if (
     env.GITHUB_REPOSITORY !== REPO ||
     env.STAGING_PREVIEW_REF !== FIX_BRANCH ||
@@ -239,7 +261,11 @@ export async function provisionAccountDeletionEnv({
     env.VERCEL_API_TOKEN,
     FIX_BRANCH
   );
-  assertProvisioningInventory(inventory, 'before');
+  assertProvisioningInventory(
+    inventory,
+    'before',
+    freeOnly ? 'free' : 'standard'
+  );
 
   // No mutation unless BOTH independent service credentials and Stripe
   // TEST prices are verified. API responses are not logged or persisted.
@@ -249,14 +275,24 @@ export async function provisionAccountDeletionEnv({
   ) {
     fail('STAGING_SECRET_NOT_VERIFIED');
   }
-  reportStage('STRIPE_TEST_PRICES');
-  const verified = await verifyStripe(env.STRIPE_TEST_SECRET_KEY, fetchImpl);
-  if (
-    !PRICE_ID.test(verified?.standardPriceId || '') ||
-    !PRICE_ID.test(verified?.premiumPriceId || '') ||
-    verified.standardPriceId === verified.premiumPriceId
-  ) {
-    fail('STRIPE_TEST_PRICES_NOT_VERIFIED');
+  let verified = null;
+  if (freeOnly) {
+    // The free-only scope never calls Stripe or requires any Price objects.
+    // Runtime proof separately rejects live-mode Stripe keys.
+    if (!/^sk_test_[A-Za-z0-9]{12,}$/u.test(env.STRIPE_TEST_SECRET_KEY || '')) {
+      fail('STRIPE_TEST_SECRET_REQUIRED');
+    }
+    reportStage('STRIPE_TEST_KEY_CLASS');
+  } else {
+    reportStage('STRIPE_TEST_PRICES');
+    verified = await verifyStripe(env.STRIPE_TEST_SECRET_KEY, fetchImpl);
+    if (
+      !PRICE_ID.test(verified?.standardPriceId || '') ||
+      !PRICE_ID.test(verified?.premiumPriceId || '') ||
+      verified.standardPriceId === verified.premiumPriceId
+    ) {
+      fail('STRIPE_TEST_PRICES_NOT_VERIFIED');
+    }
   }
 
   const requestBody = [
@@ -270,16 +306,20 @@ export async function provisionAccountDeletionEnv({
       value: env.STRIPE_TEST_SECRET_KEY,
       type: 'sensitive'
     },
-    {
-      key: 'STRIPE_STANDARD_PRICE_ID',
-      value: verified.standardPriceId,
-      type: 'sensitive'
-    },
-    {
-      key: 'STRIPE_PREMIUM_PRICE_ID',
-      value: verified.premiumPriceId,
-      type: 'sensitive'
-    }
+    ...(freeOnly
+      ? []
+      : [
+          {
+            key: 'STRIPE_STANDARD_PRICE_ID',
+            value: verified.standardPriceId,
+            type: 'sensitive'
+          },
+          {
+            key: 'STRIPE_PREMIUM_PRICE_ID',
+            value: verified.premiumPriceId,
+            type: 'sensitive'
+          }
+        ])
   ].map((item) => ({
     ...item,
     target: ['preview'],
@@ -310,12 +350,16 @@ export async function provisionAccountDeletionEnv({
     env.VERCEL_API_TOKEN,
     FIX_BRANCH
   );
-  assertProvisioningInventory(postInventory, 'after');
+  assertProvisioningInventory(
+    postInventory,
+    'after',
+    freeOnly ? 'free' : 'standard'
+  );
   reportStage('COMPLETE');
   return Object.freeze({
     branch: FIX_BRANCH,
-    createdKeys: [...MISSING],
-    verifiedPriceCount: 2,
+    createdKeys: freeOnly ? [...FREE_MISSING] : [...MISSING],
+    verifiedPriceCount: freeOnly ? 0 : 2,
     environment: 'preview'
   });
 }
@@ -331,7 +375,9 @@ if (
   })
     .then((result) => {
       console.log(
-        'ACCOUNT_ENV_PROVISION_OK: four branch-only values; two validated TEST prices; no Preview deployment.'
+        result.verifiedPriceCount === 0
+          ? 'ACCOUNT_ENV_PROVISION_OK: two branch-only TEST credentials; no prices, Stripe API request or Preview deployment.'
+          : 'ACCOUNT_ENV_PROVISION_OK: four branch-only values; two validated TEST prices; no Preview deployment.'
       );
       if (process.env.GITHUB_STEP_SUMMARY) {
         // No secrets, prices or URLs appear in step summary.
@@ -339,8 +385,9 @@ if (
           .then(({ appendFile }) =>
             appendFile(
               process.env.GITHUB_STEP_SUMMARY,
-              'Account #82 Staging-only environment: 8 of 8 keys configured. ' +
-                'Preview and authenticated deletion E2E not run.\n'
+              'Account #82 Staging-only environment: ' +
+                (result.verifiedPriceCount === 0 ? '6 of 6' : '8 of 8') +
+                ' required key classes configured. Preview and authenticated deletion E2E not run.\n'
             )
           )
           .catch(() => {

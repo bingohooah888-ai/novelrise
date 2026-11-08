@@ -292,3 +292,218 @@ test('workflow remains OWNER-approved, closed-ledger denied and cost guarded', (
   assert.doesNotMatch(workflow, /workflow_dispatch:/u);
   assert.doesNotMatch(workflow, /pull_request:\s*\n/u);
 });
+
+test('Free Preview uses a distinct exact OWNER one-shot scope and unchanged seven reviewed blobs', () => {
+  const fixture = approvalFixture();
+  const prefix = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_APPROVE ';
+  const body = {
+    scope: 'account-deletion-free-preview',
+    mainSha,
+    candidateSha,
+    confirmation: 'STAGING APPROVED'
+  };
+  fixture.comment.body = prefix + JSON.stringify(body);
+  assert.deepEqual(assertAccountDeletionPreviewAdmission(fixture), {
+    mainSha,
+    candidateSha,
+    previewRef: branch,
+    requestCommentId: '1002',
+    approvalMode: 'free-preview'
+  });
+
+  for (const change of ['scope', 'blob', 'owner', 'main', 'extra']) {
+    const invalid = globalThis.structuredClone(fixture);
+    if (change === 'scope') {
+      invalid.comment.body =
+        prefix +
+        JSON.stringify({
+          ...body,
+          scope: 'account-deletion-preview'
+        });
+    }
+    if (change === 'blob') invalid.compare.files[0].sha = 'f'.repeat(40);
+    if (change === 'owner') invalid.comment.user.login = 'attacker';
+    if (change === 'main') invalid.main.object.sha = 'f'.repeat(40);
+    if (change === 'extra') {
+      invalid.comment.body = prefix + JSON.stringify({ ...body, bypass: true });
+    }
+    assert.throws(
+      () => assertAccountDeletionPreviewAdmission(invalid),
+      DENY,
+      change
+    );
+  }
+
+  const reused = globalThis.structuredClone(fixture);
+  reused.ledgerPages = [
+    [
+      {
+        body:
+          'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED ' +
+          JSON.stringify({
+            requestCommentId: '1002',
+            mainSha,
+            candidateSha,
+            runId: '1'
+          })
+      }
+    ]
+  ];
+  assert.throws(() => assertAccountDeletionPreviewAdmission(reused), DENY);
+
+  const other = globalThis.structuredClone(fixture);
+  other.comment.body =
+    'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_APPROVE ' +
+    JSON.stringify(body);
+  assert.throws(() => assertAccountDeletionPreviewAdmission(other), DENY);
+});
+
+test('Free-only Preview requires six exact branch variables while paid gate still requires eight', () => {
+  const free = envFixture();
+  free.mode = 'free';
+  free.envs = free.envs.filter((entry) => !entry.key.includes('PRICE_ID'));
+  assert.equal(assertAccountPreviewEnvironment(free).requiredVariableCount, 6);
+  assert.throws(
+    () => assertAccountPreviewEnvironment({ ...free, mode: 'standard' }),
+    ENV_DENY
+  );
+  for (const change of [
+    'missingSecret',
+    'missingTestKey',
+    'prod',
+    'scope',
+    'mode'
+  ]) {
+    const invalid = globalThis.structuredClone(free);
+    if (change === 'missingSecret') {
+      invalid.envs = invalid.envs.filter(
+        (v) => v.key !== 'SUPABASE_SECRET_KEY'
+      );
+    }
+    if (change === 'missingTestKey') {
+      invalid.envs = invalid.envs.filter((v) => v.key !== 'STRIPE_SECRET_KEY');
+    }
+    if (change === 'prod') {
+      invalid.expectedUrl = 'https://fiepaguycecrredwrcwx.supabase.co';
+    }
+    if (change === 'scope') invalid.envs[0].gitBranch = 'main';
+    if (change === 'mode') invalid.mode = 'unknown';
+    assert.throws(() => assertAccountPreviewEnvironment(invalid), ENV_DENY);
+  }
+});
+
+test('Free Preview workflow can never run account deletion or a live proof', () => {
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/account-deletion-candidate-preview.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(workflow, /ACCOUNT_DELETE_FREE_PREVIEW_APPROVE/u);
+  assert.match(workflow, /ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED/u);
+  assert.match(workflow, /ACCOUNT_DELETE_FREE_PREVIEW_CONSUMED/u);
+  assert.match(workflow, /STAGING_DELETE_FREE_MODE:/u);
+  const preview = workflow
+    .split('\n  preview:\n')[1]
+    ?.split('\n  free_proof:\n')[0];
+  assert.ok(preview, 'Free Preview job must remain separate from JWT proof');
+  assert.doesNotMatch(preview, /account-deletion-free-live-proof/u);
+  assert.doesNotMatch(preview, /\/api\/delete-account/u);
+});
+
+test('Free JWT proof requires distinct exact-URL OWNER admission, reviewed seven blobs and an unused ledger claim', () => {
+  const f = approvalFixture();
+  const marker = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_APPROVE ';
+  const body = {
+    scope: 'account-deletion-free-proof',
+    mainSha,
+    candidateSha,
+    confirmation: 'STAGING APPROVED',
+    previewUrl: 'https://novelrise-preview-123.vercel.app'
+  };
+  f.comment.body = marker + JSON.stringify(body);
+  assert.deepEqual(assertAccountDeletionPreviewAdmission(f), {
+    mainSha,
+    candidateSha,
+    previewRef: branch,
+    requestCommentId: '1002',
+    approvalMode: 'free-proof',
+    previewUrl: body.previewUrl
+  });
+  for (const value of [
+    'http://novelrise-preview-123.vercel.app',
+    'https://novelrise.vercel.app',
+    'https://novelrise-preview-123.vercel.app/anything',
+    'https://novelrise-preview-123.vercel.app?test=1',
+    'https://bad.vercel.app.evil.com',
+    'https://example.com',
+    ''
+  ]) {
+    const invalid = globalThis.structuredClone(f);
+    invalid.comment.body =
+      marker +
+      JSON.stringify({
+        ...body,
+        previewUrl: value
+      });
+    assert.throws(
+      () => assertAccountDeletionPreviewAdmission(invalid),
+      DENY,
+      value
+    );
+  }
+  const altered = globalThis.structuredClone(f);
+  altered.compare.files[2].sha = '0'.repeat(40);
+  assert.throws(() => assertAccountDeletionPreviewAdmission(altered), DENY);
+  const replay = globalThis.structuredClone(f);
+  replay.ledgerPages = [
+    [
+      {
+        body:
+          'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_CONSUMED ' +
+          JSON.stringify({
+            requestCommentId: '1002',
+            mainSha,
+            candidateSha,
+            runId: '42',
+            result: 'failure'
+          })
+      }
+    ]
+  ];
+  assert.throws(() => assertAccountDeletionPreviewAdmission(replay), DENY);
+  const wrong = globalThis.structuredClone(f);
+  wrong.comment.user.login = 'attacker';
+  assert.throws(() => assertAccountDeletionPreviewAdmission(wrong), DENY);
+});
+
+test('existing Staging workflow keeps Preview creation and destructive JWT proof in disjoint jobs', () => {
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/account-deletion-candidate-preview.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const preview = workflow
+    .split('\n  preview:\n')[1]
+    ?.split('\n  free_proof:\n')[0];
+  const proof = workflow
+    .split('\n  free_proof:\n')[1]
+    ?.split('\n  consume:\n')[0];
+  assert.ok(preview);
+  assert.ok(proof);
+  assert.match(preview, /vercel-preview-deployment\.mjs/u);
+  assert.doesNotMatch(preview, /account-deletion-free-live-proof\.mjs/u);
+  assert.match(proof, /account-deletion-free-live-proof\.mjs/u);
+  assert.doesNotMatch(proof, /vercel-preview-deployment\.mjs/u);
+  assert.match(proof, /environment: staging/u);
+  assert.match(proof, /OWNER_APPROVED_PREVIEW_URL/u);
+  assert.match(proof, /STAGING_FREE_PROOF_APPROVED/u);
+  assert.match(proof, /resolve-existing-staging-preview\.mjs/u);
+  assert.match(proof, /verify-staging-deployment\.mjs/u);
+  assert.match(workflow, /ACCOUNT_DELETE_FREE_PROOF_CLAIMED/u);
+  assert.match(workflow, /ACCOUNT_DELETE_FREE_PROOF_CONSUMED/u);
+  assert.doesNotMatch(workflow, /workflow_dispatch:/u);
+});
