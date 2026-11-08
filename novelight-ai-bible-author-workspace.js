@@ -49,8 +49,12 @@
 
     for (const character of payload.characters) {
       const name = bounded(character?.name, 80);
-      if (!name || !Array.isArray(character.aliases ?? []) ||
-          (character.aliases ?? []).length > 12) return null;
+      if (
+        !name ||
+        !Array.isArray(character.aliases ?? []) ||
+        (character.aliases ?? []).length > 12
+      )
+        return null;
       const aliases = character.aliases ?? [];
       if (aliases.some((alias) => bounded(alias, 120) === null)) return null;
       add('characters', {
@@ -66,16 +70,27 @@
       const title = bounded(note?.title, 120);
       const body = bounded(note?.body, 20000);
       const type = note?.type ?? 'plot';
-      if (!title || body === null || !['plot', 'world', 'character'].includes(type)) {
+      if (
+        !title ||
+        body === null ||
+        !['plot', 'world', 'character'].includes(type)
+      ) {
         return null;
       }
-      add(type === 'character' ? 'characters' : type === 'world' ? 'world' : 'plot', {
-        title,
-        detail: body,
-        status: '作者の創作ノート（非公開）',
-        evidence: '',
-        review: false
-      });
+      add(
+        type === 'character'
+          ? 'characters'
+          : type === 'world'
+            ? 'world'
+            : 'plot',
+        {
+          title,
+          detail: body,
+          status: '作者の創作ノート（非公開）',
+          evidence: '',
+          review: false
+        }
+      );
     }
 
     for (const group of payload.facts) {
@@ -85,9 +100,12 @@
       const confirmed = group?.confirmed ?? [];
       const suggestions = group?.suggestions ?? [];
       if (
-        !section || !key ||
-        !Array.isArray(confirmed) || confirmed.length > 200 ||
-        !Array.isArray(suggestions) || suggestions.length > 200
+        !section ||
+        !key ||
+        !Array.isArray(confirmed) ||
+        confirmed.length > 200 ||
+        !Array.isArray(suggestions) ||
+        suggestions.length > 200
       ) {
         return null;
       }
@@ -100,8 +118,12 @@
           const evidence = bounded(record?.payload?.evidence ?? '', 160);
           if (summary === null || evidence === null) return null;
           const id = record?.sourceEpisodeId;
-          if (id !== null && id !== undefined &&
-              (!Number.isSafeInteger(id) || id < 1)) return null;
+          if (
+            id !== null &&
+            id !== undefined &&
+            (!Number.isSafeInteger(id) || id < 1)
+          )
+            return null;
           add(section, {
             title: key,
             detail: summary,
@@ -135,10 +157,15 @@
         ['foreshadowing', 'event', 'timeline'].includes(group.kind)
       )
       .map((group) => {
-        const records = [...(group.confirmed ?? []), ...(group.suggestions ?? [])];
+        const records = [
+          ...(group.confirmed ?? []),
+          ...(group.suggestions ?? [])
+        ];
         const sourceEpisodeIds = [
           ...new Set(
-            records.map((record) => record.sourceEpisodeId).filter((id) => id != null)
+            records
+              .map((record) => record.sourceEpisodeId)
+              .filter((id) => id != null)
           )
         ].sort((a, b) => a - b);
         return {
@@ -154,17 +181,20 @@
       });
     const normalized = (value) => value.trim().toLocaleLowerCase('ja-JP');
     const clues = new Set(
-      entries.filter((entry) => entry.kind === 'foreshadowing')
+      entries
+        .filter((entry) => entry.kind === 'foreshadowing')
         .map((entry) => normalized(entry.key))
     );
     const events = new Set(
-      entries.filter((entry) => entry.kind !== 'foreshadowing')
+      entries
+        .filter((entry) => entry.kind !== 'foreshadowing')
         .map((entry) => normalized(entry.key))
     );
     for (const entry of entries) {
-      entry.titleMatch = entry.kind === 'foreshadowing'
-        ? events.has(normalized(entry.key))
-        : clues.has(normalized(entry.key));
+      entry.titleMatch =
+        entry.kind === 'foreshadowing'
+          ? events.has(normalized(entry.key))
+          : clues.has(normalized(entry.key));
     }
     return {
       foreshadowing: entries.filter((entry) => entry.kind === 'foreshadowing'),
@@ -179,8 +209,10 @@
         const bId = b.sourceEpisodeIds[0] ?? Number.POSITIVE_INFINITY;
         if (aId !== bId) return aId - bId;
       }
-      return a.key.localeCompare(b.key, 'ja-JP') ||
-        a.kind.localeCompare(b.kind, 'ja-JP');
+      return (
+        a.key.localeCompare(b.key, 'ja-JP') ||
+        a.kind.localeCompare(b.kind, 'ja-JP')
+      );
     });
   }
 
@@ -216,7 +248,10 @@
       if (confirmed.length && suggestions.length) {
         checks.push({
           title: '確定設定との重複候補',
-          detail: '「' + group.key + '」には確定設定と未確定候補があります。内容を確認してください。'
+          detail:
+            '「' +
+            group.key +
+            '」には確定設定と未確定候補があります。内容を確認してください。'
         });
       }
       if (confirmed.length > 1) {
@@ -242,7 +277,8 @@
         if ([...bySource.values()].some((summaries) => summaries.size > 1)) {
           checks.push({
             title: '同一出典の異なる確定記述',
-            detail: '「' + group.key + '」は同じ出典IDに複数の異なる記述があります。'
+            detail:
+              '「' + group.key + '」は同じ出典IDに複数の異なる記述があります。'
           });
         }
       }
@@ -254,7 +290,11 @@
     };
   }
 
-  function render({ target, payload, doc = target?.ownerDocument || root.document } = {}) {
+  function render({
+    target,
+    payload,
+    doc = target?.ownerDocument || root.document
+  } = {}) {
     if (!target) return false;
     // Clear stale private data on every attempt, including malformed responses.
     target.hidden = true;
@@ -262,8 +302,14 @@
     const sections = toSections(payload);
     const review = localReviewSummary(payload);
     const story = storyIndex(payload);
-    if (!sections || !review || !story || typeof doc?.createElement !== 'function' ||
-        typeof target.appendChild !== 'function') return false;
+    if (
+      !sections ||
+      !review ||
+      !story ||
+      typeof doc?.createElement !== 'function' ||
+      typeof target.appendChild !== 'function'
+    )
+      return false;
 
     const create = (tag, className, content) => {
       const element = doc.createElement(tag);
@@ -274,11 +320,13 @@
 
     const wrap = create('div', 'novelight-ai-workspace');
     wrap.appendChild(create('h2', '', '作品カルテ'));
-    wrap.appendChild(create(
-      'p',
-      'novelight-ai-workspace-intro',
-      '作者だけの設定整理画面です。AI抽出候補は未確定で、自動的に採用されません。'
-    ));
+    wrap.appendChild(
+      create(
+        'p',
+        'novelight-ai-workspace-intro',
+        '作者だけの設定整理画面です。AI抽出候補は未確定で、自動的に採用されません。'
+      )
+    );
     const filter = create('input', 'novelight-ai-workspace-search');
     filter.type = 'search';
     filter.placeholder = '人物・世界観・伏線などを検索';
@@ -314,23 +362,52 @@
     const reviewSummary = create('aside', 'novelight-ai-workspace-review');
     reviewSummary.setAttribute('aria-label', '作品カルテの確認ポイント');
     reviewSummary.appendChild(create('h3', '', '設定の確認ポイント'));
-    reviewSummary.appendChild(create('p', '', 'AI候補：' + review.pending + '件・要確認項目：' + review.checks.length + '件'));
-    reviewSummary.appendChild(create('p', '', '機械的な重複の確認のみ行います。設定矛盾と断定するものではありません。'));
+    reviewSummary.appendChild(
+      create(
+        'p',
+        '',
+        'AI候補：' +
+          review.pending +
+          '件・要確認項目：' +
+          review.checks.length +
+          '件'
+      )
+    );
+    reviewSummary.appendChild(
+      create(
+        'p',
+        '',
+        '機械的な重複の確認のみ行います。設定矛盾と断定するものではありません。'
+      )
+    );
     for (const item of review.checks) {
-      const row = create('p', 'novelight-ai-workspace-warning', item.title + '：' + item.detail);
+      const row = create(
+        'p',
+        'novelight-ai-workspace-warning',
+        item.title + '：' + item.detail
+      );
       reviewSummary.appendChild(row);
     }
     if (review.remaining) {
-      reviewSummary.appendChild(create('p', '', 'ほか ' + review.remaining + ' 件の確認ポイントがあります。'));
+      reviewSummary.appendChild(
+        create(
+          'p',
+          '',
+          'ほか ' + review.remaining + ' 件の確認ポイントがあります。'
+        )
+      );
     }
     wrap.appendChild(reviewSummary);
     const storyPanel = create('aside', 'novelight-ai-workspace-story-index');
     storyPanel.setAttribute('aria-label', '伏線と出来事の整理');
     storyPanel.appendChild(create('h3', '', '伏線・出来事の整理'));
-    storyPanel.appendChild(create(
-      'p', '',
-      '見出しと参照エピソードIDだけで整理しています。ID順は話数順・物語内の時系列順ではありません。'
-    ));
+    storyPanel.appendChild(
+      create(
+        'p',
+        '',
+        '見出しと参照エピソードIDだけで整理しています。ID順は話数順・物語内の時系列順ではありません。'
+      )
+    );
     const storyOrder = create('select', 'novelight-ai-workspace-order');
     storyOrder.setAttribute('aria-label', '伏線と出来事の並び順');
     for (const [value, title] of [
@@ -352,21 +429,36 @@
         ['出来事・時系列', story.events]
       ]) {
         const container = create('div', 'novelight-ai-workspace-story-group');
-        container.appendChild(create('h4', '', title + '（' + rows.length + '項目）'));
+        container.appendChild(
+          create('h4', '', title + '（' + rows.length + '項目）')
+        );
         if (!rows.length) {
           container.appendChild(create('p', '', '登録情報はありません。'));
         }
         for (const entry of sortStoryEntries(rows, storyOrder.value)) {
           const row = create('p', 'novelight-ai-workspace-story-row');
-          const kind = entry.kind === 'event' ? '出来事' :
-            entry.kind === 'timeline' ? '時系列メモ' : '伏線';
+          const kind =
+            entry.kind === 'event'
+              ? '出来事'
+              : entry.kind === 'timeline'
+                ? '時系列メモ'
+                : '伏線';
           const references = entry.sourceEpisodeIds.length
             ? '／参照エピソードID：' + entry.sourceEpisodeIds.join('、')
             : '／参照元ID：未登録';
-          row.textContent = kind + '「' + entry.key + '」／作者確定 ' +
-            entry.confirmedCount + '件・AI未確定 ' + entry.candidateCount +
-            '件' + references +
-            (entry.titleMatch ? '／同じ見出しの別区分あり（関連性は未判定）' : '');
+          row.textContent =
+            kind +
+            '「' +
+            entry.key +
+            '」／作者確定 ' +
+            entry.confirmedCount +
+            '件・AI未確定 ' +
+            entry.candidateCount +
+            '件' +
+            references +
+            (entry.titleMatch
+              ? '／同じ見出しの別区分あり（関連性は未判定）'
+              : '');
           container.appendChild(row);
         }
         indexRows.appendChild(container);
@@ -385,18 +477,22 @@
       const panel = create('section', 'novelight-ai-workspace-section');
       panels.push({ sectionKey: section.key, panel });
       const heading = create(
-        'h3', '', section.title + '（' + section.items.length + '件）'
+        'h3',
+        '',
+        section.title + '（' + section.items.length + '件）'
       );
       panel.appendChild(heading);
       if (!section.items.length) {
-        panel.appendChild(create(
-          'p', 'novelight-ai-workspace-empty', '登録情報はありません。'
-        ));
+        panel.appendChild(
+          create('p', 'novelight-ai-workspace-empty', '登録情報はありません。')
+        );
       }
       for (const item of section.items) {
         const card = create('article', 'novelight-ai-workspace-item');
         card.appendChild(create('h4', '', item.title));
-        card.appendChild(create('span', 'novelight-ai-workspace-status', item.status));
+        card.appendChild(
+          create('span', 'novelight-ai-workspace-status', item.status)
+        );
         if (item.detail) {
           const details = create('details', 'novelight-ai-workspace-details');
           details.appendChild(create('summary', '', '詳細を見る'));
@@ -404,10 +500,13 @@
           card.appendChild(details);
         }
         if (item.sourceEpisodeId) {
-          card.appendChild(create(
-            'p', 'novelight-ai-workspace-source',
-            '参照エピソードID：' + item.sourceEpisodeId
-          ));
+          card.appendChild(
+            create(
+              'p',
+              'novelight-ai-workspace-source',
+              '参照エピソードID：' + item.sourceEpisodeId
+            )
+          );
         }
         if (item.evidence) {
           const evidence = create('details', 'novelight-ai-workspace-details');
@@ -419,8 +518,15 @@
           element: card,
           sectionKey: section.key,
           review: item.review,
-          haystack: [section.title, item.title, item.detail, item.status, item.evidence]
-            .join(' ').toLocaleLowerCase('ja-JP')
+          haystack: [
+            section.title,
+            item.title,
+            item.detail,
+            item.status,
+            item.evidence
+          ]
+            .join(' ')
+            .toLocaleLowerCase('ja-JP')
         });
         panel.appendChild(card);
       }
@@ -428,30 +534,40 @@
     }
 
     const updateFilter = () => {
-      const query = String(filter.value ?? '').trim().slice(0, 80)
+      const query = String(filter.value ?? '')
+        .trim()
+        .slice(0, 80)
         .toLocaleLowerCase('ja-JP');
       let shown = 0;
       const visibleBySection = new Map();
-      const filtering = !!query || statusFilter.value !== 'all' ||
+      const filtering =
+        !!query ||
+        statusFilter.value !== 'all' ||
         categoryFilter.value !== 'all';
       for (const item of searchable) {
         const matchesQuery = !query || item.haystack.includes(query);
-        const matchesCategory = categoryFilter.value === 'all' ||
+        const matchesCategory =
+          categoryFilter.value === 'all' ||
           item.sectionKey === categoryFilter.value;
-        const matchesStatus = statusFilter.value === 'review'
-          ? item.review
-          : statusFilter.value === 'author'
-            ? !item.review
-            : true;
+        const matchesStatus =
+          statusFilter.value === 'review'
+            ? item.review
+            : statusFilter.value === 'author'
+              ? !item.review
+              : true;
         const matches = matchesQuery && matchesStatus && matchesCategory;
         item.element.hidden = !matches;
         if (matches) {
           shown += 1;
-          visibleBySection.set(item.sectionKey, (visibleBySection.get(item.sectionKey) ?? 0) + 1);
+          visibleBySection.set(
+            item.sectionKey,
+            (visibleBySection.get(item.sectionKey) ?? 0) + 1
+          );
         }
       }
       for (const entry of panels) {
-        entry.panel.hidden = filtering && !visibleBySection.get(entry.sectionKey);
+        entry.panel.hidden =
+          filtering && !visibleBySection.get(entry.sectionKey);
       }
       feedback.textContent = filtering
         ? '絞り込み結果：' + shown + '件'
