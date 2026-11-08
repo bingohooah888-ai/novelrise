@@ -13,7 +13,9 @@
   }
 
   function boundedText(value, maxLength) {
-    return typeof value === 'string' && value.length <= maxLength ? value : null;
+    return typeof value === 'string' && value.length <= maxLength
+      ? value
+      : null;
   }
 
   // Only the owner-only GET /api/ai-owner-novel-bible response belongs here.
@@ -34,7 +36,8 @@
       payload.notes.length > 200 ||
       !Array.isArray(payload.facts) ||
       payload.facts.length > 200
-    ) return false;
+    )
+      return false;
     let count = 0;
     for (const group of payload.facts) {
       if (
@@ -43,7 +46,8 @@
         !Array.isArray(group.confirmed) ||
         !Array.isArray(group.suggestions) ||
         (count += group.confirmed.length + group.suggestions.length) > 200
-      ) return false;
+      )
+        return false;
       for (const record of [...group.confirmed, ...group.suggestions]) {
         if (
           !record ||
@@ -51,7 +55,8 @@
           !record.payload ||
           typeof record.payload !== 'object' ||
           Array.isArray(record.payload)
-        ) return false;
+        )
+          return false;
       }
     }
     return true;
@@ -78,7 +83,9 @@
       '【登場人物】'
     ];
     if (payload.characters.length === 0) {
-      sections.push('・まだ登録されていません（「登場人物を管理」から追加できます）。');
+      sections.push(
+        '・まだ登録されていません（「登場人物を管理」から追加できます）。'
+      );
     }
     for (const character of payload.characters) {
       const name = boundedText(character?.name, 80);
@@ -87,7 +94,9 @@
     }
     sections.push('', '【創作ノート（非公開）】');
     if (payload.notes.length === 0) {
-      sections.push('・まだ登録されていません（上の創作ノートで追加できます）。');
+      sections.push(
+        '・まだ登録されていません（上の創作ノートで追加できます）。'
+      );
     }
     for (const note of payload.notes) {
       const title = boundedText(note?.title, 120);
