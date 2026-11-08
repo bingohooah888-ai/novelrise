@@ -76,22 +76,24 @@ function mock({
     return {
       ok: true,
       async json() {
-        return getPayload ?? {
-          novelId: 354,
-          aiGenerated: false,
-          candidates: [
-            {
-              id: 7,
-              episodeId: 4,
-              revision: 1,
-              kind: 'character',
-              key: '<script>架空</script>',
-              summary: '青い鍵を持っている。',
-              evidence: '凛は青い鍵を持っていた。',
-              status: 'pending'
-            }
-          ]
-        };
+        return (
+          getPayload ?? {
+            novelId: 354,
+            aiGenerated: false,
+            candidates: [
+              {
+                id: 7,
+                episodeId: 4,
+                revision: 1,
+                kind: 'character',
+                key: '<script>架空</script>',
+                summary: '青い鍵を持っている。',
+                evidence: '凛は青い鍵を持っていた。',
+                status: 'pending'
+              }
+            ]
+          }
+        );
       }
     };
   }
@@ -287,13 +289,16 @@ test('malformed or cross-work review GET responses never mount author actions or
   ];
   for (const body of bad) {
     const f = mock({ getPayload: body });
-    assert.equal(await attach({
-      client: f.client,
-      novelId: 354,
-      ownerId: OWNER,
-      doc: f.doc,
-      fetcher: f.fetcher
-    }), false);
+    assert.equal(
+      await attach({
+        client: f.client,
+        novelId: 354,
+        ownerId: OWNER,
+        doc: f.doc,
+        fetcher: f.fetcher
+      }),
+      false
+    );
     assert.equal(f.host.children.length, 0);
     assert.equal(f.requests.length, 1);
     assert.equal(f.requests[0].method, 'GET');
