@@ -18,7 +18,8 @@ jobs:
       github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
       github.event.comment.user.login == 'bingohooah888-ai' &&
       github.event.comment.author_association == 'OWNER' &&
-      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_APPROVE ')
+      (startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_APPROVE ') ||
+       startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_APPROVE '))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -33,6 +34,7 @@ jobs:
       candidate_sha: ${{ steps.binding.outputs.candidate_sha }}
       preview_ref: ${{ steps.binding.outputs.preview_ref }}
       request_id: ${{ steps.binding.outputs.request_id }}
+      approval_mode: ${{ steps.binding.outputs.approval_mode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -59,6 +61,7 @@ jobs:
             echo "candidate_sha=$(jq -er '.candidateSha' /tmp/account-decision.json)"
             echo "preview_ref=$(jq -er '.previewRef' /tmp/account-decision.json)"
             echo "request_id=$(jq -er '.requestCommentId' /tmp/account-decision.json)"
+            echo "approval_mode=$(jq -er '.approvalMode // "standard"' /tmp/account-decision.json)"
           } >> "$GITHUB_OUTPUT"
       - name: Consume approval claim before any Staging costs
         env:
@@ -66,6 +69,7 @@ jobs:
           MAIN: ${{ steps.binding.outputs.main_sha }}
           HEAD: ${{ steps.binding.outputs.candidate_sha }}
           REQUEST: ${{ steps.binding.outputs.request_id }}
+          APPROVAL_MODE: ${{ steps.binding.outputs.approval_mode }}
         shell: bash
         run: |
           set -euo pipefail
@@ -73,7 +77,12 @@ jobs:
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
           test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$HEAD"
           data="$(jq -cn --arg requestCommentId "$REQUEST"             --arg mainSha "$MAIN" --arg candidateSha "$HEAD"             --arg runId "$GITHUB_RUN_ID"             '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
-          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments"             -f body="NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CLAIMED $data"             > /dev/null
+          case "$APPROVAL_MODE" in
+            standard) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CLAIMED ;;
+            free-preview) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED ;;
+            *) exit 1 ;;
+          esac
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments"             -f body="$marker $data"             > /dev/null
 
   preview:
     name: One exact-sha Staging-only Preview and read-only environment proof
@@ -91,6 +100,8 @@ jobs:
       APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
       EXPECTED_REVISION: ${{ needs.admit.outputs.candidate_sha }}
       STAGING_PREVIEW_REF: ${{ needs.admit.outputs.preview_ref }}
+      STAGING_DELETE_FREE_MODE: ${{ needs.admit.outputs.approval_mode == 'free-preview' && 'true' || 'false' }}
+      STAGING_FREE_APPROVAL_SCOPE: ${{ needs.admit.outputs.approval_mode == 'free-preview' && 'account-deletion-free-preview' || '' }}
       STAGING_TRIGGER: approval_comment
       STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
       STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
@@ -137,6 +148,7 @@ jobs:
             echo "Candidate SHA: $EXPECTED_REVISION"
             echo "Preview URL: $CANONICAL_STAGING_URL"
             echo 'Authenticated account deletion E2E NOT executed in this workflow.'
+            echo 'Free-only scope never executes an account deletion request.'
           } >> "$GITHUB_STEP_SUMMARY"
 
   consume:
@@ -155,8 +167,14 @@ jobs:
           MAIN: ${{ needs.admit.outputs.main_sha }}
           HEAD: ${{ needs.admit.outputs.candidate_sha }}
           REQUEST: ${{ needs.admit.outputs.request_id }}
+          APPROVAL_MODE: ${{ needs.admit.outputs.approval_mode }}
           OUTCOME: ${{ needs.preview.result }}
         run: |
           set -euo pipefail
           data="$(jq -cn --arg requestCommentId "$REQUEST"             --arg mainSha "$MAIN" --arg candidateSha "$HEAD"             --arg runId "$GITHUB_RUN_ID" --arg result "$OUTCOME"             '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
-          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments"             -f body="NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CONSUMED $data"             > /dev/null
+          case "$APPROVAL_MODE" in
+            standard) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CONSUMED ;;
+            free-preview) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CONSUMED ;;
+            *) exit 1 ;;
+          esac
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments"             -f body="$marker $data"             > /dev/null
