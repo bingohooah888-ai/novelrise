@@ -370,6 +370,38 @@ export function classifyPsqlFailure(child) {
     return 'PSQL_DNS_OR_NETWORK_FAILURE';
   return 'PSQL_FAILURE_UNCLASSIFIED';
 }
+// Report only libpq's own TLS state for the same connection that runs the
+// read-only catalog query. Never log connection info, host, user or stderr.
+// psql's \conninfo proves client -> pooler (or direct Postgres), not the
+// separate pooler -> Postgres leg observed by pg_stat_ssl.
+export function parsePsqlClientTlsAndCatalog(stdout) {
+  if (typeof stdout !== 'string' || stdout.length > 8192)
+    stop('PSQL_CLIENT_TLS_UNVERIFIED');
+  const lines = stdout
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const tlsLines = lines.filter((line) => line.startsWith('SSL connection ('));
+  if (
+    tlsLines.length !== 1 ||
+    !/^SSL connection \(protocol: TLSv1\.(?:2|3), cipher: [A-Za-z0-9_-]{3,128}, (?:bits: (?:128|192|256), )?compression: off(?:, ALPN: [A-Za-z0-9_-]{1,64})?\)$/u.test(
+      tlsLines[0]
+    )
+  )
+    stop('PSQL_CLIENT_TLS_UNVERIFIED');
+
+  const catalogLines = lines.filter((line) => line.startsWith('{'));
+  if (catalogLines.length !== 1) stop('PSQL_IDENTITY_OUTPUT_INVALID');
+  try {
+    return Object.freeze({
+      catalog: JSON.parse(catalogLines[0]),
+      clientTlsVerified: true
+    });
+  } catch {
+    stop('PSQL_IDENTITY_OUTPUT_INVALID');
+  }
+}
+
 function runSafeReadOnlyQuery({ env, route }) {
   if (
     !route ||
@@ -389,6 +421,8 @@ function runSafeReadOnlyQuery({ env, route }) {
     PGDATABASE: 'postgres',
     PGSSLMODE: 'verify-full',
     PGSSLROOTCERT: caPath,
+    // The parsing grammar of psql's non-secret TLS status is pinned to C.
+    LC_ALL: 'C',
     PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=4000'
   };
   // Neither URL nor token is placed in command args, logs, stdout or artifacts.
@@ -406,6 +440,9 @@ function runSafeReadOnlyQuery({ env, route }) {
         '-A',
         '-v',
         'ON_ERROR_STOP=1',
+        // Same psql/libpq session for TLS attestation and the catalog query.
+        '-c',
+        '\\conninfo',
         '-c',
         SAFE_IDENTITY_SQL
       ],
@@ -422,17 +459,23 @@ function runSafeReadOnlyQuery({ env, route }) {
     stop(classifyPsqlFailure({ error }));
   }
   if (child?.status !== 0 || child.error) stop(classifyPsqlFailure(child));
-  let result;
-  try {
-    result = JSON.parse(String(child.stdout).trim());
-  } catch {
-    stop('PSQL_IDENTITY_OUTPUT_INVALID');
-  }
-  return validateCatalogReadOnlyJson(result);
+  const evidence = parsePsqlClientTlsAndCatalog(child.stdout);
+  return validateCatalogReadOnlyJson(evidence.catalog, {
+    clientTlsVerified: evidence.clientTlsVerified,
+    connectionMode: route.connectionMode
+  });
 }
 
 // This exported shape-only validator never proves a real connection.
-export function validateCatalogReadOnlyJson(result) {
+export function validateCatalogReadOnlyJson(result, evidence = {}) {
+  // This function can be used with synthetic catalog shapes in tests; only
+  // the live psql path can supply independently checked client TLS evidence.
+  if (evidence.clientTlsVerified === false) stop('PSQL_CLIENT_TLS_UNVERIFIED');
+  if (
+    evidence.clientTlsVerified === true &&
+    !['direct', 'session-pooler'].includes(evidence.connectionMode)
+  )
+    stop('TLS_ROUTE_UNVERIFIED');
   // All emitted names are fixed constants; never include catalog values.
   const failedChecks = !object(result)
     ? ['CATALOG_RESULT_SHAPE']
@@ -451,11 +494,28 @@ export function validateCatalogReadOnlyJson(result) {
             result.tables <= EXPECTED_TABLES.length
         ],
         ['CRON_EXTENSION_TYPE', typeof result.cronExtension === 'boolean'],
-        ['RANK_CRON_FUNCTION_TYPE', typeof result.rankCronFunction === 'boolean']
+        [
+          'RANK_CRON_FUNCTION_TYPE',
+          typeof result.rankCronFunction === 'boolean'
+        ]
       ]
         .filter(([, passes]) => !passes)
         .map(([name]) => name);
   if (failedChecks.length > 0) {
+    // pg_stat_ssl reports the PostgreSQL backend leg. A pooled connection
+    // may have valid client -> pooler TLS yet an unencrypted backend leg.
+    // Do NOT waive this gate simply because libpq confirmed client TLS.
+    if (
+      evidence.clientTlsVerified === true &&
+      failedChecks.length === 1 &&
+      failedChecks[0] === 'SSL_ACTIVE'
+    ) {
+      stop(
+        evidence.connectionMode === 'session-pooler'
+          ? 'POOLER_BACKEND_SSL_NOT_ACTIVE'
+          : 'DIRECT_BACKEND_SSL_NOT_ACTIVE'
+      );
+    }
     const error = new Error('STAGE38_HOLD:SERVER_IDENTITY_OR_SCHEMA_INVALID');
     error.safeCode = 'SERVER_IDENTITY_OR_SCHEMA_INVALID';
     error.safeDiagnostics = failedChecks;
@@ -465,6 +525,9 @@ export function validateCatalogReadOnlyJson(result) {
     status: 'NO_GO_SYNTHETIC_CATALOG_SHAPE_ONLY',
     stagingRef: EXPECTED_STAGING,
     tlsValidation: 'verify-full-supabase-official-root-2021',
+    ...(evidence.clientTlsVerified === true
+      ? { clientTlsVerified: true, postgresBackendSslObserved: true }
+      : {}),
     postgresMajor: result.postgresMajor,
     targetTablePresenceCount: result.tables,
     targetTableExpectedCount: EXPECTED_TABLES.length,

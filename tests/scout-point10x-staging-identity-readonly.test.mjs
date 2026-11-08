@@ -14,6 +14,7 @@ import {
   inspectConnectionRoute,
   fetchManagementEvidence,
   validateCatalogReadOnlyJson,
+  parsePsqlClientTlsAndCatalog,
   SAFE_IDENTITY_SQL,
   classifyPsqlFailure,
   OFFICIAL_SUPABASE_CA_DER_SHA256,
@@ -564,6 +565,172 @@ test('catalog failures report only fixed condition names', () => {
       assert.deepEqual(error.safeDiagnostics, ['DATABASE_NAME', 'SSL_ACTIVE']);
       return true;
     }
+  );
+});
+
+test('libpq TLS proof is derived from psql conninfo, not pg_stat_ssl', () => {
+  const catalog = {
+    database: 'postgres',
+    dbRole: 'postgres',
+    postgresMajor: 17,
+    ssl: true,
+    tables: 6,
+    cronExtension: true,
+    rankCronFunction: false
+  };
+  const evidence = parsePsqlClientTlsAndCatalog(
+    [
+      'You are connected to database "postgres" as user "SYNTHETIC_SECRET" on host "private.pooler.invalid".',
+      'SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, compression: off, ALPN: none)',
+      JSON.stringify(catalog)
+    ].join('\n')
+  );
+  assert.equal(evidence.clientTlsVerified, true);
+  assert.deepEqual(evidence.catalog, catalog);
+  assert.doesNotMatch(
+    JSON.stringify(evidence),
+    /SYNTHETIC_SECRET|private.pooler/iu
+  );
+  const safe = validateCatalogReadOnlyJson(evidence.catalog, {
+    clientTlsVerified: true,
+    connectionMode: 'session-pooler'
+  });
+  assert.equal(safe.clientTlsVerified, true);
+  assert.equal(safe.postgresBackendSslObserved, true);
+  assert.equal(safe.pointConverted, false);
+  const tls12 = parsePsqlClientTlsAndCatalog(
+    [
+      'SSL connection (protocol: TLSv1.2, cipher: ECDHE-RSA-AES256-GCM-SHA384, bits: 256, compression: off)',
+      JSON.stringify(catalog)
+    ].join('\n')
+  );
+  assert.equal(tls12.clientTlsVerified, true);
+});
+
+test('client-side TLS proof fails closed for plaintext, old TLS and malformed output', () => {
+  const catalog = JSON.stringify({
+    database: 'postgres',
+    dbRole: 'postgres',
+    postgresMajor: 17,
+    ssl: true,
+    tables: 6,
+    cronExtension: true,
+    rankCronFunction: false
+  });
+  const goodTls =
+    'SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, compression: off)';
+  const invalidProofs = [
+    ['No SSL', 'You are connected without SSL.\n' + catalog],
+    ['TLS1.1', goodTls.replace('TLSv1.3', 'TLSv1.1') + '\n' + catalog],
+    [
+      'compression enabled',
+      goodTls.replace('compression: off', 'compression: on') + '\n' + catalog
+    ],
+    [
+      'invalid cipher',
+      goodTls.replace('TLS_AES_256_GCM_SHA384', 'SYNTHETIC_SECRET/') +
+        '\n' +
+        catalog
+    ],
+    ['duplicate attestations', [goodTls, goodTls, catalog].join('\n')],
+    [
+      'huge output',
+      goodTls + '\n' + 'SYNTHETIC_SECRET'.repeat(800) + '\n' + catalog
+    ]
+  ];
+  for (const [label, input] of invalidProofs) {
+    assert.throws(
+      () => parsePsqlClientTlsAndCatalog(input),
+      (error) => {
+        assert.equal(error?.safeCode, 'PSQL_CLIENT_TLS_UNVERIFIED', label);
+        assert.doesNotMatch(error.message, /SYNTHETIC_SECRET|private.pooler/u);
+        return true;
+      },
+      label
+    );
+  }
+  for (const input of [
+    goodTls + '\n{invalid}',
+    goodTls + '\n' + catalog + '\n' + catalog
+  ]) {
+    assert.throws(
+      () => parsePsqlClientTlsAndCatalog(input),
+      (error) => error?.safeCode === 'PSQL_IDENTITY_OUTPUT_INVALID'
+    );
+  }
+});
+
+test('independent client TLS does not excuse an unencrypted Postgres backend', () => {
+  const backend = {
+    database: 'postgres',
+    dbRole: 'postgres',
+    postgresMajor: 17,
+    ssl: false,
+    tables: 6,
+    cronExtension: true,
+    rankCronFunction: false
+  };
+  for (const [mode, expectedCode] of [
+    ['session-pooler', 'POOLER_BACKEND_SSL_NOT_ACTIVE'],
+    ['direct', 'DIRECT_BACKEND_SSL_NOT_ACTIVE']
+  ]) {
+    assert.throws(
+      () =>
+        validateCatalogReadOnlyJson(backend, {
+          clientTlsVerified: true,
+          connectionMode: mode
+        }),
+      (error) => {
+        assert.equal(error.safeCode, expectedCode);
+        assert.doesNotMatch(error.message, /postgres\.|SYNTHETIC_SECRET/iu);
+        return true;
+      }
+    );
+  }
+  assert.throws(
+    () =>
+      validateCatalogReadOnlyJson(
+        { ...backend, ssl: true },
+        {
+          clientTlsVerified: false,
+          connectionMode: 'session-pooler'
+        }
+      ),
+    (error) => error.safeCode === 'PSQL_CLIENT_TLS_UNVERIFIED'
+  );
+  assert.throws(
+    () =>
+      validateCatalogReadOnlyJson(
+        { ...backend, ssl: true },
+        {
+          clientTlsVerified: true,
+          connectionMode: 'unknown'
+        }
+      ),
+    (error) => error.safeCode === 'TLS_ROUTE_UNVERIFIED'
+  );
+});
+
+test('live diagnostic uses the same pinned libpq connection for TLS and read-only SQL', () => {
+  const source = readFileSync(
+    new URL(
+      '../scripts/scout-point10x-staging-identity-readonly.mjs',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(source, /'-c',\s*'\\\\conninfo',\s*'-c',\s*SAFE_IDENTITY_SQL/u);
+  assert.match(source, /PGSSLMODE: 'verify-full'/u);
+  assert.match(source, /PGSSLROOTCERT: caPath/u);
+  assert.match(source, /LC_ALL: 'C'/u);
+  assert.match(
+    source,
+    /PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=4000'/u
+  );
+  assert.match(source, /result\.ssl === true/u);
+  assert.doesNotMatch(
+    source,
+    /(?:console\.log|console\.error)\(child\.(?:stdout|stderr)\)/u
   );
 });
 
