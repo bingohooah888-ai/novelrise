@@ -125,7 +125,8 @@
             !record.payload ||
             typeof record.payload !== 'object' ||
             Array.isArray(record.payload)
-          ) return null;
+          )
+            return null;
           const summary = bounded(record.payload.summary ?? '', 320);
           const evidence = bounded(record.payload.evidence ?? '', 160);
           if (summary === null || evidence === null) return null;
@@ -273,7 +274,9 @@
         });
       }
       if (['foreshadowing', 'event', 'timeline'].includes(group.kind)) {
-        if (suggestions.some((record) => !(record.payload.evidence ?? '').trim())) {
+        if (
+          suggestions.some((record) => !(record.payload.evidence ?? '').trim())
+        ) {
           checks.push({
             title: 'AI候補の根拠未登録',
             detail: '「' + group.key + '」の未確定候補に引用根拠がありません。'
