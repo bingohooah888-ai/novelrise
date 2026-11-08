@@ -314,10 +314,12 @@ test('Free Preview uses a distinct exact OWNER one-shot scope and unchanged seve
   for (const change of ['scope', 'blob', 'owner', 'main', 'extra']) {
     const invalid = structuredClone(fixture);
     if (change === 'scope') {
-      invalid.comment.body = prefix + JSON.stringify({
-        ...body,
-        scope: 'account-deletion-preview'
-      });
+      invalid.comment.body =
+        prefix +
+        JSON.stringify({
+          ...body,
+          scope: 'account-deletion-preview'
+        });
     }
     if (change === 'blob') invalid.compare.files[0].sha = 'f'.repeat(40);
     if (change === 'owner') invalid.comment.user.login = 'attacker';
@@ -333,15 +335,20 @@ test('Free Preview uses a distinct exact OWNER one-shot scope and unchanged seve
   }
 
   const reused = structuredClone(fixture);
-  reused.ledgerPages = [[{
-    body: 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED ' +
-      JSON.stringify({
-        requestCommentId: '1002',
-        mainSha,
-        candidateSha,
-        runId: '1'
-      })
-  }]];
+  reused.ledgerPages = [
+    [
+      {
+        body:
+          'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED ' +
+          JSON.stringify({
+            requestCommentId: '1002',
+            mainSha,
+            candidateSha,
+            runId: '1'
+          })
+      }
+    ]
+  ];
   assert.throws(() => assertAccountDeletionPreviewAdmission(reused), DENY);
 
   const other = structuredClone(fixture);
@@ -354,21 +361,24 @@ test('Free Preview uses a distinct exact OWNER one-shot scope and unchanged seve
 test('Free-only Preview requires six exact branch variables while paid gate still requires eight', () => {
   const free = envFixture();
   free.mode = 'free';
-  free.envs = free.envs.filter(
-    (entry) => !entry.key.includes('PRICE_ID')
-  );
-  assert.equal(
-    assertAccountPreviewEnvironment(free).requiredVariableCount,
-    6
-  );
+  free.envs = free.envs.filter((entry) => !entry.key.includes('PRICE_ID'));
+  assert.equal(assertAccountPreviewEnvironment(free).requiredVariableCount, 6);
   assert.throws(
     () => assertAccountPreviewEnvironment({ ...free, mode: 'standard' }),
     ENV_DENY
   );
-  for (const change of ['missingSecret', 'missingTestKey', 'prod', 'scope', 'mode']) {
+  for (const change of [
+    'missingSecret',
+    'missingTestKey',
+    'prod',
+    'scope',
+    'mode'
+  ]) {
     const invalid = structuredClone(free);
     if (change === 'missingSecret') {
-      invalid.envs = invalid.envs.filter((v) => v.key !== 'SUPABASE_SECRET_KEY');
+      invalid.envs = invalid.envs.filter(
+        (v) => v.key !== 'SUPABASE_SECRET_KEY'
+      );
     }
     if (change === 'missingTestKey') {
       invalid.envs = invalid.envs.filter((v) => v.key !== 'STRIPE_SECRET_KEY');
