@@ -14,6 +14,24 @@
     /* AI owner-only prototype: the section is inserted only after authenticated API success. */
     .novelight-ai-bible-owner-section { margin-top: 24px; padding: 24px; }
     .novelight-ai-bible-owner-content { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 16px; font-weight: 500; line-height: 1.85; color: #1f2937; -webkit-text-fill-color: #1f2937; }
+    /* The author-ready UI is still accessible only through the existing gated preview. */
+    .novelight-ai-workspace { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; color:#edf3f8; -webkit-text-fill-color:#edf3f8; }
+    .novelight-ai-workspace > h2, .novelight-ai-workspace > p, .novelight-ai-workspace-search { grid-column:1/-1; }
+    .novelight-ai-workspace > h2 { margin:0; font:700 25px Georgia,"Yu Mincho",serif; }
+    .novelight-ai-workspace-intro { margin:0; line-height:1.8; color:#d9e2e9; -webkit-text-fill-color:#d9e2e9; }
+    .novelight-ai-workspace-search { width:100%; min-height:44px; padding:11px 14px; background:#f8fafc; color:#182b3c; -webkit-text-fill-color:#182b3c; border:1px solid #b6c5d1; border-radius:10px; }
+    .novelight-ai-workspace-search:focus-visible { outline:3px solid #d7b65b; outline-offset:2px; }
+    .novelight-ai-workspace-result { margin:0; font-size:13px; }
+    .novelight-ai-workspace-section { min-width:0; padding:16px; border:1px solid #c8d2db; border-radius:14px; background:#f8fafc; color:#182b3c; -webkit-text-fill-color:#182b3c; }
+    .novelight-ai-workspace-section h3 { margin:0 0 12px; font-size:17px; overflow-wrap:anywhere; }
+    .novelight-ai-workspace-item { padding:12px; margin:10px 0; border:1px solid #d9e2eb; border-radius:10px; background:#fff; overflow-wrap:anywhere; }
+    .novelight-ai-workspace-item[hidden] { display:none; }
+    .novelight-ai-workspace-item h4 { margin:0 0 7px; font-size:15px; }
+    .novelight-ai-workspace-status { font-size:11px; font-weight:800; color:#445c71; -webkit-text-fill-color:#445c71; }
+    .novelight-ai-workspace-details summary { margin-top:8px; cursor:pointer; color:#194c72; -webkit-text-fill-color:#194c72; }
+    .novelight-ai-workspace-details p { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; }
+    .novelight-ai-workspace-empty { font-size:13px; color:#526273; -webkit-text-fill-color:#526273; }
+    @media(max-width:800px){ .novelight-ai-workspace { grid-template-columns:minmax(0,1fr); } }
     @media (max-width: 540px) { .novelight-ai-bible-owner-section { padding: 18px; } }
     /* The consent panel is off-DOM until the owner-only API approves it. */
     .novelight-ai-bible-consent-section { margin-top:24px; padding:24px; }
@@ -107,6 +125,7 @@
   <script src="novelight-client.js"></script>
   <script src="novelight-author-studio-shell.js"></script>
   <script src="novelight-characters.js"></script>
+  <script src="novelight-ai-bible-author-workspace.js"></script>
   <script src="novelight-ai-bible-owner-panel.js"></script>
   <script src="novelight-ai-bible-owner-studio.js"></script>
   <script src="novelight-ai-bible-consent-panel.js"></script>
