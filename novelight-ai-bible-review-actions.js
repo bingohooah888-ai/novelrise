@@ -4,6 +4,17 @@
 (function (root) {
   'use strict';
 
+  const FACT_KINDS = new Set([
+    'character',
+    'relationship',
+    'location',
+    'world',
+    'timeline',
+    'event',
+    'foreshadowing',
+    'other'
+  ]);
+
   function positive(value) {
     const text = String(value);
     if (!/^[1-9]\d*$/.test(text)) return null;
@@ -18,24 +29,34 @@
       Number.isSafeInteger(item?.revision) &&
       item.revision > 0 &&
       item.status === 'pending' &&
-      typeof item.kind === 'string' &&
-      item.kind.length <= 32 &&
+      FACT_KINDS.has(item.kind) &&
       typeof item.key === 'string' &&
+      item.key.trim().length > 0 &&
       item.key.length <= 120 &&
       typeof item.summary === 'string' &&
+      item.summary.trim().length > 0 &&
       item.summary.length <= 320 &&
       typeof item.evidence === 'string' &&
+      item.evidence.trim().length > 0 &&
       item.evidence.length <= 160
     );
   }
 
+  // Separate from the preview grouped-facts contract; reject mixed,
+  // duplicated or unscoped candidates before exposing review controls.
   function validResponse(payload, novelId) {
-    return (
-      payload?.novelId === novelId &&
-      Array.isArray(payload.candidates) &&
-      payload.candidates.length <= 100 &&
-      payload.candidates.every(validItem)
-    );
+    if (
+      !payload ||
+      typeof payload !== 'object' ||
+      Array.isArray(payload) ||
+      payload.novelId !== novelId ||
+      payload.aiGenerated !== false ||
+      !Array.isArray(payload.candidates) ||
+      payload.candidates.length > 100 ||
+      !payload.candidates.every(validItem)
+    ) return false;
+    const ids = payload.candidates.map((item) => positive(item.id));
+    return new Set(ids).size === ids.length;
   }
 
   // Explicit invocation from an owner-verified author surface only. The API
@@ -187,9 +208,9 @@
         item.kind +
         '：' +
         item.key +
-        '／第' +
+        '／参照エピソードID：' +
         item.episodeId +
-        '話／候補：' +
+        '／候補：' +
         item.summary +
         '／本文根拠：' +
         item.evidence;
