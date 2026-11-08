@@ -17,6 +17,7 @@
 
 ## 途中失敗への対応（必須）
 - 既存の削除処理は Stripe契約停止 → Storage削除 → publicデータ削除 → Auth削除という非トランザクション手順。途中失敗しても一部の変更は戻らない。
+- アバターは現在のプロフィール画像に加え、本人の `author-avatars/<userId>/` 配下に残る過去画像も先に列挙してから削除する。列挙失敗時はStripe解約を含む後続の破壊的操作へ進まない。オリジナル表紙は `novel_custom_covers` の記録から削除対象を収集する。
 - `500` を受けた場合、再試行前に Stripe契約、残存Storage、作品/エピソード、認証ユーザーの状態を読み取り専用で確認し、二重課金・残存データ・部分削除を避ける。
 - 現在のDBスキーマには `scout_reward_campaign_claims.user_id` および `trust_reviews.reviewer_user_id` の `auth.users` に対する `ON DELETE RESTRICT` がある。これらを参照する利用者ではAuth削除が失敗する可能性がある。適正な記録保持・匿名化方針を決めるまで勝手に消去/制約解除をしない。
 - 手動で `auth.users` を先に消す、関連テーブルを一律CASCADEに変える、失敗したAPIを連打する、といった回避策は禁止。

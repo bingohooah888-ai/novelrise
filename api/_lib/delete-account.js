@@ -28,6 +28,43 @@ async function removeStoragePaths(supabase, bucket, paths) {
   if (error) throw error;
 }
 
+async function listOwnedAvatarPaths(supabase, userId) {
+  const storage = supabase.storage.from('author-avatars');
+  const paths = [];
+  const limit = 100;
+  for (let offset = 0; offset < 2000; offset += limit) {
+    const { data, error } = await storage.list(userId, {
+      limit,
+      offset,
+      sortBy: { column: 'name', order: 'asc' }
+    });
+    if (error) throw error;
+    if (!Array.isArray(data)) {
+      throw Object.assign(new Error('Avatar inventory invalid'), {
+        code: 'AVATAR_INVENTORY_INVALID'
+      });
+    }
+    for (const item of data) {
+      if (
+        item?.id == null ||
+        typeof item.name !== 'string' ||
+        !item.name ||
+        item.name.includes('/') ||
+        item.name.includes('\\')
+      ) {
+        throw Object.assign(new Error('Avatar inventory invalid'), {
+          code: 'AVATAR_INVENTORY_INVALID'
+        });
+      }
+      paths.push(userId + '/' + item.name);
+    }
+    if (data.length < limit) return paths;
+  }
+  throw Object.assign(new Error('Avatar inventory exceeds safety limit'), {
+    code: 'AVATAR_INVENTORY_TOO_LARGE'
+  });
+}
+
 async function cancelStripeSubscriptions(stripe, profile) {
   const customerId = String(profile?.stripe_customer_id || '').trim();
   const profileSubscriptionId = String(
@@ -69,21 +106,30 @@ async function cancelStripeSubscriptions(stripe, profile) {
 }
 
 async function collectDeletionTargets(supabase, userId) {
-  const [profileResult, novelsResult, illustrationsResult, coversResult] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('avatar_path,stripe_customer_id,stripe_subscription_id')
-      .eq('id', userId)
-      .maybeSingle(),
-    supabase.from('novels').select('id').eq('user_id', userId),
-    supabase
-      .from('episode_illustrations')
-      .select('storage_path')
-      .eq('owner_user_id', userId),
-    supabase.from('novel_custom_covers').select('storage_path').eq('user_id', userId)
-  ]);
+  const [profileResult, novelsResult, illustrationsResult, coversResult] =
+    await Promise.all([
+      supabase
+        .from('profiles')
+        .select('avatar_path,stripe_customer_id,stripe_subscription_id')
+        .eq('id', userId)
+        .maybeSingle(),
+      supabase.from('novels').select('id').eq('user_id', userId),
+      supabase
+        .from('episode_illustrations')
+        .select('storage_path')
+        .eq('owner_user_id', userId),
+      supabase
+        .from('novel_custom_covers')
+        .select('storage_path')
+        .eq('user_id', userId)
+    ]);
 
-  for (const result of [profileResult, novelsResult, illustrationsResult, coversResult]) {
+  for (const result of [
+    profileResult,
+    novelsResult,
+    illustrationsResult,
+    coversResult
+  ]) {
     if (result.error) throw result.error;
   }
 
@@ -98,9 +144,17 @@ async function collectDeletionTargets(supabase, userId) {
     renderRows = renderResult.data || [];
   }
 
+  // Inventory historical avatars before billing changes.
+  const ownedAvatarPaths = await listOwnedAvatarPaths(supabase, userId);
+
   return {
     profile: profileResult.data || null,
-    avatarPaths: uniquePaths([profileResult.data], 'avatar_path'),
+    avatarPaths: [
+      ...new Set([
+        ...uniquePaths([profileResult.data], 'avatar_path'),
+        ...ownedAvatarPaths
+      ])
+    ],
     illustrationPaths: uniquePaths(illustrationsResult.data, 'storage_path'),
     coverPaths: uniquePaths(coversResult.data, 'storage_path'),
     renderPaths: uniquePaths(renderRows, 'render_storage_path')

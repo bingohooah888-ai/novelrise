@@ -91,13 +91,15 @@ function dependencies({
   stripeListError = null,
   storageErrorBucket = null,
   authDeleteError = null,
-  freeReader = false
+  freeReader = false,
+  avatarListError = false
 } = {}) {
   const calls = {
     authTokens: [],
     authDeletes: [],
     queries: [],
     storage: [],
+    storageLists: [],
     stripeList: [],
     stripeRetrieve: [],
     stripeCancel: []
@@ -173,6 +175,22 @@ function dependencies({
     storage: {
       from(bucket) {
         return {
+          async list(folder, options) {
+            calls.storageLists.push({ bucket, folder, options });
+            if (bucket !== 'author-avatars') return { data: [], error: null };
+            if (avatarListError) {
+              return { data: null, error: new Error('avatar list failed') };
+            }
+            return {
+              data: freeReader
+                ? []
+                : [
+                    { id: 'file-1', name: 'avatar.webp' },
+                    { id: 'file-2', name: 'old-avatar.webp' }
+                  ],
+              error: null
+            };
+          },
           async remove(paths) {
             calls.storage.push({ bucket, paths });
             return bucket === storageErrorBucket
@@ -262,7 +280,10 @@ test('successful account deletion stops recurring billing, removes storage, then
   assert.deepEqual(calls.stripeRetrieve, ['sub_profile']);
   assert.deepEqual(calls.stripeCancel, ['sub_active', 'sub_profile']);
   assert.deepEqual(calls.storage, [
-    { bucket: 'author-avatars', paths: ['verified-user/avatar.webp'] },
+    {
+      bucket: 'author-avatars',
+      paths: ['verified-user/avatar.webp', 'verified-user/old-avatar.webp']
+    },
     {
       bucket: 'episode-illustrations',
       paths: ['10/1/a.webp', '11/2/b.webp']
@@ -271,7 +292,10 @@ test('successful account deletion stops recurring billing, removes storage, then
       bucket: 'novel-thumbnail-renders',
       paths: ['10/render.webp', '11/render.webp']
     },
-    { bucket: 'novel-custom-covers', paths: ['10/custom.webp', '11/custom.webp'] }
+    {
+      bucket: 'novel-custom-covers',
+      paths: ['10/custom.webp', '11/custom.webp']
+    }
   ]);
   assert.deepEqual(calls.authDeletes, ['verified-user']);
 
@@ -285,7 +309,7 @@ test('successful account deletion stops recurring billing, removes storage, then
   ]);
 });
 
-test('free reader deletion succeeds without Stripe API or Storage calls', async () => {
+test('free reader deletion succeeds without Stripe API or Storage deletes', async () => {
   const { handler, calls } = dependencies({ freeReader: true });
   const response = responseState();
 
@@ -297,6 +321,23 @@ test('free reader deletion succeeds without Stripe API or Storage calls', async 
   assert.deepEqual(calls.stripeCancel, []);
   assert.deepEqual(calls.storage, []);
   assert.deepEqual(calls.authDeletes, ['verified-user']);
+});
+
+test('failed avatar inventory read blocks billing and all destructive work', async () => {
+  const { handler, calls } = dependencies({ avatarListError: true });
+  const response = responseState();
+
+  await handler(request(), response.res);
+
+  assert.equal(response.state.statusCode, 500);
+  assert.equal(response.state.body.error, 'ACCOUNT_DELETE_FAILED');
+  assert.deepEqual(calls.stripeCancel, []);
+  assert.deepEqual(calls.storage, []);
+  assert.deepEqual(
+    calls.queries.filter((call) => call.type === 'delete'),
+    []
+  );
+  assert.deepEqual(calls.authDeletes, []);
 });
 
 test('custom cover cleanup failure prevents database and Auth deletion', async () => {
