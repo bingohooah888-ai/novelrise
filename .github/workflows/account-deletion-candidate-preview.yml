@@ -19,7 +19,8 @@ jobs:
       github.event.comment.user.login == 'bingohooah888-ai' &&
       github.event.comment.author_association == 'OWNER' &&
       (startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_APPROVE ') ||
-       startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_APPROVE '))
+       startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_APPROVE ') ||
+       startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_APPROVE '))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
@@ -35,6 +36,7 @@ jobs:
       preview_ref: ${{ steps.binding.outputs.preview_ref }}
       request_id: ${{ steps.binding.outputs.request_id }}
       approval_mode: ${{ steps.binding.outputs.approval_mode }}
+      preview_url: ${{ steps.binding.outputs.preview_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,6 +64,7 @@ jobs:
             echo "preview_ref=$(jq -er '.previewRef' /tmp/account-decision.json)"
             echo "request_id=$(jq -er '.requestCommentId' /tmp/account-decision.json)"
             echo "approval_mode=$(jq -er '.approvalMode // "standard"' /tmp/account-decision.json)"
+            echo "preview_url=$(jq -er '.previewUrl // ""' /tmp/account-decision.json)"
           } >> "$GITHUB_OUTPUT"
       - name: Consume approval claim before any Staging costs
         env:
@@ -80,6 +83,7 @@ jobs:
           case "$APPROVAL_MODE" in
             standard) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CLAIMED ;;
             free-preview) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED ;;
+            free-proof) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_CLAIMED ;;
             *) exit 1 ;;
           esac
           gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments"             -f body="$marker $data"             > /dev/null
@@ -87,7 +91,7 @@ jobs:
   preview:
     name: One exact-sha Staging-only Preview and read-only environment proof
     needs: admit
-    if: needs.admit.result == 'success'
+    if: needs.admit.result == 'success' && needs.admit.outputs.approval_mode != 'free-proof'
     environment: staging
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -151,10 +155,87 @@ jobs:
             echo 'Free-only scope never executes an account deletion request.'
           } >> "$GITHUB_STEP_SUMMARY"
 
+
+  free_proof:
+    name: Exact existing Staging Preview, one fresh Free user, authenticated deletion, residue and cleanup
+    needs: admit
+    if: needs.admit.result == 'success' && needs.admit.outputs.approval_mode == 'free-proof'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    env:
+      GH_TOKEN: \${{ github.token }}
+      APPROVED_MAIN_SHA: \${{ needs.admit.outputs.main_sha }}
+      EXPECTED_REVISION: \${{ needs.admit.outputs.candidate_sha }}
+      STAGING_PREVIEW_REF: \${{ needs.admit.outputs.preview_ref }}
+      OWNER_APPROVED_PREVIEW_URL: \${{ needs.admit.outputs.preview_url }}
+      STAGING_TRIGGER: approval_comment
+      STAGING_DELETE_FREE_MODE: 'true'
+      STAGING_FREE_APPROVAL_SCOPE: account-deletion-free-proof
+      STAGING_FREE_PROOF_APPROVED: 'true'
+      STAGING_E2E_READY: \${{ vars.STAGING_E2E_READY }}
+      STAGING_EXPECTED_SUPABASE_URL: \${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_EXPECTED_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_SUPABASE_SECRET_KEY: \${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STRIPE_TEST_SECRET_KEY: \${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      STAGING_REQUIRE_WRITE_CONFIG: 'true'
+      VERCEL_AUTOMATION_BYPASS_SECRET: \${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      VERCEL_API_TOKEN: \${{ secrets.VERCEL_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: \${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Reject drift or absent protected Staging prerequisites before fixture writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$EXPECTED_REVISION"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.base.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.draft')" = true
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.locked')" = false
+          test "$STAGING_E2E_READY" = true
+          test "$STAGING_EXPECTED_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test "$STAGING_PREVIEW_REF" = 'fix/inquiry-82-account-deletion-diagnostics-20261107'
+          test -n "$OWNER_APPROVED_PREVIEW_URL"
+          test -n "$STAGING_SUPABASE_SECRET_KEY"
+          test -n "$STAGING_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$STRIPE_TEST_SECRET_KEY"
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
+          test -n "$VERCEL_API_TOKEN"
+      - name: Locate only an already READY exact-SHA candidate Preview (read-only)
+        run: node scripts/resolve-existing-staging-preview.mjs
+      - name: Match discovered deployment to exact OWNER-approved origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CANONICAL_STAGING_URL" = "$OWNER_APPROVED_PREVIEW_URL"
+      - name: Verify Preview SHA, Staging Supabase identity and Stripe TEST mode (read-only)
+        run: node scripts/verify-staging-deployment.mjs
+      - name: Install pinned application/test dependencies
+        run: npm ci
+      - name: Delete only one freshly-created verified Free Staging fixture via real JWT
+        run: node scripts/account-deletion-free-live-proof.mjs
+      - name: Record redacted success without account IDs or secrets
+        shell: bash
+        run: |
+          echo 'Free-only Staging JWT deletion passed: one ephemeral user, no Stripe links, residue checked.' >> "$GITHUB_STEP_SUMMARY"
+
   consume:
     name: Permanently consume the one-time approval
     if: always() && needs.admit.result == 'success'
-    needs: [admit, preview]
+    needs: [admit, preview, free_proof]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -168,13 +249,14 @@ jobs:
           HEAD: ${{ needs.admit.outputs.candidate_sha }}
           REQUEST: ${{ needs.admit.outputs.request_id }}
           APPROVAL_MODE: ${{ needs.admit.outputs.approval_mode }}
-          OUTCOME: ${{ needs.preview.result }}
+          OUTCOME: ${{ needs.admit.outputs.approval_mode == 'free-proof' && needs.free_proof.result || needs.preview.result }}
         run: |
           set -euo pipefail
           data="$(jq -cn --arg requestCommentId "$REQUEST"             --arg mainSha "$MAIN" --arg candidateSha "$HEAD"             --arg runId "$GITHUB_RUN_ID" --arg result "$OUTCOME"             '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
           case "$APPROVAL_MODE" in
             standard) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CONSUMED ;;
             free-preview) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CONSUMED ;;
+            free-proof) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_CONSUMED ;;
             *) exit 1 ;;
           esac
           gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments"             -f body="$marker $data"             > /dev/null
