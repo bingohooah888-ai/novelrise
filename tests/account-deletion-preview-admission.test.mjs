@@ -312,7 +312,7 @@ test('Free Preview uses a distinct exact OWNER one-shot scope and unchanged seve
   });
 
   for (const change of ['scope', 'blob', 'owner', 'main', 'extra']) {
-    const invalid = structuredClone(fixture);
+    const invalid = globalThis.structuredClone(fixture);
     if (change === 'scope') {
       invalid.comment.body =
         prefix +
@@ -334,7 +334,7 @@ test('Free Preview uses a distinct exact OWNER one-shot scope and unchanged seve
     );
   }
 
-  const reused = structuredClone(fixture);
+  const reused = globalThis.structuredClone(fixture);
   reused.ledgerPages = [
     [
       {
@@ -351,7 +351,7 @@ test('Free Preview uses a distinct exact OWNER one-shot scope and unchanged seve
   ];
   assert.throws(() => assertAccountDeletionPreviewAdmission(reused), DENY);
 
-  const other = structuredClone(fixture);
+  const other = globalThis.structuredClone(fixture);
   other.comment.body =
     'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_APPROVE ' +
     JSON.stringify(body);
@@ -374,7 +374,7 @@ test('Free-only Preview requires six exact branch variables while paid gate stil
     'scope',
     'mode'
   ]) {
-    const invalid = structuredClone(free);
+    const invalid = globalThis.structuredClone(free);
     if (change === 'missingSecret') {
       invalid.envs = invalid.envs.filter(
         (v) => v.key !== 'SUPABASE_SECRET_KEY'
