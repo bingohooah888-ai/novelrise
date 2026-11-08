@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -95,7 +96,9 @@ test('disable account before cross-SID cryptographic refusal', () => {
 });
 test('process and session census both required before restore', () => {
   assert.match(src, /TARGET_CHILD_REMAINS/u);
-  assert.match(src, /OWNER_UNVERIFIED_LIVE_PROCESS/u);
+  assert.match(src, /TARGET_PROFILE_LOADED_OR_UNVERIFIED/u);
+  assert.match(rescue, /TARGET_PROFILE_LOADED_OR_UNVERIFIED/u);
+  assert.match(rescue, /LOGON_SESSION_RESIDUE/u);
   assert.match(src, /Win32_LogonSession/u);
   assert.match(src, /LOGON_SESSION_REMAINS/u);
   assert.match(src, /function Restore-GuardAtomicallyAfterProof/u);
@@ -242,3 +245,249 @@ test('coordinator exposes bounded NO-GO stage and code without logging secrets',
     /(?:ScriptStackTrace|Write-Error|Write-Output \$_.Exception)/u
   );
 });
+
+// Execute the REAL census functions with isolated PowerShell CIM stubs.
+// No Windows user, task, guard file or credential is accessed by these cases.
+test(
+  'isolated Windows rescue/coordinator census accepts unreadable OS owner only with target proofs',
+  {
+    skip: process.platform !== 'win32'
+  },
+  () => {
+    const extract = (source, begin, end) =>
+      source.slice(
+        source.indexOf(begin),
+        source.indexOf(end, source.indexOf(begin))
+      );
+    const rescueBody = extract(
+      rescue,
+      'function Assert-NoLiveTargetResources {',
+      'function Invoke-IndependentSystemGuardRestore {'
+    );
+    const coordinatorBody = extract(
+      src,
+      'function Assert-ProcessAndSessionZero {',
+      'function Read-PinnedGuard('
+    );
+    const prelude = [
+      'Set-StrictMode -Version Latest',
+      "$ErrorActionPreference='Stop'",
+      "$script:Sid='S-1-5-21-7777777'",
+      "$script:Account='NOVELIGHT-GateB'",
+      "$script:AccountName='NOVELIGHT-GateB'",
+      "$script:Stage='TEST'",
+      "function Assert-PinnedLocalUser { param([bool]$Disabled) if($script:Scenario -eq 'enabled'){throw 'ACCOUNT_NOT_DISABLED'} }",
+      "function Get-LocalUser { [CmdletBinding()]param([string]$Name) return [pscustomobject]@{SID=[pscustomobject]@{Value=$script:Sid};Enabled=($script:Scenario -eq 'enabled')} }",
+      'function Get-CimInstance {',
+      '  [CmdletBinding()]param([Parameter(Position=0)][string]$ClassName,[string]$Filter)',
+      '  switch($ClassName) {',
+      "    'Win32_UserAccount' { return [pscustomobject]@{SID=$script:Sid} }",
+      "    'Win32_UserProfile' { if($script:Scenario -eq 'profile'){return [pscustomobject]@{Loaded=$true}}; return }",
+      "    'Win32_Process' { return [pscustomobject]@{ProcessId=777} }",
+      "    default { throw 'UNEXPECTED_CIM_CLASS' }",
+      '  }',
+      '}',
+      'function Get-CimAssociatedInstance {',
+      '  [CmdletBinding()]param($InputObject,[string]$Association,[string]$ResultClassName)',
+      "  if($script:Scenario -eq 'session'){return [pscustomobject]@{LogonId='123'}}",
+      '}',
+      'function Invoke-CimMethod {',
+      '  [CmdletBinding()]param($InputObject,[string]$MethodName)',
+      "  if($script:Scenario -eq 'target'){return [pscustomobject]@{ReturnValue=0;Sid=$script:Sid}}",
+      "  return [pscustomobject]@{ReturnValue=2;Sid=''}",
+      '}'
+    ];
+    const cases = ['unknown', 'target', 'session', 'profile', 'enabled'];
+    const lines = [
+      ...prelude,
+      rescueBody,
+      ...cases.map(
+        (s) =>
+          "$script:Scenario='" +
+          s +
+          "'; try{ Assert-NoLiveTargetResources; 'RESCUE:" +
+          s +
+          ":PASS' }catch{ 'RESCUE:" +
+          s +
+          ":'+$_.Exception.Message }"
+      ),
+      coordinatorBody,
+      ...cases.map(
+        (s) =>
+          "$script:Scenario='" +
+          s +
+          "'; try{ Assert-ProcessAndSessionZero; 'COORD:" +
+          s +
+          ":PASS' }catch{ 'COORD:" +
+          s +
+          ":'+$_.Exception.Message }"
+      )
+    ];
+    const command = Buffer.from(lines.join('\n'), 'utf16le').toString('base64');
+    const proc = spawnSync(
+      'powershell.exe',
+      ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', command],
+      { encoding: 'utf8', timeout: 20000 }
+    );
+    assert.equal(proc.status, 0, proc.stderr);
+    const results = proc.stdout.trim().split(/\r?\n/u).filter(Boolean);
+    assert.deepEqual(results, [
+      'RESCUE:unknown:PASS',
+      'RESCUE:target:CHILD_PROCESS_REMAINS',
+      'RESCUE:session:LOGON_SESSION_RESIDUE',
+      'RESCUE:profile:TARGET_PROFILE_LOADED_OR_UNVERIFIED',
+      'RESCUE:enabled:TARGET_NOT_DISABLED',
+      'COORD:unknown:PASS',
+      'COORD:target:TARGET_CHILD_REMAINS',
+      'COORD:session:LOGON_SESSION_REMAINS',
+      'COORD:profile:TARGET_PROFILE_LOADED_OR_UNVERIFIED',
+      'COORD:enabled:ACCOUNT_NOT_DISABLED'
+    ]);
+  }
+);
+
+// Real restore/file-replace/heartbeat code, against disposable TEMP fixtures only.
+// SYSTEM identity, protected-root ACL and owner permit are not simulated as PASS.
+test(
+  'isolated Windows SYSTEM rescue restores pinned guard atomically or fails closed',
+  {
+    skip: process.platform !== 'win32'
+  },
+  () => {
+    const extract = (source, begin, end) =>
+      source.slice(
+        source.indexOf(begin),
+        source.indexOf(end, source.indexOf(begin))
+      );
+    const functions = [
+      extract(
+        rescue,
+        'function Assert-PinnedLeaf(',
+        'function Assert-PinnedRoot'
+      ),
+      // Replace ONLY the SYSTEM identity check, impossible in an unprivileged
+      // disposable fixture. All actual manifest/SHA/state checks stay intact.
+      extract(
+        rescue,
+        'function Get-RescueScope {',
+        'function Confirm-ScopeExpiredOrParentDead('
+      ).replace(
+        /if\(\$env:COMPUTERNAME -cne \$HostPin -or\s+\[Security\.Principal\.WindowsIdentity\]::GetCurrent\(\)\.User\.Value -cne \$SystemSid\)\{\s+throw 'SYSTEM_HOST_REQUIRED'\s+\}/u,
+        "if(-not $Root.StartsWith([IO.Path]::GetTempPath(),[StringComparison]::OrdinalIgnoreCase)){throw 'FIXTURE_ONLY'}"
+      ),
+      extract(
+        rescue,
+        'function Confirm-ScopeExpiredOrParentDead(',
+        'function Assert-NoLiveTargetResources {'
+      ),
+      extract(
+        rescue,
+        'function Assert-NoLiveTargetResources {',
+        'function Invoke-IndependentSystemGuardRestore {'
+      ),
+      extract(
+        rescue,
+        'function Invoke-IndependentSystemGuardRestore {',
+        'function Write-RescueHeartbeat('
+      ),
+      extract(
+        rescue,
+        'function Write-RescueHeartbeat(',
+        'function Invoke-AuthorizedSystemRecovery {'
+      )
+    ];
+    const fixture = [
+      'Set-StrictMode -Version Latest',
+      "$ErrorActionPreference='Stop'",
+      "$script:HostPin='DESKTOP-8Q4GFC8'",
+      "$script:TaskName='NOVELIGHT-GateB-Independent-Recovery'",
+      "$script:Account='NOVELIGHT-GateB'",
+      "$script:Sid='S-1-5-21-7777777'",
+      "$script:Stage='ISOLATED'",
+      'function Assert-PinnedRoot {',
+      '  if(-not $script:Root.StartsWith([IO.Path]::GetTempPath(),[StringComparison]::OrdinalIgnoreCase)){throw "UNSAFE_TEST_ROOT"}',
+      '}',
+      'function Get-LocalUser { [CmdletBinding()]param([string]$Name) return [pscustomobject]@{SID=[pscustomobject]@{Value=$script:Sid};Enabled=$false} }',
+      'function Get-CimInstance {',
+      '  [CmdletBinding()]param([Parameter(Position=0)][string]$ClassName,[string]$Filter)',
+      '  switch($ClassName){',
+      "    'Win32_UserAccount' { return [pscustomobject]@{SID=$script:Sid} }",
+      "    'Win32_UserProfile' { return }",
+      "    'Win32_Process' { return [pscustomobject]@{ProcessId=777} }",
+      "    default { throw 'UNEXPECTED_CIM_CLASS' }",
+      '  }',
+      '}',
+      'function Get-CimAssociatedInstance { [CmdletBinding()]param($InputObject,[string]$Association,[string]$ResultClassName) }',
+      "function Invoke-CimMethod { [CmdletBinding()]param($InputObject,[string]$MethodName) return [pscustomobject]@{ReturnValue=0;Sid='S-1-5-18'} }",
+      'function Get-Process {',
+      '  [CmdletBinding()]param([int]$Id)',
+      "  if($script:CaseName -eq 'parentgone'){throw 'PARENT_MISSING'}",
+      '  return [pscustomobject]@{StartTime=$script:ParentDateTime}',
+      '}',
+      ...functions,
+      'function New-Fixture([string]$CaseName) {',
+      '  $script:CaseName=$CaseName',
+      "  $script:Root=Join-Path ([IO.Path]::GetTempPath()) ('gateb-atomic-fixture-'+[guid]::NewGuid().ToString('N'))",
+      '  $null=[IO.Directory]::CreateDirectory($script:Root)',
+      "  $script:State=Join-Path $Root 'state.json'",
+      "  $script:Original=Join-Path $Root 'state.json.dpapi-attempt2-original'",
+      "  $script:Manifest=Join-Path $Root 'gateb-dpapi-attempt2-arm-manifest.json'",
+      "  $script:Marker=Join-Path $Root 'gateb-dpapi-attempt2-once-consumed.marker'",
+      '  $script:ParentDateTime=[datetime]::UtcNow.AddMinutes(-3)',
+      "  $startUtc=$script:ParentDateTime.ToString('o')",
+      "  $deadline=if($CaseName -eq 'expired' -or $CaseName -eq 'hashdrift') {[datetime]::UtcNow.AddMinutes(-2).ToString('o')} else {[datetime]::UtcNow.AddMinutes(2).ToString('o')}",
+      "  $saved=[ordered]@{version=1;host=$HostPin;sid=$Sid;taskName=$TaskName;phase='GUARD_ONLY';deadlineUtc=$null;parentPid=0;parentStartUtc=$null}",
+      "  $guarded=[ordered]@{version=1;host=$HostPin;sid=$Sid;taskName=$TaskName;phase='GUARDED_TEST';deadlineUtc=$deadline;parentPid=777;parentStartUtc=$startUtc}",
+      '  [IO.File]::WriteAllText($Original,($saved|ConvertTo-Json -Compress),[Text.Encoding]::UTF8)',
+      '  [IO.File]::WriteAllText($State,($guarded|ConvertTo-Json -Compress),[Text.Encoding]::UTF8)',
+      '  $script:ExpectedOriginal=(Get-FileHash -LiteralPath $Original -Algorithm SHA256).Hash.ToLowerInvariant()',
+      '  $originalSha=$script:ExpectedOriginal',
+      '  $guardedSha=(Get-FileHash -LiteralPath $State -Algorithm SHA256).Hash.ToLowerInvariant()',
+      '  $manifestData=[ordered]@{version=1;host=$HostPin;sid=$Sid;taskName=$TaskName;originalSha256=$originalSha;guardedSha256=$guardedSha;parentPid=777;parentStartUtc=$startUtc;deadlineUtc=$deadline}',
+      '  [IO.File]::WriteAllText($Manifest,($manifestData|ConvertTo-Json -Compress),[Text.Encoding]::UTF8)',
+      "  [IO.File]::WriteAllText($Marker,'SYNTHETIC_SPENT',[Text.Encoding]::UTF8)",
+      "  if($CaseName -eq 'hashdrift'){[IO.File]::AppendAllText($State,' ')}",
+      '}',
+      "foreach($case in @('expired','parentgone','parentalive','hashdrift')){",
+      '  New-Fixture $case',
+      '  try {',
+      '    Invoke-IndependentSystemGuardRestore',
+      "    Write-RescueHeartbeat 'RESTORED_GUARD_ONLY'",
+      "    Write-RescueHeartbeat 'IDLE_DISABLED'",
+      "    $back=Join-Path $Root 'state.json.dpapi-attempt2-rescue-backup'",
+      "    $hb=Join-Path $Root 'gateb-dpapi-system-rescue-heartbeat.json'",
+      "    $prev=Join-Path $Root 'gateb-dpapi-system-rescue-heartbeat.previous.json'",
+      "    if(-not [IO.File]::Exists($back) -or -not [IO.File]::Exists($prev)){throw 'BACKUP_MISSING'}",
+      "    if((Get-FileHash $State -Algorithm SHA256).Hash.ToLowerInvariant() -cne $ExpectedOriginal){throw 'RESTORED_HASH_MISMATCH'}",
+      '    $data=ConvertFrom-Json ([IO.File]::ReadAllText($hb))',
+      "    if($data.status -cne 'IDLE_DISABLED' -or $data.sequence -ne 2){throw 'HEARTBEAT_MISMATCH'}",
+      "    if([IO.File]::ReadAllText($Marker) -cne 'SYNTHETIC_SPENT'){throw 'SPENT_MARKER_CHANGED'}",
+      "    'RESTORE:'+$case+':PASS'",
+      '  }catch{',
+      '    $phase=(ConvertFrom-Json ([IO.File]::ReadAllText($State))).phase',
+      "    if($phase -cne 'GUARDED_TEST'){throw 'FAILURE_CHANGED_GUARD'}",
+      "    if([IO.File]::ReadAllText($Marker) -cne 'SYNTHETIC_SPENT'){throw 'FAILURE_CHANGED_MARKER'}",
+      "    'RESTORE:'+$case+':'+$_.Exception.Message",
+      '  }finally{',
+      '    if(-not $Root.StartsWith([IO.Path]::GetTempPath(),[StringComparison]::OrdinalIgnoreCase)){throw "UNSAFE_FIXTURE_CLEANUP"}',
+      '    [IO.Directory]::Delete($Root,$true)',
+      '  }',
+      '}'
+    ];
+    const command = Buffer.from(fixture.join('\n'), 'utf16le').toString(
+      'base64'
+    );
+    const proc = spawnSync(
+      'powershell.exe',
+      ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', command],
+      { encoding: 'utf8', timeout: 30000 }
+    );
+    assert.equal(proc.status, 0, proc.stderr);
+    assert.deepEqual(proc.stdout.trim().split(/\r?\n/u).filter(Boolean), [
+      'RESTORE:expired:PASS',
+      'RESTORE:parentgone:PASS',
+      'RESTORE:parentalive:PARENT_ALIVE_NO_RESTORE',
+      'RESTORE:hashdrift:UNKNOWN_STATE_NO_OVERWRITE'
+    ]);
+  }
+);

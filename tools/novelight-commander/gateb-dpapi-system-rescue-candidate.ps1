@@ -101,25 +101,33 @@ function Confirm-ScopeExpiredOrParentDead([object]$Manifest) {
 }
 function Assert-NoLiveTargetResources {
   $script:Stage='RESTORE_TARGET_RESIDUE'
-  $u=Get-LocalUser -Name $Account -ErrorAction Stop
-  if($u.SID.Value -cne $Sid -or $u.Enabled){throw 'TARGET_NOT_DISABLED'}
-  foreach($p in @(Get-CimInstance Win32_Process -ErrorAction Stop)){
-    if([int]$p.ProcessId -in @(0,4)){continue}
-    $owner=$null
-    try{$owner=Invoke-CimMethod -InputObject $p -MethodName GetOwnerSid -ErrorAction Stop}catch{$owner=$null}
-    if($null -ne $owner -and $owner.ReturnValue -eq 0 -and
-      -not [string]::IsNullOrWhiteSpace([string]$owner.Sid)){
-      if([string]$owner.Sid -ceq $Sid){throw 'CHILD_PROCESS_REMAINS'}
-      continue
-    }
-    if(@(Get-CimInstance Win32_Process -Filter ('ProcessId='+[int]$p.ProcessId) -ErrorAction Stop).Count -ne 0){
-      throw 'OWNER_UNKNOWN_NO_CLEANUP'
+  # Prove TARGET resources are absent, not that every unrelated protected OS
+  # process exposes its owner SID. Repeat around the process census to reject races.
+  for($pass=0;$pass -lt 2;$pass++){
+    $u=Get-LocalUser -Name $Account -ErrorAction Stop
+    if($u.SID.Value -cne $Sid -or $u.Enabled){throw 'TARGET_NOT_DISABLED'}
+    # PowerShell identifiers are case-insensitive: $account would mask the
+    # script-scoped $Account string on the second census pass.
+    $targetAccountCim=@(Get-CimInstance Win32_UserAccount -Filter ("SID='"+$Sid+"'") -ErrorAction Stop)
+    if($targetAccountCim.Count -ne 1){throw 'SESSION_CENSUS_UNVERIFIED'}
+    $sessions=@(Get-CimAssociatedInstance -InputObject $targetAccountCim[0] -Association Win32_LoggedOnUser -ResultClassName Win32_LogonSession -ErrorAction Stop)
+    if($sessions.Count -ne 0){throw 'LOGON_SESSION_RESIDUE'}
+    $profiles=@(Get-CimInstance Win32_UserProfile -Filter ("SID='"+$Sid+"'") -ErrorAction Stop)
+    if($profiles.Count -gt 1 -or
+      ($profiles.Count -eq 1 -and $profiles[0].Loaded)){throw 'TARGET_PROFILE_LOADED_OR_UNVERIFIED'}
+    if($pass -eq 1){continue}
+    foreach($p in @(Get-CimInstance Win32_Process -ErrorAction Stop)){
+      if([int]$p.ProcessId -in @(0,4)){continue}
+      $owner=$null
+      try{$owner=Invoke-CimMethod -InputObject $p -MethodName GetOwnerSid -ErrorAction Stop}catch{$owner=$null}
+      if($null -ne $owner -and $owner.ReturnValue -eq 0 -and
+        -not [string]::IsNullOrWhiteSpace([string]$owner.Sid) -and
+        [string]$owner.Sid -ceq $Sid){throw 'CHILD_PROCESS_REMAINS'}
+      # Inaccessible PPL/system owners cannot be treated as TARGET solely
+      # because GetOwnerSid is denied. TARGET's zero logon sessions, unloaded
+      # profile and disabled SID must each be attested on both sides of census.
     }
   }
-  $account=@(Get-CimInstance Win32_UserAccount -Filter ("SID='"+$Sid+"'") -ErrorAction Stop)
-  if($account.Count -ne 1){throw 'SESSION_CENSUS_UNVERIFIED'}
-  $sessions=@(Get-CimAssociatedInstance -InputObject $account[0] -Association Win32_LoggedOnUser -ResultClassName Win32_LogonSession -ErrorAction Stop)
-  if($sessions.Count -ne 0){throw 'LOGON_SESSION_RESIDUE'}
 }
 function Invoke-IndependentSystemGuardRestore {
   # Called only from the separately installed SYSTEM Recover task after the

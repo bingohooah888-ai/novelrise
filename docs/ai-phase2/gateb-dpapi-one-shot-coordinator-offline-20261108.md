@@ -64,3 +64,10 @@ PowerShell構文・Node静的契約・オフライン故障モデル PASS を合
 - Coordinatorの管理者PowerShellにも、失敗した工程と許可された理由コードだけを表示するよう追加。資格情報・平文パスワード・例外スタックは記録しない。
 - Windows隔離TEMPで保存された最初の失敗記録が後の失敗で上書きされないことを実行確認。また、実際のSYSTEM復旧候補のHeartbeat書込関数を隔離TEMPに抽出して連続3回実行し、`IDLE_DISABLED → ARMED_PARENT_ALIVE → ARMED_PARENT_ALIVE`、sequenceの増加とpreviousバックアップの保持がPASS。保護済み実機コード・タスク・アカウント・permit・DPAPIは未変更。
 - **次回実機試験は未承認で再実行禁止。** この修正は既存Draft PR #2774のオフライン候補のみ。第2回の消費済みマーカーと復旧証拠は保持する。Gate A〜Eは0/5 NO-GO。
+
+## 第2回後の局所原因切り分け（同一Draft PR #2774）
+
+- **確認できた設計不具合:** `Assert-NoLiveTargetResources` は対象SIDのセッション0・アカウント無効でも、無関係なOSプロセスの `GetOwnerSid` 失敗を `OWNER_UNKNOWN_NO_CLEANUP` として復旧を妨げた。Windows上で候補の実関数を抽出して再現。実機SYSTEMタスクの第2回終了コード3が同一原因だったかは、旧コードに失敗例外がなく**断定不可**。
+- **局所修正:** RescueとCoordinatorの両方で、対象SIDの無効状態、Win32_LoggedOnUserによるセッション0、Win32_UserProfile未ロードをプロセス所有者確認の前後で再照合。取得できた所有者SIDが対象に一致すれば従来通り即NO-GO。所有者取得不可のOS保護プロセスだけを理由に対象残留と誤断定しない。CIM照合失敗、対象セッション/プロファイル残留は引き続きNO-GO。PowerShellの大文字小文字非区別による `$Account` / `$account` 衝突も避けた。
+- **隔離検証:** 実関数＋CIMモックで成功・対象PID残留・セッション残留・プロファイル残留・アカウント有効の分岐を確認。実復旧関数のSYSTEM権限・保護ACL照合だけはTEMP環境用に差し替え、実SHA、マニフェスト、期限切れ・親消失、`[IO.File]::Replace`、バックアップ、Heartbeat連続更新、マーカー保持と失敗時非置換をWindows隔離TEMP上で確認した。これはSYSTEM権限・保護ACL・実機DPAPIの合格証拠ではない。
+- **第3回は新しい試験台帳が必須:** 第1回・第2回の消費済みマーカー、旧証拠・バックアップ・permitは削除も再利用もしない。新HEAD固定・各実行ファイルSHA-256・別スコープのOwner permit・一回限り台帳・復旧依存関係を新規承認前に一致させる。現在のattempt2固定Applyを再実行しない。実機への保護コード更新、タスク変更、ユーザー有効化、パスワード再設定、DPAPI試験は未承認。Gate A〜Eは引き続き0/5 NO-GO。

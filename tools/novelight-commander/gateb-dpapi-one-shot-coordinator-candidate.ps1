@@ -49,24 +49,28 @@ function Assert-PinnedLocalUser([bool]$Disabled) {
   if(@($admins|Where-Object {$_.SID.Value -ceq $Sid}).Count -ne 0){throw 'TARGET_ADMIN'}
 }
 function Assert-ProcessAndSessionZero {
-  $processes=@(Get-CimInstance Win32_Process -ErrorAction Stop)
-  foreach($p in $processes) {
-    if([int]$p.ProcessId -in @(0,4)){continue}
-    $owner=$null
-    try{$owner=Invoke-CimMethod -InputObject $p -MethodName GetOwnerSid -ErrorAction Stop}catch{$owner=$null}
-    if($null -ne $owner -and $owner.ReturnValue -eq 0 -and
-       -not [string]::IsNullOrWhiteSpace([string]$owner.Sid)) {
-      if([string]$owner.Sid -ceq $Sid){throw 'TARGET_CHILD_REMAINS'}
-      continue
-    }
-    if(@(Get-CimInstance Win32_Process -Filter ('ProcessId='+[int]$p.ProcessId) -ErrorAction Stop).Count -ne 0){
-      throw 'OWNER_UNVERIFIED_LIVE_PROCESS'
+  # A protected system process can deny GetOwnerSid without belonging to the
+  # target. Bind the proof to the TARGET SID, not all unrelated OS processes.
+  for($pass=0;$pass -lt 2;$pass++){
+    Assert-PinnedLocalUser $true
+    $acc=@(Get-CimInstance Win32_UserAccount -Filter ("SID='"+$Sid+"'") -ErrorAction Stop)
+    if($acc.Count -ne 1){throw 'ACCOUNT_CENSUS_UNVERIFIED'}
+    $sessions=@(Get-CimAssociatedInstance -InputObject $acc[0] -Association Win32_LoggedOnUser -ResultClassName Win32_LogonSession -ErrorAction Stop)
+    if($sessions.Count -ne 0){throw 'LOGON_SESSION_REMAINS'}
+    $profiles=@(Get-CimInstance Win32_UserProfile -Filter ("SID='"+$Sid+"'") -ErrorAction Stop)
+    if($profiles.Count -gt 1 -or
+      ($profiles.Count -eq 1 -and $profiles[0].Loaded)){throw 'TARGET_PROFILE_LOADED_OR_UNVERIFIED'}
+    if($pass -eq 1){continue}
+    $processes=@(Get-CimInstance Win32_Process -ErrorAction Stop)
+    foreach($p in $processes){
+      if([int]$p.ProcessId -in @(0,4)){continue}
+      $owner=$null
+      try{$owner=Invoke-CimMethod -InputObject $p -MethodName GetOwnerSid -ErrorAction Stop}catch{$owner=$null}
+      if($null -ne $owner -and $owner.ReturnValue -eq 0 -and
+        -not [string]::IsNullOrWhiteSpace([string]$owner.Sid) -and
+        [string]$owner.Sid -ceq $Sid){throw 'TARGET_CHILD_REMAINS'}
     }
   }
-  $acc=@(Get-CimInstance Win32_UserAccount -Filter ("SID='"+$Sid+"'") -ErrorAction Stop)
-  if($acc.Count -ne 1){throw 'ACCOUNT_CENSUS_UNVERIFIED'}
-  $sessions=@(Get-CimAssociatedInstance -InputObject $acc[0] -Association Win32_LoggedOnUser -ResultClassName Win32_LogonSession -ErrorAction Stop)
-  if($sessions.Count -ne 0){throw 'LOGON_SESSION_REMAINS'}
 }
 function Read-PinnedGuard([string]$Phase) {
   Assert-Leaf $State
