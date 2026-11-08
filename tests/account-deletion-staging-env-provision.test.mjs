@@ -598,7 +598,7 @@ test('Free environment approval retains exact OWNER, current main, seven blobs a
     approvalCommentId: '1234',
     approvalMode: 'free'
   });
-  const reused = structuredClone(fixture);
+  const reused = globalThis.structuredClone(fixture);
   reused.ledgerPages = [
     [
       {
@@ -616,7 +616,7 @@ test('Free environment approval retains exact OWNER, current main, seven blobs a
   ];
   assert.throws(() => admitAccountEnvProvision(reused), DENY);
 
-  const wrong = structuredClone(fixture);
+  const wrong = globalThis.structuredClone(fixture);
   wrong.event.comment.body =
     prefix +
     JSON.stringify({
