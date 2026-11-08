@@ -18,27 +18,33 @@ const preview = () => ({
       kind: 'foreshadowing',
       key: '鍵の秘密',
       confirmed: [],
-      suggestions: [{
-        sourceEpisodeId: 900,
-        payload: { summary: 'いつか開かれる', evidence: '鍵は机にあった' }
-      }]
+      suggestions: [
+        {
+          sourceEpisodeId: 900,
+          payload: { summary: 'いつか開かれる', evidence: '鍵は机にあった' }
+        }
+      ]
     },
     {
       kind: 'event',
       key: '旅立ち',
-      confirmed: [{
-        sourceEpisodeId: 100,
-        payload: { summary: '旅に出る', evidence: '' }
-      }],
+      confirmed: [
+        {
+          sourceEpisodeId: 100,
+          payload: { summary: '旅に出る', evidence: '' }
+        }
+      ],
       suggestions: []
     },
     {
       kind: 'timeline',
       key: '回想',
-      confirmed: [{
-        sourceEpisodeId: 900,
-        payload: { summary: '過去について語る', evidence: '' }
-      }],
+      confirmed: [
+        {
+          sourceEpisodeId: 900,
+          payload: { summary: '過去について語る', evidence: '' }
+        }
+      ],
       suggestions: []
     }
   ]
@@ -65,7 +71,11 @@ const rows = () => [
   }
 ];
 
-function run({ source = preview(), outline = rows(), expectedNovelId = 23 } = {}) {
+function run({
+  source = preview(),
+  outline = rows(),
+  expectedNovelId = 23
+} = {}) {
   return project({
     expectedNovelId,
     preview: source,
@@ -79,13 +89,15 @@ test('author-only RPC outline maps episode IDs to true displayed episode numbers
   const originalRows = rows();
   const output = run({ source: original, outline: originalRows });
   assert.ok(output);
-  assert.deepEqual(output.foreshadowing[0].references, [{
-    episodeId: 900,
-    episodeNumber: 2,
-    chapterId: 300,
-    chapterTitle: 'プロローグ',
-    chapterPosition: 1
-  }]);
+  assert.deepEqual(output.foreshadowing[0].references, [
+    {
+      episodeId: 900,
+      episodeNumber: 2,
+      chapterId: 300,
+      chapterTitle: 'プロローグ',
+      chapterPosition: 1
+    }
+  ]);
   assert.equal(output.events[0].key, '回想');
   assert.equal(output.events[0].references[0].episodeNumber, 2);
   assert.equal(output.events[1].key, '旅立ち');
@@ -133,9 +145,23 @@ test('duplicate IDs, duplicate positions and conflicting chapters fail closed', 
     [{ ...originalRows[0], chapter_title: null }],
     [{ ...originalRows[0], chapter_position: 0 }],
     [{ ...originalRows[0], episode_id: 'not-an-id' }],
-    [{ ...originalRows[0], chapter_id: null, chapter_title: 'bad', chapter_position: null }],
-    [{ ...originalRows[0], chapter_id: 400, chapter_position: 2 },
-     { ...originalRows[1], chapter_id: 400, chapter_title: '違う章', chapter_position: 2 }]
+    [
+      {
+        ...originalRows[0],
+        chapter_id: null,
+        chapter_title: 'bad',
+        chapter_position: null
+      }
+    ],
+    [
+      { ...originalRows[0], chapter_id: 400, chapter_position: 2 },
+      {
+        ...originalRows[1],
+        chapter_id: 400,
+        chapter_title: '違う章',
+        chapter_position: 2
+      }
+    ]
   ]) {
     assert.equal(run({ outline }), null);
   }
@@ -168,12 +194,20 @@ test('source SQL defines owner/private outline and exact column names', async ()
     ),
     'utf8'
   );
-  const rpc = sql.slice(sql.indexOf('create function public.novelight_novel_outline('));
+  const rpc = sql.slice(
+    sql.indexOf('create function public.novelight_novel_outline(')
+  );
   assert.match(rpc, /episode_id bigint/);
   assert.match(rpc, /episode_number bigint/);
   assert.match(rpc, /chapter_id bigint/);
   assert.match(rpc, /chapter_title text/);
   assert.match(rpc, /chapter_position bigint/);
-  assert.match(rpc, /v_is_owner := v_user_id is not null and v_user_id = v_owner_id/);
-  assert.match(rpc, /v_is_owner\s*or \(v_novel_status = 'published' and e.status = 'published'\)/);
+  assert.match(
+    rpc,
+    /v_is_owner := v_user_id is not null and v_user_id = v_owner_id/
+  );
+  assert.match(
+    rpc,
+    /v_is_owner\s*or \(v_novel_status = 'published' and e.status = 'published'\)/
+  );
 });
