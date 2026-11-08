@@ -20,18 +20,41 @@
   // The separate /api/ai-owner-bible-review list has a different contract.
   // This guard runs after server authorization; it does not grant access.
   function validPreviewResponse(payload, expectedNovelId) {
-    return (
-      !!workId(expectedNovelId) &&
-      payload !== null &&
-      typeof payload === 'object' &&
-      !Array.isArray(payload) &&
-      payload.novelId === workId(expectedNovelId) &&
-      payload.aiGenerated === false &&
-      !Object.hasOwn(payload, 'candidates') &&
-      Array.isArray(payload.characters) &&
-      Array.isArray(payload.notes) &&
-      Array.isArray(payload.facts)
-    );
+    if (
+      !workId(expectedNovelId) ||
+      !payload ||
+      typeof payload !== 'object' ||
+      Array.isArray(payload) ||
+      payload.novelId !== workId(expectedNovelId) ||
+      payload.aiGenerated !== false ||
+      Object.hasOwn(payload, 'candidates') ||
+      !Array.isArray(payload.characters) ||
+      payload.characters.length > 100 ||
+      !Array.isArray(payload.notes) ||
+      payload.notes.length > 200 ||
+      !Array.isArray(payload.facts) ||
+      payload.facts.length > 200
+    ) return false;
+    let count = 0;
+    for (const group of payload.facts) {
+      if (
+        !group ||
+        typeof group !== 'object' ||
+        !Array.isArray(group.confirmed) ||
+        !Array.isArray(group.suggestions) ||
+        (count += group.confirmed.length + group.suggestions.length) > 200
+      ) return false;
+      for (const record of [...group.confirmed, ...group.suggestions]) {
+        if (
+          !record ||
+          typeof record !== 'object' ||
+          !record.payload ||
+          typeof record.payload !== 'object' ||
+          Array.isArray(record.payload)
+        ) return false;
+      }
+    }
+    return true;
   }
 
   // No HTML, template interpolation, innerHTML or DOM element creation from
