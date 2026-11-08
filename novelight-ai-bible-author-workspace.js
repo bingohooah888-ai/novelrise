@@ -382,12 +382,38 @@
         '機械的な重複の確認のみ行います。設定矛盾と断定するものではありません。'
       )
     );
+    const reviewedProgress = create(
+      'p',
+      'novelight-ai-workspace-reviewed-progress',
+      'この画面だけの確認済み：0/' + review.checks.length + '件（保存されません）'
+    );
+    reviewedProgress.setAttribute('aria-live', 'polite');
+    reviewSummary.appendChild(reviewedProgress);
+    let reviewedCount = 0;
     for (const item of review.checks) {
-      const row = create(
-        'p',
-        'novelight-ai-workspace-warning',
-        item.title + '：' + item.detail
+      const row = create('div', 'novelight-ai-workspace-warning');
+      row.appendChild(create('p', '', item.title + '：' + item.detail));
+      const reviewedButton = create(
+        'button',
+        'novelight-ai-workspace-reviewed-button',
+        'この画面で確認済みにする'
       );
+      reviewedButton.type = 'button';
+      reviewedButton.setAttribute('aria-pressed', 'false');
+      let reviewed = false;
+      reviewedButton.addEventListener('click', () => {
+        reviewed = !reviewed;
+        reviewedCount += reviewed ? 1 : -1;
+        reviewedButton.setAttribute('aria-pressed', String(reviewed));
+        reviewedButton.textContent = reviewed
+          ? '未確認に戻す（保存されません）'
+          : 'この画面で確認済みにする';
+        reviewedProgress.textContent =
+          'この画面だけの確認済み：' +
+          reviewedCount + '/' + review.checks.length +
+          '件（保存されません）';
+      });
+      row.appendChild(reviewedButton);
       reviewSummary.appendChild(row);
     }
     if (review.remaining) {
