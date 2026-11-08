@@ -358,6 +358,18 @@
   async function mountEditor({ client, root, episode, session, textarea, isOwner }) {
     if (!client || !root || !episode?.id || !session || !textarea) return null;
 
+    // The editor can stay open longer than its initial access token. Each request
+    // must use Supabase's current session, not the token captured at mount time.
+    async function editorRequest(payload) {
+      const auth = await client.auth.getSession();
+      if (auth.error || !auth.data?.session?.access_token) {
+        const error = new Error('ログイン状態を確認してください。');
+        error.status = 401;
+        throw error;
+      }
+      return apiRequest(auth.data.session, payload);
+    }
+
     root.hidden = false;
     root.className = 'episode-illustration-panel';
     root.replaceChildren();
@@ -393,16 +405,50 @@
 
     let state = null;
     let busy = false;
+    // Stable controller: state itself is replaced on refresh, but reopen callers
+    // must always observe the latest retry requirement and current assets.
+    const mountedState = {
+      retryPending: false,
+      get assets() { return state?.assets || []; },
+      async retry() {
+        if (!mountedState.retryPending) return;
+        try {
+          await refresh();
+          setStatus('挿絵を読み込みました。');
+        } catch (error) {
+          mountedState.retryPending = true;
+          setStatus('挿絵一覧を再読み込みできませんでした。もう一度お試しください。');
+          console.error('episode illustration list retry failed', {
+            status: Number.isInteger(Number(error?.status)) ? Number(error.status) : null
+          });
+        }
+      }
+    };
 
     function setStatus(message) {
       status.textContent = message || '';
     }
 
     async function refresh() {
-      state = await apiRequest(session, {
+      const request = () => editorRequest({
         action: 'editor-list',
         episodeId: Number(episode.id)
       });
+      let next;
+      try {
+        next = await request();
+      } catch (error) {
+        // A newly persisted episode may encounter a transient runtime failure.
+        // Retry once; never retry authorization failures or loosen permissions.
+        if (![502, 503, 504].includes(Number(error?.status))) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        next = await request();
+      }
+      if (!next || !Array.isArray(next.assets)) {
+        throw new Error('Invalid illustration editor response');
+      }
+      state = next;
+      mountedState.retryPending = false;
       render();
       return state;
     }
@@ -457,7 +503,7 @@
         button.disabled = true;
         setStatus('AI利用申告を保存しています...');
         try {
-          await apiRequest(session, {
+          await editorRequest({
             action: 'set-ai-usage',
             novelId: Number(episode.novel_id),
             value: select.value === 'true'
@@ -520,7 +566,7 @@
           const optimized = await optimizeImage(selectedFile);
           let prepared;
           try {
-            prepared = await apiRequest(session, {
+            prepared = await editorRequest({
               action: 'prepare-upload',
               episodeId: Number(episode.id),
               fileSize: optimized.blob.size,
@@ -547,7 +593,7 @@
 
           let finalized;
           try {
-            finalized = await apiRequest(session, {
+            finalized = await editorRequest({
               action: 'finalize-upload',
               episodeId: Number(episode.id),
               path: prepared.path,
@@ -557,12 +603,26 @@
             throw withStage(error, 'finalize', 'Illustration validation failed');
           }
 
-          await refresh();
-          const asset = state.assets.find((item) => item.id === finalized.id);
-          if (asset) insertMarker(textarea, asset.marker);
+          // Registration is already committed. Insert the verified marker now;
+          // a subsequent editor-list failure must not lose the illustration.
+          const finalizedId = String(finalized?.id || '').toLowerCase();
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(finalizedId)) {
+            throw illustrationError('finalize', '挿絵IDを確認できませんでした。', null, 'ILLUSTRATION_INVALID_FINALIZE_ID');
+          }
+          insertMarker(textarea, '[[NOVELIGHT_ILLUSTRATION:' + finalizedId + ']]');
           file.value = '';
           alt.value = '';
-          setStatus('挿絵をアップロードし、本文へ挿入しました。');
+          try {
+            await refresh();
+            setStatus('挿絵をアップロードし、本文へ挿入しました。');
+          } catch (refreshError) {
+            console.error('episode illustration list refresh failed after finalize', {
+              status: Number.isFinite(Number(refreshError?.status))
+                ? Number(refreshError.status) : null
+            });
+            mountedState.retryPending = true;
+            setStatus('挿絵をアップロードして本文へ挿入しました。一覧はパネルを開き直すと再読み込みできます。');
+          }
         } catch (error) {
           logUploadFailure(error, selectedFile, episode.id);
           setStatus(uploadFailureMessage(error));
@@ -570,7 +630,15 @@
           busy = false;
           try {
             await refresh();
-          } catch {}
+          } catch (refreshError) {
+            // An unavailable list must not leave the upload controls disabled.
+            mountedState.retryPending = true;
+            console.error('episode illustration post-upload refresh failed', {
+              status: Number.isInteger(Number(refreshError?.status))
+                ? Number(refreshError.status) : null
+            });
+          }
+          render();
         }
       });
 
@@ -633,7 +701,7 @@
           busy = true;
           saveAlt.disabled = true;
           try {
-            await apiRequest(session, {
+            await editorRequest({
               action: 'update-alt',
               illustrationId: asset.id,
               altText: alt.value
@@ -677,7 +745,7 @@
           render();
           setStatus('挿絵を削除しています...');
           try {
-            await apiRequest(session, {
+            await editorRequest({
               action: 'delete',
               episodeId: Number(episode.id),
               novelId: Number(episode.novel_id),
@@ -723,17 +791,62 @@
       renderAssets();
     }
 
+    textarea.addEventListener('input', () => {
+      if (state) renderAssets();
+    });
     try {
       await refresh();
-      textarea.addEventListener('input', () => {
-        if (state) renderAssets();
-      });
-      return state;
+      return mountedState;
     } catch (error) {
-      console.error('episode illustration editor unavailable', error);
-      root.hidden = true;
-      if (!runtimeUnavailable(error)) setStatus('挿絵機能を読み込めませんでした。');
-      return null;
+      console.error('episode illustration editor unavailable', {
+        status: Number.isFinite(Number(error?.status)) ? Number(error.status) : null
+      });
+      // Do not silently close the panel: the author needs a visible recovery path.
+      state = null;
+      root.hidden = false;
+      aiBox.replaceChildren();
+      uploadBox.replaceChildren();
+      list.replaceChildren();
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'episode-illustration-retry';
+      retry.textContent = '挿絵を再読み込み';
+      const recoveryNodes = [retry];
+      const failureMessage = episode.fromNewPost === true
+        ? '挿絵を読み込めませんでした。再試行するか、下書き編集画面から追加してください。'
+        : '挿絵を読み込めませんでした。再試行してください。';
+      const recovery = { retryPending: true, retry: retryRefresh };
+      async function retryRefresh() {
+        if (retry.disabled || !recovery.retryPending) return;
+        retry.disabled = true;
+        setStatus('挿絵を再読み込みしています...');
+        try {
+          await refresh();
+          recovery.retryPending = false;
+          setStatus('挿絵を読み込みました。');
+        } catch (retryError) {
+          console.error('episode illustration editor retry failed', {
+            status: Number.isFinite(Number(retryError?.status))
+              ? Number(retryError.status) : null
+          });
+          state = null;
+          list.replaceChildren(...recoveryNodes);
+          setStatus(failureMessage);
+        } finally {
+          retry.disabled = false;
+        }
+      }
+      retry.addEventListener('click', retryRefresh);
+      if (episode.fromNewPost === true && episode.status === 'draft') {
+        const editLink = document.createElement('a');
+        editLink.className = 'episode-illustration-retry';
+        editLink.href = 'episode-edit.html?id=' + encodeURIComponent(episode.id);
+        editLink.textContent = '保存済み下書きの編集画面で続ける';
+        recoveryNodes.push(editLink);
+      }
+      list.replaceChildren(...recoveryNodes);
+      setStatus(failureMessage);
+      return recovery;
     }
   }
 

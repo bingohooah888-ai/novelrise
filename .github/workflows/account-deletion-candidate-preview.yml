@@ -1,0 +1,261 @@
+name: Account Deletion Candidate Preview (OWNER one-shot)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Admit exact reviewed account deletion PR once
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 188 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.locked == false &&
+      github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      (startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_APPROVE ') ||
+       startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_APPROVE ') ||
+       startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_APPROVE '))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: novelight-account-delete-preview-approval
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.binding.outputs.main_sha }}
+      candidate_sha: ${{ steps.binding.outputs.candidate_sha }}
+      preview_ref: ${{ steps.binding.outputs.preview_ref }}
+      request_id: ${{ steps.binding.outputs.request_id }}
+      approval_mode: ${{ steps.binding.outputs.approval_mode }}
+      preview_url: ${{ steps.binding.outputs.preview_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Bind OWNER ledger, exact current main, immutable PR and reviewed blobs
+        id: binding
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/account-main.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/account-issue.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2785" > /tmp/account-pr.json
+          main="$(jq -er '.object.sha' /tmp/account-main.json)"
+          head="$(jq -er '.head.sha' /tmp/account-pr.json)"
+          test "$(git rev-parse HEAD)" = "$main"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head"             > /tmp/account-compare.json
+          gh api --paginate --slurp             "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100"             > /tmp/account-ledger.json
+          node scripts/account-deletion-preview-admission.mjs             "$GITHUB_EVENT_PATH" /tmp/account-issue.json /tmp/account-main.json             /tmp/account-pr.json /tmp/account-compare.json /tmp/account-ledger.json             > /tmp/account-decision.json
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/account-decision.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/account-decision.json)"
+            echo "preview_ref=$(jq -er '.previewRef' /tmp/account-decision.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/account-decision.json)"
+            echo "approval_mode=$(jq -er '.approvalMode // "standard"' /tmp/account-decision.json)"
+            echo "preview_url=$(jq -er '.previewUrl // ""' /tmp/account-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Consume approval claim before any Staging costs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.binding.outputs.main_sha }}
+          HEAD: ${{ steps.binding.outputs.candidate_sha }}
+          REQUEST: ${{ steps.binding.outputs.request_id }}
+          APPROVAL_MODE: ${{ steps.binding.outputs.approval_mode }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$HEAD"
+          data="$(jq -cn --arg requestCommentId "$REQUEST"             --arg mainSha "$MAIN" --arg candidateSha "$HEAD"             --arg runId "$GITHUB_RUN_ID"             '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          case "$APPROVAL_MODE" in
+            standard) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CLAIMED ;;
+            free-preview) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CLAIMED ;;
+            free-proof) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_CLAIMED ;;
+            *) exit 1 ;;
+          esac
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments"             -f body="$marker $data"             > /dev/null
+
+  preview:
+    name: One exact-sha Staging-only Preview and read-only environment proof
+    needs: admit
+    if: needs.admit.result == 'success' && needs.admit.outputs.approval_mode != 'free-proof'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      EXPECTED_REVISION: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_PREVIEW_REF: ${{ needs.admit.outputs.preview_ref }}
+      STAGING_DELETE_FREE_MODE: ${{ needs.admit.outputs.approval_mode == 'free-preview' && 'true' || 'false' }}
+      STAGING_FREE_APPROVAL_SCOPE: ${{ needs.admit.outputs.approval_mode == 'free-preview' && 'account-deletion-free-preview' || '' }}
+      STAGING_TRIGGER: approval_comment
+      STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
+      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_REQUIRE_WRITE_CONFIG: 'true'
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      VERCEL_PROJECT_NAME: novelrise
+      GITHUB_REPOSITORY_ID: '1335499017'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Recheck exact approved references and open ledger before costs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.locked')" = false
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$EXPECTED_REVISION"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.ref')" = "$STAGING_PREVIEW_REF"
+          test "$STAGING_E2E_READY" = true
+          test "$STAGING_EXPECTED_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_EXPECTED_PUBLISHABLE_KEY"
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
+          test -n "$VERCEL_API_TOKEN"
+      - name: Refuse fallback to shared or Production Preview environment
+        run: node scripts/account-deletion-preview-env-readiness.mjs
+      - name: Create exactly one reviewed candidate Preview
+        run: node scripts/vercel-preview-deployment.mjs
+      - name: Verify exact SHA and isolated Staging/Stripe test-mode runtime
+        run: node scripts/verify-staging-deployment.mjs
+      - name: Record verified Preview origin without exposing credentials
+        shell: bash
+        run: |
+          {
+            echo 'Account deletion #82 candidate Preview created and verified.'
+            echo "Candidate SHA: $EXPECTED_REVISION"
+            echo "Preview URL: $CANONICAL_STAGING_URL"
+            echo 'Authenticated account deletion E2E NOT executed in this workflow.'
+            echo 'Free-only scope never executes an account deletion request.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  free_proof:
+    name: Exact existing Staging Preview, one fresh Free user, authenticated deletion, residue and cleanup
+    needs: admit
+    if: needs.admit.result == 'success' && needs.admit.outputs.approval_mode == 'free-proof'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      EXPECTED_REVISION: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_PREVIEW_REF: ${{ needs.admit.outputs.preview_ref }}
+      OWNER_APPROVED_PREVIEW_URL: ${{ needs.admit.outputs.preview_url }}
+      STAGING_TRIGGER: approval_comment
+      STAGING_DELETE_FREE_MODE: 'true'
+      STAGING_FREE_APPROVAL_SCOPE: account-deletion-free-proof
+      STAGING_FREE_PROOF_APPROVED: 'true'
+      STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
+      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      STAGING_REQUIRE_WRITE_CONFIG: 'true'
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Reject drift or absent protected Staging prerequisites before fixture writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$EXPECTED_REVISION"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.base.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.draft')" = true
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.locked')" = false
+          test "$STAGING_E2E_READY" = true
+          test "$STAGING_EXPECTED_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test "$STAGING_PREVIEW_REF" = 'fix/inquiry-82-account-deletion-diagnostics-20261107'
+          test -n "$OWNER_APPROVED_PREVIEW_URL"
+          test -n "$STAGING_SUPABASE_SECRET_KEY"
+          test -n "$STAGING_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$STRIPE_TEST_SECRET_KEY"
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
+          test -n "$VERCEL_API_TOKEN"
+      - name: Locate only an already READY exact-SHA candidate Preview (read-only)
+        run: node scripts/resolve-existing-staging-preview.mjs
+      - name: Match discovered deployment to exact OWNER-approved origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CANONICAL_STAGING_URL" = "$OWNER_APPROVED_PREVIEW_URL"
+      - name: Verify Preview SHA, Staging Supabase identity and Stripe TEST mode (read-only)
+        run: node scripts/verify-staging-deployment.mjs
+      - name: Install pinned application/test dependencies
+        run: npm ci
+      - name: Delete only one freshly-created verified Free Staging fixture via real JWT
+        run: node scripts/account-deletion-free-live-proof.mjs
+      - name: Record redacted success without account IDs or secrets
+        shell: bash
+        run: |
+          echo 'Free-only Staging JWT deletion passed: one ephemeral user, no Stripe links, residue checked.' >> "$GITHUB_STEP_SUMMARY"
+
+  consume:
+    name: Permanently consume the one-time approval
+    if: always() && needs.admit.result == 'success'
+    needs: [admit, preview, free_proof]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Record successful, failed or interrupted execution
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          HEAD: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST: ${{ needs.admit.outputs.request_id }}
+          APPROVAL_MODE: ${{ needs.admit.outputs.approval_mode }}
+          OUTCOME: ${{ needs.admit.outputs.approval_mode == 'free-proof' && needs.free_proof.result || needs.preview.result }}
+        run: |
+          set -euo pipefail
+          data="$(jq -cn --arg requestCommentId "$REQUEST"             --arg mainSha "$MAIN" --arg candidateSha "$HEAD"             --arg runId "$GITHUB_RUN_ID" --arg result "$OUTCOME"             '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          case "$APPROVAL_MODE" in
+            standard) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CONSUMED ;;
+            free-preview) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PREVIEW_CONSUMED ;;
+            free-proof) marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_PROOF_CONSUMED ;;
+            *) exit 1 ;;
+          esac
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments"             -f body="$marker $data"             > /dev/null

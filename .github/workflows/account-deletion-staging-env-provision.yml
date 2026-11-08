@@ -1,0 +1,185 @@
+name: Account Deletion Staging Environment Provision (OWNER one-shot)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Verify one OWNER approval for exact #2785 code and current main
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 188 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.locked == false &&
+      github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      (startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_ENV_APPROVE ') ||
+       startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_ENV_APPROVE '))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: novelight-account-delete-env-provision-once
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.admission.outputs.main_sha }}
+      candidate_sha: ${{ steps.admission.outputs.candidate_sha }}
+      preview_ref: ${{ steps.admission.outputs.preview_ref }}
+      request_id: ${{ steps.admission.outputs.request_id }}
+      approval_mode: ${{ steps.admission.outputs.approval_mode }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Bind fresh GitHub OWNER, exact current main, PR #2785 and ledger
+        id: admission
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/env-issue.json
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/env-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2785" > /tmp/env-pr.json
+          main="$(jq -er '.object.sha' /tmp/env-main.json)"
+          head="$(jq -er '.head.sha' /tmp/env-pr.json)"
+          test "$(git rev-parse HEAD)" = "$main"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/env-compare.json
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" \
+            > /tmp/env-ledger.json
+          node scripts/account-deletion-staging-env-admission.mjs \
+            "$GITHUB_EVENT_PATH" /tmp/env-issue.json /tmp/env-main.json \
+            /tmp/env-pr.json /tmp/env-compare.json /tmp/env-ledger.json \
+            "$main" > /tmp/env-decision.json
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/env-decision.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/env-decision.json)"
+            echo "preview_ref=$(jq -er '.candidateRef' /tmp/env-decision.json)"
+            echo "request_id=$(jq -er '.approvalCommentId' /tmp/env-decision.json)"
+            echo "approval_mode=$(jq -er '.approvalMode // "standard"' /tmp/env-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Claim one-time approval before reading protected Staging secrets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.admission.outputs.main_sha }}
+          HEAD: ${{ steps.admission.outputs.candidate_sha }}
+          REQUEST_ID: ${{ steps.admission.outputs.request_id }}
+          APPROVAL_MODE: ${{ steps.admission.outputs.approval_mode }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$HEAD"
+          claim="$(jq -cn \
+            --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN" \
+            --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          if [ "$APPROVAL_MODE" = free ]; then
+            marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_ENV_CLAIMED
+          else
+            test "$APPROVAL_MODE" = standard
+            marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_ENV_CLAIMED
+          fi
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" \
+            -f body="$marker $claim" > /dev/null
+
+  provision:
+    name: Verify Staging key and Stripe TEST prices, then provision four env vars only
+    needs: admit
+    if: needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      EXPECTED_FIX_SHA: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_PREVIEW_REF: ${{ needs.admit.outputs.preview_ref }}
+      STAGING_DELETE_FREE_MODE: ${{ needs.admit.outputs.approval_mode == 'free' && 'true' || 'false' }}
+      STAGING_FREE_APPROVAL_SCOPE: ${{ needs.admit.outputs.approval_mode == 'free' && 'account-deletion-free-env-provision' || '' }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Check approved scope again without disclosing protected values
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.locked')" = false
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$EXPECTED_FIX_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.base.sha')" = "$APPROVED_MAIN_SHA"
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test "$STAGING_PREVIEW_REF" = 'fix/inquiry-82-account-deletion-diagnostics-20261107'
+          test -n "$STAGING_SUPABASE_SECRET_KEY"
+          test -n "$STRIPE_TEST_SECRET_KEY"
+          test -n "$VERCEL_API_TOKEN"
+          echo "CHECKED_OUT_MAIN_SHA=$APPROVED_MAIN_SHA" >> "$GITHUB_ENV"
+      - name: Configure only the approved Staging-only Preview variables
+        run: node scripts/account-deletion-staging-env-provision.mjs
+
+  consume:
+    name: Permanently mark this scope-specific approval consumed
+    needs: [admit, provision]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Post redacted result (including failed or interrupted attempts)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          HEAD: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST_ID: ${{ needs.admit.outputs.request_id }}
+          APPROVAL_MODE: ${{ needs.admit.outputs.approval_mode }}
+          RESULT: ${{ needs.provision.result }}
+        run: |
+          set -euo pipefail
+          report="$(jq -cn \
+            --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN" \
+            --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          if [ "$APPROVAL_MODE" = free ]; then
+            marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_ENV_CONSUMED
+          else
+            test "$APPROVAL_MODE" = standard
+            marker=NOVELIGHT_STAGING_ACCOUNT_DELETE_ENV_CONSUMED
+          fi
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" \
+            -f body="$marker $report" > /dev/null

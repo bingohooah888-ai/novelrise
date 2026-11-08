@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 const CONFIRMATION_TEXT = 'アカウントを削除';
 const TERMINAL_SUBSCRIPTION_STATUSES = new Set([
   'canceled',
@@ -24,6 +26,44 @@ async function removeStoragePaths(supabase, bucket, paths) {
   if (!paths.length) return;
   const { error } = await supabase.storage.from(bucket).remove(paths);
   if (error) throw error;
+}
+
+async function listOwnedAvatarPaths(supabase, userId) {
+  const storage = supabase.storage.from('author-avatars');
+  const paths = [];
+  const limit = 100;
+  for (let offset = 0; offset < 2000; offset += limit) {
+    const { data, error } = await storage.list(userId, {
+      limit,
+      offset,
+      sortBy: { column: 'name', order: 'asc' }
+    });
+    if (error) throw error;
+    if (!Array.isArray(data)) {
+      throw Object.assign(new Error('Avatar inventory invalid'), {
+        code: 'AVATAR_INVENTORY_INVALID'
+      });
+    }
+    for (const item of data) {
+      if (
+        item?.id === null ||
+        item?.id === undefined ||
+        typeof item.name !== 'string' ||
+        !item.name ||
+        item.name.includes('/') ||
+        item.name.includes('\\')
+      ) {
+        throw Object.assign(new Error('Avatar inventory invalid'), {
+          code: 'AVATAR_INVENTORY_INVALID'
+        });
+      }
+      paths.push(userId + '/' + item.name);
+    }
+    if (data.length < limit) return paths;
+  }
+  throw Object.assign(new Error('Avatar inventory exceeds safety limit'), {
+    code: 'AVATAR_INVENTORY_TOO_LARGE'
+  });
 }
 
 async function cancelStripeSubscriptions(stripe, profile) {
@@ -67,20 +107,30 @@ async function cancelStripeSubscriptions(stripe, profile) {
 }
 
 async function collectDeletionTargets(supabase, userId) {
-  const [profileResult, novelsResult, illustrationsResult] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('avatar_path,stripe_customer_id,stripe_subscription_id')
-      .eq('id', userId)
-      .maybeSingle(),
-    supabase.from('novels').select('id').eq('user_id', userId),
-    supabase
-      .from('episode_illustrations')
-      .select('storage_path')
-      .eq('owner_user_id', userId)
-  ]);
+  const [profileResult, novelsResult, illustrationsResult, coversResult] =
+    await Promise.all([
+      supabase
+        .from('profiles')
+        .select('avatar_path,stripe_customer_id,stripe_subscription_id')
+        .eq('id', userId)
+        .maybeSingle(),
+      supabase.from('novels').select('id').eq('user_id', userId),
+      supabase
+        .from('episode_illustrations')
+        .select('storage_path')
+        .eq('owner_user_id', userId),
+      supabase
+        .from('novel_custom_covers')
+        .select('storage_path')
+        .eq('user_id', userId)
+    ]);
 
-  for (const result of [profileResult, novelsResult, illustrationsResult]) {
+  for (const result of [
+    profileResult,
+    novelsResult,
+    illustrationsResult,
+    coversResult
+  ]) {
     if (result.error) throw result.error;
   }
 
@@ -95,33 +145,46 @@ async function collectDeletionTargets(supabase, userId) {
     renderRows = renderResult.data || [];
   }
 
+  // Inventory historical avatars before billing changes.
+  const ownedAvatarPaths = await listOwnedAvatarPaths(supabase, userId);
+
   return {
     profile: profileResult.data || null,
-    avatarPaths: uniquePaths([profileResult.data], 'avatar_path'),
+    avatarPaths: [
+      ...new Set([
+        ...uniquePaths([profileResult.data], 'avatar_path'),
+        ...ownedAvatarPaths
+      ])
+    ],
     illustrationPaths: uniquePaths(illustrationsResult.data, 'storage_path'),
+    coverPaths: uniquePaths(coversResult.data, 'storage_path'),
     renderPaths: uniquePaths(renderRows, 'render_storage_path')
   };
 }
 
-async function deleteUserData(supabase, userId) {
+async function deleteUserData(supabase, userId, onStage) {
+  onStage('db_episode_illustrations');
   const illustrationDelete = await supabase
     .from('episode_illustrations')
     .delete()
     .eq('owner_user_id', userId);
   if (illustrationDelete.error) throw illustrationDelete.error;
 
+  onStage('db_novels');
   const novelsDelete = await supabase
     .from('novels')
     .delete()
     .eq('user_id', userId);
   if (novelsDelete.error) throw novelsDelete.error;
 
+  onStage('db_episodes');
   const episodesDelete = await supabase
     .from('episodes')
     .delete()
     .eq('user_id', userId);
   if (episodesDelete.error) throw episodesDelete.error;
 
+  onStage('auth_user');
   const authDelete = await supabase.auth.admin.deleteUser(userId);
   if (authDelete.error) throw authDelete.error;
 }
@@ -146,31 +209,62 @@ export function createDeleteAccountHandler({ stripe, supabase }) {
       return res.status(400).json({ error: 'CONFIRMATION_REQUIRED' });
     }
 
+    // No user email, JWT, storage path, or vendor error message is logged.
+    const requestId = randomUUID();
+    let stage = 'collect_targets';
     try {
       const targets = await collectDeletionTargets(supabase, user.id);
 
+      stage = 'cancel_billing';
       await cancelStripeSubscriptions(stripe, targets.profile);
+      stage = 'storage_avatars';
       await removeStoragePaths(supabase, 'author-avatars', targets.avatarPaths);
+      stage = 'storage_illustrations';
       await removeStoragePaths(
         supabase,
         'episode-illustrations',
         targets.illustrationPaths
       );
+      stage = 'storage_thumbnails';
       await removeStoragePaths(
         supabase,
         'novel-thumbnail-renders',
         targets.renderPaths
       );
-      await deleteUserData(supabase, user.id);
+      stage = 'storage_custom_covers';
+      await removeStoragePaths(
+        supabase,
+        'novel-custom-covers',
+        targets.coverPaths
+      );
+      await deleteUserData(supabase, user.id, (step) => {
+        stage = step;
+      });
 
       return res.status(200).json({ ok: true });
     } catch (error) {
+      const candidateCode = String(error?.code || '').toUpperCase();
+      const safeCode = /^[A-Z0-9_]{1,64}$/u.test(candidateCode)
+        ? candidateCode
+        : 'UNCLASSIFIED';
+      const candidateStatus = Number(error?.status);
+      const safeStatus =
+        Number.isInteger(candidateStatus) &&
+        candidateStatus >= 400 &&
+        candidateStatus <= 599
+          ? candidateStatus
+          : null;
+
       console.error('account deletion failed', {
-        userId: user.id,
-        name: error?.name || null,
-        message: error?.message || null
+        requestId,
+        stage,
+        code: safeCode,
+        status: safeStatus
       });
-      return res.status(500).json({ error: 'ACCOUNT_DELETE_FAILED' });
+      return res.status(500).json({
+        error: 'ACCOUNT_DELETE_FAILED',
+        requestId
+      });
     }
   };
 }

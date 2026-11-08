@@ -1,0 +1,79 @@
+name: NOVELIGHT Point10x Staging identity (manual read-only)
+
+# Review-only source in Draft until separately approved main merge.
+# No issue_comment, push, pull_request, schedule or reusable-writer trigger.
+on:
+  workflow_dispatch:
+    inputs:
+      main_sha:
+        description: Exact current main commit
+        type: string
+        required: true
+      scope:
+        description: point10x-stage38-staging-identity-readonly-v1
+        type: string
+        required: true
+      confirmation:
+        description: STAGING READONLY IDENTITY APPROVED
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: point10x-stage38-staging-identity
+  cancel-in-progress: false
+
+jobs:
+  staging-identity-only:
+    if: >-
+      github.repository == 'bingohooah888-ai/novelrise' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      github.event.sender.id == 317436651 &&
+      github.run_attempt == 1 &&
+      inputs.scope == 'point10x-stage38-staging-identity-readonly-v1' &&
+      inputs.confirmation == 'STAGING READONLY IDENTITY APPROVED' &&
+      inputs.main_sha == github.sha
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact trusted current main without persisted token
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.main_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify currently authorized main before any Staging credentials
+        shell: bash
+        env:
+          REQUESTED_MAIN_SHA: ${{ inputs.main_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$REQUESTED_MAIN_SHA"
+          test "$GITHUB_SHA" = "$REQUESTED_MAIN_SHA"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$REQUESTED_MAIN_SHA"
+
+      - name: Setup pinned Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: Authenticate dedicated Staging identity then read catalog only
+        shell: bash
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.main_sha }}
+          REQUESTED_SCOPE: ${{ inputs.scope }}
+          REQUESTED_CONFIRMATION: ${{ inputs.confirmation }}
+          STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          # Optional existing management-only credential. NO creation or change.
+          # Missing value or Supabase project NotFound means HOLD before SQL.
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          node scripts/scout-point10x-staging-identity-readonly.mjs --live-readonly

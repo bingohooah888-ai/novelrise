@@ -6,6 +6,8 @@
 -- GUCs are not proof of GitHub identity or DB endpoint. Do not run on Production.
 BEGIN;
 SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+-- PostgreSQL 17+ enforces a whole-transaction deadline, not just each statement.
+SET LOCAL transaction_timeout = '90s';
 SET LOCAL lock_timeout = '2s';
 SET LOCAL statement_timeout = '120s';
 
