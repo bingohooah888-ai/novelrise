@@ -1,0 +1,190 @@
+name: 'Account #82 Premium Staging JWT deletion E2E (OWNER one-shot)'
+
+# Dormant in Draft. Only a separate explicit owner Staging approval after merge
+# can authorize the one-time TEST-only Preview + synthetic account deletion.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-account82-premium-deletion-once
+  cancel-in-progress: false
+
+jobs:
+  admission:
+    name: Verify exact OWNER, main, immutable PR #2785, and unused grant
+    if: >-
+      github.repository == 'bingohooah888-ai/novelrise' &&
+      github.run_attempt == 1 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 188 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.locked == false &&
+      github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.id == 317436651 &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREMIUM_E2E_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.grant.outputs.main_sha }}
+      candidate_sha: ${{ steps.grant.outputs.candidate_sha }}
+      request_id: ${{ steps.grant.outputs.request_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Validate OWNER grant and all seven original reviewed blobs
+        id: grant
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/premium-main.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/premium-issue.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2785" > /tmp/premium-pr.json
+          main="$(jq -er '.object.sha' /tmp/premium-main.json)"
+          candidate="$(jq -er '.head.sha' /tmp/premium-pr.json)"
+          test "$(git rev-parse HEAD)" = "$main"
+          test "$GITHUB_SHA" = "$main"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$candidate" > /tmp/premium-compare.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" > /tmp/premium-ledger.json
+          node scripts/account-deletion-premium-staging-admission.mjs \
+            "$GITHUB_EVENT_PATH" /tmp/premium-issue.json /tmp/premium-main.json \
+            /tmp/premium-pr.json /tmp/premium-compare.json /tmp/premium-ledger.json \
+            "$main" > /tmp/premium-grant.json
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/premium-grant.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/premium-grant.json)"
+            echo "request_id=$(jq -er '.approvalCommentId' /tmp/premium-grant.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Claim approval before external costs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.grant.outputs.main_sha }}
+          HEAD: ${{ steps.grant.outputs.candidate_sha }}
+          REQUEST_ID: ${{ steps.grant.outputs.request_id }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$HEAD"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.base.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.draft')" = true
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.locked')" = false
+          claim="$(jq -cn --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN" --arg candidateSha "$HEAD" --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" \
+            -f body="NOVELIGHT_STAGING_ACCOUNT_DELETE_PREMIUM_E2E_CLAIMED $claim" > /dev/null
+
+  premium_e2e:
+    name: Exact Preview, isolated TEST trial, JWT, billing and owned-residue proof
+    needs: admission
+    if: needs.admission.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: staging
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admission.outputs.main_sha }}
+      EXPECTED_REVISION: ${{ needs.admission.outputs.candidate_sha }}
+      STAGING_PREVIEW_REF: fix/inquiry-82-account-deletion-diagnostics-20261107
+      STAGING_TRIGGER: approval_comment
+      STAGING_PREMIUM_APPROVED: 'true'
+      STAGING_PREMIUM_SCOPE: account-deletion-premium-staging-e2e-once
+      STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
+      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      STRIPE_TEST_EXPECTED_ACCOUNT_SHA256: ${{ vars.STRIPE_TEST_EXPECTED_ACCOUNT_SHA256 }}
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      VERCEL_PROJECT_NAME: novelrise
+      GITHUB_REPOSITORY_ID: '1335499017'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admission.outputs.main_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Recheck exact main, PR, ledger and Staging prerequisites before costs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$EXPECTED_REVISION"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.base.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.draft')" = true
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.locked')" = false
+          test "$STAGING_E2E_READY" = true
+          test "$STAGING_EXPECTED_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_SUPABASE_SECRET_KEY"
+          test -n "$STAGING_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$STRIPE_TEST_SECRET_KEY"
+          test -n "$STRIPE_TEST_EXPECTED_ACCOUNT_SHA256"
+          test -n "$VERCEL_API_TOKEN"
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET"
+      - name: Verify six branch-scoped Preview variable types without reading Secrets
+        run: node scripts/account-deletion-premium-staging-target.mjs --preflight
+      - name: Create one approved exact-revision Preview
+        run: node scripts/vercel-preview-deployment.mjs
+      - name: Verify Preview SHA, Supabase ID, TEST-mode runtime and exact Stripe account fingerprint
+        run: node scripts/account-deletion-premium-staging-target.mjs --verify-preview
+      - name: Install pinned project dependencies
+        run: npm ci --no-audit --no-fund
+      - name: One synthetic Premium trial, real JWT deletion, billing/DB/Storage/Auth proof
+        run: node scripts/account-deletion-premium-staging-live-proof.mjs --approved-once
+      - name: Record redacted success only
+        run: |
+          echo 'Premium Staging: synthetic trial canceled, JWT deletion, no DB/Storage/Auth residue.' >> "$GITHUB_STEP_SUMMARY"
+
+  consume:
+    name: Consume one-shot approval after completion, failure or interruption
+    needs: [admission, premium_e2e]
+    if: always() && needs.admission.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Persist only redacted approval result
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admission.outputs.main_sha }}
+          HEAD: ${{ needs.admission.outputs.candidate_sha }}
+          REQUEST_ID: ${{ needs.admission.outputs.request_id }}
+          RESULT: ${{ needs.premium_e2e.result }}
+        run: |
+          set -euo pipefail
+          consumed="$(jq -cn --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN" --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" \
+            -f body="NOVELIGHT_STAGING_ACCOUNT_DELETE_PREMIUM_E2E_CONSUMED $consumed" > /dev/null
