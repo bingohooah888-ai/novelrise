@@ -62,8 +62,14 @@ function Get-RescueScope {
   $script:Stage='SCOPE_PROTECTED_ROOT'
   Assert-PinnedRoot
   $script:Stage='SCOPE_MANIFEST_FILES'
-  foreach($file in @($State,$Original,$Manifest,$Marker)){Assert-PinnedLeaf $file}
-  $m=ConvertFrom-Json ([IO.File]::ReadAllText($Manifest)) -ErrorAction Stop
+  # PowerShell resolves variables through caller scopes and ignores case.
+  # Invoke-AuthorizedSystemRecovery has a local $state object, while the
+  # restore caller has a local $manifest object. Both shadow the protected
+  # script-scope paths unless these references are explicitly qualified.
+  foreach($file in @($script:State,$script:Original,$script:Manifest,$script:Marker)){
+    Assert-PinnedLeaf $file
+  }
+  $m=ConvertFrom-Json ([IO.File]::ReadAllText($script:Manifest)) -ErrorAction Stop
   $names=@($m.PSObject.Properties.Name)
   $allowed=@('version','host','sid','taskName','originalSha256','guardedSha256','parentPid','parentStartUtc','deadlineUtc')
   if($names.Count -ne 9 -or @($names|Where-Object {$_ -notin $allowed}).Count -ne 0 -or
@@ -73,14 +79,14 @@ function Get-RescueScope {
     [string]$m.originalSha256 -notmatch '^[0-9a-f]{64}$' -or
     [string]$m.guardedSha256 -notmatch '^[0-9a-f]{64}$'){throw 'ARM_MANIFEST_INVALID'}
   $script:Stage='SCOPE_HASHES'
-  $currentSha=(Get-FileHash -LiteralPath $State -Algorithm SHA256).Hash.ToLowerInvariant()
-  $savedSha=(Get-FileHash -LiteralPath $Original -Algorithm SHA256).Hash.ToLowerInvariant()
+  $currentSha=(Get-FileHash -LiteralPath $script:State -Algorithm SHA256).Hash.ToLowerInvariant()
+  $savedSha=(Get-FileHash -LiteralPath $script:Original -Algorithm SHA256).Hash.ToLowerInvariant()
   if($currentSha -cne $m.guardedSha256 -or $savedSha -cne $m.originalSha256){
     throw 'UNKNOWN_STATE_NO_OVERWRITE'
   }
   $script:Stage='SCOPE_STATE_CONTENT'
-  $guard=ConvertFrom-Json ([IO.File]::ReadAllText($State)) -ErrorAction Stop
-  $saved=ConvertFrom-Json ([IO.File]::ReadAllText($Original)) -ErrorAction Stop
+  $guard=ConvertFrom-Json ([IO.File]::ReadAllText($script:State)) -ErrorAction Stop
+  $saved=ConvertFrom-Json ([IO.File]::ReadAllText($script:Original)) -ErrorAction Stop
   if($guard.phase -cne 'GUARDED_TEST' -or $guard.sid -cne $Sid -or
     [int]$guard.parentPid -ne [int]$m.parentPid -or
     $guard.parentStartUtc -cne $m.parentStartUtc -or
@@ -132,8 +138,8 @@ function Assert-NoLiveTargetResources {
 function Invoke-IndependentSystemGuardRestore {
   # Called only from the separately installed SYSTEM Recover task after the
   # guarded scope is attested. The task must preexist any user enable.
-  $manifest=Get-RescueScope
-  if(-not (Confirm-ScopeExpiredOrParentDead $manifest)){throw 'PARENT_ALIVE_NO_RESTORE'}
+  $scopeManifest=Get-RescueScope
+  if(-not (Confirm-ScopeExpiredOrParentDead $scopeManifest)){throw 'PARENT_ALIVE_NO_RESTORE'}
   $u=Get-LocalUser -Name $Account -ErrorAction Stop
   if($u.SID.Value -cne $Sid){throw 'SID_CHANGED'}
   if($u.Enabled){Disable-LocalUser -SID $u.SID -ErrorAction Stop}
@@ -144,7 +150,7 @@ function Invoke-IndependentSystemGuardRestore {
   [IO.File]::Copy($Original,$temp,$false)
   [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-attempt3-rescue-backup'))
   if((Get-FileHash -LiteralPath $State -Algorithm SHA256).Hash.ToLowerInvariant() -cne
-    $manifest.originalSha256){throw 'GUARD_RESTORE_NOT_CONFIRMED'}
+    $scopeManifest.originalSha256){throw 'GUARD_RESTORE_NOT_CONFIRMED'}
   # The separate regular SYSTEM Watchdog heartbeat still must independently
   # attest GUARD_ONLY and disabled account. No profile or proof is deleted.
 }
@@ -203,17 +209,17 @@ function Invoke-AuthorizedSystemRecovery {
   $script:Stage='STATE'
   Assert-PinnedRoot
   Assert-PinnedLeaf $State
-  $state=ConvertFrom-Json ([IO.File]::ReadAllText($State)) -ErrorAction Stop
-  if($state.version -ne 1 -or $state.host -cne $HostPin -or
-    $state.sid -cne $Sid -or $state.taskName -cne $TaskName){
+  $guardState=ConvertFrom-Json ([IO.File]::ReadAllText($script:State)) -ErrorAction Stop
+  if($guardState.version -ne 1 -or $guardState.host -cne $HostPin -or
+    $guardState.sid -cne $Sid -or $guardState.taskName -cne $TaskName){
     throw 'STATE_SCOPE_DRIFT'
   }
-  if($state.phase -ceq 'GUARD_ONLY'){
+  if($guardState.phase -ceq 'GUARD_ONLY'){
     if($targetUser.Enabled){throw 'IDLE_TARGET_ENABLED'}
     Write-RescueHeartbeat 'IDLE_DISABLED'
     return 'IDLE'
   }
-  if($state.phase -cne 'GUARDED_TEST'){throw 'UNKNOWN_PHASE'}
+  if($guardState.phase -cne 'GUARDED_TEST'){throw 'UNKNOWN_PHASE'}
   $scope=Get-RescueScope
   $script:Stage='CHECK_GUARD_DEADLINE_AND_PARENT'
   if(-not (Confirm-ScopeExpiredOrParentDead $scope)){
