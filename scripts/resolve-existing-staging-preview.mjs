@@ -9,7 +9,7 @@ function fail(message) {
   throw new Error(`PREVIEW_DISCOVERY_READONLY: ${message}`);
 }
 
-function deploymentOrigin(deployment, expectedSha, projectId) {
+function deploymentOrigin(deployment, expectedSha, projectId, proofRef = null) {
   const sha = deployment?.meta?.githubCommitSha ?? deployment?.gitSource?.sha;
   const state = deployment?.readyState ?? deployment?.state;
   const target = deployment?.target;
@@ -19,6 +19,14 @@ function deploymentOrigin(deployment, expectedSha, projectId) {
   if (sha !== expectedSha || state !== 'READY') return null;
   if (target && target !== 'preview') return null;
   if (gitRef === 'main') return null;
+  if (
+    proofRef &&
+    (gitRef !== proofRef ||
+      deployment?.meta?.githubRepo !== 'novelrise' ||
+      deployment?.meta?.githubOrg !== 'bingohooah888-ai')
+  ) {
+    return null;
+  }
   if (deployment?.projectId && deployment.projectId !== projectId) return null;
   if (typeof host !== 'string' || !/^[a-z0-9][a-z0-9.-]*\.vercel\.app$/i.test(host)) {
     return null;
@@ -33,6 +41,17 @@ export async function resolveExistingStagingPreview({
   fetchImpl = globalThis.fetch,
   resolveScope = resolveVercelProjectScope
 } = {}) {
+  const freeProof =
+    env.STAGING_DELETE_FREE_MODE === 'true' &&
+    env.STAGING_FREE_APPROVAL_SCOPE === 'account-deletion-free-proof';
+  if (
+    freeProof &&
+    (env.STAGING_PREVIEW_REF !==
+      'fix/inquiry-82-account-deletion-diagnostics-20261107' ||
+      String(env.CANONICAL_STAGING_URL || '').trim())
+  ) {
+    fail('free deletion proof must discover an exact SHA and branch, never trust a supplied origin.');
+  }
   if (String(env.CANONICAL_STAGING_URL || '').trim()) {
     return { source: 'configured', origin: env.CANONICAL_STAGING_URL.trim() };
   }
@@ -73,7 +92,14 @@ export async function resolveExistingStagingPreview({
   const candidates = [
     ...new Set(
       inventory.deployments
-        .map((deployment) => deploymentOrigin(deployment, sha, scope.projectId))
+        .map((deployment) =>
+          deploymentOrigin(
+            deployment,
+            sha,
+            scope.projectId,
+            freeProof ? env.STAGING_PREVIEW_REF : null
+          )
+        )
         .filter(Boolean)
     )
   ];

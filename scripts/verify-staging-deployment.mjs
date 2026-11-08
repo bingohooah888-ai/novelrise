@@ -110,7 +110,10 @@ function freeAccountProofMode(env) {
     env.GITHUB_REPOSITORY !== 'bingohooah888-ai/novelrise' ||
     env.STAGING_PREVIEW_REF !==
       'fix/inquiry-82-account-deletion-diagnostics-20261107' ||
-    env.STAGING_FREE_APPROVAL_SCOPE !== 'account-deletion-free-preview' ||
+    ![
+      'account-deletion-free-preview',
+      'account-deletion-free-proof'
+    ].includes(env.STAGING_FREE_APPROVAL_SCOPE) ||
     env.STAGING_REQUIRE_WRITE_CONFIG !== 'true' ||
     env.STAGING_EXPECTED_SUPABASE_URL !==
       'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
