@@ -16,6 +16,7 @@ const permit = read('gateb-dpapi-approval-contract.ps1');
 const rescue = read('gateb-dpapi-system-rescue-candidate.ps1');
 const coordinator = read('gateb-dpapi-one-shot-coordinator-candidate.ps1');
 const proof = read('gateb-dpapi-sid-proof-candidate.ps1');
+const repair = read('gateb-dpapi-partial-install-repair-once-candidate.ps1');
 
 test('installer Plan is a no-op and install is a separate Admin-permit action', () => {
   assert.match(install, /\[ValidateSet\('Plan','Install'\)\]/u);
@@ -161,4 +162,84 @@ test('SYSTEM rescue heartbeat uses a stable non-null backup for every repeat tic
   assert.doesNotMatch(rescue, /\[IO\.File\]::Replace\(\$temp,\$hb,\$null\)/u);
   assert.match(rescue, /Assert-PinnedLeaf \$backup/u);
   assert.match(rescue, /Assert-PinnedLeaf \$hb/u);
+});
+
+test('one-shot protected repair requires a separate owner approval and stays Plan by default', () => {
+  assert.match(repair, /ValidateSet\('Plan','Repair'\)/u);
+  assert.match(repair, /Mode='Plan'/u);
+  assert.match(repair, /ONE_GATEB_DPAPI_PARTIAL_PROTECTED_REPAIR_20261108/u);
+  assert.match(repair, /GATEB_DPAPI_PROTECTED_REPAIR_NEW_APPROVAL_REQUIRED/u);
+  assert.match(repair, /GATEB_DPAPI_PROTECTED_REPAIR_OFFLINE_PLAN_ONLY/u);
+});
+test('repair pins existing HEAD, old and new hashes and never changes Windows users or tasks', () => {
+  assert.match(
+    repair,
+    /201cf68d758ae879b0cf3a511964743a41407c58|NEW_HEAD_REQUIRED/u
+  );
+  assert.match(repair, /5ffda47c3d2f82ce6a323640551471b1cc31a13d/u);
+  assert.match(
+    repair,
+    /3559015c291f5e37b61e7b98e184f79c167432e2fd2a8422f03ff64e17181674/u
+  );
+  assert.match(
+    repair,
+    /c8d06b16e9594a8e46460dc5afc34cf2a8f51d2e5aba6025b49713553c0a16fc/u
+  );
+  assert.match(repair, /FILE_SHA_DRIFT/u);
+  assert.doesNotMatch(
+    repair,
+    /\b(?:Enable|Disable|Set)-LocalUser\b|Register-ScheduledTask|Unregister-ScheduledTask|Start-ScheduledTask|Set-ScheduledTask|Stop-Process|Remove-Item/u
+  );
+});
+test('repair requires known consumed markers, no Apply consumption, and consumes its own ledger first', () => {
+  assert.match(repair, /gateb-dpapi-install-once.marker/u);
+  assert.match(
+    repair,
+    /gateb-dpapi-rescue-registration-repair-once-consumed.marker/u
+  );
+  assert.match(repair, /gateb-dpapi-one-shot-consumed.marker/u);
+  assert.match(repair, /gateb-dpapi-apply-wrapper-once-consumed.marker/u);
+  assert.match(repair, /gateb-dpapi-protected-repair-once-consumed.marker/u);
+  const body = repair.slice(repair.indexOf('function RunRepair'));
+  assert.ok(
+    body.indexOf('FileMode]::CreateNew') <
+      body.indexOf('foreach($sp in $Specs)')
+  );
+  assert.match(repair, /NO_AUTORETRY/u);
+});
+test('repair preserves original protected files as backup and never deletes old evidence', () => {
+  assert.match(repair, /'REPLACE_TWO_SCRIPTS'/u);
+  assert.match(repair, /\[IO.File\]::Replace\(\$stage,\$target,\$backup\)/u);
+  assert.match(repair, /repair-previous/u);
+  assert.match(repair, /repair-stage/u);
+  assert.match(repair, /Pinned \$backup \$sp.Old/u);
+  assert.doesNotMatch(repair, /\[IO.File\]::Delete|Remove-Item/u);
+});
+test('repair atomically updates owner head and synchronized short permit deadlines; protects proof ACL', () => {
+  assert.match(repair, /\$Owner.head=\$ExpectedHead/u);
+  assert.match(repair, /\$Owner.deadlineUtc=\$deadline/u);
+  assert.match(repair, /\$Proof.deadlineUtc=\$deadline/u);
+  assert.match(repair, /AddMinutes\(18\)/u);
+  assert.match(repair, /SetAccessRuleProtection\(\$true,\$false\)/u);
+  assert.match(
+    repair,
+    /\$proofAcl=\[IO.File\]::GetAccessControl\(\$ProofPermit\)/u
+  );
+  assert.match(repair, /\$proofAcl.SetAccessRuleProtection\(\$true,\$true\)/u);
+  assert.match(
+    repair,
+    /\[IO.File\]::SetAccessControl\(\$ProofPermit,\$proofAcl\)/u
+  );
+  assert.match(
+    repair,
+    /CheckPermitAcl \$OwnerPermit \$true;CheckPermitAcl \$ProofPermit \$true/u
+  );
+  assert.match(repair, /Assert-GateBDpapiOwnerPermit/u);
+});
+test('repair requires fresh successful independent SYSTEM rescue heartbeat before a PASS', () => {
+  assert.match(repair, /WAIT_FRESH_SYSTEM_RESCUE/u);
+  assert.match(repair, /sequence -gt \$PreviousSequence/u);
+  assert.match(repair, /LastTaskResult -eq 0/u);
+  assert.match(repair, /GATEB_DPAPI_RESCUE_FRESH_HEARTBEAT_PASS/u);
+  assert.match(repair, /GATEB_DPAPI_PROTECTED_REPAIR_COMPLETE_NO_DPAPI_APPLY/u);
 });
