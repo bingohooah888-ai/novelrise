@@ -314,21 +314,26 @@ test('Free-only Preview still rejects live Stripe credentials and absent Supabas
 });
 
 test('independently OWNER-approved Free JWT proof keeps full Staging identity checks without Stripe prices', async (t) => {
-  t.mock.method(globalThis, 'fetch', async () =>
-    new globalThis.Response(
-      JSON.stringify(facts({
-        supabase: {
-          ...facts().supabase,
-          url: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
-        },
-        stripe: {
-          secretKeyMode: 'test',
-          standardPricePresent: false,
-          premiumPricePresent: false
-        }
-      })),
-      { status: 200 }
-    )
+  t.mock.method(
+    globalThis,
+    'fetch',
+    async () =>
+      new globalThis.Response(
+        JSON.stringify(
+          facts({
+            supabase: {
+              ...facts().supabase,
+              url: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+            },
+            stripe: {
+              secretKeyMode: 'test',
+              standardPricePresent: false,
+              premiumPricePresent: false
+            }
+          })
+        ),
+        { status: 200 }
+      )
   );
   const approved = strictEnvironment({
     STAGING_TRIGGER: 'approval_comment',
