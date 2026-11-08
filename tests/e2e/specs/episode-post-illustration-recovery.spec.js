@@ -209,3 +209,62 @@ test('new post: synthetic PNG upload inserts marker and autosaves manuscript', a
     .poll(() => page.evaluate(() => globalThis.__draftSaves || 0))
     .toBeGreaterThan(1);
 });
+
+test('new post: reopening drawer retries failed editor-list without saving another draft', async ({
+  page
+}) => {
+  page.__editorStatuses = [403, 200];
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').click();
+  const panel = page.locator('#episodeIllustrationsMount');
+  await expect(
+    panel.getByRole('button', { name: '挿絵を再読み込み' })
+  ).toBeVisible();
+  expect(page.__editorCalls).toBe(1);
+  const savesBeforeRetry = await page.evaluate(
+    () => globalThis.__draftSaves || 0
+  );
+
+  await page.locator('#closeDrawer').click();
+  await page.locator('#openIllustrationEditor').click();
+  await expect(
+    panel.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  expect(page.__editorCalls).toBe(2);
+  expect(await page.evaluate(() => globalThis.__draftSaves || 0)).toBe(
+    savesBeforeRetry
+  );
+
+  await page.locator('#closeDrawer').click();
+  await page.locator('#openIllustrationEditor').click();
+  expect(page.__editorCalls).toBe(2);
+});
+
+test('new post: repeat failure keeps manual retry, and recovered drawer stays mounted', async ({
+  page
+}) => {
+  page.__editorStatuses = [403, 403, 200];
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').click();
+  const panel = page.locator('#episodeIllustrationsMount');
+  await expect(
+    panel.getByRole('button', { name: '挿絵を再読み込み' })
+  ).toBeVisible();
+
+  await page.locator('#closeDrawer').click();
+  await page.locator('#openIllustrationEditor').click();
+  await expect(
+    panel.getByRole('button', { name: '挿絵を再読み込み' })
+  ).toBeVisible();
+  expect(page.__editorCalls).toBe(2);
+
+  await panel.getByRole('button', { name: '挿絵を再読み込み' }).click();
+  await expect(
+    panel.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  expect(page.__editorCalls).toBe(3);
+
+  await page.locator('#closeDrawer').click();
+  await page.locator('#openIllustrationEditor').click();
+  expect(page.__editorCalls).toBe(3);
+});

@@ -125,6 +125,7 @@ test('authorization failures are not silently retried or hidden; manual recovery
   ui.root.hidden = true;
   const result = await ui.mount();
   assert.equal(result.retryPending, true);
+  assert.equal(typeof result.retry, 'function');
   assert.equal(ui.requests(), 1);
   assert.equal(ui.root.hidden, false);
   const retry = find(
@@ -136,7 +137,10 @@ test('authorization failures are not silently retried or hidden; manual recovery
   assert.equal(draft.href, 'episode-edit.html?id=123');
   await retry.listeners.click[0]();
   assert.equal(ui.requests(), 2);
+  assert.equal(result.retryPending, false);
   assert.ok(find(ui.root, (node) => node.textContent === '挿絵をアップロード'));
+  await result.retry();
+  assert.equal(ui.requests(), 2);
 });
 
 test('repeat failures retain the retry button and draft-edit fallback', async () => {

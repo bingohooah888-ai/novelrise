@@ -761,12 +761,14 @@
       const failureMessage = episode.fromNewPost === true
         ? '挿絵を読み込めませんでした。再試行するか、下書き編集画面から追加してください。'
         : '挿絵を読み込めませんでした。再試行してください。';
-      retry.addEventListener('click', async () => {
-        if (retry.disabled) return;
+      const recovery = { retryPending: true, retry: retryRefresh };
+      async function retryRefresh() {
+        if (retry.disabled || !recovery.retryPending) return;
         retry.disabled = true;
         setStatus('挿絵を再読み込みしています...');
         try {
           await refresh();
+          recovery.retryPending = false;
           setStatus('挿絵を読み込みました。');
         } catch (retryError) {
           console.error('episode illustration editor retry failed', {
@@ -779,7 +781,8 @@
         } finally {
           retry.disabled = false;
         }
-      });
+      }
+      retry.addEventListener('click', retryRefresh);
       if (episode.fromNewPost === true && episode.status === 'draft') {
         const editLink = document.createElement('a');
         editLink.className = 'episode-illustration-retry';
@@ -789,7 +792,7 @@
       }
       list.replaceChildren(...recoveryNodes);
       setStatus(failureMessage);
-      return { retryPending: true };
+      return recovery;
     }
   }
 
