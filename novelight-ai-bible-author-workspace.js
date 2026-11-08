@@ -93,21 +93,21 @@
       );
     }
 
+    let recordCount = 0;
     for (const group of payload.facts) {
       const kind = bounded(group?.kind, 32);
       const key = bounded(group?.key, 120);
       const section = Object.hasOwn(FACT_SECTIONS, kind)
         ? FACT_SECTIONS[kind]
         : null;
-      const confirmed = group?.confirmed ?? [];
-      const suggestions = group?.suggestions ?? [];
+      const confirmed = group?.confirmed;
+      const suggestions = group?.suggestions;
       if (
         !section ||
         !key ||
         !Array.isArray(confirmed) ||
-        confirmed.length > 200 ||
         !Array.isArray(suggestions) ||
-        suggestions.length > 200
+        (recordCount += confirmed.length + suggestions.length) > 200
       ) {
         return null;
       }
@@ -116,8 +116,18 @@
         [suggestions, 'AI抽出候補・未確定']
       ]) {
         for (const record of records) {
-          const summary = bounded(record?.payload?.summary ?? '', 320);
-          const evidence = bounded(record?.payload?.evidence ?? '', 160);
+          // The server returns grouped fact rows, never null/array records.
+          // Reject malformed envelopes before review or story-index traversal.
+          if (
+            !record ||
+            typeof record !== 'object' ||
+            Array.isArray(record) ||
+            !record.payload ||
+            typeof record.payload !== 'object' ||
+            Array.isArray(record.payload)
+          ) return null;
+          const summary = bounded(record.payload.summary ?? '', 320);
+          const evidence = bounded(record.payload.evidence ?? '', 160);
           if (summary === null || evidence === null) return null;
           const id = record?.sourceEpisodeId;
           if (
@@ -263,7 +273,7 @@
         });
       }
       if (['foreshadowing', 'event', 'timeline'].includes(group.kind)) {
-        if (suggestions.some((record) => !record.payload.evidence.trim())) {
+        if (suggestions.some((record) => !(record.payload.evidence ?? '').trim())) {
           checks.push({
             title: 'AI候補の根拠未登録',
             detail: '「' + group.key + '」の未確定候補に引用根拠がありません。'
