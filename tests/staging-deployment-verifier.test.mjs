@@ -214,3 +214,87 @@ test('unknown staging trigger is fail-closed and makes no network request', asyn
   );
   assert.equal(fetchMock.mock.callCount(), 0);
 });
+
+test('Free-only approved Preview accepts absent prices but requires isolated Staging and TEST key', async (t) => {
+  const requests = [];
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    requests.push(url);
+    return new globalThis.Response(
+      JSON.stringify(facts({
+        stripe: {
+          secretKeyMode: 'test',
+          standardPricePresent: false,
+          premiumPricePresent: false
+        }
+      })),
+      { status: 200 }
+    );
+  });
+  const free = strictEnvironment({
+    STAGING_TRIGGER: 'approval_comment',
+    CANONICAL_STAGING_URL: BASE_URL,
+    GITHUB_REPOSITORY: 'bingohooah888-ai/novelrise',
+    STAGING_PREVIEW_REF: 'fix/inquiry-82-account-deletion-diagnostics-20261107',
+    STAGING_DELETE_FREE_MODE: 'true',
+    STAGING_FREE_APPROVAL_SCOPE: 'account-deletion-free-preview'
+  });
+  assert.deepEqual(await verifyStagingDeployment(free), {
+    baseUrl: BASE_URL,
+    revision: EXPECTED_SHA
+  });
+  assert.deepEqual(requests, [BASE_URL + '/api/staging-environment-facts']);
+
+  await assert.rejects(
+    verifyStagingDeployment({
+      ...free,
+      STAGING_FREE_APPROVAL_SCOPE: 'account-deletion-preview'
+    }),
+    /CONFIG_DRIFT: free-only proof requires exact OWNER gate context/
+  );
+  await assert.rejects(
+    verifyStagingDeployment({
+      ...free,
+      STAGING_DELETE_FREE_MODE: 'false'
+    }),
+    /CONFIG_DRIFT: deployed Staging Stripe Price configuration is incomplete/
+  );
+});
+
+test('Free-only Preview still rejects live Stripe credentials and absent Supabase admin key', async (t) => {
+  let stripeMode = 'live';
+  let serverSecretPresent = true;
+  t.mock.method(globalThis, 'fetch', async () =>
+    new globalThis.Response(
+      JSON.stringify(facts({
+        stripe: {
+          secretKeyMode: stripeMode,
+          standardPricePresent: false,
+          premiumPricePresent: false
+        },
+        supabase: {
+          ...facts().supabase,
+          serverSecretPresent
+        }
+      })),
+      { status: 200 }
+    )
+  );
+  const free = strictEnvironment({
+    STAGING_TRIGGER: 'approval_comment',
+    CANONICAL_STAGING_URL: BASE_URL,
+    GITHUB_REPOSITORY: 'bingohooah888-ai/novelrise',
+    STAGING_PREVIEW_REF: 'fix/inquiry-82-account-deletion-diagnostics-20261107',
+    STAGING_DELETE_FREE_MODE: 'true',
+    STAGING_FREE_APPROVAL_SCOPE: 'account-deletion-free-preview'
+  });
+  await assert.rejects(
+    verifyStagingDeployment(free),
+    /CONFIG_DRIFT: deployed Stripe secret key mode must be test/
+  );
+  stripeMode = 'test';
+  serverSecretPresent = false;
+  await assert.rejects(
+    verifyStagingDeployment(free),
+    /CONFIG_DRIFT: deployed Staging Supabase server secret is missing/
+  );
+});
