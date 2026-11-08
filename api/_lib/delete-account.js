@@ -46,7 +46,8 @@ async function listOwnedAvatarPaths(supabase, userId) {
     }
     for (const item of data) {
       if (
-        item?.id == null ||
+        item?.id === null ||
+        item?.id === undefined ||
         typeof item.name !== 'string' ||
         !item.name ||
         item.name.includes('/') ||
