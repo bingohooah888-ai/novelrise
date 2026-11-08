@@ -12,7 +12,7 @@ const PREFIX = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_APPROVE ';
 const CLAIMED = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CLAIMED ';
 const CONSUMED = 'NOVELIGHT_STAGING_ACCOUNT_DELETE_PREVIEW_CONSUMED ';
 
-// The reviewed account deletion PR content blobs at cc3edc2. Changing one
+// The reviewed account deletion PR #2785 file blobs at b008772e5e77. Changing one
 // requires a separate trusted-main review of this allowlist (never self-expand).
 export const REVIEWED_FILES = Object.freeze([
   {
@@ -23,12 +23,12 @@ export const REVIEWED_FILES = Object.freeze([
   {
     path: 'api/_lib/delete-account.js',
     status: 'modified',
-    sha: 'eb6d403f1e0764aa398237e64d15cfe4ffbca1bf'
+    sha: 'ee4ee594594c78589988cbf35e07f0e778e44787'
   },
   {
     path: 'docs/ACCOUNT-DELETION-OPERATIONS.md',
     status: 'added',
-    sha: '7d25da889282712e536b77b76bab118b04c4555d'
+    sha: 'c4bb30ca8974c6ce2743d33d4a4e7b49916684fd'
   },
   {
     path: 'docs/DOCUMENT-SOURCE-OF-TRUTH.md',
@@ -38,7 +38,7 @@ export const REVIEWED_FILES = Object.freeze([
   {
     path: 'tests/account-deletion-api.test.mjs',
     status: 'modified',
-    sha: '6068fd2ea3feca1547ac349a1c58c1e0e977c700'
+    sha: 'd033e6eeea2c1726899043fa7598bb756477185f'
   },
   {
     path: 'tests/account-deletion-page.test.mjs',
