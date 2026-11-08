@@ -227,3 +227,18 @@ test('attempt 2 uses fresh names while validating immutable spent attempt-1 evid
   assert.match(rescue, /state\.json\.dpapi-attempt2-rescue-stage/u);
   assert.doesNotMatch([src, rescue].join('\n'), /Remove-Item|File\]::Delete/u);
 });
+
+test('coordinator exposes bounded NO-GO stage and code without logging secrets', () => {
+  assert.match(src, /GATEB_DPAPI_ONE_SHOT_NO_GO_STAGE=/u);
+  assert.match(src, /GATEB_DPAPI_ONE_SHOT_NO_GO_CODE=/u);
+  assert.match(src, /UNCLASSIFIED_COORDINATOR_ERROR/u);
+  assert.match(src, /WAIT_INDEPENDENT_SYSTEM_RESCUE_ARMED/u);
+  assert.match(src, /CREDENTIAL_RESET/u);
+  assert.match(src, /ARM_GUARDED_TEST/u);
+  assert.match(src, /WAIT_BOTH_SYSTEM_RESTORED_HEARTBEATS/u);
+  const ending = src.slice(src.lastIndexOf('} catch {'));
+  assert.doesNotMatch(
+    ending,
+    /(?:ScriptStackTrace|Write-Error|Write-Output \$_.Exception)/u
+  );
+});

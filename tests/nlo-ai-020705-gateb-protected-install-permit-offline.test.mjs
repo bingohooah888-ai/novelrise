@@ -301,3 +301,24 @@ test('attempt-2 upgrade verifies exact existing protected script hashes, backups
   assert.match(permit, /attemptId -cne 'GATEB_DPAPI_ATTEMPT2_20261108'/u);
   assert.match(permit, /approval\.version -ne 2/u);
 });
+
+test('SYSTEM rescue records the first bounded failure, preserving evidence across ticks', () => {
+  assert.match(rescue, /function Write-FirstGuardFailure/u);
+  assert.match(
+    rescue,
+    /gateb-dpapi-attempt2-system-rescue-first-failure\.json/u
+  );
+  assert.match(rescue, /FileMode\]::CreateNew/u);
+  assert.match(rescue, /guard\.phase -cne 'GUARDED_TEST'/u);
+  assert.match(rescue, /reasonCode=\$FailedCode/u);
+  assert.match(rescue, /FailedCode -notmatch/u);
+  assert.match(rescue, /Write-FirstGuardFailure \$failureStage \$failureCode/u);
+  assert.match(rescue, /SCOPE_MANIFEST_FILES/u);
+  assert.match(rescue, /SCOPE_HASHES/u);
+  assert.match(rescue, /RESTORE_TARGET_RESIDUE/u);
+  assert.match(rescue, /RESTORE_ATOMIC_REPLACE/u);
+  assert.doesNotMatch(
+    rescue,
+    /(?:Exception\.ToString\(\)|ScriptStackTrace|Write-Error|Set-LocalUser|Register-ScheduledTask)/u
+  );
+});

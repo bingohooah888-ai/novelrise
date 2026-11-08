@@ -449,25 +449,38 @@ function Invoke-ApprovedOneShotTrial {
   try {
     # Never spend a marker, reset password, arm GUARD or enable user without
     # the trusted controller. No currently exported entrypoint invokes this.
+    $script:CurrentStage='CONSUME_ATTEMPT2_LEDGER'
     Consume-OneShotLedger
+    $script:CurrentStage='CREDENTIAL_RESET'
     $cred=New-InMemoryTargetCredential
     $self=Get-Process -Id $PID -ErrorAction Stop
+    $script:CurrentStage='ARM_GUARDED_TEST'
     $guard=Arm-GuardAtomically $PID ($self.StartTime.ToUniversalTime().ToString('o'))
+    $script:CurrentStage='WAIT_SYSTEM_WATCHDOG_ARMED'
     $oldWatchdogArmed=Wait-IndependentArmedHeartbeat ([int]$before.sequence)
+    $script:CurrentStage='WAIT_INDEPENDENT_SYSTEM_RESCUE_ARMED'
     $rescueArmed=Wait-RescueArmedHeartbeat ([int]$rescueBefore.sequence)
     # Must only enable after BOTH independently verified SYSTEM monitors.
+    $script:CurrentStage='ENABLE_TARGET_ACCOUNT'
     Enable-LocalUser -Name $AccountName -ErrorAction Stop
     $script:EnabledByCoordinator=$true
     $startEnabled=[datetime]::UtcNow
+    $script:CurrentStage='CURRENTUSER_DPAPI_TARGET_CREATE'
     Invoke-TargetProbe $cred 'TargetCreate' (Join-Path $Vault 'gateb-dpapi-target-create.receipt')
+    $script:CurrentStage='CURRENTUSER_DPAPI_TARGET_VERIFY'
     Invoke-TargetProbe $cred 'TargetVerify' (Join-Path $Vault 'gateb-dpapi-target-verify.receipt')
     if([datetime]::UtcNow -gt $startEnabled.AddSeconds($MaxEnabledSeconds)){
       throw 'ACCOUNT_ENABLED_LEASE_EXPIRED'
     }
+    $script:CurrentStage='DISABLE_TARGET_ACCOUNT'
     Disable-TargetOnce
+    $script:CurrentStage='VERIFY_RESIDUE_ZERO'
     Assert-ProcessAndSessionZero
+    $script:CurrentStage='CROSS_SID_DPAPI_DENIAL'
     Invoke-CrossSidProbe
+    $script:CurrentStage='RESTORE_GUARD_ONLY'
     Restore-GuardAtomicallyAfterProof
+    $script:CurrentStage='WAIT_BOTH_SYSTEM_RESTORED_HEARTBEATS'
     $null=Wait-GuardOnlyRestoredHeartbeats ([int]$oldWatchdogArmed.sequence) ([int]$rescueArmed.sequence)
     $script:Result='CANDIDATE_SEQUENCE_COMPLETED_WITH_BOTH_HEARTBEATS'
   } finally {
@@ -506,6 +519,7 @@ try {
   . $module
   $raw=ConvertFrom-Json ([IO.File]::ReadAllText($permitPath)) -ErrorAction Stop
   $null=Assert-GateBDpapiOwnerPermit -PermitPath $permitPath -ScriptDirectory $Root -ExpectedHead ([string]$raw.head) -TargetSid $Sid -ExpectedTask 'NOVELIGHT-GateB-DPAPI-Independent-Rescue' -RequireUnexpired
+  $script:CurrentStage='INITIAL_RESCUE_HEARTBEAT_ATTEST'
   $null=Assert-ProtectedRescueIsReady
   Invoke-ApprovedOneShotTrial -IndependentRescueReady $true -FutureSignedOwnerPermitReady $true
   if($script:Result -cne 'CANDIDATE_SEQUENCE_COMPLETED_WITH_BOTH_HEARTBEATS'){
@@ -514,8 +528,20 @@ try {
   Write-Output 'GATEB_DPAPI_ONE_SHOT_LOCAL_EVIDENCE_PASS_REQUIRES_OWNER_REVIEW'
   exit 0
 } catch {
-  # The independent SYSTEM worker/rescue must enforce recovery after an
-  # interrupted process. Any failure consumes the one shot if previously used.
+  # The interactive administrator can see stdout, unlike a scheduled SYSTEM
+  # task. Emit only bounded diagnostic codes, NEVER raw exception details.
+  $failureCode=[string]$_.Exception.Message
+  if($failureCode -notmatch '^[A-Z][A-Z_0-9]{2,100}$'){
+    $failureCode='UNCLASSIFIED_COORDINATOR_ERROR'
+  }
+  $failureStage=[string]$CurrentStage
+  if($failureStage -notmatch '^[A-Z][A-Z_0-9]{2,70}$'){
+    $failureStage='UNKNOWN_STAGE'
+  }
+  Write-Output ('GATEB_DPAPI_ONE_SHOT_NO_GO_STAGE='+$failureStage)
+  Write-Output ('GATEB_DPAPI_ONE_SHOT_NO_GO_CODE='+$failureCode)
+  # The independently installed SYSTEM guard/rescue must enforce recovery
+  # after interrupted parents. Spent one-shot evidence is never cleared.
   Write-Output 'GATEB_DPAPI_ONE_SHOT_NO_GO_NO_RETRY'
   exit 3
 }

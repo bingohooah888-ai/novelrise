@@ -56,3 +56,11 @@ PowerShell構文・Node静的契約・オフライン故障モデル PASS を合
 - 局所検証：既存Nodeテスト38/38 PASS、4本のPowerShell構文エラー0、Plan/未承認Upgrade拒否PASS。Windows隔離TEMPで第2回 `Arm-GuardAtomically` が新マニフェスト・旧state SHA・GUARDED_TEST state・バックアップを正しく生成、旧ファイルを生成しないことを確認。別の隔離TEMPで `AtomicUpdate` が新ファイルと旧版バックアップを残しステージを消費できることを確認。これらの検証では保護フォルダ・Windowsアカウント・タスク・パスワード・DPAPIは変更していない。
 
 **ゲート判定:** 準備コードの合格はDPAPIの実機証拠ではない。第2回本体試験の実行は未承認であり、次のユーザー明示承認と固定HEAD・全SHA・残留ゼロ・両SYSTEM監視の確認なしに実機Applyしない。A～Eは0/5 NO-GO。
+
+## Gate B第2回実機NO-GO復旧後：SYSTEM失敗理由の保存（オフライン候補）
+
+- 第2回実機では、専用アカウント無効・対象プロセス/セッション/プロファイル/Vault残留0、`GUARDED_TEST`期限切れ、元stateと現在stateの両SHAが第2回マニフェストと一致した。それでも独立SYSTEM復旧タスクは終了コード3を返し、`GUARD_ONLY`への復元は行われなかった。実機での具体的な失敗例外は従来のコードが破棄するため **現存の証拠からは断定できない**。オーナー別承認の第2回緊急復旧では元stateを復元し、両SYSTEM監視の正常化を確認済み。
+- 失敗原因を推測して安全ゲートを緩めない。既存SYSTEM復旧候補内に、段階別の`Stage`（permit・manifest・SHA・状態・プロセス/セッション残留・原子的置換・Heartbeat）と、機密値を含めない英大文字の理由コードを追加。GUARDED_TEST中の最初の失敗だけ、SYSTEM・保護ディレクトリACLを検証した上で `gateb-dpapi-attempt2-system-rescue-first-failure.json` にCreateNewで保存。後続の定期タスクでも上書きせず、既存マーカーや復旧状態は変更しない。タスクがstdoutを記録しなくても、あとからオーナーが理由を確認できる。
+- Coordinatorの管理者PowerShellにも、失敗した工程と許可された理由コードだけを表示するよう追加。資格情報・平文パスワード・例外スタックは記録しない。
+- Windows隔離TEMPで保存された最初の失敗記録が後の失敗で上書きされないことを実行確認。また、実際のSYSTEM復旧候補のHeartbeat書込関数を隔離TEMPに抽出して連続3回実行し、`IDLE_DISABLED → ARMED_PARENT_ALIVE → ARMED_PARENT_ALIVE`、sequenceの増加とpreviousバックアップの保持がPASS。保護済み実機コード・タスク・アカウント・permit・DPAPIは未変更。
+- **次回実機試験は未承認で再実行禁止。** この修正は既存Draft PR #2774のオフライン候補のみ。第2回の消費済みマーカーと復旧証拠は保持する。Gate A〜Eは0/5 NO-GO。

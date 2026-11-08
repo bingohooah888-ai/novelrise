@@ -51,7 +51,7 @@ function Assert-PinnedRoot {
   }
 }
 function Get-RescueScope {
-  $script:Stage='SYSTEM_SCOPE'
+  $script:Stage='SCOPE_SYSTEM'
   if($env:COMPUTERNAME -cne $HostPin -or
     [Security.Principal.WindowsIdentity]::GetCurrent().User.Value -cne $SystemSid){
     throw 'SYSTEM_HOST_REQUIRED'
@@ -59,7 +59,9 @@ function Get-RescueScope {
   $u=Get-LocalUser -Name $Account -ErrorAction Stop
   if(-not $u.SID){throw 'TARGET_SID_MISSING'}
   $script:Sid=$u.SID.Value
+  $script:Stage='SCOPE_PROTECTED_ROOT'
   Assert-PinnedRoot
+  $script:Stage='SCOPE_MANIFEST_FILES'
   foreach($file in @($State,$Original,$Manifest,$Marker)){Assert-PinnedLeaf $file}
   $m=ConvertFrom-Json ([IO.File]::ReadAllText($Manifest)) -ErrorAction Stop
   $names=@($m.PSObject.Properties.Name)
@@ -70,11 +72,13 @@ function Get-RescueScope {
     [string]$m.parentStartUtc -notmatch 'Z$' -or [string]$m.deadlineUtc -notmatch 'Z$' -or
     [string]$m.originalSha256 -notmatch '^[0-9a-f]{64}$' -or
     [string]$m.guardedSha256 -notmatch '^[0-9a-f]{64}$'){throw 'ARM_MANIFEST_INVALID'}
+  $script:Stage='SCOPE_HASHES'
   $currentSha=(Get-FileHash -LiteralPath $State -Algorithm SHA256).Hash.ToLowerInvariant()
   $savedSha=(Get-FileHash -LiteralPath $Original -Algorithm SHA256).Hash.ToLowerInvariant()
   if($currentSha -cne $m.guardedSha256 -or $savedSha -cne $m.originalSha256){
     throw 'UNKNOWN_STATE_NO_OVERWRITE'
   }
+  $script:Stage='SCOPE_STATE_CONTENT'
   $guard=ConvertFrom-Json ([IO.File]::ReadAllText($State)) -ErrorAction Stop
   $saved=ConvertFrom-Json ([IO.File]::ReadAllText($Original)) -ErrorAction Stop
   if($guard.phase -cne 'GUARDED_TEST' -or $guard.sid -cne $Sid -or
@@ -96,6 +100,7 @@ function Confirm-ScopeExpiredOrParentDead([object]$Manifest) {
   }catch{return $true}
 }
 function Assert-NoLiveTargetResources {
+  $script:Stage='RESTORE_TARGET_RESIDUE'
   $u=Get-LocalUser -Name $Account -ErrorAction Stop
   if($u.SID.Value -cne $Sid -or $u.Enabled){throw 'TARGET_NOT_DISABLED'}
   foreach($p in @(Get-CimInstance Win32_Process -ErrorAction Stop)){
@@ -117,14 +122,15 @@ function Assert-NoLiveTargetResources {
   if($sessions.Count -ne 0){throw 'LOGON_SESSION_RESIDUE'}
 }
 function Invoke-IndependentSystemGuardRestore {
-  # Not called in the currently exposed script. Future SYSTEM task must be
-  # independently scheduled BEFORE any user enable / guarded parent launch.
+  # Called only from the separately installed SYSTEM Recover task after the
+  # guarded scope is attested. The task must preexist any user enable.
   $manifest=Get-RescueScope
   if(-not (Confirm-ScopeExpiredOrParentDead $manifest)){throw 'PARENT_ALIVE_NO_RESTORE'}
   $u=Get-LocalUser -Name $Account -ErrorAction Stop
   if($u.SID.Value -cne $Sid){throw 'SID_CHANGED'}
   if($u.Enabled){Disable-LocalUser -SID $u.SID -ErrorAction Stop}
   Assert-NoLiveTargetResources
+  $script:Stage='RESTORE_ATOMIC_REPLACE'
   $temp=Join-Path $Root 'state.json.dpapi-attempt2-rescue-stage'
   if([IO.File]::Exists($temp)){throw 'RESCUE_STAGE_ALREADY_EXISTS'}
   [IO.File]::Copy($Original,$temp,$false)
@@ -135,6 +141,7 @@ function Invoke-IndependentSystemGuardRestore {
   # attest GUARD_ONLY and disabled account. No profile or proof is deleted.
 }
 function Write-RescueHeartbeat([string]$Status) {
+  $script:Stage='HEARTBEAT_WRITE'
   $hb=Join-Path $Root 'gateb-dpapi-system-rescue-heartbeat.json'
   $backup=Join-Path $Root 'gateb-dpapi-system-rescue-heartbeat.previous.json'
   $sequence=1
@@ -178,6 +185,7 @@ function Invoke-AuthorizedSystemRecovery {
   $targetUser=Get-LocalUser -Name $Account -ErrorAction Stop
   if(-not $targetUser.SID){throw 'TARGET_SID_NOT_FOUND'}
   $script:Sid=$targetUser.SID.Value
+  $script:Stage='OWNER_PERMIT_CONTRACT'
   $module=Join-Path $Root 'gateb-dpapi-approval-contract.ps1'
   Assert-PinnedLeaf $module
   . $module
@@ -199,6 +207,7 @@ function Invoke-AuthorizedSystemRecovery {
   }
   if($state.phase -cne 'GUARDED_TEST'){throw 'UNKNOWN_PHASE'}
   $scope=Get-RescueScope
+  $script:Stage='CHECK_GUARD_DEADLINE_AND_PARENT'
   if(-not (Confirm-ScopeExpiredOrParentDead $scope)){
     Write-RescueHeartbeat 'ARMED_PARENT_ALIVE'
     return 'ARMED'
@@ -209,6 +218,47 @@ function Invoke-AuthorizedSystemRecovery {
   Write-RescueHeartbeat 'RESTORED_GUARD_ONLY'
   return 'RESTORED'
 }
+# Record the FIRST guarded-test failure with bounded, non-secret reason codes.
+# Task Scheduler discards script stdout: without this protected receipt, exit 3
+# cannot distinguish a manifest, ACL, process-owner or heartbeat failure.
+# Never overwrite earlier forensic evidence, print exception text, or change
+# account/task/guard state as part of logging.
+function Write-FirstGuardFailure([string]$FailedStage,[string]$FailedCode) {
+  if($env:COMPUTERNAME -cne $HostPin -or
+    [Security.Principal.WindowsIdentity]::GetCurrent().User.Value -cne $SystemSid){
+    return
+  }
+  $folder=Get-Item -LiteralPath $Root -Force -ErrorAction Stop
+  if(-not $folder.PSIsContainer -or
+    ($folder.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){return}
+  $acl=[IO.Directory]::GetAccessControl($Root)
+  if(-not $acl.AreAccessRulesProtected -or
+    $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -cne $AdminSid){return}
+  $current=Join-Path $Root 'state.json'
+  $item=Get-Item -LiteralPath $current -Force -ErrorAction Stop
+  if($item.PSIsContainer -or
+    ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){return}
+  $guard=ConvertFrom-Json ([IO.File]::ReadAllText($current)) -ErrorAction Stop
+  if($guard.phase -cne 'GUARDED_TEST'){return}
+  if($FailedStage -notmatch '^[A-Z][A-Z_0-9]{2,70}$'){$FailedStage='UNKNOWN_STAGE'}
+  if($FailedCode -notmatch '^[A-Z][A-Z_0-9]{2,100}$'){$FailedCode='UNCLASSIFIED_SYSTEM_ERROR'}
+  $receipt=Join-Path $Root 'gateb-dpapi-attempt2-system-rescue-first-failure.json'
+  # CreateNew atomically preserves the original reason across subsequent ticks.
+  if([IO.File]::Exists($receipt)){return}
+  $data=[ordered]@{
+    version=1
+    stage=$FailedStage
+    reasonCode=$FailedCode
+    checkedUtc=[datetime]::UtcNow.ToString('o')
+  }
+  $bytes=[Text.Encoding]::UTF8.GetBytes(($data|ConvertTo-Json -Compress))
+  $stream=[IO.File]::Open($receipt,[IO.FileMode]::CreateNew,
+    [IO.FileAccess]::Write,[IO.FileShare]::None)
+  try{
+    $stream.Write($bytes,0,$bytes.Length)
+    $stream.Flush($true)
+  }finally{$stream.Dispose()}
+}
 if($Mode -eq 'Inspect'){
   Write-Output 'GATEB_DPAPI_SYSTEM_RESCUE_OFFLINE_ONLY'
   exit 2
@@ -218,7 +268,21 @@ try {
   Write-Output ('GATEB_DPAPI_SYSTEM_RESCUE_'+$out)
   exit 0
 } catch {
-  # Keep the separately installed Watchdog as the independent disable guard.
-  Write-Output ('GATEB_DPAPI_SYSTEM_RESCUE_NO_GO_'+$Stage)
+  # Never persist raw exception messages, credentials or stack traces.
+  $failureCode=[string]$_.Exception.Message
+  if($failureCode -notmatch '^[A-Z][A-Z_0-9]{2,100}$'){
+    $failureCode='UNCLASSIFIED_SYSTEM_ERROR'
+  }
+  $failureStage=[string]$Stage
+  if($failureStage -notmatch '^[A-Z][A-Z_0-9]{2,70}$'){
+    $failureStage='UNKNOWN_STAGE'
+  }
+  try{
+    Write-FirstGuardFailure $failureStage $failureCode
+  }catch{
+    # Failure reporting must never mask the original NO-GO or retry recovery.
+  }
+  # Existing separate SYSTEM Watchdog remains the independent disable guard.
+  Write-Output ('GATEB_DPAPI_SYSTEM_RESCUE_NO_GO_'+$failureStage+'_'+$failureCode)
   exit 3
 }
