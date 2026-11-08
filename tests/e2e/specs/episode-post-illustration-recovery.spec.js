@@ -81,6 +81,13 @@ function installMockSupabase() {
         rpc: async (name, params) => {
           if (name === 'novelight_save_episode_draft') {
             globalThis.__draftSaves = (globalThis.__draftSaves || 0) + 1;
+            if (globalThis.__testDraftSaveDelayMs)
+              await new Promise((resolve) =>
+                globalThis.setTimeout(
+                  resolve,
+                  globalThis.__testDraftSaveDelayMs
+                )
+              );
             if (globalThis.__failNextSave) {
               globalThis.__failNextSave = false;
               return {
@@ -611,4 +618,195 @@ test('new post: upload prepare and finalize use the current rotated access token
   );
   expect(page.__observedActions).toContain('prepare-upload');
   expect(page.__observedActions).toContain('finalize-upload');
+});
+
+test('new post: after finalize and repeated editor-list failures upload controls recover immediately', async ({
+  page
+}) => {
+  page.__editorStatuses = [200, 503, 503, 503, 503, 200];
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').click();
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeEnabled();
+  const pngBase64 = await page.evaluate(() => {
+    const canvas = globalThis.document.createElement('canvas');
+    canvas.width = 4;
+    canvas.height = 4;
+    canvas.getContext('2d').fillRect(0, 0, 4, 4);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  await page
+    .locator('.episode-illustration-upload input[type=file]')
+    .setInputFiles({
+      name: 'refresh-failure.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(pngBase64, 'base64')
+    });
+  await page.getByRole('button', { name: '挿絵をアップロード' }).click();
+  await expect(page.locator('#content')).toHaveValue(/NOVELIGHT_ILLUSTRATION:/);
+  await expect.poll(() => page.__editorCalls).toBe(5);
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeEnabled();
+  await expect(
+    page.locator('.episode-illustration-upload input[type=file]')
+  ).toBeEnabled();
+  await page.locator('#closeDrawer').click();
+  await page.locator('#openIllustrationEditor').click();
+  await expect(page.getByText('本文で使用中')).toBeVisible();
+  expect(page.__editorCalls).toBe(6);
+});
+
+test('new post: failed prepare-upload also restores buttons after refresh', async ({
+  page
+}) => {
+  await page.route('**/api/episode-illustrations', (route) => {
+    if (route.request().postDataJSON()?.action === 'prepare-upload') {
+      return route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Temporary upload preparation failure' })
+      });
+    }
+    return route.fallback();
+  });
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').click();
+  const pngBase64 = await page.evaluate(() => {
+    const canvas = globalThis.document.createElement('canvas');
+    canvas.width = 4;
+    canvas.height = 4;
+    canvas.getContext('2d').fillRect(0, 0, 4, 4);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  await page
+    .locator('.episode-illustration-upload input[type=file]')
+    .setInputFiles({
+      name: 'prepare-failure.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(pngBase64, 'base64')
+    });
+  await page.getByRole('button', { name: '挿絵をアップロード' }).click();
+  await expect(
+    page.locator('.episode-illustration-upload input[type=file]')
+  ).toBeEnabled();
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeEnabled();
+  await expect(page.locator('#content')).not.toHaveValue(
+    /NOVELIGHT_ILLUSTRATION:/
+  );
+});
+
+test('new post: two immediate illustration requests share one initial draft and editor', async ({
+  page
+}) => {
+  await openNewPost(page);
+  await page.evaluate(() => {
+    const button = globalThis.document.getElementById('openIllustrationEditor');
+    button.click();
+    button.click();
+  });
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  await expect.poll(() => page.__editorCalls).toBe(1);
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => globalThis.__draftSaves || 0)).toBe(1);
+  expect(page.__editorCalls).toBe(1);
+});
+
+test('new post: overlapping autosave and repeated opening does not mount twice', async ({
+  page
+}) => {
+  await openNewPost(page);
+  await page.evaluate(() => {
+    globalThis.__testDraftSaveDelayMs = 650;
+  });
+  await expect
+    .poll(() => page.evaluate(() => globalThis.__draftSaves || 0))
+    .toBe(1);
+  await page.evaluate(() => {
+    const button = globalThis.document.getElementById('openIllustrationEditor');
+    button.click();
+    button.click();
+  });
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  expect(page.__editorCalls).toBe(1);
+  expect(await page.evaluate(() => globalThis.__draftSaves || 0)).toBe(1);
+});
+
+test('existing draft edit: two immediate illustration requests mount once', async ({
+  page
+}) => {
+  await openEditIllustrationFixture(page);
+  await page.evaluate(() => {
+    const button = globalThis.document.getElementById('openIllustrationEditor');
+    button.click();
+    button.click();
+  });
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  await page.waitForTimeout(350);
+  expect(page.__editorCalls).toBe(1);
+});
+
+test('new post: physical double-click keeps the drawer open and permits normal dismissal', async ({
+  page,
+  isMobile
+}) => {
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').dblclick({ delay: 60 });
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  await expect(page.locator('#settingsDrawer')).toHaveAttribute(
+    'aria-hidden',
+    'false'
+  );
+  expect(page.__editorCalls).toBe(1);
+  expect(await page.evaluate(() => globalThis.__draftSaves || 0)).toBe(1);
+  await page.waitForTimeout(650);
+  if (isMobile) await page.locator('#closeDrawer').click();
+  else await page.locator('#drawerBackdrop').click();
+  await expect(page.locator('#settingsDrawer')).toHaveAttribute(
+    'aria-hidden',
+    'true'
+  );
+});
+
+test('new post: physical double-click during slow autosave keeps one editor', async ({
+  page
+}) => {
+  await openNewPost(page);
+  await page.evaluate(() => {
+    globalThis.__testDraftSaveDelayMs = 450;
+  });
+  await expect
+    .poll(() => page.evaluate(() => globalThis.__draftSaves || 0))
+    .toBe(1);
+  await page.locator('#openIllustrationEditor').dblclick({ delay: 60 });
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  expect(page.__editorCalls).toBe(1);
+});
+
+test('existing draft edit: physical double-click keeps illustration drawer open', async ({
+  page
+}) => {
+  await openEditIllustrationFixture(page);
+  await page.locator('#openIllustrationEditor').dblclick({ delay: 60 });
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeVisible();
+  await expect(page.locator('#settingsDrawer')).toHaveAttribute(
+    'aria-hidden',
+    'false'
+  );
+  expect(page.__editorCalls).toBe(1);
 });

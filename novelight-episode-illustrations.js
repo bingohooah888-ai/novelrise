@@ -630,7 +630,15 @@
           busy = false;
           try {
             await refresh();
-          } catch {}
+          } catch (refreshError) {
+            // An unavailable list must not leave the upload controls disabled.
+            mountedState.retryPending = true;
+            console.error('episode illustration post-upload refresh failed', {
+              status: Number.isInteger(Number(refreshError?.status))
+                ? Number(refreshError.status) : null
+            });
+          }
+          render();
         }
       });
 
