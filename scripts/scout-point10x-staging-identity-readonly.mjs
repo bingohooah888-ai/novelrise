@@ -2,7 +2,9 @@
 // Staging-only diagnostic. No mutation, backup, writer control or retries.
 // Never run from a PR, import, Production, or untrusted workstation.
 import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { createHash, X509Certificate } from 'node:crypto';
+import { lstatSync, readFileSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyStagingMigrationTarget } from './verify-staging-migration-target.mjs';
 import { compilePinnedCutoverReview } from './scout-point10x-staging-cutover-adapter.mjs';
 
@@ -25,6 +27,66 @@ export const READONLY_DIAGNOSTIC_IMPLEMENTED = true; // NEVER enables the Point 
 
 function stop(code) {
   throw Object.assign(new Error('STAGE38_HOLD:' + code), { safeCode: code });
+}
+// Public Supabase root CA obtained from the official Studio Dashboard
+// certificate_url configuration. The Dashboard's prod distribution applies
+// to all hosted projects, including the NOVELIGHT Staging preview branch.
+// This is a public trust anchor, NOT a credential, leaf certificate, or key.
+// Never dynamically download or trust an unpinned CA at diagnostic runtime.
+export const OFFICIAL_SUPABASE_CA_DER_SHA256 =
+  '807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa';
+export const OFFICIAL_SUPABASE_CA_PEM_SHA256 =
+  '700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7';
+export const OFFICIAL_SUPABASE_CA_FILE_PATH = fileURLToPath(
+  new URL('../certificates/supabase-root-2021.crt', import.meta.url)
+);
+
+export function verifyPinnedSupabaseRootCa(pem) {
+  try {
+    if (
+      typeof pem !== 'string' ||
+      !/^-----BEGIN CERTIFICATE-----\r?\n(?:[A-Za-z0-9+/=]+\r?\n)+-----END CERTIFICATE-----\r?\n?$/u.test(
+        pem
+      ) ||
+      createHash('sha256').update(pem, 'utf8').digest('hex') !==
+        OFFICIAL_SUPABASE_CA_PEM_SHA256
+    )
+      stop('SUPABASE_OFFICIAL_CA_UNVERIFIED');
+    const cert = new X509Certificate(pem);
+    const now = Date.now();
+    const from = Date.parse(cert.validFrom);
+    const to = Date.parse(cert.validTo);
+    if (
+      createHash('sha256').update(cert.raw).digest('hex') !==
+        OFFICIAL_SUPABASE_CA_DER_SHA256 ||
+      cert.ca !== true ||
+      !cert.subject.includes('CN=Supabase Root 2021 CA') ||
+      cert.issuer !== cert.subject ||
+      !Number.isFinite(from) ||
+      !Number.isFinite(to) ||
+      from > now ||
+      to <= now ||
+      !cert.verify(cert.publicKey)
+    )
+      stop('SUPABASE_OFFICIAL_CA_UNVERIFIED');
+  } catch {
+    stop('SUPABASE_OFFICIAL_CA_UNVERIFIED');
+  }
+  return true;
+}
+
+function verifiedSupabaseRootCaPath() {
+  try {
+    const info = lstatSync(OFFICIAL_SUPABASE_CA_FILE_PATH);
+    if (!info.isFile() || info.isSymbolicLink())
+      stop('SUPABASE_OFFICIAL_CA_UNVERIFIED');
+    verifyPinnedSupabaseRootCa(
+      readFileSync(OFFICIAL_SUPABASE_CA_FILE_PATH, 'utf8')
+    );
+    return OFFICIAL_SUPABASE_CA_FILE_PATH;
+  } catch {
+    stop('SUPABASE_OFFICIAL_CA_UNVERIFIED');
+  }
 }
 const hex40 = (value) =>
   typeof value === 'string' && /^[a-f0-9]{40}$/u.test(value);
@@ -176,7 +238,7 @@ export function inspectConnectionRoute(env, management) {
     username: decodeURIComponent(parsed.username),
     // Password is deliberately NOT returned by this inspector.
     sslMode: 'verify-full',
-    rootCert: 'system'
+    rootCert: 'official-supabase-root-2021-pinned'
   });
 }
 
@@ -312,10 +374,11 @@ function runSafeReadOnlyQuery({ env, route }) {
   if (
     !route ||
     route.sslMode !== 'verify-full' ||
-    route.rootCert !== 'system' ||
+    route.rootCert !== 'official-supabase-root-2021-pinned' ||
     !env.STAGING_DATABASE_URL
   )
     stop('TLS_ROUTE_UNVERIFIED');
+  const caPath = verifiedSupabaseRootCaPath();
   const parsed = new URL(env.STAGING_DATABASE_URL);
   const childEnv = {
     ...env,
@@ -325,7 +388,7 @@ function runSafeReadOnlyQuery({ env, route }) {
     PGPASSWORD: decodeURIComponent(parsed.password),
     PGDATABASE: 'postgres',
     PGSSLMODE: 'verify-full',
-    PGSSLROOTCERT: 'system',
+    PGSSLROOTCERT: caPath,
     PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=4000'
   };
   // Neither URL nor token is placed in command args, logs, stdout or artifacts.
@@ -387,7 +450,7 @@ export function validateCatalogReadOnlyJson(result) {
   return Object.freeze({
     status: 'NO_GO_SYNTHETIC_CATALOG_SHAPE_ONLY',
     stagingRef: EXPECTED_STAGING,
-    tlsValidation: 'verify-full-system-ca',
+    tlsValidation: 'verify-full-supabase-official-root-2021',
     postgresMajor: result.postgresMajor,
     targetTablePresenceCount: result.tables,
     targetTableExpectedCount: EXPECTED_TABLES.length,
