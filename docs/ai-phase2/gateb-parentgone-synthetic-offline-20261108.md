@@ -43,7 +43,17 @@
 - 一回限りマーカー作成後の失敗・中断でも承認は消費済み。修復や後片付けは新しい承認とread-only残留確認が必要。マーカーは計画的監査残留なので**完全ファイル0件とは報告しない**。
 - 監視タスクの7日間Once反復は本試験で延長しない。Staging/Production/Cloudflare/Supabase/Vercel/Secrets/有料AI/実PATは一切接続しない。
 
-## 5. 別承認の入口
+## 5. 最小の緊急復旧手段（本PR #2794内で追加）
+
+将来のsynthetic試験がPowerShellの強制終了・端末停止などで中断された場合、既存SYSTEM Watchdogはユーザーの無効状態を保つが、保護`state.json`を自律復帰しない。
+
+- `tools/novelight-commander/gateb-parentgone-interrupted-guard-restore.ps1` を**同じPR内**に追加。既定`Inspect`は管理者の読み取り専用。実際の`Restore`は**新しい対象限定の一回限り承認が必要**。
+- 現行Worker固定SHA、保護ACL・固定SID、無効/非管理者ユーザー、残留プロフィールなし、一回限りの消費マーカー、synthetic親PID（`[int]::MaxValue`）、旧`GUARD_ONLY`バックアップの内容を検証する。
+- 既に元のGUARD_ONLYなら変更せず終了。それ以外は、保護バックアップとsynthetic stateを照合し、専用`state.json`一件だけを`[IO.File]::Replace`で原子的に戻す。元stateのSHA不一致・未知の途中状態なら止める。
+- 緊急復旧の成功後も、台帳・バックアップ・一時ファイルは**勝手に削除しない**。管理者の残留確認・別承認のCleanupが必要。
+- **これは自律復旧ではない**。PC停止中/管理者不在の復帰保証はまだなく、合成試験の残留リスクを減らすための限定的な緊急対処手段である。実アカウント有効化・パスワード変更・実親プロセスkill・DPAPI試験は全く認めない。
+
+## 6. 別承認の入口
 
 本PRはoffline実装・CI・CodeQL・Draft PRまでが承認範囲。管理者READ ONLYで**現在の理由コード付きHeartbeat継続、タスク期限、SIDプロセスcensus**を確認できない限り、実機Applyの承認を求めない。将来必要なら固定HEAD・試験スクリプトSHA-256、PC、改変state1ファイル、監査マーカー1件、許可する一時バックアップ、最大実行1回、原子的復帰の限界、費用0円を明記した**新しいワンタップ承認**を要する。既存NLO、クラウド、Secrets、Production、アカウント有効化、パスワード再設定、親kill、DPAPIは引き続き別の承認が必要。
 

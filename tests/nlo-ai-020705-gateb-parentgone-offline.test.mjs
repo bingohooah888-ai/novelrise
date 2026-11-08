@@ -468,3 +468,75 @@ test(
     assert.match(r.stdout, /GATEB_PARENTGONE_APPLY_NOT_STARTED/u);
   }
 );
+
+test('interrupted recovery helper is default read-only and one-state scoped', () => {
+  const helper = join(
+    root,
+    'tools',
+    'novelight-commander',
+    'gateb-parentgone-interrupted-guard-restore.ps1'
+  );
+  const source = readFileSync(helper, 'utf8');
+  assert.match(source, /ValidateSet\('Inspect', 'Restore'\)/u);
+  assert.match(source, /\$Mode = 'Inspect'/u);
+  assert.match(
+    source,
+    /RESTORE_ONE_GATEB_PARENTGONE_GUARD_STATE_AFTER_INTERRUPTED_TRIAL/u
+  );
+  assert.match(source, /GATEB_PARENTGONE_RESTORE_NO_MUTATION/u);
+  assert.match(source, /GATEB_PARENTGONE_ONE_STATE_GUARD_RESTORED/u);
+  assert.match(
+    source,
+    /GATEB_PARENTGONE_BACKUPS_RETAINED_MANUAL_CENSUS_REQUIRED/u
+  );
+  assert.match(source, /GATEB_PARENTGONE_RESTORE_ATTEMPT_CONSUMED_NO_RETRY/u);
+  assert.equal((source.match(/\[IO.File\]::Replace\(/gmu) || []).length, 1);
+  assert.match(source, /Assert-FixedState \$originalState \$sid 'GUARD_ONLY'/u);
+  assert.match(
+    source,
+    /Assert-FixedState \$currentState \$sid 'GUARDED_TEST'/u
+  );
+  assert.match(source, /\$FakePid = \[int\]::MaxValue/u);
+  assert.match(source, /ONE_SHOT_LEDGER_MISMATCH/u);
+  assert.match(source, /NEW_RESTORE_APPROVAL_REQUIRED/u);
+  assert.doesNotMatch(
+    source,
+    /Enable-LocalUser|Disable-LocalUser|Set-LocalUser|Stop-Process|Start-Process|Register-ScheduledTask|Disable-ScheduledTask|Enable-ScheduledTask|Start-ScheduledTask|Stop-ScheduledTask|Set-Acl|Remove-Item|Invoke-WebRequest|Invoke-RestMethod/iu
+  );
+});
+test(
+  'Windows emergency helper AST parses without running Restore',
+  {
+    skip: process.platform !== 'win32'
+  },
+  () => {
+    const helper = join(
+      root,
+      'tools',
+      'novelight-commander',
+      'gateb-parentgone-interrupted-guard-restore.ps1'
+    );
+    const q = helper.replaceAll("'", "''");
+    const cmd =
+      "$t=$null;$e=$null;[void][Management.Automation.Language.Parser]::ParseFile('" +
+      q +
+      "',[ref]$t,[ref]$e);if(@($e).Count -gt 0){exit 3};exit 0";
+    const r = spawnSync(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', cmd],
+      { encoding: 'utf8', windowsHide: true, timeout: 7000 }
+    );
+    assert.equal(r.status, 0, r.stderr);
+  }
+);
+test('offline synthetic failure never becomes live permission from recovery helper', () => {
+  const outcome = simulateOneShotParentGone({
+    ...trial,
+    failAt: 'atomicallyRestoreOriginalGuardState'
+  });
+  noAuthority(outcome);
+  assert.equal(
+    outcome.status,
+    'OFFLINE_INJECTED_FAILURE_CONSUMED_MANUAL_CENSUS_NO_GO'
+  );
+});
