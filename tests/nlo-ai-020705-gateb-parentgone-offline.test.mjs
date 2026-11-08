@@ -540,3 +540,8 @@ test('offline synthetic failure never becomes live permission from recovery help
     'OFFLINE_INJECTED_FAILURE_CONSUMED_MANUAL_CENSUS_NO_GO'
   );
 });
+
+test('kernel pseudo-processes are excluded from user SID census', () => {
+  assert.match(code, /ProcessId -in @\(0, 4\)/u);
+  assert.match(code, /PROCESS_OWNER_CENSUS_UNVERIFIED/u);
+});

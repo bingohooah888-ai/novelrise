@@ -62,6 +62,8 @@ function Assert-NoTargetProcess {
   # This may fail on protected Windows processes; never infer a zero count.
   $processes = @(Get-CimInstance Win32_Process -ErrorAction Stop)
   foreach ($process in $processes) {
+    # Kernel-owned pseudo-processes have no user SID and cannot belong to GateB.
+    if ([int]$process.ProcessId -in @(0, 4)) { continue }
     try {
       $owner = Invoke-CimMethod -InputObject $process -MethodName GetOwnerSid -ErrorAction Stop
       if ($owner.ReturnValue -ne 0 -or [string]::IsNullOrWhiteSpace([string]$owner.Sid)) { throw 'PROCESS_OWNER_NOT_VERIFIED' }
