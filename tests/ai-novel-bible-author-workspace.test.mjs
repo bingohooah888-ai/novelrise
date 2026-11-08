@@ -214,7 +214,7 @@ test('offline review flags overlaps and distinct duplicate names without implyin
   assert.equal(render({ target, payload }), true);
   assert.match(target.textContent, /機械的な重複の確認のみ行います/);
   assert.match(target.textContent, /AI候補：2件・要確認項目：3件/);
-  assert.equal(nodes(target, 'aside').length, 1);
+  assert.equal(nodes(target, 'aside').length, 2);
   assert.deepEqual(
     payload.facts[1].confirmed.map((row) => row.payload.summary),
     ['春の朝', '春の朝']
