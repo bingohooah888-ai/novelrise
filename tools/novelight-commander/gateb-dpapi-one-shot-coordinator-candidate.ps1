@@ -192,19 +192,38 @@ function Arm-GuardAtomically([int]$ParentPid,[string]$ParentStartUtc) {
     $stream.Flush($true)
   }finally{$stream.Dispose()}
   $armedSha=(Get-FileHash -LiteralPath $temp -Algorithm SHA256).Hash.ToLowerInvariant()
-  $manifest=[ordered]@{
+  # PowerShell variables are case-insensitive. NEVER name the manifest
+  # payload '$manifest': that shadows the script-scoped $Manifest file path,
+  # silently creating "System.Collections.Specialized.OrderedDictionary" in
+  # the current directory instead of the protected recovery manifest.
+  $armManifestData=[ordered]@{
     version=1;host=$HostPin;sid=$Sid;taskName=$TaskName
     originalSha256=$originalSha;guardedSha256=$armedSha
     parentPid=$ParentPid;parentStartUtc=$ParentStartUtc;deadlineUtc=$deadline
   }
-  # A separate SYSTEM rescuer must be able to reconstruct scope after the
-  # controller dies. Persist immutable hashes BEFORE activating guard.
-  $mf=[IO.File]::Open($Manifest,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+  # Refuse to arm unless the independent SYSTEM rescue can read this exact
+  # protected manifest, with the same hashes and parent/deadline scope.
+  $manifestPath=Join-Path $Root 'gateb-dpapi-arm-manifest.json'
+  if($Manifest -cne $manifestPath){throw 'MANIFEST_PATH_SHADOWED'}
+  $mf=[IO.File]::Open($manifestPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
   try {
-    $data=[Text.Encoding]::UTF8.GetBytes(($manifest|ConvertTo-Json -Compress))
+    $data=[Text.Encoding]::UTF8.GetBytes(($armManifestData|ConvertTo-Json -Compress))
     $mf.Write($data,0,$data.Length)
     $mf.Flush($true)
   } finally {$mf.Dispose()}
+  Assert-Leaf $manifestPath
+  $persisted=ConvertFrom-Json ([IO.File]::ReadAllText($manifestPath)) -ErrorAction Stop
+  if($persisted.version -ne 1 -or $persisted.host -cne $HostPin -or
+     $persisted.sid -cne $Sid -or $persisted.taskName -cne $TaskName -or
+     $persisted.originalSha256 -cne $originalSha -or
+     $persisted.guardedSha256 -cne $armedSha -or
+     [int]$persisted.parentPid -ne $ParentPid -or
+     $persisted.parentStartUtc -cne $ParentStartUtc -or
+     $persisted.deadlineUtc -cne $deadline){
+    throw 'PERSISTED_ARM_MANIFEST_NOT_ATTESTED'
+  }
+  # Guard state cannot become GUARDED_TEST unless the rescue manifest has
+  # been persisted and read back from its pinned path.
   [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-arm-backup'))
   $armed=Read-PinnedGuard 'GUARDED_TEST'
   if([int]$armed.parentPid -ne $ParentPid){throw 'ARM_NOT_OBSERVED'}

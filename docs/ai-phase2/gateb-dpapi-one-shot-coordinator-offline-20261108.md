@@ -34,3 +34,15 @@
 ## 検証区分
 
 PowerShell構文・Node静的契約・オフライン故障モデル PASS を合格記録とし、Windowsの実機End-to-End/DPAPI異SID/SYSTEM独立復旧/子セッションゼロは**NOT RUN / NO-GO**。実機のための保護タスク管理と検証は今後の局所実装対象。
+
+## 2026-11-08 Gate B 実機NO-GO原因と単一点のオフライン修正
+
+**実機事実:** 初回DPAPI Applyは一回限りマーカー消費・資格情報再設定・GUARDED_TEST移行まで進行したが、保護ディレクトリの gateb-dpapi-arm-manifest.json が存在せず、独立SYSTEM復旧タスクは終了コード3。CurrentUser DPAPIの同SID/異SID証明は未達。復旧は別承認で旧GUARD_ONLY保存データ2本とSHAを照合して原子的復元済み。現在アカウント無効、対象プロセス・セッション・プロファイル・Vault残留ゼロ、両SYSTEM監視のHeartbeat正常化を確認。
+
+**再現した根本原因:** Arm-GuardAtomicallyのスクリプトスコープ変数 $Manifest はマニフェストのパスだが、同じ関数内で $manifest=[ordered]@{...} と内容オブジェクトに代入していた。PowerShellは変数名の大文字小文字を区別しないため、ファイルパスの代わりに OrderedDictionary が [IO.File]::Open に渡される。元のコードと同じ変数名でPowerShell上の型と文字列化を再現し、保護ディレクトリにマニフェストが作成されない現象と一致する。
+
+**既存Draft PR #2774の修正:** 内容を $armManifestData とし、保存先を $manifestPath=Join-Path $Root 'gateb-dpapi-arm-manifest.json' に固定。CreateNewで書き込み後に同じ保護パスを読み戻し、host/SID/元state SHA/armed state SHA/親PID・開始時刻・期限を確認するまで state.json を GUARDED_TESTへ置き換えない。不一致ならfail closed。
+
+**局所証拠:** 既存のNode回帰テストを拡張し、ケース非依存の $manifest シャドー禁止、絶対保存先、read-backが状態置換前にあることを検証。さらにWindowsの隔離TEMPフォルダに実際の Arm-GuardAtomically 関数を抽出して実行。マニフェスト生成、両state SHA一致、GUARDED_TEST移行、旧stateバックアップ保持、誤ったOrderedDictionary名のファイル不存在を全件PASS。Windowsの保護ファイルやSYSTEMタスクは変更なし。
+
+**制約:** この修正はリポジトリのオフライン候補のみ。保護済み旧Coordinator、permit、使用済みマーカー、SYSTEMタスク、専用アカウント、DPAPIを変更していない。初回試験のone-shot markerは消費済みで削除・再利用禁止。次回の実機試験には新HEAD/ハッシュでのコード差し替え、独立した新しい一回限り試験台帳、別の明示Owner承認が必要。Gate A～Eは0/5 NO-GO。

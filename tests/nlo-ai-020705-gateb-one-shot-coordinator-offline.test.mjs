@@ -130,13 +130,34 @@ test('parent kill rescue is a distinct SYSTEM-only SHA-pinned path', () => {
   assert.match(rescue, /GATEB_DPAPI_SYSTEM_RESCUE_NO_GO_/u);
   assert.match(rescue, /function Invoke-AuthorizedSystemRecovery/u);
 });
-test('guard manifest is created atomically before live state activation', () => {
-  assert.match(src, /gateb-dpapi-arm-manifest\.json/u);
-  assert.match(src, /originalSha256=\$originalSha;guardedSha256=\$armedSha/u);
-  const arming = src.slice(src.indexOf('function Arm-GuardAtomically('));
+test('guard manifest path is not shadowed and is read back before GUARD activation', () => {
+  const begin = src.indexOf('function Arm-GuardAtomically(');
+  const end = src.indexOf('function Wait-IndependentArmedHeartbeat(', begin);
+  assert.ok(begin >= 0 && end > begin);
+  const arming = src.slice(begin, end);
+  // PowerShell variables are case-insensitive: $manifest would shadow $Manifest
+  // and silently write an OrderedDictionary-named file in the working folder.
+  assert.doesNotMatch(arming, /^\s*\$manifest\s*=/imu);
+  assert.match(arming, /\$armManifestData=\[ordered\]@/u);
+  assert.match(
+    arming,
+    /\$manifestPath=Join-Path \$Root 'gateb-dpapi-arm-manifest\.json'/u
+  );
+  assert.match(
+    arming,
+    /\[IO\.File\]::Open\(\$manifestPath,\[IO\.FileMode\]::CreateNew/u
+  );
+  assert.match(arming, /Assert-Leaf \$manifestPath/u);
+  assert.match(arming, /\$persisted=ConvertFrom-Json/u);
+  assert.match(arming, /PERSISTED_ARM_MANIFEST_NOT_ATTESTED/u);
+  assert.match(
+    arming,
+    /originalSha256=\$originalSha;guardedSha256=\$armedSha/u
+  );
   assert.ok(
-    arming.indexOf('FileMode]::CreateNew') <
-      arming.indexOf('[IO.File]::Replace(')
+    arming.indexOf('PERSISTED_ARM_MANIFEST_NOT_ATTESTED') <
+      arming.indexOf('[IO.File]::Replace($temp,$State'),
+    'state must not be armed until the pinned manifest is read back and verified'
   );
   assert.match(src, /state\.json\.dpapi-original/u);
 });
