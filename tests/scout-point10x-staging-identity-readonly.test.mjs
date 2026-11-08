@@ -546,16 +546,20 @@ test('catalog failures report only fixed condition names', () => {
       }
     );
   }
-  assert.throws(() => validateCatalogReadOnlyJson(null), (error) => {
-    assert.deepEqual(error.safeDiagnostics, ['CATALOG_RESULT_SHAPE']);
-    return true;
-  });
   assert.throws(
-    () => validateCatalogReadOnlyJson({
-      ...valid,
-      database: 'SYNTHETIC_SECRET',
-      ssl: false
-    }),
+    () => validateCatalogReadOnlyJson(null),
+    (error) => {
+      assert.deepEqual(error.safeDiagnostics, ['CATALOG_RESULT_SHAPE']);
+      return true;
+    }
+  );
+  assert.throws(
+    () =>
+      validateCatalogReadOnlyJson({
+        ...valid,
+        database: 'SYNTHETIC_SECRET',
+        ssl: false
+      }),
     (error) => {
       assert.deepEqual(error.safeDiagnostics, ['DATABASE_NAME', 'SSL_ACTIVE']);
       return true;
