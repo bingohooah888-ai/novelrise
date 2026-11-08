@@ -32,7 +32,8 @@
       typeof title !== 'string' ||
       !title.trim() ||
       title.length > 120
-    ) return null;
+    )
+      return null;
     return { id, title, position };
   }
 
@@ -49,7 +50,8 @@
       !story ||
       !Array.isArray(story.foreshadowing) ||
       !Array.isArray(story.events)
-    ) return null;
+    )
+      return null;
 
     const byEpisode = new Map();
     const orderNumbers = new Set();
@@ -60,15 +62,22 @@
       const id = positive(row.episode_id);
       const number = positive(row.episode_number);
       const metadata = chapter(row);
-      if (!id || !number || !metadata ||
-          byEpisode.has(id) || orderNumbers.has(number)) return null;
+      if (
+        !id ||
+        !number ||
+        !metadata ||
+        byEpisode.has(id) ||
+        orderNumbers.has(number)
+      )
+        return null;
       if (metadata.id !== null) {
         const known = chapters.get(metadata.id);
         if (
           known &&
           (known.title !== metadata.title ||
             known.position !== metadata.position)
-        ) return null;
+        )
+          return null;
         chapters.set(metadata.id, metadata);
       }
       orderNumbers.add(number);
@@ -91,7 +100,8 @@
           item.key.length > 120 ||
           !Array.isArray(item.sourceEpisodeIds) ||
           item.sourceEpisodeIds.length > 200
-        ) return null;
+        )
+          return null;
         const seen = new Set();
         const references = [];
         for (const rawId of item.sourceEpisodeIds) {
@@ -100,9 +110,9 @@
           seen.add(id);
           references.push({ ...byEpisode.get(id) });
         }
-        references.sort((a, b) =>
-          a.episodeNumber - b.episodeNumber ||
-          a.episodeId - b.episodeId
+        references.sort(
+          (a, b) =>
+            a.episodeNumber - b.episodeNumber || a.episodeId - b.episodeId
         );
         projected.push({
           kind: item.kind,
@@ -112,10 +122,11 @@
           firstEpisodeNumber: references[0]?.episodeNumber ?? null
         });
       }
-      return projected.sort((a, b) =>
-        (a.firstEpisodeNumber ?? Infinity) -
-          (b.firstEpisodeNumber ?? Infinity) ||
-        a.key.localeCompare(b.key, 'ja-JP')
+      return projected.sort(
+        (a, b) =>
+          (a.firstEpisodeNumber ?? Infinity) -
+            (b.firstEpisodeNumber ?? Infinity) ||
+          a.key.localeCompare(b.key, 'ja-JP')
       );
     }
 
