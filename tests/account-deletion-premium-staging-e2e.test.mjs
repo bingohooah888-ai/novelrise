@@ -439,7 +439,11 @@ test('workflow never executes on push/PR/dispatch, requires OWNER and Staging an
   assert.doesNotMatch(yml, /sk_live_|PRODUCTION_DEPLOY/u);
 });
 
-function mockPaidProof({ deletionHttp = 200, wrongJwt = false } = {}) {
+function mockPaidProof({
+  deletionHttp = 200,
+  wrongJwt = false,
+  profileLinkFailure = null
+} = {}) {
   const id = '123e4567-e89b-42d3-a456-426614174000';
   const state = {
     id,
@@ -448,6 +452,7 @@ function mockPaidProof({ deletionHttp = 200, wrongJwt = false } = {}) {
     profile: null,
     novel: null,
     avatar: null,
+    uploadedAvatarPath: null,
     customer: null,
     subscription: null,
     previewDeleteCalls: 0,
@@ -490,15 +495,32 @@ function mockPaidProof({ deletionHttp = 200, wrongJwt = false } = {}) {
           state.novel = { id: 42, user_id: state.id, ...payload };
           return { data: { ...state.novel }, error: null };
         }
-        if (name === 'profiles' && kind === 'update') {
-          if (!state.profile)
-            return { data: null, error: { message: 'missing' } };
-          state.profile = { ...state.profile, ...payload };
-          return { data: { ...state.profile }, error: null };
-        }
         return { data: null, error: { message: 'unknown operation' } };
       },
       async maybeSingle() {
+        if (name === 'profiles' && kind === 'update') {
+          // Mirror the actual Staging profiles_avatar_path_check constraint.
+          // The former novelight-premium-e2e-<nonce>.png path fails this check.
+          const allowed = new RegExp(
+            '^' + state.id + '/[0-9a-f-]{36}\\.(webp|png|jpg|jpeg)$',
+            'u'
+          );
+          if (
+            !allowed.test(payload?.avatar_path) ||
+            profileLinkFailure === 'db'
+          )
+            return { data: null, error: { code: '23514' } };
+          if (profileLinkFailure === 'no-row' || !state.profile)
+            return { data: null, error: null };
+          state.profile = { ...state.profile, ...payload };
+          return {
+            data:
+              profileLinkFailure === 'mismatch'
+                ? { ...state.profile, stripe_subscription_id: 'sub_mismatched' }
+                : { ...state.profile },
+            error: null
+          };
+        }
         return {
           data:
             name === 'profiles'
@@ -569,6 +591,7 @@ function mockPaidProof({ deletionHttp = 200, wrongJwt = false } = {}) {
           },
           async upload(p) {
             state.avatar = p;
+            state.uploadedAvatarPath = p;
             return { data: { path: p }, error: null };
           },
           async remove(paths) {
@@ -725,6 +748,11 @@ test('Premium E2E synthetic TEST trial: only own user, one real JWT delete, canc
   });
   assert.equal(mock.state.createCustomerCalls, 1);
   assert.equal(mock.state.createSubscriptionCalls, 1);
+  // Regress the real Staging constraint: <owner UUID>/<file UUID>.png.
+  assert.match(
+    mock.state.uploadedAvatarPath,
+    /^123e4567-e89b-42d3-a456-426614174000\/[0-9a-f-]{36}\.png$/u
+  );
   assert.equal(mock.state.previewDeleteCalls, 1);
   assert.equal(mock.state.apiDeleteCalls, 1);
   assert.equal(mock.state.subscription.status, 'canceled');
@@ -939,4 +967,56 @@ test('account fingerprint endpoint HTTP rejection produces distinct safe diagnos
     '/api/staging-environment-facts',
     '/api/staging-premium-account-proof'
   ]);
+});
+
+test('Staging avatar constraint rejects the former marker filename and accepts UUID filenames', () => {
+  const ownerId = '123e4567-e89b-42d3-a456-426614174000';
+  const pattern = new RegExp(
+    '^' + ownerId + '/[0-9a-f-]{36}\\.(webp|png|jpg|jpeg)$',
+    'u'
+  );
+  const former = ownerId + '/novelight-premium-e2e-abcdef0123456789.png';
+  const valid = ownerId + '/7f3f5f8c-8a4b-4e91-ac57-42bf34d84211.png';
+  assert.equal(pattern.test(former), false);
+  assert.equal(pattern.test(valid), true);
+});
+
+test('PROFILE_LINK database/constraint failure: no delete API; fixture-only billing and content cleanup', async () => {
+  const mock = mockPaidProof({ profileLinkFailure: 'db' });
+  await assert.rejects(
+    mock.run(),
+    /PREMIUM_DELETION_STAGING_HOLD_PROFILE_LINK_DB_ERROR/u
+  );
+  assert.equal(mock.state.previewDeleteCalls, 0);
+  assert.equal(mock.state.createCustomerCalls, 1);
+  assert.equal(mock.state.createSubscriptionCalls, 1);
+  assert.equal(mock.state.stripeCancelCalls, 1);
+  assert.equal(mock.state.customer.deleted, true);
+  assert.equal(mock.state.avatar, null);
+  assert.equal(mock.state.novel, null);
+  assert.equal(mock.state.removed, true);
+});
+
+test('PROFILE_LINK zero updated rows: distinct safe failure code and fixture-only cleanup', async () => {
+  const mock = mockPaidProof({ profileLinkFailure: 'no-row' });
+  await assert.rejects(
+    mock.run(),
+    /PREMIUM_DELETION_STAGING_HOLD_PROFILE_LINK_NO_ROW/u
+  );
+  assert.equal(mock.state.previewDeleteCalls, 0);
+  assert.equal(mock.state.stripeCancelCalls, 1);
+  assert.equal(mock.state.customer.deleted, true);
+  assert.equal(mock.state.removed, true);
+});
+
+test('PROFILE_LINK returned billing ID mismatch: no delete API and fixture-only cleanup', async () => {
+  const mock = mockPaidProof({ profileLinkFailure: 'mismatch' });
+  await assert.rejects(
+    mock.run(),
+    /PREMIUM_DELETION_STAGING_HOLD_PROFILE_LINK_MISMATCH/u
+  );
+  assert.equal(mock.state.previewDeleteCalls, 0);
+  assert.equal(mock.state.stripeCancelCalls, 1);
+  assert.equal(mock.state.customer.deleted, true);
+  assert.equal(mock.state.removed, true);
 });

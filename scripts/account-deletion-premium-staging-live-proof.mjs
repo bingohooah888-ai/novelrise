@@ -1,4 +1,9 @@
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import {
+  createHash,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual
+} from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
@@ -392,7 +397,9 @@ export async function runPremiumDeletionProof({
     subscriptionId: null,
     priceId,
     novelId: null,
-    avatarName: 'novelight-premium-e2e-' + marker + '.png',
+    // profiles_avatar_path_check requires /<36-character UUID>.<ext>.
+    // Keep the unique fixture identity in the synthetic Auth email/Stripe metadata.
+    avatarName: randomUUID() + '.png',
     avatarPath: null
   };
   let stage = 'AUTH_CREATE';
@@ -507,7 +514,10 @@ export async function runPremiumDeletionProof({
       deny('SUBSCRIPTION_IDENTITY');
     fixture.subscriptionId = subscription.id;
 
-    stage = 'PROFILE_LINK';
+    // Distinguish a PostgREST/DB error, an update affecting no row,
+    // and a successfully returned row whose ownership/billing data differ.
+    // Only fixed stage codes reach logs; never expose DB details or IDs.
+    stage = 'PROFILE_LINK_DB_ERROR';
     const linked = data(
       await admin
         .from('profiles')
@@ -521,16 +531,19 @@ export async function runPremiumDeletionProof({
         .is('stripe_customer_id', null)
         .is('stripe_subscription_id', null)
         .select('id,stripe_customer_id,stripe_subscription_id,avatar_path')
-        .single(),
-      'PROFILE_LINK'
+        .maybeSingle(),
+      'PROFILE_LINK_DB_ERROR'
     );
+    stage = 'PROFILE_LINK_NO_ROW';
+    if (!linked) deny('PROFILE_LINK_NO_ROW');
+    stage = 'PROFILE_LINK_MISMATCH';
     if (
       linked?.id !== fixture.id ||
       linked?.stripe_customer_id !== fixture.customerId ||
       linked?.stripe_subscription_id !== fixture.subscriptionId ||
       linked?.avatar_path !== fixture.avatarPath
     )
-      deny('PROFILE_LINK');
+      deny('PROFILE_LINK_MISMATCH');
 
     stage = 'DESTRUCTIVE_PRECHECK';
     const [auth, preProfile, owned, preSub] = await Promise.all([
