@@ -106,10 +106,7 @@ export async function checkAccountPreviewEnvironment({
     (freeMode &&
       (env.STAGING_TRIGGER !== 'approval_comment' ||
         env.GITHUB_REPOSITORY !== 'bingohooah888-ai/novelrise' ||
-        ![
-          'account-deletion-free-preview',
-          'account-deletion-free-proof'
-        ].includes(env.STAGING_FREE_APPROVAL_SCOPE)))
+        env.STAGING_FREE_APPROVAL_SCOPE !== 'account-deletion-free-preview'))
   ) {
     deny();
   }
