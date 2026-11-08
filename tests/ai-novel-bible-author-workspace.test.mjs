@@ -401,7 +401,7 @@ test('review totals include items omitted from the capped notice list', () => {
       kind: 'event',
       key: '出来事 ' + i,
       confirmed: [{ payload: { summary: '確定', evidence: '' } }],
-      suggestions: [{ payload: { summary: '候補', evidence: '' } }]
+      suggestions: [{ payload: { summary: '候補', evidence: '出典テキスト' } }]
     });
   }
   // 160 fact records stay within the owner API's 200-record cap:
