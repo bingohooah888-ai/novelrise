@@ -503,13 +503,25 @@
         button.disabled = true;
         setStatus('AI利用申告を保存しています...');
         try {
+          const selectedUsage = select.value === 'true';
           await editorRequest({
             action: 'set-ai-usage',
             novelId: Number(episode.novel_id),
-            value: select.value === 'true'
+            value: selectedUsage
           });
-          await refresh();
-          setStatus('挿絵のAI利用申告を保存しました。挿絵を選択できます。');
+          // The declaration was committed even if the subsequent editor-list fails.
+          state.aiUsage = selectedUsage;
+          try {
+            await refresh();
+            setStatus('挿絵のAI利用申告を保存しました。挿絵を選択できます。');
+          } catch (refreshError) {
+            mountedState.retryPending = true;
+            console.error('episode illustration AI declaration refresh failed', {
+              status: Number.isInteger(Number(refreshError?.status))
+                ? Number(refreshError.status) : null
+            });
+            setStatus('AI利用申告は保存されました。一覧はパネルを開き直すと更新できます。');
+          }
         } catch (error) {
           console.error(error);
           setStatus('AI利用申告を保存できませんでした。');
@@ -523,17 +535,19 @@
     }
 
     function renderUpload() {
-      uploadBox.replaceChildren();
-      const file = document.createElement('input');
+      // Keep the same file input and alt field across redraws: replacing them
+      // after a failed request discards both the selected image and the text.
+      const file = uploadBox.querySelector('input[type="file"]') || document.createElement('input');
       file.type = 'file';
       file.accept = 'image/jpeg,image/png,image/webp';
       file.setAttribute('aria-label', '挿絵画像');
-      const alt = document.createElement('input');
+      const alt = uploadBox.querySelector('input[type="text"]') || document.createElement('input');
       alt.type = 'text';
       alt.maxLength = 500;
       alt.placeholder = '代替テキスト（任意・500文字まで）';
       alt.setAttribute('aria-label', '挿絵の代替テキスト');
-      const button = document.createElement('button');
+      const button = uploadBox.querySelector('button') || document.createElement('button');
+      const alreadyMounted = uploadBox.contains(button);
       button.type = 'button';
       button.textContent = '挿絵をアップロード';
 
@@ -543,7 +557,7 @@
       alt.disabled = busy || declarationMissing || limitReached;
       button.disabled = busy || declarationMissing || limitReached;
 
-      const note = document.createElement('p');
+      const note = uploadBox.querySelector('.episode-illustration-upload-note') || document.createElement('p');
       note.className = 'episode-illustration-upload-note';
       note.textContent = declarationMissing
         ? isOwner
@@ -553,6 +567,7 @@
           ? 'このエピソードは挿絵10枚の上限に達しています。'
           : 'JPEG・PNG・WebP／原本10MB以下／長辺4096px以下。配信用は長辺2000px以下のWebPへ最適化します。';
 
+      if (alreadyMounted) return;
       button.addEventListener('click', async () => {
         const selectedFile = file.files?.[0] || null;
         if (busy || !selectedFile) {
@@ -688,7 +703,10 @@
         const insert = document.createElement('button');
         insert.type = 'button';
         insert.textContent = 'カーソル位置へ挿入';
+        insert.disabled = busy;
         insert.addEventListener('click', () => {
+          // Delete and insert must be serialized, including stale-button clicks.
+          if (busy) return;
           insertMarker(textarea, asset.marker);
           renderAssets();
           setStatus('本文へ挿絵を配置しました。保存すると反映されます。');
@@ -698,17 +716,20 @@
         saveAlt.textContent = '代替テキストを保存';
         saveAlt.addEventListener('click', async () => {
           if (busy) return;
+          const submittedAlt = alt.value;
           busy = true;
           saveAlt.disabled = true;
           try {
             await editorRequest({
               action: 'update-alt',
               illustrationId: asset.id,
-              altText: alt.value
+              altText: submittedAlt
             });
-            asset.altText = alt.value;
-            image.alt = alt.value;
-            setStatus('代替テキストを保存しました。');
+            asset.altText = submittedAlt;
+            image.alt = submittedAlt;
+            setStatus(alt.value === submittedAlt
+              ? '代替テキストを保存しました。'
+              : '送信時の代替テキストを保存しました。その後の変更は未保存です。もう一度保存してください。');
           } catch (error) {
             console.error(error);
             setStatus('代替テキストを保存できませんでした。');
@@ -751,8 +772,20 @@
               novelId: Number(episode.novel_id),
               illustrationId: asset.id
             });
-            await refresh();
-            setStatus('挿絵を削除しました。10枚上限の枠が1つ戻りました。');
+            // Delete was committed. Remove the stale asset immediately, even
+            // if the next list request fails; reopen can retry the refresh.
+            state.assets = state.assets.filter((item) => item.id !== asset.id);
+            try {
+              await refresh();
+              setStatus('挿絵を削除しました。10枚上限の枠が1つ戻りました。');
+            } catch (refreshError) {
+              mountedState.retryPending = true;
+              console.error('episode illustration deletion list refresh failed', {
+                status: Number.isInteger(Number(refreshError?.status))
+                  ? Number(refreshError.status) : null
+              });
+              setStatus('挿絵は削除されました。一覧はパネルを開き直すと更新できます。');
+            }
           } catch (error) {
             console.error(error);
             if (
