@@ -80,9 +80,17 @@ function harness(statuses = []) {
   const textarea = document.createElement('textarea');
   textarea.value = '本文';
   const episode = { id: 123, novel_id: 1, status: 'draft', fromNewPost: true };
+  const client = {
+    auth: {
+      getSession: async () => ({
+        data: { session: { access_token: 'fake' } },
+        error: null
+      })
+    }
+  };
   const mount = () =>
     window.NovelightEpisodeIllustrations.mountEditor({
-      client: {},
+      client,
       root,
       episode,
       session: { access_token: 'fake' },
