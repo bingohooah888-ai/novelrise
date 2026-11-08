@@ -168,28 +168,28 @@ jobs:
       issues: read
       pull-requests: read
     env:
-      GH_TOKEN: \${{ github.token }}
-      APPROVED_MAIN_SHA: \${{ needs.admit.outputs.main_sha }}
-      EXPECTED_REVISION: \${{ needs.admit.outputs.candidate_sha }}
-      STAGING_PREVIEW_REF: \${{ needs.admit.outputs.preview_ref }}
-      OWNER_APPROVED_PREVIEW_URL: \${{ needs.admit.outputs.preview_url }}
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      EXPECTED_REVISION: ${{ needs.admit.outputs.candidate_sha }}
+      STAGING_PREVIEW_REF: ${{ needs.admit.outputs.preview_ref }}
+      OWNER_APPROVED_PREVIEW_URL: ${{ needs.admit.outputs.preview_url }}
       STAGING_TRIGGER: approval_comment
       STAGING_DELETE_FREE_MODE: 'true'
       STAGING_FREE_APPROVAL_SCOPE: account-deletion-free-proof
       STAGING_FREE_PROOF_APPROVED: 'true'
-      STAGING_E2E_READY: \${{ vars.STAGING_E2E_READY }}
-      STAGING_EXPECTED_SUPABASE_URL: \${{ vars.STAGING_SUPABASE_URL }}
-      STAGING_EXPECTED_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
-      STAGING_SUPABASE_SECRET_KEY: \${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
-      STAGING_SUPABASE_PUBLISHABLE_KEY: \${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
-      STRIPE_TEST_SECRET_KEY: \${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      STAGING_E2E_READY: ${{ vars.STAGING_E2E_READY }}
+      STAGING_EXPECTED_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_EXPECTED_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
       STAGING_REQUIRE_WRITE_CONFIG: 'true'
-      VERCEL_AUTOMATION_BYPASS_SECRET: \${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      VERCEL_API_TOKEN: \${{ secrets.VERCEL_API_TOKEN }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: \${{ needs.admit.outputs.main_sha }}
+          ref: ${{ needs.admit.outputs.main_sha }}
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
