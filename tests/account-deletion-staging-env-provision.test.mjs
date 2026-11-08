@@ -599,21 +599,27 @@ test('Free environment approval retains exact OWNER, current main, seven blobs a
     approvalMode: 'free'
   });
   const reused = structuredClone(fixture);
-  reused.ledgerPages = [[{
-    body: 'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_ENV_CONSUMED ' +
-      JSON.stringify({
-        requestCommentId: '1234',
-        mainSha: MAIN,
-        candidateSha: HEAD,
-        runId: '5',
-        result: 'failure'
-      })
-  }]];
+  reused.ledgerPages = [
+    [
+      {
+        body:
+          'NOVELIGHT_STAGING_ACCOUNT_DELETE_FREE_ENV_CONSUMED ' +
+          JSON.stringify({
+            requestCommentId: '1234',
+            mainSha: MAIN,
+            candidateSha: HEAD,
+            runId: '5',
+            result: 'failure'
+          })
+      }
+    ]
+  ];
   assert.throws(() => admitAccountEnvProvision(reused), DENY);
 
   const wrong = structuredClone(fixture);
   wrong.event.comment.body =
-    prefix + JSON.stringify({
+    prefix +
+    JSON.stringify({
       scope: 'account-deletion-env-provision',
       mainSha: MAIN,
       candidateSha: HEAD,
@@ -629,7 +635,10 @@ test('Free environment only accepts four preexisting and six final scoped keys',
     6
   );
   assert.throws(() => assertProvisioningInventory(six, 'after'), FAIL);
-  assert.throws(() => assertProvisioningInventory(final, 'after', 'free'), FAIL);
+  assert.throws(
+    () => assertProvisioningInventory(final, 'after', 'free'),
+    FAIL
+  );
   assert.throws(
     () => assertProvisioningInventory(initial, 'after', 'free'),
     FAIL
@@ -667,9 +676,12 @@ test('Free provisioning writes two isolated TEST secrets without Stripe API or p
           request.map((entry) => entry.key),
           ['SUPABASE_SECRET_KEY', 'STRIPE_SECRET_KEY']
         );
-        assert.ok(request.every((entry) =>
-          entry.target.join() === 'preview' && entry.gitBranch === REF
-        ));
+        assert.ok(
+          request.every(
+            (entry) =>
+              entry.target.join() === 'preview' && entry.gitBranch === REF
+          )
+        );
         remote = six;
       }
       return { ok: true, json: async () => ({ envs: remote }) };
