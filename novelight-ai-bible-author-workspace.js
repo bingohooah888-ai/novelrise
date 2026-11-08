@@ -385,7 +385,9 @@
     const reviewedProgress = create(
       'p',
       'novelight-ai-workspace-reviewed-progress',
-      'この画面だけの確認済み：0/' + review.checks.length + '件（保存されません）'
+      'この画面だけの確認済み：0/' +
+        review.checks.length +
+        '件（保存されません）'
     );
     reviewedProgress.setAttribute('aria-live', 'polite');
     reviewSummary.appendChild(reviewedProgress);
@@ -410,7 +412,9 @@
           : 'この画面で確認済みにする';
         reviewedProgress.textContent =
           'この画面だけの確認済み：' +
-          reviewedCount + '/' + review.checks.length +
+          reviewedCount +
+          '/' +
+          review.checks.length +
           '件（保存されません）';
       });
       row.appendChild(reviewedButton);
