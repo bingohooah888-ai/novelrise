@@ -14,6 +14,8 @@ import {
   inspectConnectionRoute,
   fetchManagementEvidence,
   validateCatalogReadOnlyJson,
+  extractVerifiedPsqlClientTlsJson,
+  validateStagingTlsBoundary,
   SAFE_IDENTITY_SQL,
   classifyPsqlFailure,
   OFFICIAL_SUPABASE_CA_DER_SHA256,
@@ -876,5 +878,106 @@ test('workflow remains OWNER manual-only Staging; unchanged by 3.9A', () => {
   assert.doesNotMatch(
     file,
     /\b(?:pg_dump|pg_restore|supabase db push|apply_migration|psql -c)\b/u
+  );
+});
+
+test('libpq TLS proof is distinct from PostgreSQL backend TLS', () => {
+  const json = JSON.stringify({
+    database: 'postgres',
+    dbRole: 'postgres',
+    postgresMajor: 17,
+    ssl: true,
+    tables: EXPECTED_TABLES.length,
+    cronExtension: false,
+    rankCronFunction: false
+  });
+  const sample = [
+    'You are connected to database postgres as user postgres on host SYNTHETIC_HOST at port 5432.',
+    'SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, compression: off)',
+    json
+  ].join('\n');
+  assert.equal(extractVerifiedPsqlClientTlsJson(sample), json);
+  assert.equal(
+    extractVerifiedPsqlClientTlsJson(sample.replace('TLSv1.3', 'TLSv1.2')),
+    json
+  );
+  for (const invalid of [
+    sample.replace('SSL connection (', 'No SSL connection ('),
+    sample.replace('TLSv1.3', 'TLSv1.1'),
+    sample.replace('compression: off', 'compression: on'),
+    sample.replace('cipher: TLS_AES_256_GCM_SHA384', 'cipher: '),
+    sample.replace('SSL connection (', 'ssl connection ('),
+    sample + '\nSYNTHETIC_SECRET',
+    sample.replace(json, 'SYNTHETIC_SECRET'),
+    sample.replace(
+      json,
+      'SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, compression: off)\n' +
+        json
+    ),
+    null,
+    ''
+  ]) {
+    assert.throws(
+      () => extractVerifiedPsqlClientTlsJson(invalid),
+      (error) => {
+        assert.equal(error.safeCode, 'CLIENT_TLS_EVIDENCE_INVALID');
+        assert.doesNotMatch(error.message, /SYNTHETIC_SECRET|SYNTHETIC_HOST/u);
+        return true;
+      }
+    );
+  }
+});
+
+test('session-pooler upstream SSL false remains NO-GO after client TLS validation', () => {
+  const valid = {
+    database: 'postgres',
+    dbRole: 'postgres',
+    postgresMajor: 17,
+    ssl: true,
+    tables: EXPECTED_TABLES.length,
+    cronExtension: true,
+    rankCronFunction: false
+  };
+  assert.equal(
+    validateStagingTlsBoundary(valid, 'session-pooler').status,
+    'NO_GO_SYNTHETIC_CATALOG_SHAPE_ONLY'
+  );
+  assert.throws(
+    () =>
+      validateStagingTlsBoundary({ ...valid, ssl: false }, 'session-pooler'),
+    (error) => {
+      assert.equal(error.safeCode, 'POOLER_UPSTREAM_SSL_UNVERIFIED');
+      return true;
+    }
+  );
+  assert.throws(
+    () => validateStagingTlsBoundary({ ...valid, ssl: false }, 'direct'),
+    (error) => {
+      assert.equal(error.safeCode, 'SERVER_IDENTITY_OR_SCHEMA_INVALID');
+      assert.deepEqual(error.safeDiagnostics, ['SSL_ACTIVE']);
+      return true;
+    }
+  );
+});
+
+test('live runner requires pinned CA, verify-full, psql conninfo TLS, and no SSL bypass', () => {
+  const source = readFileSync(
+    new URL(
+      '../scripts/scout-point10x-staging-identity-readonly.mjs',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(source, /PGSSLMODE: 'verify-full'/u);
+  assert.match(source, /PGSSLROOTCERT: caPath/u);
+  assert.match(source, /extractVerifiedPsqlClientTlsJson\(child\.stdout\)/u);
+  assert.match(
+    source,
+    /validateStagingTlsBoundary\(result, route\.connectionMode\)/u
+  );
+  assert.match(source, /conninfo/u);
+  assert.match(
+    source,
+    /PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=4000'/u
   );
 });
