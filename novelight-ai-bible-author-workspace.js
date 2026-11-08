@@ -96,7 +96,9 @@
     for (const group of payload.facts) {
       const kind = bounded(group?.kind, 32);
       const key = bounded(group?.key, 120);
-      const section = FACT_SECTIONS[kind];
+      const section = Object.hasOwn(FACT_SECTIONS, kind)
+        ? FACT_SECTIONS[kind]
+        : null;
       const confirmed = group?.confirmed ?? [];
       const suggestions = group?.suggestions ?? [];
       if (
@@ -369,7 +371,7 @@
         'AI候補：' +
           review.pending +
           '件・要確認項目：' +
-          review.checks.length +
+          (review.checks.length + review.remaining) +
           '件'
       )
     );
