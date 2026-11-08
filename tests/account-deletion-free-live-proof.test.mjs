@@ -32,7 +32,12 @@ function environment(overrides = {}) {
   };
 }
 
-function fakeClients({ billing = false, wrongJwt = false, http = 200, residue = false } = {}) {
+function fakeClients({
+  billing = false,
+  wrongJwt = false,
+  http = 200,
+  residue = false
+} = {}) {
   const state = {
     userExists: false,
     profileExists: false,
@@ -68,7 +73,10 @@ function fakeClients({ billing = false, wrongJwt = false, http = 200, residue = 
           state.checkedIds.push(userId);
           return state.userExists
             ? { data: { user: { id: ID, email: state.email } }, error: null }
-            : { data: { user: null }, error: { status: 404, code: 'user_not_found' } };
+            : {
+                data: { user: null },
+                error: { status: 404, code: 'user_not_found' }
+              };
         },
         async deleteUser(userId) {
           assert.equal(userId, ID);
@@ -87,12 +95,19 @@ function fakeClients({ billing = false, wrongJwt = false, http = 200, residue = 
               assert.equal(userId, ID);
               if (table === 'profiles') {
                 assert.equal(column, 'id');
-                return { maybeSingle: async () => ({ data: profile(), error: null }) };
+                return {
+                  maybeSingle: async () => ({ data: profile(), error: null })
+                };
               }
               assert.ok(options.count === 'exact' && options.head === true);
-              assert.ok([
-                'novels', 'episodes', 'episode_illustrations', 'novel_custom_covers'
-              ].includes(table));
+              assert.ok(
+                [
+                  'novels',
+                  'episodes',
+                  'episode_illustrations',
+                  'novel_custom_covers'
+                ].includes(table)
+              );
               const expectedColumn = {
                 novels: 'user_id',
                 episodes: 'user_id',
@@ -144,7 +159,10 @@ function fakeClients({ billing = false, wrongJwt = false, http = 200, residue = 
     assert.equal(url, PREVIEW + '/api/delete-account');
     assert.equal(options.method, 'POST');
     assert.equal(options.headers.authorization, 'Bearer mocked-staging-jwt');
-    assert.equal(options.headers['x-vercel-protection-bypass'], 'fake-bypass-for-test');
+    assert.equal(
+      options.headers['x-vercel-protection-bypass'],
+      'fake-bypass-for-test'
+    );
     assert.deepEqual(JSON.parse(options.body), {
       confirmation: 'アカウントを削除'
     });
@@ -177,7 +195,9 @@ test('Free-only proof context rejects Production URLs, wrong scopes and missing 
     { STAGING_SUPABASE_SECRET_KEY: '' },
     { STAGING_E2E_READY: 'false' },
     { STRIPE_TEST_SECRET_KEY: 'sk_live_' + 'x'.repeat(24) },
-    { STAGING_EXPECTED_SUPABASE_URL: 'https://fiepaguycecrredwrcwx.supabase.co' },
+    {
+      STAGING_EXPECTED_SUPABASE_URL: 'https://fiepaguycecrredwrcwx.supabase.co'
+    },
     { EXPECTED_REVISION: 'a'.repeat(40) }
   ]) {
     assert.throws(
@@ -189,7 +209,13 @@ test('Free-only proof context rejects Production URLs, wrong scopes and missing 
 });
 
 test('Free-only fixture denies any preexisting Stripe billing ID, avatar or content', () => {
-  const clean = { novels: 0, episodes: 0, illustrations: 0, covers: 0, avatars: 0 };
+  const clean = {
+    novels: 0,
+    episodes: 0,
+    illustrations: 0,
+    covers: 0,
+    avatars: 0
+  };
   const profile = {
     id: ID,
     avatar_path: null,
@@ -203,7 +229,9 @@ test('Free-only fixture denies any preexisting Stripe billing ID, avatar or cont
     { avatar_path: ID + '/avatar.webp' },
     { id: 'another-user' }
   ]) {
-    assert.throws(() => assertFreeAccount({ ...profile, ...update }, ID, clean));
+    assert.throws(() =>
+      assertFreeAccount({ ...profile, ...update }, ID, clean)
+    );
   }
   assert.throws(() => assertFreeAccount(profile, ID, { ...clean, novels: 1 }));
 });
