@@ -447,3 +447,40 @@ test('author can mark local review items without writing or accepting facts', ()
   assert.equal(payload.facts[0].suggestions.length, 1);
   assert.equal(payload.characters[1].name, '蒼');
 });
+
+test('malformed fact records fail closed without reading stale author data', () => {
+  const target = new FakeElement('div', doc);
+  for (const record of [null, undefined, [], { payload: null }, { payload: [] }]) {
+    const good = fixture();
+    assert.equal(render({ target, payload: good }), true);
+    assert.match(target.textContent, /非公開の国の歴史/);
+    const malformed = fixture();
+    malformed.facts[0].suggestions = [record];
+    assert.equal(toSections(malformed), null);
+    assert.equal(render({ target, payload: malformed }), false);
+    assert.equal(target.hidden, true);
+    assert.equal(target.textContent, '');
+  }
+});
+
+test('legacy fact objects lacking optional excerpts do not throw during review checklist', () => {
+  const payload = fixture();
+  payload.facts[0].suggestions[0].payload = {};
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  assert.match(target.textContent, /AI候補の根拠未登録/);
+  assert.equal(localReviewSummary(payload).pending, 1);
+});
+
+test('preview refuses excessive records and incomplete grouped API fields', () => {
+  const payload = fixture();
+  const item = { sourceEpisodeId: 7, payload: { summary: 'メモ', evidence: '' } };
+  payload.facts[1].confirmed = Array.from({ length: 201 }, () => item);
+  assert.equal(toSections(payload), null);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), false);
+  assert.equal(target.hidden, true);
+  payload.facts[1].confirmed = [item];
+  delete payload.facts[1].suggestions;
+  assert.equal(toSections(payload), null);
+});
