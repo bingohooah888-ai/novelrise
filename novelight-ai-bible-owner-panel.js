@@ -129,6 +129,15 @@
   }
 
   function render({ target, payload }) {
+    // Reuse the author-ready offline UI only on an already authorized
+    // preview surface. The server's existing admin-only gate is unchanged.
+    const workspace = root.NovelightAiBibleAuthorWorkspace;
+    if (
+      typeof workspace?.render === 'function' &&
+      typeof target?.appendChild === 'function'
+    ) {
+      return workspace.render({ target, payload });
+    }
     return renderText(target, previewText(payload));
   }
 
