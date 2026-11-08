@@ -15,7 +15,7 @@ export const POINT10X_STAGE38 = Object.freeze({
     '.github/workflows/scout-point10x-staging-identity-readonly.yml',
   workflowBlobSha: 'e8a75ba201311f08d72c5ef61243361d8512211f',
   diagnosticPath: 'scripts/scout-point10x-staging-identity-readonly.mjs',
-  diagnosticBlobSha: '295108042bbe9100146401d41e2531468560c989'
+  diagnosticBlobSha: '612d0418f324233cd7e0e2918929add8cd2f8574'
 });
 const C = POINT10X_STAGE38;
 const base = '/repos/' + C.repo;
