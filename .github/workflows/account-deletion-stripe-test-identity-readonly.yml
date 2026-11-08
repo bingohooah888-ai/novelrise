@@ -1,0 +1,157 @@
+name: Account #82 Stripe TEST Sandbox Identity Readonly (OWNER one-shot)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Verify OWNER one-shot read-only approval and reviewed #2785 SHA
+    if: >-
+      github.event.issue.pull_request == null &&
+      github.event.issue.number == 188 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.locked == false &&
+      github.event.issue.title == '[Staging Approval Control] Preview / Staging cost gate' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STRIPE_SANDBOX_READONLY_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: novelight-stripe-sandbox-identity-readonly-once
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.admission.outputs.main_sha }}
+      candidate_sha: ${{ steps.admission.outputs.candidate_sha }}
+      request_id: ${{ steps.admission.outputs.request_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Verify fresh main and immutable seven-file candidate without secrets
+        id: admission
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/188" > /tmp/stripe-issue.json
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/stripe-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2785" > /tmp/stripe-pr.json
+          main="$(jq -er '.object.sha' /tmp/stripe-main.json)"
+          head="$(jq -er '.head.sha' /tmp/stripe-pr.json)"
+          test "$(git rev-parse HEAD)" = "$main"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/stripe-compare.json
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/issues/188/comments?per_page=100" \
+            > /tmp/stripe-ledger.json
+          node scripts/account-deletion-stripe-test-diagnostic-admission.mjs \
+            "$GITHUB_EVENT_PATH" /tmp/stripe-issue.json /tmp/stripe-main.json \
+            /tmp/stripe-pr.json /tmp/stripe-compare.json /tmp/stripe-ledger.json \
+            "$main" > /tmp/stripe-grant.json
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/stripe-grant.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/stripe-grant.json)"
+            echo "request_id=$(jq -er '.approvalCommentId' /tmp/stripe-grant.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Claim single-use grant before accessing protected Staging secrets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.admission.outputs.main_sha }}
+          HEAD: ${{ steps.admission.outputs.candidate_sha }}
+          REQUEST_ID: ${{ steps.admission.outputs.request_id }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$HEAD"
+          claim="$(jq -cn \
+            --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN" \
+            --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" \
+            -f body="NOVELIGHT_STRIPE_SANDBOX_READONLY_CLAIMED $claim" > /dev/null
+
+  inspect:
+    name: Read-only Stripe account match and matching price counts
+    needs: admit
+    if: needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit.outputs.main_sha }}
+      EXPECTED_FIX_SHA: ${{ needs.admit.outputs.candidate_sha }}
+      STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      STRIPE_TEST_EXPECTED_ACCOUNT_SHA256: ${{ vars.STRIPE_TEST_EXPECTED_ACCOUNT_SHA256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Recheck exact source and protected configuration before Stripe reads
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.state')" = open
+          test "$(gh api "repos/$GITHUB_REPOSITORY/issues/188" --jq '.locked')" = false
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.head.sha')" = "$EXPECTED_FIX_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/2785" --jq '.base.sha')" = "$APPROVED_MAIN_SHA"
+          test -n "$STRIPE_TEST_SECRET_KEY"
+          test -n "$STRIPE_TEST_EXPECTED_ACCOUNT_SHA256"
+      - name: Read only GET account and (if matched) GET prices; output sanitized results
+        run: node scripts/account-deletion-stripe-test-identity-readonly.mjs
+
+  consume:
+    name: Consume one-shot grant on success or failure
+    needs: [admit, inspect]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Write a redacted ledger status, never duplicate the diagnostic
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          HEAD: ${{ needs.admit.outputs.candidate_sha }}
+          REQUEST_ID: ${{ needs.admit.outputs.request_id }}
+          RESULT: ${{ needs.inspect.result }}
+        run: |
+          set -euo pipefail
+          ledger="$(jq -cn \
+            --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN" \
+            --arg candidateSha "$HEAD" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/188/comments" \
+            -f body="NOVELIGHT_STRIPE_SANDBOX_READONLY_CONSUMED $ledger" > /dev/null
