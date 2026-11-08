@@ -12,7 +12,7 @@
 ## システム診断
 - フロントエンドは `getSession()` で有効なアクセストークンを取得し、削除APIに送る。サーバーが必ず `auth.getUser(token)` を使って所有者を検証する。
 - APIのエラー記録は `requestId` / `stage` / 正規化済み `code` / 非機密HTTP `status` のみ。error.message、email、user ID、Storage pathなどは出力しない。
-- ステージ：`collect_targets`, `cancel_billing`, `storage_avatars`, `storage_illustrations`, `storage_thumbnails`, `db_episode_illustrations`, `db_novels`, `db_episodes`, `auth_user`。
+- ステージ：`collect_targets`, `cancel_billing`, `storage_avatars`, `storage_illustrations`, `storage_thumbnails`, `storage_custom_covers`, `db_episode_illustrations`, `db_novels`, `db_episodes`, `auth_user`。
 - `401` はセッション切れ、`400` は確認文言不一致、`500` はサーバー処理失敗として区別する。通信エラーやJavaScriptエラーでAPIに到達しないケースも確認する。
 
 ## 途中失敗への対応（必須）

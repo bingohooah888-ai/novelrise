@@ -69,7 +69,7 @@ async function cancelStripeSubscriptions(stripe, profile) {
 }
 
 async function collectDeletionTargets(supabase, userId) {
-  const [profileResult, novelsResult, illustrationsResult] = await Promise.all([
+  const [profileResult, novelsResult, illustrationsResult, coversResult] = await Promise.all([
     supabase
       .from('profiles')
       .select('avatar_path,stripe_customer_id,stripe_subscription_id')
@@ -79,10 +79,11 @@ async function collectDeletionTargets(supabase, userId) {
     supabase
       .from('episode_illustrations')
       .select('storage_path')
-      .eq('owner_user_id', userId)
+      .eq('owner_user_id', userId),
+    supabase.from('novel_custom_covers').select('storage_path').eq('user_id', userId)
   ]);
 
-  for (const result of [profileResult, novelsResult, illustrationsResult]) {
+  for (const result of [profileResult, novelsResult, illustrationsResult, coversResult]) {
     if (result.error) throw result.error;
   }
 
@@ -101,6 +102,7 @@ async function collectDeletionTargets(supabase, userId) {
     profile: profileResult.data || null,
     avatarPaths: uniquePaths([profileResult.data], 'avatar_path'),
     illustrationPaths: uniquePaths(illustrationsResult.data, 'storage_path'),
+    coverPaths: uniquePaths(coversResult.data, 'storage_path'),
     renderPaths: uniquePaths(renderRows, 'render_storage_path')
   };
 }
@@ -173,6 +175,12 @@ export function createDeleteAccountHandler({ stripe, supabase }) {
         supabase,
         'novel-thumbnail-renders',
         targets.renderPaths
+      );
+      stage = 'storage_custom_covers';
+      await removeStoragePaths(
+        supabase,
+        'novel-custom-covers',
+        targets.coverPaths
       );
       await deleteUserData(supabase, user.id, (step) => {
         stage = step;

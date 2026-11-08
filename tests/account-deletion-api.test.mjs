@@ -90,7 +90,8 @@ function dependencies({
   authenticated = true,
   stripeListError = null,
   storageErrorBucket = null,
-  authDeleteError = null
+  authDeleteError = null,
+  freeReader = false
 } = {}) {
   const calls = {
     authTokens: [],
@@ -120,6 +121,14 @@ function dependencies({
       ],
       error: null
     },
+    novel_custom_covers: {
+      data: [
+        { storage_path: '10/custom.webp' },
+        { storage_path: '10/custom.webp' },
+        { storage_path: '11/custom.webp' }
+      ],
+      error: null
+    },
     novel_thumbnail_compositions: {
       data: [
         { render_storage_path: '10/render.webp' },
@@ -128,6 +137,13 @@ function dependencies({
       error: null
     }
   };
+
+  if (freeReader) {
+    tableResults.profiles.data = null;
+    tableResults.novels.data = [];
+    tableResults.episode_illustrations.data = [];
+    tableResults.novel_custom_covers.data = [];
+  }
 
   const supabase = {
     auth: {
@@ -254,7 +270,8 @@ test('successful account deletion stops recurring billing, removes storage, then
     {
       bucket: 'novel-thumbnail-renders',
       paths: ['10/render.webp', '11/render.webp']
-    }
+    },
+    { bucket: 'novel-custom-covers', paths: ['10/custom.webp', '11/custom.webp'] }
   ]);
   assert.deepEqual(calls.authDeletes, ['verified-user']);
 
@@ -266,6 +283,38 @@ test('successful account deletion stops recurring billing, removes storage, then
     'novels',
     'episodes'
   ]);
+});
+
+test('free reader deletion succeeds without Stripe API or Storage calls', async () => {
+  const { handler, calls } = dependencies({ freeReader: true });
+  const response = responseState();
+
+  await handler(request(), response.res);
+
+  assert.equal(response.state.statusCode, 200);
+  assert.deepEqual(calls.stripeList, []);
+  assert.deepEqual(calls.stripeRetrieve, []);
+  assert.deepEqual(calls.stripeCancel, []);
+  assert.deepEqual(calls.storage, []);
+  assert.deepEqual(calls.authDeletes, ['verified-user']);
+});
+
+test('custom cover cleanup failure prevents database and Auth deletion', async () => {
+  const { handler, calls } = dependencies({
+    storageErrorBucket: 'novel-custom-covers'
+  });
+  const response = responseState();
+
+  await handler(request(), response.res);
+
+  assert.equal(response.state.statusCode, 500);
+  assert.equal(response.state.body.error, 'ACCOUNT_DELETE_FAILED');
+  assert.deepEqual(calls.stripeCancel, ['sub_active', 'sub_profile']);
+  assert.deepEqual(
+    calls.queries.filter((call) => call.type === 'delete'),
+    []
+  );
+  assert.deepEqual(calls.authDeletes, []);
 });
 
 test('Stripe cancellation failure blocks all destructive account deletion work', async () => {
