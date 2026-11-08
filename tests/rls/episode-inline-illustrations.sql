@@ -236,5 +236,85 @@ begin
 end
 $$;
 
+-- Exercise the database guard as a privileged internal draft-write,
+-- independently of editor RLS (the UI permissions are covered above).
+reset role;
+
+do $$
+declare
+  v_id uuid := current_setting('novelight.test.illustration_id')::uuid;
+  v_marker text := '[[NOVELIGHT_ILLUSTRATION:' || v_id::text || ']]';
+  v_original_content text;
+  v_updated_rows integer;
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_trigger
+     where tgrelid = 'public.episodes'::regclass
+       and tgname = 'novelight_validate_episode_illustration_refs'
+       and not tgisinternal
+  ) then
+    raise notice 'Skip latest reference guard in historical schema rollback fixture';
+    return;
+  end if;
+
+  -- Legacy illustration fixtures include a placeholder UUID prior to upload.
+  -- Remove that placeholder before checking the final, actual registered asset.
+  update public.episodes
+     set content = pg_catalog.replace(
+       content,
+       '[[NOVELIGHT_ILLUSTRATION:83000000-0000-4000-8000-000000000101]]',
+       ''
+     )
+   where id = 830001;
+  set constraints public.novelight_validate_episode_illustration_refs immediate;
+
+  select content into v_original_content
+    from public.episodes where id = 830001;
+
+  if pg_catalog.strpos(v_original_content, v_marker) = 0 then
+    raise exception 'Registered illustration marker was not restored to the body';
+  end if;
+
+  -- Missing assets must be blocked on direct episode updates.
+  begin
+    set constraints public.novelight_validate_episode_illustration_refs deferred;
+    update public.episodes
+       set content = v_original_content || E'\n'
+            || '[[NOVELIGHT_ILLUSTRATION:83000000-0000-4000-8000-000000000999]]'
+     where id = 830001;
+    get diagnostics v_updated_rows = row_count;
+    if v_updated_rows <> 1 then
+      raise exception 'Fixture error: direct episode update affected % rows', v_updated_rows;
+    end if;
+    set constraints public.novelight_validate_episode_illustration_refs immediate;
+    raise exception 'Missing illustration reference unexpectedly saved';
+  exception when foreign_key_violation then null;
+  end;
+
+  -- Remove the reference, delete the asset, then verify re-insertion fails.
+  update public.episodes
+     set content = pg_catalog.replace(content, v_marker, '')
+   where id = 830001;
+  if not public.novelight_delete_episode_illustration(
+    830001, 830001, v_id,
+    '83000000-0000-0000-0000-000000000001'
+  ) then
+    raise exception 'Expected logical deletion to succeed after removal';
+  end if;
+
+  begin
+    set constraints public.novelight_validate_episode_illustration_refs deferred;
+    update public.episodes set content = v_original_content where id = 830001;
+    get diagnostics v_updated_rows = row_count;
+    if v_updated_rows <> 1 then
+      raise exception 'Fixture error: deleted marker test updated % rows', v_updated_rows;
+    end if;
+    set constraints public.novelight_validate_episode_illustration_refs immediate;
+    raise exception 'Deleted illustration reference unexpectedly saved';
+  exception when foreign_key_violation then null;
+  end;
+end
+$$;
+
 reset role;
 rollback;
