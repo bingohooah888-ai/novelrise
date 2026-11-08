@@ -89,7 +89,7 @@ function fakeClients({
     },
     from(table) {
       return {
-        select(_columns, options = {}) {
+        select(columns, options = {}) {
           return {
             eq(column, userId) {
               assert.equal(userId, ID);
@@ -115,6 +115,11 @@ function fakeClients({
                 novel_custom_covers: 'user_id'
               }[table];
               assert.equal(column, expectedColumn);
+              // The covers table has no id column; catch bad projections here.
+              assert.equal(
+                columns,
+                table === 'novel_custom_covers' ? 'user_id' : 'id'
+              );
               return Promise.resolve({ count: 0, data: null, error: null });
             }
           };
