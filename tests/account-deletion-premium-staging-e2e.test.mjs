@@ -312,6 +312,18 @@ test('six Preview secrets must be branch-specific and equal to reviewed Staging 
 test('only matching SHA and isolated runtime with Stripe TEST and Staging Supabase accepted', () => {
   const e = env();
   assert.equal(validatePremiumPreviewFacts(facts(e), e).verified, true);
+  // Existing Preview env price IDs can be present. Neither is used by this
+  // test; only the verified Premium TEST lookup key can select a price.
+  for (const [standard, premium] of [
+    [true, true],
+    [true, false],
+    [false, true]
+  ]) {
+    const observed = facts(e);
+    observed.stripe.standardPricePresent = standard;
+    observed.stripe.premiumPricePresent = premium;
+    assert.equal(validatePremiumPreviewFacts(observed, e).verified, true);
+  }
   const changes = [
     (x) => {
       x.vercelEnv = 'production';
@@ -332,7 +344,10 @@ test('only matching SHA and isolated runtime with Stripe TEST and Staging Supaba
       x.stripe.secretKeyMode = 'live';
     },
     (x) => {
-      x.stripe.standardPricePresent = true;
+      x.stripe.standardPricePresent = 'yes';
+    },
+    (x) => {
+      x.stripe.premiumPricePresent = null;
     }
   ];
   for (const change of changes) {
@@ -806,8 +821,12 @@ test('Preview verified only after environment facts AND exact TEST account proof
     return {
       ok: true,
       json: async () => {
-        if (parsed.pathname === '/api/staging-environment-facts')
-          return facts(e);
+        if (parsed.pathname === '/api/staging-environment-facts') {
+          const observed = facts(e);
+          observed.stripe.standardPricePresent = true;
+          observed.stripe.premiumPricePresent = true;
+          return observed;
+        }
         if (parsed.pathname === '/api/staging-premium-account-proof') {
           assert.equal(
             options.headers['x-novelight-expected-account-sha256'],
@@ -838,4 +857,86 @@ test('Preview verified only after environment facts AND exact TEST account proof
     }),
     /PREMIUM_STAGING_TARGET_DENIED/u
   );
+});
+
+test('existing Preview price ID flags are informational, never a price selection source', () => {
+  const e = env({
+    STRIPE_STANDARD_PRICE_ID: 'price_untrusted_standard',
+    STRIPE_PREMIUM_PRICE_ID: 'price_untrusted_premium'
+  });
+  const liveFacts = facts(e);
+  liveFacts.stripe.standardPricePresent = true;
+  liveFacts.stripe.premiumPricePresent = true;
+  assert.equal(validatePremiumPreviewFacts(liveFacts, e).verified, true);
+  // No deletion or fixture code may consume the legacy price ID values.
+  for (const relative of [
+    '../scripts/account-deletion-premium-staging-live-proof.mjs',
+    '../api/delete-account.js',
+    '../api/_lib/delete-account.js'
+  ]) {
+    const source = readFileSync(
+      new globalThis.URL(relative, import.meta.url),
+      'utf8'
+    );
+    assert.doesNotMatch(source, /\bSTRIPE_(?:STANDARD|PREMIUM)_PRICE_ID\b/u);
+  }
+  const fixtureCode = readFileSync(
+    new globalThis.URL(
+      '../scripts/account-deletion-premium-staging-live-proof.mjs',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(fixtureCode, /lookup_keys:\s*\[LOOKUP\]/u);
+  assert.match(fixtureCode, /price\.unit_amount !== PRICE_JPY/u);
+  assert.match(fixtureCode, /price\.livemode !== false/u);
+});
+
+test('protected Preview HTTP rejection is safely classified before touching Stripe proof', async () => {
+  const requests = [];
+  await assert.rejects(
+    verifyPremiumPreview({
+      env: env(),
+      fetchImpl: async (url) => {
+        requests.push(new globalThis.URL(url).pathname);
+        return {
+          ok: false,
+          status: 403,
+          json: async () => ({ secret: 'must_not_be_logged' })
+        };
+      }
+    }),
+    /PREMIUM_STAGING_TARGET_DENIED_FACTS_HTTP/u
+  );
+  assert.deepEqual(requests, ['/api/staging-environment-facts']);
+});
+
+test('account fingerprint endpoint HTTP rejection produces distinct safe diagnostic', async () => {
+  const requests = [];
+  const e = env();
+  await assert.rejects(
+    verifyPremiumPreview({
+      env: e,
+      fetchImpl: async (url) => {
+        const path = new globalThis.URL(url).pathname;
+        requests.push(path);
+        if (path === '/api/staging-environment-facts') {
+          const observed = facts(e);
+          observed.stripe.standardPricePresent = true;
+          observed.stripe.premiumPricePresent = true;
+          return { ok: true, json: async () => observed };
+        }
+        return {
+          ok: false,
+          status: 401,
+          json: async () => ({ secret: 'must_not_be_logged' })
+        };
+      }
+    }),
+    /PREMIUM_STAGING_TARGET_DENIED_ACCOUNT_PROOF_HTTP/u
+  );
+  assert.deepEqual(requests, [
+    '/api/staging-environment-facts',
+    '/api/staging-premium-account-proof'
+  ]);
 });
