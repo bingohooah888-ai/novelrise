@@ -13,9 +13,16 @@ $Root='C:\ProgramData\NOVELIGHT\GateB-Watchdog'
 $Vault='C:\ProgramData\NOVELIGHT\GateB'
 $State=Join-Path $Root 'state.json'
 $Heartbeat=Join-Path $Root 'heartbeat.json'
-$Marker=Join-Path $Root 'gateb-dpapi-one-shot-consumed.marker'
-$Original=Join-Path $Root 'state.json.dpapi-original'
-$Manifest=Join-Path $Root 'gateb-dpapi-arm-manifest.json'
+$Marker=Join-Path $Root 'gateb-dpapi-attempt2-once-consumed.marker'
+$Original=Join-Path $Root 'state.json.dpapi-attempt2-original'
+$Manifest=Join-Path $Root 'gateb-dpapi-attempt2-arm-manifest.json'
+$PriorMarker=Join-Path $Root 'gateb-dpapi-one-shot-consumed.marker'
+$PriorOriginal=Join-Path $Root 'state.json.dpapi-original'
+$PriorArmBackup=Join-Path $Root 'state.json.dpapi-arm-backup'
+$PriorRestoreMarker=Join-Path $Root 'gateb-dpapi-missing-manifest-restore-once-consumed.marker'
+$PriorGuardedBackup=Join-Path $Root 'state.json.dpapi-missing-manifest-guarded-backup'
+$PriorOriginalSha='1b6d10aa5365fb9dc355a2a04ea3da0e97f07ca933fd35bd4d947b758893744c'
+$PriorGuardedSha='15cef1cb625648d6430c9fc14e872ce4cb401b9688feeb3216b97e65031ebda3'
 $Worker=Join-Path $Root 'watchdog.ps1'
 $Proof=Join-Path $Root 'gateb-dpapi-sid-proof.ps1'
 $PowerShell='C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
@@ -117,6 +124,29 @@ function Read-FreshHeartbeat {
     $at -gt [datetime]::UtcNow.AddSeconds(5)){throw 'WATCHDOG_HEARTBEAT_STALE'}
   return $h
 }
+function Assert-PriorTrialEvidenceIntact {
+  # Attempt 1 was consumed and recovered by a separate approved GUARD_ONLY
+  # restore. Keep those bytes immutable; only attempt-2 files may be created.
+  foreach($path in @($PriorMarker,$PriorOriginal,$PriorArmBackup,
+                    $PriorRestoreMarker,$PriorGuardedBackup)){
+    Assert-Leaf $path
+  }
+  if((Get-FileHash -LiteralPath $PriorOriginal -Algorithm SHA256).Hash.ToLowerInvariant() -cne $PriorOriginalSha -or
+     (Get-FileHash -LiteralPath $PriorArmBackup -Algorithm SHA256).Hash.ToLowerInvariant() -cne $PriorOriginalSha -or
+     (Get-FileHash -LiteralPath $State -Algorithm SHA256).Hash.ToLowerInvariant() -cne $PriorOriginalSha -or
+     (Get-FileHash -LiteralPath $PriorGuardedBackup -Algorithm SHA256).Hash.ToLowerInvariant() -cne $PriorGuardedSha){
+    throw 'PRIOR_CONSUMED_TRIAL_EVIDENCE_CHANGED'
+  }
+  foreach($newPath in @($Marker,$Original,$Manifest,
+    (Join-Path $Root 'state.json.dpapi-attempt2-arm-stage'),
+    (Join-Path $Root 'state.json.dpapi-attempt2-arm-backup'),
+    (Join-Path $Root 'state.json.dpapi-attempt2-restore-stage'),
+    (Join-Path $Root 'state.json.dpapi-attempt2-restore-backup'),
+    (Join-Path $Root 'state.json.dpapi-attempt2-rescue-stage'),
+    (Join-Path $Root 'state.json.dpapi-attempt2-rescue-backup'))){
+    if([IO.File]::Exists($newPath)){throw 'ATTEMPT2_ALREADY_CONSUMED_OR_PARTIAL'}
+  }
+}
 function Assert-Preflight {
   $script:CurrentStage='PREFLIGHT'
   $admin=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -135,7 +165,7 @@ function Assert-Preflight {
   Assert-ProcessAndSessionZero
   if(@(Get-CimInstance Win32_UserProfile -Filter ("SID='"+$Sid+"'") -ErrorAction Stop).Count -ne 0){throw 'PROFILE_ALREADY_EXISTS'}
   if(@([IO.Directory]::GetFileSystemEntries($Vault)).Count -ne 0){throw 'VAULT_NOT_EMPTY'}
-  if([IO.File]::Exists($Marker) -or [IO.File]::Exists($Original)){throw 'ONE_SHOT_ALREADY_CONSUMED_OR_PARTIAL'}
+  Assert-PriorTrialEvidenceIntact
   return $h
 }
 function New-InMemoryTargetCredential {
@@ -183,7 +213,7 @@ function Arm-GuardAtomically([int]$ParentPid,[string]$ParentStartUtc) {
   }
   [IO.File]::Copy($State,$Original,$false)
   $originalSha=(Get-FileHash -LiteralPath $Original -Algorithm SHA256).Hash.ToLowerInvariant()
-  $temp=Join-Path $Root 'state.json.dpapi-arm-stage'
+  $temp=Join-Path $Root 'state.json.dpapi-attempt2-arm-stage'
   if([IO.File]::Exists($temp)){throw 'UNEXPECTED_ARM_STAGE'}
   $stream=[IO.File]::Open($temp,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
   try {
@@ -203,7 +233,7 @@ function Arm-GuardAtomically([int]$ParentPid,[string]$ParentStartUtc) {
   }
   # Refuse to arm unless the independent SYSTEM rescue can read this exact
   # protected manifest, with the same hashes and parent/deadline scope.
-  $manifestPath=Join-Path $Root 'gateb-dpapi-arm-manifest.json'
+  $manifestPath=Join-Path $Root 'gateb-dpapi-attempt2-arm-manifest.json'
   if($Manifest -cne $manifestPath){throw 'MANIFEST_PATH_SHADOWED'}
   $mf=[IO.File]::Open($manifestPath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
   try {
@@ -224,7 +254,7 @@ function Arm-GuardAtomically([int]$ParentPid,[string]$ParentStartUtc) {
   }
   # Guard state cannot become GUARDED_TEST unless the rescue manifest has
   # been persisted and read back from its pinned path.
-  [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-arm-backup'))
+  [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-attempt2-arm-backup'))
   $armed=Read-PinnedGuard 'GUARDED_TEST'
   if([int]$armed.parentPid -ne $ParentPid){throw 'ARM_NOT_OBSERVED'}
   return $armed
@@ -322,10 +352,10 @@ function Restore-GuardAtomicallyAfterProof {
   if($previous.phase -cne 'GUARD_ONLY' -or
      $previous.sid -cne $Sid -or $previous.host -cne $HostPin -or
      [int]$previous.parentPid -ne 0){throw 'ORIGINAL_NOT_PINNED'}
-  $temp=Join-Path $Root 'state.json.dpapi-restore-stage'
+  $temp=Join-Path $Root 'state.json.dpapi-attempt2-restore-stage'
   if([IO.File]::Exists($temp)){throw 'RESTORE_STAGE_EXISTS'}
   [IO.File]::Copy($Original,$temp,$false)
-  [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-restore-backup'))
+  [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-attempt2-restore-backup'))
   $null=Read-PinnedGuard 'GUARD_ONLY'
 }
 function Assert-ProtectedRescueIsReady {

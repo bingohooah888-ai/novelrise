@@ -46,3 +46,13 @@ PowerShell構文・Node静的契約・オフライン故障モデル PASS を合
 **局所証拠:** 既存のNode回帰テストを拡張し、ケース非依存の $manifest シャドー禁止、絶対保存先、read-backが状態置換前にあることを検証。さらにWindowsの隔離TEMPフォルダに実際の Arm-GuardAtomically 関数を抽出して実行。マニフェスト生成、両state SHA一致、GUARDED_TEST移行、旧stateバックアップ保持、誤ったOrderedDictionary名のファイル不存在を全件PASS。Windowsの保護ファイルやSYSTEMタスクは変更なし。
 
 **制約:** この修正はリポジトリのオフライン候補のみ。保護済み旧Coordinator、permit、使用済みマーカー、SYSTEMタスク、専用アカウント、DPAPIを変更していない。初回試験のone-shot markerは消費済みで削除・再利用禁止。次回の実機試験には新HEAD/ハッシュでのコード差し替え、独立した新しい一回限り試験台帳、別の明示Owner承認が必要。Gate A～Eは0/5 NO-GO。
+
+## 第2回試験の新規台帳・独立復旧契約（オフライン準備）
+
+- 前回の `gateb-dpapi-one-shot-consumed.marker` は消費済みで保持。旧 `state.json.dpapi-original`、旧 `state.json.dpapi-arm-backup`、復旧マーカー、旧 `state.json.dpapi-missing-manifest-guarded-backup` も削除・改変しない。調停役は事前に元データ2本のSHA-256（`1b6d10aa5365fb9dc355a2a04ea3da0e97f07ca933fd35bd4d947b758893744c`）とGUARDED_TEST保存データのSHA-256（`15cef1cb625648d6430c9fc14e872ce4cb401b9688feeb3216b97e65031ebda3`）を検査し、不一致なら停止。
+- 第2回専用の台帳 `gateb-dpapi-attempt2-once-consumed.marker`、元状態 `state.json.dpapi-attempt2-original`、復旧マニフェスト `gateb-dpapi-attempt2-arm-manifest.json` とarm/restore/rescueの新規ステージ・バックアップを使用。調停役とSYSTEM復旧役はこの同じnamespaceに固定。旧台帳を消して再利用する経路はない。
+- Owner permitは明示的に別スコープの `version=2`、`approvalId=GATEB_DPAPI_ATTEMPT2_OWNER_APPROVED`、`attemptId=GATEB_DPAPI_ATTEMPT2_20261108` とし、固定HEAD・4本の保護スクリプトSHA・短期期限・各実行上限を照合。旧version=1 permitは第2回Applyの承認として使えない。
+- 第2回の専用 `gateb-dpapi-attempt2-protected-upgrade-candidate.ps1` を追加。デフォルトPlanは無変更、Upgradeは別途Owner承認とSHA照合の後だけ実行。既存Coordinator/SYSTEM Rescue/Approval Contractの3本をそれぞれ旧SHA照合したうえでバックアップを保持して置換し、Owner/proof permitを同一期限へ更新。**SYSTEMタスク登録や変更・アカウント有効化・パスワード変更・DPAPI Applyは実施しない。** 変更後はSYSTEM復旧の定期Heartbeat正常化を受動確認し、失敗はNO-GO・再試行禁止。
+- 局所検証：既存Nodeテスト38/38 PASS、4本のPowerShell構文エラー0、Plan/未承認Upgrade拒否PASS。Windows隔離TEMPで第2回 `Arm-GuardAtomically` が新マニフェスト・旧state SHA・GUARDED_TEST state・バックアップを正しく生成、旧ファイルを生成しないことを確認。別の隔離TEMPで `AtomicUpdate` が新ファイルと旧版バックアップを残しステージを消費できることを確認。これらの検証では保護フォルダ・Windowsアカウント・タスク・パスワード・DPAPIは変更していない。
+
+**ゲート判定:** 準備コードの合格はDPAPIの実機証拠ではない。第2回本体試験の実行は未承認であり、次のユーザー明示承認と固定HEAD・全SHA・残留ゼロ・両SYSTEM監視の確認なしに実機Applyしない。A～Eは0/5 NO-GO。

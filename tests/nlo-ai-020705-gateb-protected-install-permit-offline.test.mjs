@@ -90,7 +90,9 @@ test('coordinator live mode is unreachable from worktree or without protected ow
   assert.match(coordinator, /RequireUnexpired/u);
   assert.match(coordinator, /Assert-ProtectedRescueIsReady/u);
   assert.match(coordinator, /SYSTEM_RESCUE_NOT_ATTESTED/u);
-  assert.match(coordinator, /ONE_SHOT_ALREADY_CONSUMED_OR_PARTIAL/u);
+  assert.match(coordinator, /ATTEMPT2_ALREADY_CONSUMED_OR_PARTIAL/u);
+  assert.match(permit, /GATEB_DPAPI_ATTEMPT2_OWNER_APPROVED/u);
+  assert.match(permit, /GATEB_DPAPI_ATTEMPT2_20261108/u);
   assert.match(coordinator, /GATEB_DPAPI_ONE_SHOT_NO_GO_NO_RETRY/u);
 });
 test('both SYSTEM monitors must arm before enabling and attest restoration', () => {
@@ -242,4 +244,60 @@ test('repair requires fresh successful independent SYSTEM rescue heartbeat befor
   assert.match(repair, /LastTaskResult -eq 0/u);
   assert.match(repair, /GATEB_DPAPI_RESCUE_FRESH_HEARTBEAT_PASS/u);
   assert.match(repair, /GATEB_DPAPI_PROTECTED_REPAIR_COMPLETE_NO_DPAPI_APPLY/u);
+});
+
+const attempt2Upgrade = read(
+  'gateb-dpapi-attempt2-protected-upgrade-candidate.ps1'
+);
+test('attempt-2 protected upgrade is separate one-shot and cannot start without new approval', () => {
+  assert.match(attempt2Upgrade, /ValidateSet\('Plan','Upgrade'\)/u);
+  assert.match(attempt2Upgrade, /GATEB_ATTEMPT2_PROTECTED_UPGRADE_PLAN_ONLY/u);
+  assert.match(
+    attempt2Upgrade,
+    /ONE_GATEB_DPAPI_ATTEMPT2_PROTECTED_UPGRADE_20261108/u
+  );
+  assert.match(
+    attempt2Upgrade,
+    /gateb-dpapi-attempt2-protected-upgrade-once-consumed\.marker/u
+  );
+  assert.match(attempt2Upgrade, /FileMode\]::CreateNew/u);
+  assert.match(
+    attempt2Upgrade,
+    /PRIOR_CONSUMED_TRIAL_EVIDENCE_CHANGED|OLD_ORIGINAL_SHA_CHANGED/u
+  );
+  assert.match(attempt2Upgrade, /OLD_GUARDED_SHA_CHANGED/u);
+  assert.match(attempt2Upgrade, /TARGET_PROCESS_OR_UNKNOWN_OWNER/u);
+  assert.match(attempt2Upgrade, /TARGET_LOGON_OR_PROFILE_REMAINS/u);
+  assert.match(attempt2Upgrade, /VAULT_NOT_EMPTY/u);
+  assert.match(
+    attempt2Upgrade,
+    /GATEB_ATTEMPT2_PROTECTED_SCRIPTS_AND_PERMITS_READY_NO_DPAPI_APPLY/u
+  );
+  assert.doesNotMatch(
+    attempt2Upgrade,
+    /(?:Enable|Disable|Set)-LocalUser|(?:Register|Unregister|Start|Set)-ScheduledTask|Stop-Process|Remove-Item|File\]::Delete/u
+  );
+});
+test('attempt-2 upgrade verifies exact existing protected script hashes, backups and new owner permit scope', () => {
+  for (const sha of [
+    '3559015c291f5e37b61e7b98e184f79c167432e2fd2a8422f03ff64e17181674',
+    'c8d06b16e9594a8e46460dc5afc34cf2a8f51d2e5aba6025b49713553c0a16fc',
+    '2c7dac7da51a29be070e5f0ba9b47927ea1ecbb9f5f924cea17290daf464caf6',
+    'bc9fd7919d62e06f09d159a79396b0546dcf95b4b1a2b229064a945568e85d5c'
+  ])
+    assert.ok(
+      attempt2Upgrade.includes(sha),
+      'old installed SHA missing ' + sha
+    );
+  assert.match(attempt2Upgrade, /GATEB_DPAPI_ATTEMPT2_OWNER_APPROVED/u);
+  assert.match(attempt2Upgrade, /GATEB_DPAPI_ATTEMPT2_20261108/u);
+  assert.match(attempt2Upgrade, /AddMinutes\(18\)/u);
+  assert.match(
+    attempt2Upgrade,
+    /\[IO\.File\]::Replace\(\$stage,\$destination,\$backup\)/u
+  );
+  assert.match(attempt2Upgrade, /LAST_RESULT|LastTaskResult/u);
+  assert.match(attempt2Upgrade, /Assert-GateBDpapiOwnerPermit/u);
+  assert.match(permit, /attemptId -cne 'GATEB_DPAPI_ATTEMPT2_20261108'/u);
+  assert.match(permit, /approval\.version -ne 2/u);
 });

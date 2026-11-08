@@ -10,9 +10,9 @@ $Account='NOVELIGHT-GateB'
 $TaskName='NOVELIGHT-GateB-Independent-Recovery'
 $Root='C:\ProgramData\NOVELIGHT\GateB-Watchdog'
 $State=Join-Path $Root 'state.json'
-$Original=Join-Path $Root 'state.json.dpapi-original'
-$Manifest=Join-Path $Root 'gateb-dpapi-arm-manifest.json'
-$Marker=Join-Path $Root 'gateb-dpapi-one-shot-consumed.marker'
+$Original=Join-Path $Root 'state.json.dpapi-attempt2-original'
+$Manifest=Join-Path $Root 'gateb-dpapi-attempt2-arm-manifest.json'
+$Marker=Join-Path $Root 'gateb-dpapi-attempt2-once-consumed.marker'
 $Worker=Join-Path $Root 'watchdog.ps1'
 $KnownWorkerHash='78242cd888dcb3bedb0a899daf5549e21461a1b65d6a604188acdecccf78f15c'
 $SystemSid='S-1-5-18'
@@ -125,10 +125,10 @@ function Invoke-IndependentSystemGuardRestore {
   if($u.SID.Value -cne $Sid){throw 'SID_CHANGED'}
   if($u.Enabled){Disable-LocalUser -SID $u.SID -ErrorAction Stop}
   Assert-NoLiveTargetResources
-  $temp=Join-Path $Root 'state.json.dpapi-rescue-stage'
+  $temp=Join-Path $Root 'state.json.dpapi-attempt2-rescue-stage'
   if([IO.File]::Exists($temp)){throw 'RESCUE_STAGE_ALREADY_EXISTS'}
   [IO.File]::Copy($Original,$temp,$false)
-  [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-rescue-backup'))
+  [IO.File]::Replace($temp,$State,(Join-Path $Root 'state.json.dpapi-attempt2-rescue-backup'))
   if((Get-FileHash -LiteralPath $State -Algorithm SHA256).Hash.ToLowerInvariant() -cne
     $manifest.originalSha256){throw 'GUARD_RESTORE_NOT_CONFIRMED'}
   # The separate regular SYSTEM Watchdog heartbeat still must independently

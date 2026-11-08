@@ -63,14 +63,15 @@ function Assert-GateBDpapiOwnerPermit {
   $json=[IO.File]::ReadAllText($PermitPath,[Text.Encoding]::UTF8)
   $approval=ConvertFrom-Json -InputObject $json -ErrorAction Stop
   $fields=@($approval.PSObject.Properties.Name)
-  $expected=@('version','approvalId','host','account','sid','task','head',
+  $expected=@('version','approvalId','attemptId','host','account','sid','task','head',
     'maxApply','maxEnabledSeconds','maxGuardSeconds','deadlineUtc','installerSha256','files')
   if($fields.Count -ne $expected.Count -or
     @($fields|Where-Object {$_ -notin $expected}).Count -ne 0){
     throw 'PERMIT_FIELDS_DRIFT'
   }
-  if($approval.version -ne 1 -or
-     $approval.approvalId -cne 'GATEB_DPAPI_ONE_SHOT_OWNER_APPROVED' -or
+  if($approval.version -ne 2 -or
+     $approval.approvalId -cne 'GATEB_DPAPI_ATTEMPT2_OWNER_APPROVED' -or
+     $approval.attemptId -cne 'GATEB_DPAPI_ATTEMPT2_20261108' -or
      $approval.host -cne 'DESKTOP-8Q4GFC8' -or
      $approval.account -cne 'NOVELIGHT-GateB' -or
      $approval.sid -cne $TargetSid -or

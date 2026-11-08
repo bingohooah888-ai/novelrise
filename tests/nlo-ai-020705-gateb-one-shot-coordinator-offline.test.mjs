@@ -37,7 +37,14 @@ test('only fixed host, user, watchdog and old installed worker hash', () => {
 test('one-shot ledger CreateNew and immutable old markers not removed', () => {
   assert.match(src, /function Consume-OneShotLedger/u);
   assert.match(src, /FileMode\]::CreateNew/u);
-  assert.match(src, /ONE_SHOT_ALREADY_CONSUMED_OR_PARTIAL/u);
+  assert.match(src, /ATTEMPT2_ALREADY_CONSUMED_OR_PARTIAL/u);
+  assert.match(src, /gateb-dpapi-attempt2-once-consumed\.marker/u);
+  assert.match(src, /PRIOR_CONSUMED_TRIAL_EVIDENCE_CHANGED/u);
+  assert.match(src, /gateb-dpapi-one-shot-consumed\.marker/u);
+  assert.match(
+    src,
+    /gateb-dpapi-missing-manifest-restore-once-consumed\.marker/u
+  );
   assert.doesNotMatch(src, /Remove-Item|Delete-Item|File\]::Delete/u);
 });
 test('password generated in-memory via CSPRNG and never as full plaintext string', () => {
@@ -141,7 +148,7 @@ test('guard manifest path is not shadowed and is read back before GUARD activati
   assert.match(arming, /\$armManifestData=\[ordered\]@/u);
   assert.match(
     arming,
-    /\$manifestPath=Join-Path \$Root 'gateb-dpapi-arm-manifest\.json'/u
+    /\$manifestPath=Join-Path \$Root 'gateb-dpapi-attempt2-arm-manifest\.json'/u
   );
   assert.match(
     arming,
@@ -159,7 +166,10 @@ test('guard manifest path is not shadowed and is read back before GUARD activati
       arming.indexOf('[IO.File]::Replace($temp,$State'),
     'state must not be armed until the pinned manifest is read back and verified'
   );
-  assert.match(src, /state\.json\.dpapi-original/u);
+  assert.match(src, /state\.json\.dpapi-attempt2-original/u);
+  assert.match(rescue, /state\.json\.dpapi-attempt2-original/u);
+  assert.match(rescue, /gateb-dpapi-attempt2-arm-manifest\.json/u);
+  assert.match(rescue, /gateb-dpapi-attempt2-once-consumed\.marker/u);
 });
 test('receipts are written by SID to Vault, not protected SYSTEM directory', () => {
   assert.match(src, /Join-Path \$Vault 'gateb-dpapi-target-create\.receipt'/u);
@@ -186,4 +196,34 @@ test('normal GUARD_ONLY restore verifies both pinned state hashes', () => {
   assert.match(src, /UNKNOWN_GUARD_STATE_NO_OVERWRITE/u);
   assert.match(src, /\$currentHash -cne \$manifest.guardedSha256/u);
   assert.match(src, /\$originalHash -cne \$manifest.originalSha256/u);
+});
+
+test('attempt 2 uses fresh names while validating immutable spent attempt-1 evidence', () => {
+  const required = [
+    'gateb-dpapi-attempt2-once-consumed.marker',
+    'state.json.dpapi-attempt2-original',
+    'gateb-dpapi-attempt2-arm-manifest.json'
+  ];
+  for (const name of required) {
+    assert.ok(src.includes(name), 'coordinator missing ' + name);
+    assert.ok(rescue.includes(name), 'SYSTEM rescue missing ' + name);
+  }
+  for (const oldName of [
+    'gateb-dpapi-one-shot-consumed.marker',
+    'state.json.dpapi-original',
+    'state.json.dpapi-arm-backup',
+    'gateb-dpapi-missing-manifest-restore-once-consumed.marker',
+    'state.json.dpapi-missing-manifest-guarded-backup'
+  ]) {
+    assert.ok(src.includes(oldName), 'old immutable proof missing ' + oldName);
+  }
+  assert.match(src, /function Assert-PriorTrialEvidenceIntact/u);
+  assert.match(src, /PRIOR_CONSUMED_TRIAL_EVIDENCE_CHANGED/u);
+  assert.match(src, /ATTEMPT2_ALREADY_CONSUMED_OR_PARTIAL/u);
+  const guardPath = src.slice(src.indexOf('function Arm-GuardAtomically'));
+  assert.match(guardPath, /state\.json\.dpapi-attempt2-arm-stage/u);
+  assert.match(guardPath, /state\.json\.dpapi-attempt2-arm-backup/u);
+  assert.match(guardPath, /state\.json\.dpapi-attempt2-restore-stage/u);
+  assert.match(rescue, /state\.json\.dpapi-attempt2-rescue-stage/u);
+  assert.doesNotMatch([src, rescue].join('\n'), /Remove-Item|File\]::Delete/u);
 });
