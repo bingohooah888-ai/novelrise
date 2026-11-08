@@ -254,10 +254,12 @@ begin
 
   -- Missing assets must be blocked on direct episode updates.
   begin
+    set constraints public.novelight_validate_episode_illustration_refs deferred;
     update public.episodes
        set content = v_original_content || E'\n'
             || '[[NOVELIGHT_ILLUSTRATION:83000000-0000-4000-8000-000000000999]]'
      where id = 830001;
+    set constraints public.novelight_validate_episode_illustration_refs immediate;
     raise exception 'Missing illustration reference unexpectedly saved';
   exception when foreign_key_violation then null;
   end;
@@ -274,7 +276,9 @@ begin
   end if;
 
   begin
+    set constraints public.novelight_validate_episode_illustration_refs deferred;
     update public.episodes set content = v_original_content where id = 830001;
+    set constraints public.novelight_validate_episode_illustration_refs immediate;
     raise exception 'Deleted illustration reference unexpectedly saved';
   exception when foreign_key_violation then null;
   end;
