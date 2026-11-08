@@ -312,3 +312,51 @@ test('Free-only Preview still rejects live Stripe credentials and absent Supabas
     /CONFIG_DRIFT: deployed Staging Supabase server secret is missing/
   );
 });
+
+test('independently OWNER-approved Free JWT proof keeps full Staging identity checks without Stripe prices', async (t) => {
+  t.mock.method(
+    globalThis,
+    'fetch',
+    async () =>
+      new globalThis.Response(
+        JSON.stringify(
+          facts({
+            supabase: {
+              ...facts().supabase,
+              url: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+            },
+            stripe: {
+              secretKeyMode: 'test',
+              standardPricePresent: false,
+              premiumPricePresent: false
+            }
+          })
+        ),
+        { status: 200 }
+      )
+  );
+  const approved = strictEnvironment({
+    STAGING_TRIGGER: 'approval_comment',
+    CANONICAL_STAGING_URL: BASE_URL,
+    GITHUB_REPOSITORY: 'bingohooah888-ai/novelrise',
+    STAGING_PREVIEW_REF: 'fix/inquiry-82-account-deletion-diagnostics-20261107',
+    STAGING_DELETE_FREE_MODE: 'true',
+    STAGING_FREE_APPROVAL_SCOPE: 'account-deletion-free-proof',
+    STAGING_EXPECTED_SUPABASE_URL: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+  });
+  assert.deepEqual(await verifyStagingDeployment(approved), {
+    baseUrl: BASE_URL,
+    revision: EXPECTED_SHA
+  });
+  await assert.rejects(
+    verifyStagingDeployment({ ...approved, GITHUB_REPOSITORY: 'another/repo' }),
+    /CONFIG_DRIFT/
+  );
+  await assert.rejects(
+    verifyStagingDeployment({
+      ...approved,
+      STAGING_FREE_APPROVAL_SCOPE: 'account-deletion-free-unknown'
+    }),
+    /CONFIG_DRIFT/
+  );
+});
