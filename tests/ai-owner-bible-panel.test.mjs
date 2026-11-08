@@ -307,7 +307,7 @@ test('malformed grouped fact records are rejected before author review indexing'
       };
     }
   });
-  // This fallback text-only component accepts the top-level shape; the
-  // fully mounted author workspace performs deeper grouped-fact validation.
-  assert.equal(result, true);
+  assert.equal(result, false);
+  assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
 });
