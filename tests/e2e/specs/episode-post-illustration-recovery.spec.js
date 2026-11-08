@@ -810,3 +810,325 @@ test('existing draft edit: physical double-click keeps illustration drawer open'
   );
   expect(page.__editorCalls).toBe(1);
 });
+
+test('AI declaration success survives consecutive list failures and reopens with fresh state', async ({
+  page
+}) => {
+  let declared = false;
+  let afterSaveFailures = 0;
+  let listCalls = 0;
+  await page.route('**/api/episode-illustrations', (route) => {
+    const action = route.request().postDataJSON()?.action;
+    if (action === 'set-ai-usage') {
+      declared = true;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '{"ok":true}'
+      });
+    }
+    if (action === 'editor-list') {
+      listCalls += 1;
+      if (declared && afterSaveFailures++ < 2) {
+        return route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: '{"error":"temporary list failure"}'
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          episodeId: 333,
+          novelId: 123,
+          isOwner: true,
+          aiUsage: declared ? true : null,
+          limit: 10,
+          assets: []
+        })
+      });
+    }
+    return route.fallback();
+  });
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').click();
+  await expect(
+    page.locator('.episode-illustration-upload input[type=file]')
+  ).toBeDisabled();
+  await page
+    .getByRole('combobox', { name: '挿絵のAI利用申告' })
+    .selectOption('true');
+  await page.getByRole('button', { name: '設定を保存' }).click();
+  await expect.poll(() => listCalls).toBe(3);
+  await expect(
+    page.locator('.episode-illustration-status').last()
+  ).toContainText('保存されました');
+  await expect(
+    page.locator('.episode-illustration-upload input[type=file]')
+  ).toBeEnabled();
+  await page.locator('#closeDrawer').click();
+  await page.locator('#openIllustrationEditor').click();
+  await expect.poll(() => listCalls).toBe(4);
+  await expect(
+    page.locator('.episode-illustration-upload input[type=file]')
+  ).toBeEnabled();
+});
+
+test('deleted illustration vanishes even if list fails and reopen retries', async ({
+  page
+}) => {
+  let deleted = false;
+  let afterDeleteFailures = 0;
+  let listCalls = 0;
+  const id = '01234567-89ab-4cde-8f01-23456789abcd';
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.route('**/api/episode-illustrations', (route) => {
+    const action = route.request().postDataJSON()?.action;
+    if (action === 'delete') {
+      deleted = true;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '{"deleted":true}'
+      });
+    }
+    if (action === 'editor-list') {
+      listCalls++;
+      if (deleted && afterDeleteFailures++ < 2) {
+        return route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: '{"error":"temporary list failure"}'
+        });
+      }
+      const assets = deleted
+        ? []
+        : [
+            {
+              id,
+              marker: '[[NOVELIGHT_ILLUSTRATION:' + id + ']]',
+              altText: 'Unused uploaded image',
+              url: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
+              width: 1,
+              height: 1
+            }
+          ];
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          episodeId: 333,
+          novelId: 123,
+          isOwner: true,
+          aiUsage: false,
+          limit: 10,
+          assets
+        })
+      });
+    }
+    return route.fallback();
+  });
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').click();
+  await expect(page.getByRole('button', { name: '削除' })).toBeVisible();
+  await page.getByRole('button', { name: '削除' }).click();
+  await expect.poll(() => listCalls).toBe(3);
+  await expect(page.getByRole('button', { name: '削除' })).toHaveCount(0);
+  await expect(
+    page.locator('.episode-illustration-status').last()
+  ).toContainText('削除されました');
+  await page.locator('#closeDrawer').click();
+  await page.locator('#openIllustrationEditor').click();
+  await expect.poll(() => listCalls).toBe(4);
+  await expect(page.locator('[data-illustration-count]')).toHaveText(
+    '0 / 10枚'
+  );
+});
+
+test('failed preparation preserves selected image and alt text for retry', async ({
+  page
+}) => {
+  await page.route('**/api/episode-illustrations', (route) => {
+    if (route.request().postDataJSON()?.action === 'prepare-upload') {
+      return route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: '{"error":"temporary failure"}'
+      });
+    }
+    return route.fallback();
+  });
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').click();
+  const base64 = await page.evaluate(() => {
+    const canvas = globalThis.document.createElement('canvas');
+    canvas.width = 4;
+    canvas.height = 4;
+    canvas.getContext('2d').fillRect(0, 0, 4, 4);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  const fileInput = page.locator(
+    '.episode-illustration-upload input[type=file]'
+  );
+  await fileInput.setInputFiles({
+    name: 'retry.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(base64, 'base64')
+  });
+  const alt = page.locator('.episode-illustration-upload input[type=text]');
+  await alt.fill('保存したい代替テキスト');
+  await page.getByRole('button', { name: '挿絵をアップロード' }).click();
+  await expect(
+    page.getByRole('button', { name: '挿絵をアップロード' })
+  ).toBeEnabled();
+  await expect
+    .poll(() => fileInput.evaluate((el) => el.files?.[0]?.name || ''))
+    .toBe('retry.png');
+  await expect(alt).toHaveValue('保存したい代替テキスト');
+});
+
+test('alt text edited while saving remains visibly unsaved after original request commits', async ({
+  page
+}) => {
+  page.__uploaded = true;
+  let resolveStarted;
+  const started = new Promise((resolve) => {
+    resolveStarted = resolve;
+  });
+  let serverAlt;
+  await page.route('**/api/episode-illustrations', async (route) => {
+    if (route.request().postDataJSON()?.action === 'update-alt') {
+      serverAlt = route.request().postDataJSON().altText;
+      resolveStarted();
+      await new Promise((resolve) => globalThis.setTimeout(resolve, 400));
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '{"ok":true}'
+      });
+    }
+    return route.fallback();
+  });
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').click();
+  const alt = page.locator(
+    '.episode-illustration-item input[aria-label="挿絵の代替テキスト"]'
+  );
+  await alt.fill('最初に送信した文章');
+  await page.getByRole('button', { name: '代替テキストを保存' }).click();
+  await started;
+  await alt.fill('送信中に書き換えた文章');
+  await expect(
+    page.locator('.episode-illustration-status').last()
+  ).toContainText('未保存');
+  expect(
+    await page.locator('.episode-illustration-item img').getAttribute('alt')
+  ).toBe(serverAlt);
+  await expect(alt).toHaveValue('送信中に書き換えた文章');
+});
+
+test('deleting an illustration blocks insertion during the pending request', async ({
+  page
+}) => {
+  page.__uploaded = true;
+  let resolveStarted, releaseDelete;
+  const started = new Promise((resolve) => {
+    resolveStarted = resolve;
+  });
+  const gate = new Promise((resolve) => {
+    releaseDelete = resolve;
+  });
+  page.on('dialog', (dialog) => dialog.accept());
+  let deleted = false;
+  await page.route('**/api/episode-illustrations', async (route) => {
+    const action = route.request().postDataJSON()?.action;
+    if (action === 'delete') {
+      resolveStarted();
+      await gate;
+      deleted = true;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '{"deleted":true}'
+      });
+    }
+    if (action === 'editor-list' && deleted) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          episodeId: 333,
+          novelId: 123,
+          isOwner: true,
+          aiUsage: false,
+          limit: 10,
+          assets: []
+        })
+      });
+    }
+    return route.fallback();
+  });
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').click();
+  await page.getByRole('button', { name: '削除' }).click();
+  await started;
+  await expect(
+    page.getByRole('button', { name: 'カーソル位置へ挿入' })
+  ).toBeDisabled();
+  releaseDelete();
+  await expect.poll(() => deleted).toBe(true);
+  await expect(page.getByRole('button', { name: '削除' })).toHaveCount(0);
+  await expect(page.locator('#content')).not.toHaveValue(
+    /NOVELIGHT_ILLUSTRATION:/
+  );
+});
+
+test('failed upload preparation retries the same selected file without reselecting', async ({
+  page
+}) => {
+  let prepareCalls = 0;
+  await page.route('**/api/episode-illustrations', (route) => {
+    if (route.request().postDataJSON()?.action === 'prepare-upload') {
+      prepareCalls++;
+      if (prepareCalls === 1) {
+        return route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: '{"error":"temporary"}'
+        });
+      }
+    }
+    return route.fallback();
+  });
+  await openNewPost(page);
+  await page.locator('#openIllustrationEditor').click();
+  const base64 = await page.evaluate(() => {
+    const canvas = globalThis.document.createElement('canvas');
+    canvas.width = 4;
+    canvas.height = 4;
+    canvas.getContext('2d').fillRect(0, 0, 4, 4);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  await page
+    .locator('.episode-illustration-upload input[type=file]')
+    .setInputFiles({
+      name: 'same-image.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(base64, 'base64')
+    });
+  await page
+    .locator('.episode-illustration-upload input[type=text]')
+    .fill('保持した説明文');
+  await page.getByRole('button', { name: '挿絵をアップロード' }).click();
+  await expect
+    .poll(() =>
+      page
+        .locator('.episode-illustration-upload input[type=file]')
+        .evaluate((input) => input.files?.[0]?.name)
+    )
+    .toBe('same-image.png');
+  await page.getByRole('button', { name: '挿絵をアップロード' }).click();
+  await expect(page.locator('#content')).toHaveValue(/NOVELIGHT_ILLUSTRATION:/);
+  expect(prepareCalls).toBe(2);
+});

@@ -943,6 +943,9 @@ echo '::group::Verify episode inline illustrations behavior'
 echo '::endgroup::'
 
 echo '::group::Verify episode inline illustrations rollback and reapply'
+# Remove the current protective guard before replaying the historical schema,
+# then validate the original historical rollback on its own terms.
+"${REPLAY[@]}" -f supabase/rollback/20261108154048_protect_episode_illustration_active_references_rollback.sql
 "${REPLAY[@]}" -f supabase/rollback/20260920093847_episode_inline_illustrations_rollback.sql
 "${REPLAY[@]}" -f supabase/checks/20260920093847_episode_inline_illustrations_precheck.sql
 "${REPLAY[@]}" -f supabase/migrations/20260920093847_episode_inline_illustrations.sql
