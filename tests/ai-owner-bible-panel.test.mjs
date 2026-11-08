@@ -3,7 +3,8 @@ import test from 'node:test';
 
 import '../novelight-ai-bible-owner-panel.js';
 
-const { mount, render, validPreviewResponse } = globalThis.NovelightAiBibleOwnerPanel;
+const { mount, render, validPreviewResponse } =
+  globalThis.NovelightAiBibleOwnerPanel;
 
 function fakeNode() {
   return {
@@ -230,10 +231,22 @@ test('owner GET response guard accepts the real grouped-facts read contract only
   assert.equal(validPreviewResponse(payload, 17), true);
   assert.equal(validPreviewResponse(payload, '17'), true);
   assert.equal(validPreviewResponse({ ...payload, novelId: 18 }, 17), false);
-  assert.equal(validPreviewResponse({ ...payload, aiGenerated: true }, 17), false);
-  assert.equal(validPreviewResponse({ ...payload, aiGenerated: undefined }, 17), false);
+  assert.equal(
+    validPreviewResponse({ ...payload, aiGenerated: true }, 17),
+    false
+  );
+  assert.equal(
+    validPreviewResponse({ ...payload, aiGenerated: undefined }, 17),
+    false
+  );
   assert.equal(validPreviewResponse({ ...payload, candidates: [] }, 17), false);
-  assert.equal(validPreviewResponse({ novelId: 17, candidates: [], aiGenerated: false }, 17), false);
+  assert.equal(
+    validPreviewResponse(
+      { novelId: 17, candidates: [], aiGenerated: false },
+      17
+    ),
+    false
+  );
   assert.equal(validPreviewResponse(null, 17), false);
 });
 
@@ -261,7 +274,9 @@ test('owner mount rejects cross-work, review-list and incomplete envelopes witho
       client: {
         auth: {
           async getSession() {
-            return { data: { session: { access_token: 'synthetic-offline-token' } } };
+            return {
+              data: { session: { access_token: 'synthetic-offline-token' } }
+            };
           }
         }
       },
@@ -269,7 +284,12 @@ test('owner mount rejects cross-work, review-list and incomplete envelopes witho
         gets += 1;
         assert.equal(url, '/api/ai-owner-novel-bible?novel_id=17');
         assert.equal(options.method, 'GET');
-        return { ok: true, async json() { return body; } };
+        return {
+          ok: true,
+          async json() {
+            return body;
+          }
+        };
       }
     });
     assert.equal(gets, 1);
@@ -301,7 +321,9 @@ test('malformed grouped fact records are rejected before author review indexing'
             aiGenerated: false,
             characters: [],
             notes: [],
-            facts: [{ kind: 'event', key: 'X', confirmed: [null], suggestions: [] }]
+            facts: [
+              { kind: 'event', key: 'X', confirmed: [null], suggestions: [] }
+            ]
           };
         }
       };
