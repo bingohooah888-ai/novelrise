@@ -162,6 +162,35 @@
       "version": "0.1.0",
       "status": "testing",
       "provenance": "2026-11-02 OWNER request; Cloudflare API Workers/DO and GraphQL official docs; live account API auth not yet configured"
+    },
+    {
+      "id": "nlo.github.point10x-stage38-staging-readonly-dispatch",
+      "description": "One-time OWNER-authored GitHub Bridge action to dispatch the pinned Point10x Stage 3.8 Staging catalog read-only diagnostic only after fresh Staging Approval Issue #188 evidence, GitHub owner identity, source SHA and duplicate-claim checks. No credential values enter chat or Issue comments.",
+      "intents": [
+        "dispatch point10x staging read-only identity once",
+        "NOVELIGHT Point10倍化Staging診断をNLOで1回だけ起動"
+      ],
+      "aliases": [
+        "NLO Scout Point10x Stage 3.8 read-only dispatch"
+      ],
+      "adapter": "tools/novelight-commander/src/point10x-staging-identity-dispatch.js",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "existing_nlo_owner_github_token",
+        "github_actions_read",
+        "github_actions_write",
+        "github_issues_write",
+        "exact_owner_issue_188_staging_approval",
+        "exact_current_main_sha",
+        "single_use_durable_claim",
+        "no_credential_readout"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-point10x-stage38-dispatch.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "enabled",
+      "provenance": "2026-11-08 owner-requested NLO safe Stage 3.8 dispatch implementation; only after separately approved main merge and local NLO rollout; each dispatch requires fresh distinct Staging approval"
     }
   ]
 }
