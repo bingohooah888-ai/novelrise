@@ -246,7 +246,9 @@ test('story index groups foreshadowing, timeline and events without inventing st
   payload.facts.push({
     kind: 'timeline',
     key: '帰還',
-    confirmed: [{ sourceEpisodeId: 90, payload: { summary: '王都に戻る', evidence: '' } }],
+    confirmed: [
+      { sourceEpisodeId: 90, payload: { summary: '王都に戻る', evidence: '' } }
+    ],
     suggestions: []
   });
   payload.facts[0].suggestions[0].sourceEpisodeId = 901;
@@ -255,13 +257,25 @@ test('story index groups foreshadowing, timeline and events without inventing st
   assert.equal(grouped.foreshadowing.length, 1);
   assert.equal(grouped.events.length, 2);
   assert.deepEqual(grouped.foreshadowing[0].sourceEpisodeIds, [901]);
-  assert.equal(grouped.events.find((item) => item.key === '帰還').kind, 'timeline');
+  assert.equal(
+    grouped.events.find((item) => item.key === '帰還').kind,
+    'timeline'
+  );
   const ordered = sortStoryEntries(grouped.events, 'source-id');
-  assert.deepEqual(ordered.map((entry) => entry.key), ['帰還', '出発']);
-  assert.deepEqual(grouped.events.map((entry) => entry.key), ['出発', '帰還']);
+  assert.deepEqual(
+    ordered.map((entry) => entry.key),
+    ['帰還', '出発']
+  );
+  assert.deepEqual(
+    grouped.events.map((entry) => entry.key),
+    ['出発', '帰還']
+  );
   const target = new FakeElement('div', doc);
   assert.equal(render({ target, payload }), true);
-  assert.match(target.textContent, /ID順は話数順・物語内の時系列順ではありません/);
+  assert.match(
+    target.textContent,
+    /ID順は話数順・物語内の時系列順ではありません/
+  );
   assert.doesNotMatch(target.textContent, /第901話/);
   const sort = nodes(target, 'select')[2];
   sort.value = 'source-id';
@@ -281,8 +295,14 @@ test('matching exact headings only suggests possible cross-category links', () =
   });
   const index = storyIndex(payload);
   assert.equal(index.foreshadowing[0].titleMatch, true);
-  assert.equal(index.events.find((entry) => entry.key.trim() === '青い鍵').titleMatch, true);
-  assert.equal(index.events.find((entry) => entry.key === '出発').titleMatch, false);
+  assert.equal(
+    index.events.find((entry) => entry.key.trim() === '青い鍵').titleMatch,
+    true
+  );
+  assert.equal(
+    index.events.find((entry) => entry.key === '出発').titleMatch,
+    false
+  );
   const target = new FakeElement('div', doc);
   assert.equal(render({ target, payload }), true);
   assert.match(target.textContent, /同じ見出しの別区分あり（関連性は未判定）/);
@@ -299,7 +319,10 @@ test('category and status filters combine locally and hide irrelevant empty pane
   category.value = 'foreshadowing';
   category.listeners.get('change')();
   assert.equal(cards.filter((card) => !card.hidden).length, 1);
-  assert.equal(nodes(target, 'section').filter((panel) => !panel.hidden).length, 1);
+  assert.equal(
+    nodes(target, 'section').filter((panel) => !panel.hidden).length,
+    1
+  );
   status.value = 'author';
   status.listeners.get('change')();
   assert.equal(cards.filter((card) => !card.hidden).length, 0);
@@ -325,11 +348,10 @@ test('offline checks identify missing AI evidence and distinct confirmed stateme
     payload: { summary: '翌朝', evidence: '' }
   });
   const result = localReviewSummary(payload);
-  assert.deepEqual(result.checks.map((entry) => entry.title), [
-    'AI候補の根拠未登録',
-    '複数の確定記録',
-    '同一出典の異なる確定記述'
-  ]);
+  assert.deepEqual(
+    result.checks.map((entry) => entry.title),
+    ['AI候補の根拠未登録', '複数の確定記録', '同一出典の異なる確定記述']
+  );
   assert.equal(payload.facts[1].confirmed[0].payload.summary, '春の朝');
   const target = new FakeElement('div', doc);
   assert.equal(render({ target, payload }), true);
