@@ -176,7 +176,11 @@ function closeDrawer(){settingsDrawer.classList.remove('open');settingsDrawer.se
 document.getElementById('closeDrawer').addEventListener('click',closeDrawer);drawerBackdrop.addEventListener('click',closeDrawer);document.addEventListener('keydown',event=>{if(event.key==='Escape'&&settingsDrawer.classList.contains('open'))closeDrawer()});
 async function mountCharacterEditor(){const values=authorValues(),validation=validateCommon(values,false);if(validation)throw new Error(validation);const draftId=await persistDraft(values);await window.NovelightCharacters?.mountEpisodeEditor?.({client,episodeId:draftId,novelId,mountTarget:postCharacterEditor});dirty=false;chapterDirty=false;setSaveState('保存済み')}
 async function mountIllustrationEditor(){
-  if(illustrationEditorMounted)return;
+  if(illustrationEditorMounted){
+    // Reopening the drawer should retry a failed initial load, not just show stale controls.
+    if(illustrationEditorMounted.retryPending)await illustrationEditorMounted.retry();
+    return;
+  }
   let stage='validation';
   try{
     const values=authorValues(),validation=validateCommon(values,false);
@@ -201,7 +205,7 @@ async function mountIllustrationEditor(){
       client,root:episodeIllustrationsMount,episode,session,textarea:content,isOwner:true
     });
     if(!mounted)throw new Error('挿絵機能を開けませんでした。');
-    illustrationEditorMounted=true;
+    illustrationEditorMounted=mounted;
     if(editRevision===revision){
       dirty=false;chapterDirty=false;setSaveState('保存済み');
     }else{
