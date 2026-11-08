@@ -79,9 +79,11 @@ async function maybeProfile(admin, userId) {
 }
 
 async function countRows(admin, table, column, userId) {
+  // novel_custom_covers is keyed by user_id and has no id column.
+  const projection = table === 'novel_custom_covers' ? 'user_id' : 'id';
   const result = await admin
     .from(table)
-    .select('id', { count: 'exact', head: true })
+    .select(projection, { count: 'exact', head: true })
     .eq(column, userId);
   checked(result, 'ROW_INVENTORY');
   if (!Number.isSafeInteger(result.count) || result.count < 0) {
