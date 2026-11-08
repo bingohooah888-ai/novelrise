@@ -399,10 +399,24 @@
     }
 
     async function refresh() {
-      state = await apiRequest(session, {
+      const request = () => apiRequest(session, {
         action: 'editor-list',
         episodeId: Number(episode.id)
       });
+      let next;
+      try {
+        next = await request();
+      } catch (error) {
+        // A newly persisted episode may encounter a transient runtime failure.
+        // Retry once; never retry authorization failures or loosen permissions.
+        if (![502, 503, 504].includes(Number(error?.status))) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        next = await request();
+      }
+      if (!next || !Array.isArray(next.assets)) {
+        throw new Error('Invalid illustration editor response');
+      }
+      state = next;
       render();
       return state;
     }
@@ -723,17 +737,59 @@
       renderAssets();
     }
 
+    textarea.addEventListener('input', () => {
+      if (state) renderAssets();
+    });
     try {
       await refresh();
-      textarea.addEventListener('input', () => {
-        if (state) renderAssets();
-      });
       return state;
     } catch (error) {
-      console.error('episode illustration editor unavailable', error);
-      root.hidden = true;
-      if (!runtimeUnavailable(error)) setStatus('挿絵機能を読み込めませんでした。');
-      return null;
+      console.error('episode illustration editor unavailable', {
+        status: Number.isFinite(Number(error?.status)) ? Number(error.status) : null
+      });
+      // Do not silently close the panel: the author needs a visible recovery path.
+      state = null;
+      root.hidden = false;
+      aiBox.replaceChildren();
+      uploadBox.replaceChildren();
+      list.replaceChildren();
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'episode-illustration-retry';
+      retry.textContent = '挿絵を再読み込み';
+      const recoveryNodes = [retry];
+      const failureMessage = episode.fromNewPost === true
+        ? '挿絵を読み込めませんでした。再試行するか、下書き編集画面から追加してください。'
+        : '挿絵を読み込めませんでした。再試行してください。';
+      retry.addEventListener('click', async () => {
+        if (retry.disabled) return;
+        retry.disabled = true;
+        setStatus('挿絵を再読み込みしています...');
+        try {
+          await refresh();
+          setStatus('挿絵を読み込みました。');
+        } catch (retryError) {
+          console.error('episode illustration editor retry failed', {
+            status: Number.isFinite(Number(retryError?.status))
+              ? Number(retryError.status) : null
+          });
+          state = null;
+          list.replaceChildren(...recoveryNodes);
+          setStatus(failureMessage);
+        } finally {
+          retry.disabled = false;
+        }
+      });
+      if (episode.fromNewPost === true && episode.status === 'draft') {
+        const editLink = document.createElement('a');
+        editLink.className = 'episode-illustration-retry';
+        editLink.href = 'episode-edit.html?id=' + encodeURIComponent(episode.id);
+        editLink.textContent = '保存済み下書きの編集画面で続ける';
+        recoveryNodes.push(editLink);
+      }
+      list.replaceChildren(...recoveryNodes);
+      setStatus(failureMessage);
+      return { retryPending: true };
     }
   }
 

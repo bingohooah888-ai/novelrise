@@ -14,6 +14,8 @@
 .episode-illustration-ai button,.episode-illustration-upload button,.episode-illustration-item button{min-height:40px;padding:8px 12px;border:1px solid #9b825b;border-radius:8px;background:#fff;color:#59462e;font:inherit;font-size:12px;font-weight:900;cursor:pointer}
 .episode-illustration-ai button:disabled,.episode-illustration-upload button:disabled,.episode-illustration-item button:disabled{opacity:.55;cursor:not-allowed}
 .episode-illustration-upload input[type="file"]{max-width:100%;font-size:12px}
+.episode-illustration-retry{display:inline-flex;align-items:center;justify-content:center;min-height:40px;max-width:100%;padding:9px 12px;border:1px solid #9b825b;border-radius:8px;background:#fff;color:#59462e;font:inherit;font-size:12px;font-weight:900;text-decoration:none;cursor:pointer}
+.episode-illustration-retry:disabled{opacity:.55;cursor:wait}
 .episode-illustration-list{display:grid;gap:12px;margin-top:14px}
 .episode-illustration-item{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;padding:12px;border:1px solid #e3daca;border-radius:10px;background:#fff}
 .episode-illustration-item img{display:block;width:120px;height:92px;object-fit:contain;border-radius:7px;background:#f2eee7}

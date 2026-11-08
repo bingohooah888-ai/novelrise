@@ -175,7 +175,37 @@ function openDrawer(mode){const panes={chapter:chapterPane,character:characterPa
 function closeDrawer(){settingsDrawer.classList.remove('open');settingsDrawer.setAttribute('aria-hidden','true');drawerBackdrop.hidden=true}
 document.getElementById('closeDrawer').addEventListener('click',closeDrawer);drawerBackdrop.addEventListener('click',closeDrawer);document.addEventListener('keydown',event=>{if(event.key==='Escape'&&settingsDrawer.classList.contains('open'))closeDrawer()});
 async function mountCharacterEditor(){const values=authorValues(),validation=validateCommon(values,false);if(validation)throw new Error(validation);const draftId=await persistDraft(values);await window.NovelightCharacters?.mountEpisodeEditor?.({client,episodeId:draftId,novelId,mountTarget:postCharacterEditor});dirty=false;chapterDirty=false;setSaveState('保存済み')}
-async function mountIllustrationEditor(){if(illustrationEditorMounted)return;const values=authorValues(),validation=validateCommon(values,false);if(validation)throw new Error(validation);const draftId=await persistDraft(values);const episode={id:draftId,novel_id:Number(novelId),user_id:session.user.id,episode_number:values.episodeNumber,title:values.title,content:values.content,status:'draft'};const mounted=await window.NovelightEpisodeIllustrations?.mountEditor?.({client,root:episodeIllustrationsMount,episode,session,textarea:content,isOwner:true});if(!mounted)throw new Error('挿絵機能を開けませんでした。');illustrationEditorMounted=true;dirty=false;chapterDirty=false;setSaveState('保存済み')}
+async function mountIllustrationEditor(){
+  if(illustrationEditorMounted)return;
+  const values=authorValues(),validation=validateCommon(values,false);
+  if(validation)throw new Error(validation);
+  const revision=editRevision;
+  // The autosave may have already created this draft. Do not write it twice
+  // merely to open its illustration controls.
+  const draftId=pendingDraftId&&!dirty&&!chapterDirty
+    ?pendingDraftId
+    :await persistDraft(values);
+  // Use the current token for the authenticated illustration API; the
+  // Supabase client may have refreshed it while the editor stayed open.
+  const auth=await client.auth.getSession();
+  if(auth.error||!auth.data.session)throw new Error('認証を確認できませんでした。再度ログインしてください。');
+  session=auth.data.session;
+  const episode={
+    id:draftId,novel_id:Number(novelId),user_id:session.user.id,
+    episode_number:values.episodeNumber,title:values.title,
+    content:values.content,status:'draft',fromNewPost:true
+  };
+  const mounted=await window.NovelightEpisodeIllustrations?.mountEditor?.({
+    client,root:episodeIllustrationsMount,episode,session,textarea:content,isOwner:true
+  });
+  if(!mounted)throw new Error('挿絵機能を開けませんでした。');
+  illustrationEditorMounted=true;
+  if(editRevision===revision){
+    dirty=false;chapterDirty=false;setSaveState('保存済み');
+  }else{
+    setSaveState('変更あり');
+  }
+}
 function lightReadyChecks(){const episodeNumber=Number(document.getElementById('episodeNumber').value),episodeTitle=titleInput.value.trim(),episodeContent=content.value;const workInfoReady=Boolean(novel?.title?.trim()&&novel?.genre?.trim()&&novel?.description?.trim());const rating=String(novel?.content_rating||'').trim(),warnings=Array.isArray(novel?.content_warnings)?novel.content_warnings:[];const contentPolicyReady=rating==='general'||(rating==='mature'&&warnings.length>0);return[{label:'作品タイトル・ジャンル・あらすじ',ok:workInfoReady},{label:'内容区分・内容警告',ok:contentPolicyReady},{label:'第1話として公開',ok:episodeNumber===1},{label:'第1話タイトル',ok:episodeTitle.length>=1&&episodeTitle.length<=150},{label:'第1話本文',ok:episodeContent.trim().length>=1&&episodeContent.length<=100000}]}
 function renderLightReady(){if(!novel||novel.status!=='draft'){lightReady.hidden=true;return}lightReady.hidden=false;lightReadyEdit.href='novel-edit.html?id='+encodeURIComponent(novelId);const checks=lightReadyChecks(),remaining=checks.filter(item=>!item.ok).length;lightReadySummary.textContent=remaining===0?'公開準備OK':`あと${remaining}項目`;lightReadySummary.classList.toggle('ready',remaining===0);lightReadyList.replaceChildren();checks.forEach(item=>{const row=document.createElement('li');row.className='light-ready-item';const label=document.createElement('span');label.className='light-ready-label';label.textContent=item.label;const state=document.createElement('span');state.className='light-ready-state'+(item.ok?' ok':'');state.textContent=item.ok?'OK':'要確認';row.append(label,state);lightReadyList.appendChild(row)})}
 ['episodeNumber','title','content'].forEach(id=>document.getElementById(id).addEventListener('input',renderLightReady));
