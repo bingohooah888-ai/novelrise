@@ -40,9 +40,12 @@ export function assertFreeDeletionProofContext(env) {
     preview.protocol !== 'https:' ||
     preview.hostname === 'novelrise.vercel.app' ||
     !preview.hostname.endsWith('.vercel.app') ||
-    preview.username || preview.password || preview.port ||
+    preview.username ||
+    preview.password ||
+    preview.port ||
     preview.origin !== env.CANONICAL_STAGING_URL
-  ) deny('SCOPE');
+  )
+    deny('SCOPE');
   return { previewOrigin: preview.origin, staging: STAGING };
 }
 
@@ -55,7 +58,8 @@ export function assertFreeAccount(profile, userId, owned) {
     profile.avatar_path != null ||
     !owned ||
     Object.values(owned).some((count) => count !== 0)
-  ) deny('NOT_AN_EMPTY_FREE_FIXTURE');
+  )
+    deny('NOT_AN_EMPTY_FREE_FIXTURE');
 }
 
 function checked(result, stage) {
@@ -102,8 +106,7 @@ async function ownedInventory(admin, userId) {
 function authNotFound(result) {
   return (
     !result?.data?.user &&
-    (result?.error?.status === 404 ||
-      result?.error?.code === 'user_not_found')
+    (result?.error?.status === 404 || result?.error?.code === 'user_not_found')
   );
 }
 
@@ -165,7 +168,8 @@ export async function runFreeDeletionProof({
       loggedIn?.user?.id !== createdId ||
       typeof loggedIn?.session?.access_token !== 'string' ||
       !loggedIn.session.access_token
-    ) deny('JWT_MISMATCH');
+    )
+      deny('JWT_MISMATCH');
 
     stage = 'FREE_BILLING_PRECHECK';
     let profile = null;
@@ -174,7 +178,11 @@ export async function runFreeDeletionProof({
       if (profile) break;
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    assertFreeAccount(profile, createdId, await ownedInventory(admin, createdId));
+    assertFreeAccount(
+      profile,
+      createdId,
+      await ownedInventory(admin, createdId)
+    );
 
     // Re-read immediately before the destructive API call: no existing Stripe
     // customer/subscription ID or authored content is permitted.
@@ -234,9 +242,14 @@ export async function runFreeDeletionProof({
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   runFreeDeletionProof()
-    .then(() => console.log('FREE_DELETION_STAGING_PASS: isolated test fixture'))
+    .then(() =>
+      console.log('FREE_DELETION_STAGING_PASS: isolated test fixture')
+    )
     .catch((error) => {
       console.error(
         error?.safeStage
