@@ -64,16 +64,25 @@ function Assert-ProtectedRoot {
   }
  }
 }
-function FileAcl([string]$file){
+function FileAcl([string]$file,[switch]$AllowRootInherited){
  Leaf $file
  $acl=[IO.File]::GetAccessControl($file)
- Must ($acl.AreAccessRulesProtected -and
-  $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ceq $AdminSid) 'FILE_OWNER_DRIFT'
+ Must ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ceq $AdminSid) 'FILE_OWNER_DRIFT'
+ if($AllowRootInherited){
+  # Only the three protected scripts may inherit from the already-pinned,
+  # ACL-protected $Root; the two approval permits MUST remain explicit.
+  Must ([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($file)) -ceq $Root -and
+   [IO.Path]::GetFileName($file) -in @('gateb-dpapi-one-shot-coordinator.ps1',
+    'gateb-dpapi-system-rescue.ps1','gateb-dpapi-approval-contract.ps1')) 'INHERITED_SCRIPT_SCOPE_DRIFT'
+ }else{
+  Must $acl.AreAccessRulesProtected 'PERMIT_ACL_NOT_PROTECTED'
+ }
  $rules=@($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]))
  Must ($rules.Count -eq 3) 'FILE_ACL_EXTRA'
+ Must (@($rules|Where-Object {$_.IsInherited -ne (-not $acl.AreAccessRulesProtected)}).Count -eq 0) 'FILE_ACL_INHERITANCE_MISMATCH'
  foreach($id in @($AdminSid,$SystemSid,$Sid)){
   $match=@($rules|Where-Object{$_.IdentityReference.Value -ceq $id -and
-   $_.AccessControlType -eq 'Allow' -and -not $_.IsInherited})
+   $_.AccessControlType -eq 'Allow'})
   Must ($match.Count -eq 1) 'FILE_ACL_SID_DRIFT'
   $f=[Security.AccessControl.FileSystemRights]
   if($id -ceq $Sid){
@@ -177,7 +186,7 @@ function Prepare {
   Must ($s.Old -match '^[a-f0-9]{64}$' -and $s.New -match '^[a-f0-9]{64}$') 'SOURCE_HASH_PINS_REQUIRED'
   $dst=Join-Path $Root $s.Name
   $src=Join-Path $SourceDir $s.Source
-  $null=FileAcl $dst
+  $null=FileAcl $dst -AllowRootInherited
   Leaf $src
   Must ((Sha $dst) -ceq $s.Old -and (Sha $src) -ceq $s.New) 'SOURCE_OR_INSTALLED_SHA_DRIFT'
   Must (-not [IO.File]::Exists(($dst+'.attempt3-stage')) -and
@@ -189,19 +198,19 @@ function Prepare {
  }
  Write-Output 'GATEB_ATTEMPT3_PREFLIGHT_PASS'
 }
-function AtomicUpdate([string]$Destination,[string]$Content) {
+function AtomicUpdate([string]$Destination,[string]$Content,[switch]$AllowRootInherited) {
  $stage=$Destination+'.attempt3-stage'
  $backup=$Destination+'.attempt3-previous'
  Must (-not [IO.File]::Exists($stage) -and -not [IO.File]::Exists($backup)) 'PREEXISTING_STAGE_OR_BACKUP'
  $oldSha=Sha $Destination
- $acl=FileAcl $Destination
+ $acl=FileAcl $Destination -AllowRootInherited:$AllowRootInherited
  $bytes=[Text.Encoding]::UTF8.GetBytes($Content)
  $stream=[IO.File]::Open($stage,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
  try{$stream.Write($bytes,0,$bytes.Length);$stream.Flush($true)}finally{$stream.Dispose()}
  [IO.File]::SetAccessControl($stage,$acl)
  [IO.File]::Replace($stage,$Destination,$backup)
  Must ((Sha $backup) -ceq $oldSha) 'BACKUP_SHA_CHANGED'
- $null=FileAcl $Destination
+ $null=FileAcl $Destination -AllowRootInherited:$AllowRootInherited
 }
 function RunUpgrade {
  Prepare
@@ -213,7 +222,7 @@ function RunUpgrade {
  foreach($s in $Specs){
   $dst=Join-Path $Root $s.Name
   $src=Join-Path $SourceDir $s.Source
-  AtomicUpdate $dst ([IO.File]::ReadAllText($src))
+  AtomicUpdate $dst ([IO.File]::ReadAllText($src)) -AllowRootInherited
   Must ((Sha $dst) -ceq $s.New) 'NEW_INSTALLED_SHA_DRIFT'
  }
  $script:Stage='AUTHORIZE_NEW_EXACT_HEAD_SCOPE'

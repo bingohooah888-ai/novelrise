@@ -93,6 +93,34 @@ test(
   }
 );
 
+test('only pinned installed scripts may inherit from protected root; permits remain explicit', () => {
+  assert.match(
+    src,
+    /function FileAcl\(\[string\]\$file,\[switch\]\$AllowRootInherited\)/u
+  );
+  assert.match(src, /INHERITED_SCRIPT_SCOPE_DRIFT/u);
+  assert.match(src, /PERMIT_ACL_NOT_PROTECTED/u);
+  assert.match(src, /FILE_ACL_INHERITANCE_MISMATCH/u);
+  assert.match(src, /FileAcl \$OwnerPermit\s+\$null=FileAcl \$ProofPermit/u);
+  assert.match(src, /FileAcl \$dst -AllowRootInherited/u);
+  assert.match(
+    src,
+    /FileAcl \$Destination -AllowRootInherited:\$AllowRootInherited/u
+  );
+  assert.match(
+    src,
+    /AtomicUpdate \$dst \(\[IO\.File\]::ReadAllText\(\$src\)\) -AllowRootInherited/u
+  );
+  assert.doesNotMatch(
+    src,
+    /AtomicUpdate \$OwnerPermit[^\n]*-AllowRootInherited/u
+  );
+  assert.doesNotMatch(
+    src,
+    /AtomicUpdate \$ProofPermit[^\n]*-AllowRootInherited/u
+  );
+});
+
 test('read-only Preflight keeps permit/SID checks while returning a bounded error code', () => {
   assert.match(
     src,
