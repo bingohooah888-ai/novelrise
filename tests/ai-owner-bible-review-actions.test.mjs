@@ -30,6 +30,7 @@ function mock({
   allow = true,
   postStatus = 200,
   postPayload = null,
+  getPayload = null,
   postThrows = false
 } = {}) {
   const host = element('main');
@@ -75,8 +76,9 @@ function mock({
     return {
       ok: true,
       async json() {
-        return {
+        return getPayload ?? {
           novelId: 354,
+          aiGenerated: false,
           candidates: [
             {
               id: 7,
@@ -158,6 +160,8 @@ test('private candidates use textContent and require explicit click', async () =
   const section = f.host.children[0];
   const row = section.children[1].children[0];
   assert.match(row.children[0].textContent, /<script>架空<\/script>/);
+  assert.match(row.children[0].textContent, /参照エピソードID：4/);
+  assert.doesNotMatch(row.children[0].textContent, /第4話/);
   assert.equal(row.children[1].tag, 'button');
   assert.equal(row.children[2].tag, 'button');
   assert.equal(f.requests[0].method, 'GET');
@@ -255,5 +259,43 @@ test('invalid decision receipt or network failure never reports acceptance', asy
       '採用結果を確認できませんでした。ページを再読み込みしてください。'
     );
     assert.equal(f.requests.filter((req) => req.method === 'POST').length, 1);
+  }
+});
+
+test('malformed or cross-work review GET responses never mount author actions or issue POST', async () => {
+  const candidate = {
+    id: 7,
+    episodeId: 4,
+    revision: 1,
+    kind: 'event',
+    key: '出発',
+    summary: '物語が始まる',
+    evidence: '最初の一歩を踏み出した',
+    status: 'pending'
+  };
+  const root = { novelId: 354, aiGenerated: false, candidates: [candidate] };
+  const bad = [
+    { ...root, novelId: 355 },
+    { ...root, aiGenerated: true },
+    { ...root, aiGenerated: undefined },
+    { ...root, characters: [], notes: [], facts: [], candidates: undefined },
+    { ...root, candidates: [candidate, { ...candidate }] },
+    { ...root, candidates: [{ ...candidate, kind: '__proto__' }] },
+    { ...root, candidates: [{ ...candidate, status: 'accepted' }] },
+    { ...root, candidates: [{ ...candidate, summary: '' }] },
+    { ...root, candidates: [{ ...candidate, evidence: '' }] }
+  ];
+  for (const body of bad) {
+    const f = mock({ getPayload: body });
+    assert.equal(await attach({
+      client: f.client,
+      novelId: 354,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher
+    }), false);
+    assert.equal(f.host.children.length, 0);
+    assert.equal(f.requests.length, 1);
+    assert.equal(f.requests[0].method, 'GET');
   }
 });
