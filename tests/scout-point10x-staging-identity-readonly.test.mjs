@@ -519,14 +519,14 @@ test('psql failures map to a fixed safe code without exposing native details', (
         stderr:
           'psql: error: ssl error: certificate verify failed SYNTHETIC_SECRET'
       },
-      'PSQL_TLS_CERTIFICATE_FAILURE'
+      'PSQL_TLS_CHAIN_REJECTED'
     ],
     [
       {
         status: 2,
         stderr: 'psql: error: root certificate file is missing SYNTHETIC_SECRET'
       },
-      'PSQL_TLS_CERTIFICATE_FAILURE'
+      'PSQL_TLS_CA_FILE_UNAVAILABLE'
     ],
     [
       {
@@ -576,7 +576,7 @@ test('psql failures map to a fixed safe code without exposing native details', (
     const actual = classifyPsqlFailure(input);
     assert.equal(actual, code);
     assert.match(actual, /^PSQL_[A-Z_]+$/u);
-    assert.doesNotMatch(actual, /SYNTHETIC_SECRET|host|password|stderr/iu);
+    assert.doesNotMatch(actual, /SYNTHETIC_SECRET|password|stderr|:5432|@/iu);
   }
 });
 
@@ -594,7 +594,7 @@ test('psql failure classification prioritizes SQL exit and TLS over generic conn
       stderr:
         'connection to server at SYNTHETIC_SECRET failed: SSL error: certificate verify failed'
     }),
-    'PSQL_TLS_CERTIFICATE_FAILURE'
+    'PSQL_TLS_CHAIN_REJECTED'
   );
   assert.equal(
     classifyPsqlFailure({
@@ -605,6 +605,94 @@ test('psql failure classification prioritizes SQL exit and TLS over generic conn
     'PSQL_AUTHENTICATION_FAILURE'
   );
   assert.equal(classifyPsqlFailure(undefined), 'PSQL_FAILURE_UNCLASSIFIED');
+});
+test('TLS failures keep CA, hostname and unsupported settings separate without stderr disclosure', () => {
+  const cases = [
+    [
+      'psql: error: root certificate file "system" does not exist at SYNTHETIC_SECRET',
+      'PSQL_TLS_CA_FILE_UNAVAILABLE'
+    ],
+    [
+      'psql: error: could not read root certificate file "SYNTHETIC_SECRET"',
+      'PSQL_TLS_CA_FILE_UNAVAILABLE'
+    ],
+    [
+      'psql: error: server certificate for "SYNTHETIC_SECRET" does not match host name "SYNTHETIC_SECRET"',
+      'PSQL_TLS_HOSTNAME_MISMATCH'
+    ],
+    [
+      'connection to server at SYNTHETIC_SECRET failed: certificate does not match host name "SYNTHETIC_SECRET"',
+      'PSQL_TLS_HOSTNAME_MISMATCH'
+    ],
+    [
+      'psql: error: invalid value for sslrootcert at SYNTHETIC_SECRET',
+      'PSQL_TLS_CONFIGURATION_REJECTED'
+    ],
+    [
+      'psql: error: unsupported sslrootcert value SYNTHETIC_SECRET',
+      'PSQL_TLS_CONFIGURATION_REJECTED'
+    ],
+    [
+      'psql: error: SSL error: certificate verify failed SYNTHETIC_SECRET',
+      'PSQL_TLS_CHAIN_REJECTED'
+    ],
+    [
+      'psql: error: self-signed certificate from SYNTHETIC_SECRET',
+      'PSQL_TLS_CHAIN_REJECTED'
+    ],
+    [
+      'psql: error: certificate has expired for SYNTHETIC_SECRET',
+      'PSQL_TLS_CHAIN_REJECTED'
+    ],
+    [
+      'psql: error: server certificate error at SYNTHETIC_SECRET',
+      'PSQL_TLS_CERTIFICATE_FAILURE'
+    ],
+    [
+      'psql: error: TLS handshake failed at SYNTHETIC_SECRET',
+      'PSQL_TLS_CERTIFICATE_FAILURE'
+    ],
+    [
+      'psql: error: unfamiliar TLS problem at SYNTHETIC_SECRET',
+      'PSQL_FAILURE_UNCLASSIFIED'
+    ]
+  ];
+  for (const [stderr, expected] of cases) {
+    const result = classifyPsqlFailure({ status: 2, stderr });
+    assert.equal(result, expected);
+    assert.match(result, /^PSQL_[A-Z_]+$/u);
+    assert.doesNotMatch(result, /SYNTHETIC_SECRET|password|stderr|:5432|@/iu);
+  }
+});
+
+test('TLS details win over generic network wrappers but never hide a SQL/script failure', () => {
+  assert.equal(
+    classifyPsqlFailure({
+      status: 2,
+      stderr:
+        'connection to server at SYNTHETIC_SECRET failed: server certificate for SYNTHETIC_SECRET does not match host name SYNTHETIC_SECRET'
+    }),
+    'PSQL_TLS_HOSTNAME_MISMATCH'
+  );
+  assert.equal(
+    classifyPsqlFailure({
+      status: 3,
+      stderr:
+        'ERROR: server certificate for SYNTHETIC_SECRET does not match host name SYNTHETIC_SECRET'
+    }),
+    'PSQL_SQL_ERROR'
+  );
+  assert.equal(
+    classifyPsqlFailure({
+      status: 2,
+      stderr: {
+        toString() {
+          throw Error('SYNTHETIC_SECRET never stringify native error');
+        }
+      }
+    }),
+    'PSQL_FAILURE_UNCLASSIFIED'
+  );
 });
 test('fixed catalog SQL is read-only; executable runner remains internal only', () => {
   assert.match(SAFE_IDENTITY_SQL, /^BEGIN READ ONLY; SELECT /u);
