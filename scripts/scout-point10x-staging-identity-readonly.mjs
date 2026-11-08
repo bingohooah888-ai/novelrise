@@ -370,6 +370,40 @@ export function classifyPsqlFailure(child) {
     return 'PSQL_DNS_OR_NETWORK_FAILURE';
   return 'PSQL_FAILURE_UNCLASSIFIED';
 }
+// psql/libpq reports TLS on its own client socket. pg_stat_ssl instead
+// reports the PostgreSQL backend socket, a different hop behind Supavisor.
+// Never expose raw \conninfo: it can contain host and user information.
+export function extractVerifiedPsqlClientTlsJson(stdout) {
+  if (typeof stdout !== 'string' || Buffer.byteLength(stdout, 'utf8') > 8192)
+    stop('CLIENT_TLS_EVIDENCE_INVALID');
+  const rows = stdout.trim().split(/\r?\n/u);
+  const json = rows.at(-1);
+  const tlsLines = rows
+    .slice(0, -1)
+    .filter((line) => line.startsWith('SSL connection ('));
+  const sslPattern =
+    /^SSL connection \(protocol: TLSv1\.[23], cipher: [A-Za-z0-9_-]+, compression: off(?:, ALPN: [A-Za-z0-9_-]+)?\)$/u;
+  if (
+    rows.length < 3 ||
+    typeof json !== 'string' ||
+    !json.startsWith('{') ||
+    !json.endsWith('}') ||
+    tlsLines.length !== 1 ||
+    !sslPattern.test(tlsLines[0])
+  )
+    stop('CLIENT_TLS_EVIDENCE_INVALID');
+  return json;
+}
+
+// Both hops must satisfy existing security requirements. pg_stat_ssl=false
+// behind a pooler is NOT a false positive to be overridden: it means the
+// PostgreSQL upstream link has not been proven TLS-protected.
+export function validateStagingTlsBoundary(catalog, connectionMode) {
+  if (connectionMode === 'session-pooler' && catalog?.ssl === false)
+    stop('POOLER_UPSTREAM_SSL_UNVERIFIED');
+  return validateCatalogReadOnlyJson(catalog);
+}
+
 function runSafeReadOnlyQuery({ env, route }) {
   if (
     !route ||
@@ -388,6 +422,7 @@ function runSafeReadOnlyQuery({ env, route }) {
     PGPASSWORD: decodeURIComponent(parsed.password),
     PGDATABASE: 'postgres',
     PGSSLMODE: 'verify-full',
+    LC_ALL: 'C',
     PGSSLROOTCERT: caPath,
     PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=4000'
   };
@@ -407,6 +442,8 @@ function runSafeReadOnlyQuery({ env, route }) {
         '-v',
         'ON_ERROR_STOP=1',
         '-c',
+        '\\conninfo',
+        '-c',
         SAFE_IDENTITY_SQL
       ],
       {
@@ -424,11 +461,11 @@ function runSafeReadOnlyQuery({ env, route }) {
   if (child?.status !== 0 || child.error) stop(classifyPsqlFailure(child));
   let result;
   try {
-    result = JSON.parse(String(child.stdout).trim());
+    result = JSON.parse(extractVerifiedPsqlClientTlsJson(child.stdout));
   } catch {
     stop('PSQL_IDENTITY_OUTPUT_INVALID');
   }
-  return validateCatalogReadOnlyJson(result);
+  return validateStagingTlsBoundary(result, route.connectionMode);
 }
 
 // This exported shape-only validator never proves a real connection.
@@ -451,7 +488,10 @@ export function validateCatalogReadOnlyJson(result) {
             result.tables <= EXPECTED_TABLES.length
         ],
         ['CRON_EXTENSION_TYPE', typeof result.cronExtension === 'boolean'],
-        ['RANK_CRON_FUNCTION_TYPE', typeof result.rankCronFunction === 'boolean']
+        [
+          'RANK_CRON_FUNCTION_TYPE',
+          typeof result.rankCronFunction === 'boolean'
+        ]
       ]
         .filter(([, passes]) => !passes)
         .map(([name]) => name);
