@@ -67,6 +67,22 @@ test('same verified owner, work, session and unchanged snapshots permit an offli
   assert.equal(input.outlineAfter[0].episode_title, '秘密の草稿');
 });
 
+test('Postgres bigint decimal strings normalize without interpreting IDs as episode numbers', () => {
+  const input = fixture({ expectedNovelId: '23' });
+  input.accessBefore.checkedNovelId = '23';
+  input.accessAfter.checkedNovelId = '23';
+  input.outlineBefore[0].episode_id = '900';
+  input.outlineAfter[0].episode_id = '900';
+  input.outlineBefore[0].episode_number = '2';
+  input.outlineAfter[0].episode_number = '2';
+  const result = check(input);
+  assert.ok(result);
+  assert.equal(result.outlineRows[1].episode_id, 900);
+  assert.equal(result.outlineRows[1].episode_number, 2);
+  input.outlineAfter[0].episode_number = '02';
+  assert.equal(check(input), null);
+});
+
 test('row ordering changes alone do not imply a stale outline', () => {
   const input = fixture();
   input.outlineAfter.reverse();
