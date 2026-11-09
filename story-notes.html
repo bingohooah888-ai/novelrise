@@ -14,6 +14,19 @@
     /* AI owner-only prototype: the section is inserted only after authenticated API success. */
     .novelight-ai-bible-owner-section { margin-top: 24px; padding: 24px; }
     .novelight-ai-bible-owner-content { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 16px; font-weight: 500; line-height: 1.85; color: #1f2937; -webkit-text-fill-color: #1f2937; }
+
+    /* Owner-verified Novel Bible reader: a rich view, without global style changes. */
+    .novelight-ai-bible-owner-content .novelight-ai-bible-offline-reader { white-space: normal; color: #1f2937; -webkit-text-fill-color: #1f2937; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-load-status { margin: 0 0 12px; color: #22364f; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content { margin-top: 18px; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-reload,
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content button { min-height: 40px; padding: 7px 13px; margin: 4px 6px 4px 0; border-radius: 8px; border: 1px solid #365778; background: #0e1d35; color: #fff; -webkit-text-fill-color: #fff; font-weight: 700; cursor: pointer; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-reload:disabled { opacity: .6; cursor: wait; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content :is(input, select) { max-width: 100%; min-height: 40px; margin: 4px 8px 4px 0; padding: 7px 10px; border-radius: 7px; border: 1px solid #9ca3af; background: #fff; color: #1f2937; -webkit-text-fill-color: #1f2937; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content :is(article, aside, details) { min-width: 0; margin: 12px 0; padding: 12px; border: 1px solid #d5dce5; border-radius: 10px; background: #f8fafc; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content :is(p, h3, h4, summary, label) { overflow-wrap: anywhere; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content summary { cursor: pointer; font-weight: 700; }
+    @media (max-width: 540px) { .novelight-ai-bible-owner-content .novelight-ai-bible-private-content { font-size: 14px; } .novelight-ai-bible-owner-content .novelight-ai-bible-private-content :is(input, select, button) { width: 100%; } }
     /* The author-ready UI is still accessible only through the existing gated preview. */
     .novelight-ai-workspace { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; color:#edf3f8; -webkit-text-fill-color:#edf3f8; }
     .novelight-ai-workspace > h2, .novelight-ai-workspace > p, .novelight-ai-workspace-search { grid-column:1/-1; }
