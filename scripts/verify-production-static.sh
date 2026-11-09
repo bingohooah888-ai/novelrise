@@ -111,7 +111,7 @@ fi
 
 html_targets=(/tmp/live-*.html)
 # Ignore the legacy Vercel hostname used by auth host checks; retain visible branding detection.
-if [ -e "${html_targets[0]}" ] && sed -E 's/novelrise\.vercel\.app//Ig' "${html_targets[@]}" | grep -Eqi 'NovelRise|NOVELRISE'; then
+if [ -e "${html_targets[0]}" ] && grep -Eqi 'NovelRise|NOVELRISE' <(sed -E 's/novelrise\.vercel\.app//Ig' "${html_targets[@]}"); then
   echo 'Legacy user-facing NovelRise branding found in checked production HTML.'
   exit 1
 fi
