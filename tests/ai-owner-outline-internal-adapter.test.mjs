@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { URL } from 'node:url';
@@ -302,4 +303,30 @@ test('no live API route or browser script imports the future internal adapter', 
   assert.doesNotMatch(privatePreview, /owner-outline-internal-adapter/);
   assert.doesNotMatch(html, /owner-outline-internal-adapter/);
   assert.doesNotMatch(adapter, /console\.|process\.env|\.insert\s*\(|\.update\s*\(|\.delete\s*\(/);
+});
+
+test('service-role and secret API keys cannot be used for the author-bound outline client', async () => {
+  const legacy = (role) =>
+    'eyJhbGciOiJIUzI1NiJ9.' +
+    Buffer.from(JSON.stringify({ role })).toString('base64url') +
+    '.synthetic-not-signed';
+  for (const badKey of [
+    'sb_secret_synthetic_secret_key',
+    legacy('service_role'),
+    legacy('authenticated'),
+    'eyJinvalid.not-json.fake'
+  ]) {
+    const f = fixture();
+    const adapter = f.adapter({ config: { ...CONFIG, key: badKey } });
+    assert.equal(await adapter.read({
+      bearer: BEARER, expectedNovelId: 23, preview: preview()
+    }), null);
+    assert.equal(count(f.state, 'getUser'), 0);
+    assert.equal(count(f.state, 'authorRpc'), 0);
+  }
+
+  const legacyAnon = fixture();
+  assert.ok(await legacyAnon.adapter({
+    config: { ...CONFIG, key: legacy('anon') }
+  }).read({ bearer: BEARER, expectedNovelId: 23, preview: preview() }));
 });
