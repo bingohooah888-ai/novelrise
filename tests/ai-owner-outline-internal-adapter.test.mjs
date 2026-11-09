@@ -128,7 +128,7 @@ function fixture() {
         if (number === 1) state.afterSecondRpc?.();
         return {
           error: state.rpcError ? { message: 'private failure' } : null,
-          data: structuredClone(state.rpcData[number])
+          data: JSON.parse(JSON.stringify(state.rpcData[number]))
         };
       }
     };
