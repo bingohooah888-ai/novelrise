@@ -720,7 +720,10 @@ test('private owner outline enables chapter-based reverse lookup for all fact ki
   reset.listeners.get('click')();
   assert.equal(episodes.value, 'all');
   assert.equal(cards.filter((item) => !item.hidden).length, 7);
-  assert.equal(payload.facts.at(-1).confirmed[0].payload.summary, '王都の図書館');
+  assert.equal(
+    payload.facts.at(-1).confirmed[0].payload.summary,
+    '王都の図書館'
+  );
 });
 
 test('owner outline missing world-fact source fails closed instead of leaking old data', () => {
