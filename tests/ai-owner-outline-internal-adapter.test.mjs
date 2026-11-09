@@ -19,22 +19,33 @@ const CONFIG = {
 function rows() {
   return [
     {
-      episode_id: 901, episode_number: 2,
-      episode_title: '秘密の草稿', episode_status: 'draft',
-      chapter_id: 15, chapter_title: '序章', chapter_position: 1
+      episode_id: 901,
+      episode_number: 2,
+      episode_title: '秘密の草稿',
+      episode_status: 'draft',
+      chapter_id: 15,
+      chapter_title: '序章',
+      chapter_position: 1
     },
     {
-      episode_id: 50, episode_number: 5,
-      episode_title: '公開作品', episode_status: 'published',
-      chapter_id: null, chapter_title: null, chapter_position: null
+      episode_id: 50,
+      episode_number: 5,
+      episode_title: '公開作品',
+      episode_status: 'published',
+      chapter_id: null,
+      chapter_title: null,
+      chapter_position: null
     }
   ];
 }
 
 function preview() {
   return {
-    novelId: 23, aiGenerated: false,
-    characters: [], notes: [], facts: []
+    novelId: 23,
+    aiGenerated: false,
+    characters: [],
+    notes: [],
+    facts: []
   };
 }
 
@@ -57,8 +68,12 @@ function fixture() {
   const serviceClient = {
     auth: {
       async getUser(received) {
-        state.calls.push({ action: 'getUser', matchesBearer: received === TOKEN });
-        if (state.authError) return { error: { message: 'unavailable' }, data: {} };
+        state.calls.push({
+          action: 'getUser',
+          matchesBearer: received === TOKEN
+        });
+        if (state.authError)
+          return { error: { message: 'unavailable' }, data: {} };
         return { error: null, data: { user: { id: state.actor } } };
       }
     },
@@ -74,11 +89,15 @@ function fixture() {
               assert.equal(value, 23);
               return {
                 async maybeSingle() {
-                  if (state.dbError) return { error: { message: 'hidden' }, data: null };
-                  return { error: null, data: {
-                    id: state.novelId,
-                    user_id: state.novelOwner
-                  } };
+                  if (state.dbError)
+                    return { error: { message: 'hidden' }, data: null };
+                  return {
+                    error: null,
+                    data: {
+                      id: state.novelId,
+                      user_id: state.novelOwner
+                    }
+                  };
                 }
               };
             }
@@ -101,8 +120,10 @@ function fixture() {
     return {
       async rpc(name, args) {
         state.calls.push({ action: 'authorRpc', name, args });
-        if (state.throwOnRpc) throw new Error('private draft - never surface this');
-        const number = state.calls.filter((call) => call.action === 'authorRpc').length - 1;
+        if (state.throwOnRpc)
+          throw new Error('private draft - never surface this');
+        const number =
+          state.calls.filter((call) => call.action === 'authorRpc').length - 1;
         if (number === 0) state.afterFirstRpc?.();
         if (number === 1) state.afterSecondRpc?.();
         return {
@@ -155,7 +176,10 @@ test('owner-only synthetic token author RPC returns navigation fields without dr
   const f = fixture();
   const response = await f.run();
   assert.equal(response?.novelId, 23);
-  assert.deepEqual(response.outlineRows.map((row) => row.episode_number), [5, 2]);
+  assert.deepEqual(
+    response.outlineRows.map((row) => row.episode_number),
+    [5, 2]
+  );
   assert.equal(response.outlineRows[1].chapter_title, '序章');
   assert.equal(Object.hasOwn(response.outlineRows[1], 'episode_title'), false);
   assert.equal(Object.hasOwn(response.outlineRows[1], 'episode_status'), false);
@@ -165,13 +189,23 @@ test('owner-only synthetic token author RPC returns navigation fields without dr
   assert.equal(count(f.state, 'checkSession'), 3);
   assert.equal(count(f.state, 'authorRpc'), 2);
   assert.deepEqual(
-    f.state.calls.filter((entry) => entry.action === 'authorRpc')
+    f.state.calls
+      .filter((entry) => entry.action === 'authorRpc')
       .map((entry) => [entry.name, entry.args.p_novel_id]),
-    [['novelight_novel_outline', 23], ['novelight_novel_outline', 23]]
+    [
+      ['novelight_novel_outline', 23],
+      ['novelight_novel_outline', 23]
+    ]
   );
   assert.deepEqual(
-    f.state.calls.filter((entry) => entry.action === 'createAuthor')
-      .map((entry) => [entry.correctUrl, entry.correctKey, entry.correctHeader, entry.persistSession]),
+    f.state.calls
+      .filter((entry) => entry.action === 'createAuthor')
+      .map((entry) => [
+        entry.correctUrl,
+        entry.correctKey,
+        entry.correctHeader,
+        entry.persistSession
+      ]),
     [[true, true, true, false]]
   );
 });
@@ -219,12 +253,24 @@ test('no bearer, cross-work preview and malformed work IDs never initialize auth
 
 test('not-the-owner, disabled login or failed ownership query return no private drafts', async () => {
   for (const change of [
-    (s) => { s.actor = OTHER; },
-    (s) => { s.novelOwner = OTHER; },
-    (s) => { s.novelId = 24; },
-    (s) => { s.authError = true; },
-    (s) => { s.dbError = true; },
-    (s) => { s.active = false; }
+    (s) => {
+      s.actor = OTHER;
+    },
+    (s) => {
+      s.novelOwner = OTHER;
+    },
+    (s) => {
+      s.novelId = 24;
+    },
+    (s) => {
+      s.authError = true;
+    },
+    (s) => {
+      s.dbError = true;
+    },
+    (s) => {
+      s.active = false;
+    }
   ]) {
     const f = fixture();
     change(f.state);
@@ -235,25 +281,39 @@ test('not-the-owner, disabled login or failed ownership query return no private 
 
 test('logging out after first RPC suppresses second RPC and clears result', async () => {
   const f = fixture();
-  f.state.afterFirstRpc = () => { f.state.active = false; };
+  f.state.afterFirstRpc = () => {
+    f.state.active = false;
+  };
   assert.equal(await f.run(), null);
   assert.equal(count(f.state, 'authorRpc'), 1);
 });
 
 test('changing session binding mid-request suppresses second RPC', async () => {
   const f = fixture();
-  f.state.afterFirstRpc = () => { f.state.binding = 'other-opaque-session'; };
+  f.state.afterFirstRpc = () => {
+    f.state.binding = 'other-opaque-session';
+  };
   assert.equal(await f.run(), null);
   assert.equal(count(f.state, 'authorRpc'), 1);
 });
 
 test('user switch, ownership transfer and logout after second RPC reject the response', async () => {
   for (const change of [
-    (s) => { s.actor = OTHER; },
-    (s) => { s.novelOwner = OTHER; },
-    (s) => { s.binding = 'new-session-binding'; },
-    (s) => { s.active = false; },
-    (s) => { s.dbError = true; }
+    (s) => {
+      s.actor = OTHER;
+    },
+    (s) => {
+      s.novelOwner = OTHER;
+    },
+    (s) => {
+      s.binding = 'new-session-binding';
+    },
+    (s) => {
+      s.active = false;
+    },
+    (s) => {
+      s.dbError = true;
+    }
   ]) {
     const f = fixture();
     f.state.afterSecondRpc = () => change(f.state);
@@ -264,12 +324,24 @@ test('user switch, ownership transfer and logout after second RPC reject the res
 
 test('chapter move, reorder, draft publish and addition between reads are stale', async () => {
   for (const change of [
-    (a) => { a[0].episode_number = 3; },
-    (a) => { a[0].chapter_id = 25; },
-    (a) => { a[0].chapter_title = '改題した章'; },
-    (a) => { a[0].episode_status = 'published'; },
-    (a) => { a[0].episode_title = '公開前の修正'; },
-    (a) => { a.pop(); }
+    (a) => {
+      a[0].episode_number = 3;
+    },
+    (a) => {
+      a[0].chapter_id = 25;
+    },
+    (a) => {
+      a[0].chapter_title = '改題した章';
+    },
+    (a) => {
+      a[0].episode_status = 'published';
+    },
+    (a) => {
+      a[0].episode_title = '公開前の修正';
+    },
+    (a) => {
+      a.pop();
+    }
   ]) {
     const f = fixture();
     change(f.state.rpcData[1]);
@@ -280,29 +352,62 @@ test('chapter move, reorder, draft publish and addition between reads are stale'
 
 test('RPC failure, exception or impossible row shape fail closed without error disclosure', async () => {
   for (const change of [
-    (s) => { s.rpcError = true; },
-    (s) => { s.throwOnRpc = true; },
-    (s) => { s.rpcData[1] = [{ ...rows()[0], chapter_id: undefined }]; },
-    (s) => { s.rpcData[1] = null; },
-    (s) => { s.rpcData[1] = [{ ...rows()[0], novel_id: 999 }]; }
+    (s) => {
+      s.rpcError = true;
+    },
+    (s) => {
+      s.throwOnRpc = true;
+    },
+    (s) => {
+      s.rpcData[1] = [{ ...rows()[0], chapter_id: undefined }];
+    },
+    (s) => {
+      s.rpcData[1] = null;
+    },
+    (s) => {
+      s.rpcData[1] = [{ ...rows()[0], novel_id: 999 }];
+    }
   ]) {
     const f = fixture();
     change(f.state);
     const response = await f.run();
     assert.equal(response, null);
-    assert.equal(Object.values(f.state.calls).some((x) => JSON.stringify(x).includes(TOKEN)), false);
+    assert.equal(
+      Object.values(f.state.calls).some((x) =>
+        JSON.stringify(x).includes(TOKEN)
+      ),
+      false
+    );
   }
 });
 
 test('no live API route or browser script imports the future internal adapter', async () => {
-  const adapter = await readFile(new URL('../api/_lib/ai/owner-outline-internal-adapter.js', import.meta.url), 'utf8');
-  const apiRoute = await readFile(new URL('../api/ai-owner-novel-bible.js', import.meta.url), 'utf8');
-  const privatePreview = await readFile(new URL('../api/_lib/ai/owner-novel-bible-preview.js', import.meta.url), 'utf8');
-  const html = await readFile(new URL('../story-notes.html', import.meta.url), 'utf8');
+  const adapter = await readFile(
+    new URL(
+      '../api/_lib/ai/owner-outline-internal-adapter.js',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const apiRoute = await readFile(
+    new URL('../api/ai-owner-novel-bible.js', import.meta.url),
+    'utf8'
+  );
+  const privatePreview = await readFile(
+    new URL('../api/_lib/ai/owner-novel-bible-preview.js', import.meta.url),
+    'utf8'
+  );
+  const html = await readFile(
+    new URL('../story-notes.html', import.meta.url),
+    'utf8'
+  );
   assert.doesNotMatch(apiRoute, /owner-outline-internal-adapter/);
   assert.doesNotMatch(privatePreview, /owner-outline-internal-adapter/);
   assert.doesNotMatch(html, /owner-outline-internal-adapter/);
-  assert.doesNotMatch(adapter, /console\.|process\.env|\.insert\s*\(|\.update\s*\(|\.delete\s*\(/);
+  assert.doesNotMatch(
+    adapter,
+    /console\.|process\.env|\.insert\s*\(|\.update\s*\(|\.delete\s*\(/
+  );
 });
 
 test('service-role and secret API keys cannot be used for the author-bound outline client', async () => {
@@ -318,15 +423,24 @@ test('service-role and secret API keys cannot be used for the author-bound outli
   ]) {
     const f = fixture();
     const adapter = f.adapter({ config: { ...CONFIG, key: badKey } });
-    assert.equal(await adapter.read({
-      bearer: BEARER, expectedNovelId: 23, preview: preview()
-    }), null);
+    assert.equal(
+      await adapter.read({
+        bearer: BEARER,
+        expectedNovelId: 23,
+        preview: preview()
+      }),
+      null
+    );
     assert.equal(count(f.state, 'getUser'), 0);
     assert.equal(count(f.state, 'authorRpc'), 0);
   }
 
   const legacyAnon = fixture();
-  assert.ok(await legacyAnon.adapter({
-    config: { ...CONFIG, key: legacy('anon') }
-  }).read({ bearer: BEARER, expectedNovelId: 23, preview: preview() }));
+  assert.ok(
+    await legacyAnon
+      .adapter({
+        config: { ...CONFIG, key: legacy('anon') }
+      })
+      .read({ bearer: BEARER, expectedNovelId: 23, preview: preview() })
+  );
 });
