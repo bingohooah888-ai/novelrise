@@ -215,7 +215,8 @@ test('offline review flags overlaps and distinct duplicate names without implyin
   assert.equal(render({ target, payload }), true);
   assert.match(target.textContent, /機械的な重複の確認のみ行います/);
   assert.match(target.textContent, /AI候補：2件・要確認項目：3件/);
-  assert.equal(nodes(target, 'aside').length, 2);
+  assert.equal(nodes(target, 'aside').length, 3);
+  assert.match(target.textContent, /確定設定とAI候補を見比べる/);
   assert.deepEqual(
     payload.facts[1].confirmed.map((row) => row.payload.summary),
     ['春の朝', '春の朝']
@@ -618,4 +619,167 @@ test('story index focus locates source cards without any RPC, write or external 
     1
   );
   assert.match(target.textContent, /絞り込み結果：1件/);
+});
+
+test('author can filter all six categories and reset local filters without writes', () => {
+  const payload = fixture();
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const selects = nodes(target, 'select');
+  const categories = selects[1];
+  assert.equal(categories.children.length, 7);
+  categories.value = 'relationships';
+  categories.listeners.get('change')();
+  const cards = nodes(target, 'article');
+  assert.equal(cards.filter((item) => !item.hidden).length, 1);
+  assert.match(target.textContent, /絞り込み結果：1件/);
+  const input = nodes(target, 'input')[0];
+  input.value = '存在しない';
+  input.listeners.get('input')();
+  assert.match(target.textContent, /絞り込み結果：0件/);
+  const reset = nodes(target, 'button').find(
+    (item) => item.className === 'novelight-ai-workspace-clear-filters'
+  );
+  assert.ok(reset);
+  reset.listeners.get('click')();
+  assert.equal(input.value, '');
+  assert.equal(categories.value, 'all');
+  assert.match(target.textContent, /登録情報：6件/);
+  assert.equal(cards.filter((item) => !item.hidden).length, 6);
+});
+
+test('private owner outline enables chapter-based reverse lookup for all fact kinds', () => {
+  const payload = fixture();
+  payload.novelId = 23;
+  payload.aiGenerated = false;
+  payload.facts[0].suggestions[0].sourceEpisodeId = 900;
+  payload.facts[1].confirmed[0].sourceEpisodeId = 100;
+  payload.facts.push({
+    kind: 'world',
+    key: '魔法の図書館',
+    confirmed: [
+      {
+        sourceEpisodeId: 900,
+        payload: { summary: '王都の図書館', evidence: '' }
+      }
+    ],
+    suggestions: []
+  });
+  const outlineRows = [
+    {
+      episode_id: 100,
+      episode_number: 7,
+      episode_title: '出発',
+      episode_status: 'published',
+      chapter_id: 400,
+      chapter_title: '第一章',
+      chapter_position: 2
+    },
+    {
+      episode_id: 900,
+      episode_number: 2,
+      episode_title: '鍵',
+      episode_status: 'draft',
+      chapter_id: 300,
+      chapter_title: 'プロローグ',
+      chapter_position: 1
+    }
+  ];
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload, outlineRows }), true);
+  assert.match(target.textContent, /話数から設定を探す/);
+  assert.match(target.textContent, /プロローグ／第2話／参照エピソードID：900/);
+  assert.match(target.textContent, /第一章／第7話／参照エピソードID：100/);
+  const episodes = nodes(target, 'select')[3];
+  assert.equal(episodes.children.length, 3);
+  assert.equal(episodes.children[1].value, '900');
+  episodes.value = '900';
+  episodes.listeners.get('change')();
+  const cards = nodes(target, 'article');
+  assert.equal(cards.filter((item) => !item.hidden).length, 2);
+  assert.match(target.textContent, /絞り込み結果：2件/);
+  const status = nodes(target, 'select')[0];
+  status.value = 'author';
+  status.listeners.get('change')();
+  assert.equal(cards.filter((item) => !item.hidden).length, 1);
+  assert.match(
+    cards.filter((item) => !item.hidden)[0].textContent,
+    /魔法の図書館/
+  );
+  const focus = nodes(target, 'button').find(
+    (item) =>
+      item.className === 'novelight-ai-workspace-story-focus' &&
+      item.attributes['aria-label'].includes('青い鍵')
+  );
+  focus.listeners.get('click')();
+  assert.equal(episodes.value, 'all');
+  assert.equal(status.value, 'all');
+  const reset = nodes(target, 'button').find(
+    (item) => item.className === 'novelight-ai-workspace-clear-filters'
+  );
+  reset.listeners.get('click')();
+  assert.equal(episodes.value, 'all');
+  assert.equal(cards.filter((item) => !item.hidden).length, 7);
+  assert.equal(payload.facts.at(-1).confirmed[0].payload.summary, '王都の図書館');
+});
+
+test('owner outline missing world-fact source fails closed instead of leaking old data', () => {
+  const payload = fixture();
+  payload.novelId = 23;
+  payload.aiGenerated = false;
+  payload.facts.push({
+    kind: 'location',
+    key: '未掲載の場所',
+    confirmed: [
+      { sourceEpisodeId: 999, payload: { summary: '秘密の場所', evidence: '' } }
+    ],
+    suggestions: []
+  });
+  const target = new FakeElement('div', doc);
+  assert.equal(
+    render({ target, payload: { characters: [], notes: [], facts: [] } }),
+    true
+  );
+  const outlineRows = [
+    {
+      episode_id: 100,
+      episode_number: 7,
+      episode_title: '出発',
+      episode_status: 'published',
+      chapter_id: null,
+      chapter_title: null,
+      chapter_position: null
+    }
+  ];
+  assert.equal(render({ target, payload, outlineRows }), false);
+  assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
+});
+
+test('confirmed settings and AI candidates compare literally without silent adoption', () => {
+  const payload = fixture();
+  payload.facts[1].suggestions = [
+    {
+      sourceEpisodeId: 8,
+      payload: {
+        summary: '<script>作者へ提案</script>',
+        evidence: '出典の文章'
+      }
+    }
+  ];
+  const before = JSON.stringify(payload);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const comparison = nodes(target, 'aside').find(
+    (item) => item.className === 'novelight-ai-workspace-comparisons'
+  );
+  assert.ok(comparison);
+  assert.match(comparison.textContent, /作者が確定した設定（1件）/);
+  assert.match(comparison.textContent, /AI抽出候補・未確定（1件）/);
+  assert.match(comparison.textContent, /春の朝/);
+  assert.match(comparison.textContent, /<script>作者へ提案<\/script>/);
+  assert.match(comparison.textContent, /引用根拠：出典の文章/);
+  assert.equal(nodes(comparison, 'script').length, 0);
+  assert.equal(nodes(comparison, 'button').length, 0);
+  assert.equal(JSON.stringify(payload), before);
 });

@@ -383,6 +383,32 @@
     )
       return false;
 
+    // The existing owner-only outline projector has already validated all
+    // rows. Cross-check *every* sourced fact, not only foreshadowing/events.
+    const episodeById = projected
+      ? new Map(
+          outlineRows.map((row) => [
+            Number(row.episode_id),
+            {
+              episodeId: Number(row.episode_id),
+              episodeNumber: Number(row.episode_number),
+              chapterTitle: row.chapter_title
+            }
+          ])
+        )
+      : null;
+    if (
+      episodeById &&
+      sections.some((section) =>
+        section.items.some(
+          (item) =>
+            item.sourceEpisodeId != null &&
+            !episodeById.has(item.sourceEpisodeId)
+        )
+      )
+    )
+      return false;
+
     const create = (tag, className, content) => {
       const element = doc.createElement(tag);
       if (className) element.className = className;
@@ -423,7 +449,11 @@
     for (const [value, title] of [
       ['all', 'すべての項目'],
       ['foreshadowing', '伏線のみ'],
-      ['events', '出来事・時系列のみ']
+      ['events', '出来事・時系列のみ'],
+      ['characters', '登場人物のみ'],
+      ['world', '世界観・場所のみ'],
+      ['relationships', '人物関係のみ'],
+      ['plot', 'プロット・その他のみ']
     ]) {
       const option = create('option', '', title);
       option.value = value;
@@ -431,6 +461,7 @@
     }
     categoryFilter.value = 'all';
     wrap.appendChild(categoryFilter);
+    let episodeFilter = null;
     const reviewSummary = create('aside', 'novelight-ai-workspace-review');
     reviewSummary.setAttribute('aria-label', '作品カルテの確認ポイント');
     reviewSummary.appendChild(create('h3', '', '設定の確認ポイント'));
@@ -500,6 +531,58 @@
       );
     }
     wrap.appendChild(reviewSummary);
+
+    // Side-by-side inspection is intentionally local and read-only. A shared
+    // heading is not proof of a contradiction or permission to accept AI data.
+    const comparisons = payload.facts.filter(
+      (group) => group.confirmed.length && group.suggestions.length
+    );
+    if (comparisons.length) {
+      const comparisonPanel = create(
+        'aside',
+        'novelight-ai-workspace-comparisons'
+      );
+      comparisonPanel.setAttribute(
+        'aria-label',
+        '作者確定設定と未確定候補の見比べ'
+      );
+      comparisonPanel.appendChild(
+        create('h3', '', '確定設定とAI候補を見比べる（' + comparisons.length + '項目）')
+      );
+      comparisonPanel.appendChild(
+        create('p', '', '同じ見出しの記述を並べています。矛盾の判定やAI候補の自動採用は行いません。')
+      );
+      for (const group of comparisons) {
+        const comparison = create('details', 'novelight-ai-workspace-compare');
+        comparison.appendChild(create('summary', '', group.key));
+        for (const [records, title] of [
+          [group.confirmed, '作者が確定した設定'],
+          [group.suggestions, 'AI抽出候補・未確定']
+        ]) {
+          const side = create('div', 'novelight-ai-workspace-compare-side');
+          side.appendChild(create('h4', '', title + '（' + records.length + '件）'));
+          for (const item of records) {
+            side.appendChild(
+              create(
+                'p',
+                '',
+                (item.payload.summary || '（説明未登録）') +
+                  (item.sourceEpisodeId != null
+                    ? '／参照エピソードID：' + item.sourceEpisodeId
+                    : '／参照元ID：未登録') +
+                  (item.payload.evidence
+                    ? '／引用根拠：' + item.payload.evidence
+                    : '')
+              )
+            );
+          }
+          comparison.appendChild(side);
+        }
+        comparisonPanel.appendChild(comparison);
+      }
+      wrap.appendChild(comparisonPanel);
+    }
+
     const storyPanel = create('aside', 'novelight-ai-workspace-story-index');
     storyPanel.setAttribute('aria-label', '伏線と出来事の整理');
     storyPanel.appendChild(create('h3', '', '伏線・出来事の整理'));
@@ -593,6 +676,7 @@
           focus.addEventListener('click', () => {
             filter.value = entry.key;
             statusFilter.value = 'all';
+            if (episodeFilter) episodeFilter.value = 'all';
             categoryFilter.value =
               entry.kind === 'foreshadowing' ? 'foreshadowing' : 'events';
             updateFilter();
@@ -606,6 +690,74 @@
     storyOrder.addEventListener('change', redrawStoryIndex);
     redrawStoryIndex();
     wrap.appendChild(storyPanel);
+
+    if (episodeById) {
+      const referencedIds = new Set(
+        sections.flatMap((section) =>
+          section.items
+            .map((item) => item.sourceEpisodeId)
+            .filter((id) => id != null)
+        )
+      );
+      const referencedEpisodes = [...referencedIds]
+        .map((id) => episodeById.get(id))
+        .sort(
+          (a, b) =>
+            a.episodeNumber - b.episodeNumber || a.episodeId - b.episodeId
+        );
+      const episodePanel = create(
+        'aside',
+        'novelight-ai-workspace-episode-index'
+      );
+      episodePanel.setAttribute('aria-label', '話数から作品カルテを逆引き');
+      episodePanel.appendChild(create('h3', '', '話数から設定を探す'));
+      episodePanel.appendChild(
+        create(
+          'p',
+          '',
+          '作者の登録・確認情報に出典のある話数だけを表示します。作品内の時系列ではありません。'
+        )
+      );
+      episodeFilter = create('select', 'novelight-ai-workspace-episode-filter');
+      episodeFilter.setAttribute('aria-label', '参照話数で作品カルテを絞り込み');
+      const allEpisodes = create('option', '', 'すべての話数');
+      allEpisodes.value = 'all';
+      episodeFilter.appendChild(allEpisodes);
+      for (const episode of referencedEpisodes) {
+        const option = create(
+          'option',
+          '',
+          (episode.chapterTitle ? episode.chapterTitle + '／' : '') +
+            '第' + episode.episodeNumber + '話（ID：' + episode.episodeId + '）'
+        );
+        option.value = String(episode.episodeId);
+        episodeFilter.appendChild(option);
+      }
+      episodeFilter.value = 'all';
+      episodeFilter.addEventListener('change', () => updateFilter());
+      episodePanel.appendChild(episodeFilter);
+      if (!referencedEpisodes.length) {
+        episodePanel.appendChild(
+          create('p', '', '参照エピソードを持つ設定はまだありません。')
+        );
+      }
+      wrap.appendChild(episodePanel);
+    }
+
+    const clearFilters = create(
+      'button',
+      'novelight-ai-workspace-clear-filters',
+      '検索・絞り込みを解除'
+    );
+    clearFilters.type = 'button';
+    clearFilters.addEventListener('click', () => {
+      filter.value = '';
+      statusFilter.value = 'all';
+      categoryFilter.value = 'all';
+      if (episodeFilter) episodeFilter.value = 'all';
+      updateFilter();
+    });
+    wrap.appendChild(clearFilters);
     const feedback = create('p', 'novelight-ai-workspace-result');
     feedback.setAttribute('aria-live', 'polite');
     wrap.appendChild(feedback);
@@ -643,7 +795,16 @@
             create(
               'p',
               'novelight-ai-workspace-source',
-              '参照エピソードID：' + item.sourceEpisodeId
+              (episodeById
+                ? (episodeById.get(item.sourceEpisodeId).chapterTitle
+                    ? episodeById.get(item.sourceEpisodeId).chapterTitle + '／'
+                    : '') +
+                  '第' +
+                  episodeById.get(item.sourceEpisodeId).episodeNumber +
+                  '話／'
+                : '') +
+                '参照エピソードID：' +
+                item.sourceEpisodeId
             )
           );
         }
@@ -657,6 +818,7 @@
           element: card,
           sectionKey: section.key,
           review: item.review,
+          sourceEpisodeId: item.sourceEpisodeId ?? null,
           haystack: [
             section.title,
             item.title,
@@ -682,19 +844,25 @@
       const filtering =
         !!query ||
         statusFilter.value !== 'all' ||
-        categoryFilter.value !== 'all';
+        categoryFilter.value !== 'all' ||
+        (episodeFilter !== null && episodeFilter.value !== 'all');
       for (const item of searchable) {
         const matchesQuery = !query || item.haystack.includes(query);
         const matchesCategory =
           categoryFilter.value === 'all' ||
           item.sectionKey === categoryFilter.value;
+        const matchesEpisode =
+          episodeFilter === null ||
+          episodeFilter.value === 'all' ||
+          item.sourceEpisodeId === Number(episodeFilter.value);
         const matchesStatus =
           statusFilter.value === 'review'
             ? item.review
             : statusFilter.value === 'author'
               ? !item.review
               : true;
-        const matches = matchesQuery && matchesStatus && matchesCategory;
+        const matches =
+          matchesQuery && matchesStatus && matchesCategory && matchesEpisode;
         item.element.hidden = !matches;
         if (matches) {
           shown += 1;
