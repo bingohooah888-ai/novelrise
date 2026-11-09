@@ -176,7 +176,8 @@ test('reload button fetches fresh synthetic data and clears the previous owner v
   assert.match(host.textContent, /PRIVATE_VERSION_ONE/);
   const button = find(host, 'novelight-ai-bible-reload');
   button.listeners.get('click')();
-  await new Promise((resolve) => setImmediate(resolve));
+  await Promise.resolve();
+  await Promise.resolve();
   assert.equal(count, 2);
   assert.doesNotMatch(host.textContent, /PRIVATE_VERSION_ONE/);
   assert.match(host.textContent, /PRIVATE_VERSION_TWO/);
