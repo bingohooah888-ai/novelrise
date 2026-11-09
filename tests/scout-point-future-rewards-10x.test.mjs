@@ -30,8 +30,8 @@ test('only new reader badge rewards are multiplied, old balances and criteria un
     /UPDATE public\.scout_badge_definitions\s+SET point_reward = point_reward \* 10\s+WHERE badge_category = 'reader' AND point_reward > 0;/u
   );
   assert.equal((migration.match(/\bUPDATE\b/g) || []).length, 1);
-  assert.equal((migration.match(/\bBEGIN;/g) || []).length, 1);
-  assert.equal((migration.match(/\bCOMMIT;/g) || []).length, 1);
+  assert.equal((migration.match(/\bBEGIN;/g) || []).length, 0);
+  assert.equal((migration.match(/\bCOMMIT;/g) || []).length, 0);
   for (const oldData of [
     'scout_point_ledger',
     'scout_xp_ledger',

@@ -1,7 +1,6 @@
 -- NOVELIGHT Scout Point earned rewards x10, FUTURE AWARDS ONLY.
 -- Keep XP/Rank, event keys, badge criteria and already-awarded Point unchanged.
 -- Reader badge reward values are read from scout_badge_definitions by existing RPCs/UI.
-BEGIN;
 
 UPDATE public.scout_badge_definitions
 SET point_reward = point_reward * 10
@@ -60,5 +59,3 @@ begin
   return new;
 end
 $$;
-
-COMMIT;
