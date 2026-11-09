@@ -13,13 +13,31 @@ const access = () => ({
   sessionBinding: 'synthetic-session-A'
 });
 const preview = () => ({
-  novelId: 23, aiGenerated: false, characters: [], notes: [], facts: []
+  novelId: 23,
+  aiGenerated: false,
+  characters: [],
+  notes: [],
+  facts: []
 });
 const rows = () => [
-  { episode_id: 900, episode_number: 2, episode_title: '秘密の草稿',
-    episode_status: 'draft', chapter_id: 12, chapter_title: '序章', chapter_position: 1 },
-  { episode_id: 100, episode_number: 7, episode_title: '公開章',
-    episode_status: 'published', chapter_id: null, chapter_title: null, chapter_position: null }
+  {
+    episode_id: 900,
+    episode_number: 2,
+    episode_title: '秘密の草稿',
+    episode_status: 'draft',
+    chapter_id: 12,
+    chapter_title: '序章',
+    chapter_position: 1
+  },
+  {
+    episode_id: 100,
+    episode_number: 7,
+    episode_title: '公開章',
+    episode_status: 'published',
+    chapter_id: null,
+    chapter_title: null,
+    chapter_position: null
+  }
 ];
 function fixture(overrides = {}) {
   return {
@@ -55,16 +73,39 @@ test('row ordering changes alone do not imply a stale outline', () => {
 
 test('changed episode order, chapter, title, status, additions and deletions refuse stale join', () => {
   for (const changed of [
-    (a) => { a[0].episode_number = 3; },
-    (a) => { a[0].chapter_id = 13; a[0].chapter_title = '改訂章'; },
-    (a) => { a[0].chapter_title = '章の改名'; },
-    (a) => { a[0].chapter_position = 2; },
-    (a) => { a[0].episode_title = '未公開タイトルの改稿'; },
-    (a) => { a[0].episode_status = 'published'; },
-    (a) => { a.pop(); },
-    (a) => { a.push({ episode_id: 901, episode_number: 8,
-      episode_title: '新話', episode_status: 'draft',
-      chapter_id: null, chapter_title: null, chapter_position: null }); }
+    (a) => {
+      a[0].episode_number = 3;
+    },
+    (a) => {
+      a[0].chapter_id = 13;
+      a[0].chapter_title = '改訂章';
+    },
+    (a) => {
+      a[0].chapter_title = '章の改名';
+    },
+    (a) => {
+      a[0].chapter_position = 2;
+    },
+    (a) => {
+      a[0].episode_title = '未公開タイトルの改稿';
+    },
+    (a) => {
+      a[0].episode_status = 'published';
+    },
+    (a) => {
+      a.pop();
+    },
+    (a) => {
+      a.push({
+        episode_id: 901,
+        episode_number: 8,
+        episode_title: '新話',
+        episode_status: 'draft',
+        chapter_id: null,
+        chapter_title: null,
+        chapter_position: null
+      });
+    }
   ]) {
     const input = fixture();
     changed(input.outlineAfter);
@@ -94,22 +135,41 @@ test('public preview or incorrect work cannot bypass owner-read contract', () =>
     { ...p, aiGenerated: undefined },
     { ...p, candidates: [] },
     { ...p, notes: null }
-  ]) assert.equal(check(fixture({ preview: bad })), null);
+  ])
+    assert.equal(check(fixture({ preview: bad })), null);
   assert.equal(check(fixture({ expectedNovelId: '23e0' })), null);
   assert.equal(check(fixture({ expectedNovelId: 24 })), null);
 });
 
 test('incomplete RPC payload and inconsistent chapter structures fail closed', () => {
   const bad = [
-    (a) => { a[0].episode_id = 0; },
-    (a) => { a[1].episode_id = 900; },
-    (a) => { a[1].episode_number = 2; },
-    (a) => { delete a[0].episode_status; },
-    (a) => { a[0].chapter_id = undefined; },
-    (a) => { a[1].chapter_title = 'wrong'; },
-    (a) => { a[0].chapter_position = -1; },
-    (a) => { a[1].episode_title = null; },
-    (a) => { a[0].episode_number = '2.0'; }
+    (a) => {
+      a[0].episode_id = 0;
+    },
+    (a) => {
+      a[1].episode_id = 900;
+    },
+    (a) => {
+      a[1].episode_number = 2;
+    },
+    (a) => {
+      delete a[0].episode_status;
+    },
+    (a) => {
+      a[0].chapter_id = undefined;
+    },
+    (a) => {
+      a[1].chapter_title = 'wrong';
+    },
+    (a) => {
+      a[0].chapter_position = -1;
+    },
+    (a) => {
+      a[1].episode_title = null;
+    },
+    (a) => {
+      a[0].episode_number = '2.0';
+    }
   ];
   for (const mutate of bad) {
     const input = fixture();
@@ -121,16 +181,25 @@ test('incomplete RPC payload and inconsistent chapter structures fail closed', (
 
 test('chapter ID reuse with conflicting chapter positions fails even with identical snapshots', () => {
   const input = fixture();
-  const newRow = { episode_id: 901, episode_number: 9, episode_title: '別の章',
-    episode_status: 'draft', chapter_id: 12,
-    chapter_title: '序章', chapter_position: 2 };
+  const newRow = {
+    episode_id: 901,
+    episode_number: 9,
+    episode_title: '別の章',
+    episode_status: 'draft',
+    chapter_id: 12,
+    chapter_title: '序章',
+    chapter_position: 2
+  };
   input.outlineBefore.push({ ...newRow });
   input.outlineAfter.push({ ...newRow });
   assert.equal(check(input), null);
 });
 
 test('the contract is not mounted or a permission substitute', async () => {
-  const source = await readFile(new URL('../api/_lib/ai/owner-outline-read-window.js', import.meta.url), 'utf8');
+  const source = await readFile(
+    new URL('../api/_lib/ai/owner-outline-read-window.js', import.meta.url),
+    'utf8'
+  );
   assert.doesNotMatch(source, /fetch\s*\(|\.rpc\s*\(/);
   assert.doesNotMatch(source, /createClient|process\.env|service_role/i);
   assert.match(source, /NOT mounted as a route/);
