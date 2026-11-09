@@ -24,7 +24,8 @@ function novelId(value) {
   if (
     typeof value !== 'number' &&
     (typeof value !== 'string' || !/^[1-9]\d*$/.test(value))
-  ) return null;
+  )
+    return null;
   const n = Number(value);
   return Number.isSafeInteger(n) && n > 0 ? n : null;
 }
@@ -66,7 +67,8 @@ export function evaluateOwnerSessionEvidence({
     issued > epochSeconds ||
     (notBefore !== undefined &&
       (!Number.isSafeInteger(notBefore) || notBefore > epochSeconds))
-  ) return null;
+  )
+    return null;
 
   // Session UUID, never a JWT/refresh token; remains server-internal.
   return Object.freeze({ active: true, binding: signedSession });
@@ -90,7 +92,11 @@ export function createOfflineOwnerSessionCheck({
     typeof readExistingSession === 'function' &&
     typeof nowEpochSeconds === 'function';
 
-  return async function checkSession({ bearerToken, actorId, novelId: work } = {}) {
+  return async function checkSession({
+    bearerToken,
+    actorId,
+    novelId: work
+  } = {}) {
     const actor = uuid(actorId);
     const workId = novelId(work);
     if (
@@ -101,7 +107,8 @@ export function createOfflineOwnerSessionCheck({
       bearerToken.length < 16 ||
       bearerToken.length > 4096 ||
       /\s/.test(bearerToken)
-    ) return null;
+    )
+      return null;
 
     try {
       // Match the existing Supabase getClaims() output contract. The injected
@@ -120,7 +127,8 @@ export function createOfflineOwnerSessionCheck({
         now <= 0 ||
         !Number.isSafeInteger(claims?.exp) ||
         claims.exp <= now
-      ) return null;
+      )
+        return null;
 
       const lookup = await readExistingSession({ sessionId, actorId: actor });
       if (lookup?.error || !lookup?.data) return null;
