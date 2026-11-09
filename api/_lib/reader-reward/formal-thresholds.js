@@ -62,5 +62,3 @@ export function compileScoutFormalXpLadder({
     productionReady: false
   });
 }
-
-[executed on device: DESKTOP-8Q4GFC8 (821df8a8-1a95-4198-8dd5-c495dd81c4e3)]
