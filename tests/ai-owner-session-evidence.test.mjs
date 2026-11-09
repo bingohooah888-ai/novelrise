@@ -41,7 +41,10 @@ function fakes() {
     throwLookup: false
   };
   const verifySignedClaims = async (token) => {
-    state.calls.push({ action: 'verifySignedClaims', matchesSyntheticToken: token === TOKEN });
+    state.calls.push({
+      action: 'verifySignedClaims',
+      matchesSyntheticToken: token === TOKEN
+    });
     if (state.throwVerify) throw new Error('PRIVATE TOKEN FAILURE: ' + TOKEN);
     return { data: { claims: state.claims }, error: state.verifiedError };
   };
@@ -61,7 +64,14 @@ function fakes() {
     nowEpochSeconds
   });
   const input = () => ({ bearerToken: TOKEN, actorId: OWNER, novelId: 23 });
-  return { state, input, check, verifySignedClaims, readExistingSession, nowEpochSeconds };
+  return {
+    state,
+    input,
+    check,
+    verifySignedClaims,
+    readExistingSession,
+    nowEpochSeconds
+  };
 }
 function calls(f, name) {
   return f.state.calls.filter((c) => c.action === name).length;
@@ -126,9 +136,15 @@ test('signed session_id and sub must belong to the verified outer actor', async 
 
 test('expired, future, malformed or anonymous claims cannot authorize owner drafts', async () => {
   for (const changes of [
-    { exp: NOW }, { exp: NOW - 1 }, { iat: NOW + 1 },
-    { nbf: NOW + 1 }, { exp: 'future' }, { iat: undefined },
-    { role: 'anon' }, { aud: 'anon' }, { is_anonymous: true }
+    { exp: NOW },
+    { exp: NOW - 1 },
+    { iat: NOW + 1 },
+    { nbf: NOW + 1 },
+    { exp: 'future' },
+    { iat: undefined },
+    { role: 'anon' },
+    { aud: 'anon' },
+    { is_anonymous: true }
   ]) {
     const f = fakes();
     f.state.claims = { ...signedClaims(), ...changes };
@@ -168,22 +184,47 @@ test('missing providers, malformed actor or malformed bearer never query the ses
   assert.equal(calls(f, 'verifySignedClaims'), 0);
   assert.equal(calls(f, 'readExistingSession'), 0);
   for (const missing of [
-    { verifySignedClaims: null, readExistingSession: f.readExistingSession, nowEpochSeconds: f.nowEpochSeconds },
-    { verifySignedClaims: f.verifySignedClaims, readExistingSession: null, nowEpochSeconds: f.nowEpochSeconds },
-    { verifySignedClaims: f.verifySignedClaims, readExistingSession: f.readExistingSession, nowEpochSeconds: null }
+    {
+      verifySignedClaims: null,
+      readExistingSession: f.readExistingSession,
+      nowEpochSeconds: f.nowEpochSeconds
+    },
+    {
+      verifySignedClaims: f.verifySignedClaims,
+      readExistingSession: null,
+      nowEpochSeconds: f.nowEpochSeconds
+    },
+    {
+      verifySignedClaims: f.verifySignedClaims,
+      readExistingSession: f.readExistingSession,
+      nowEpochSeconds: null
+    }
   ]) {
-    assert.equal(await createOfflineOwnerSessionCheck(missing)(f.input()), null);
+    assert.equal(
+      await createOfflineOwnerSessionCheck(missing)(f.input()),
+      null
+    );
   }
   assert.equal(calls(f, 'readExistingSession'), 0);
 });
 
 test('invalid signature verifier response and revoked/missing records return null', async () => {
   for (const change of [
-    (s) => { s.verifiedError = { message: 'bad signature' }; },
-    (s) => { s.claims = null; },
-    (s) => { s.throwVerify = true; },
-    (s) => { s.lookupError = { message: 'not permitted' }; },
-    (s) => { s.throwLookup = true; }
+    (s) => {
+      s.verifiedError = { message: 'bad signature' };
+    },
+    (s) => {
+      s.claims = null;
+    },
+    (s) => {
+      s.throwVerify = true;
+    },
+    (s) => {
+      s.lookupError = { message: 'not permitted' };
+    },
+    (s) => {
+      s.throwLookup = true;
+    }
   ]) {
     const f = fakes();
     change(f.state);
@@ -193,7 +234,10 @@ test('invalid signature verifier response and revoked/missing records return nul
 
 test('each check observes the session again; cached successful decisions are not reused', async () => {
   const f = fakes();
-  assert.deepEqual(await f.check(f.input()), { active: true, binding: SESSION });
+  assert.deepEqual(await f.check(f.input()), {
+    active: true,
+    binding: SESSION
+  });
   f.state.session = null; // signed-out session removed on the server
   assert.equal(await f.check(f.input()), null);
   assert.equal(calls(f, 'verifySignedClaims'), 2);
@@ -206,16 +250,28 @@ test('the new observer stays unmounted and cannot itself decode JWTs or read DB'
     'utf8'
   );
   const ownerAdapter = await readFile(
-    new URL('../api/_lib/ai/owner-outline-internal-adapter.js', import.meta.url),
+    new URL(
+      '../api/_lib/ai/owner-outline-internal-adapter.js',
+      import.meta.url
+    ),
     'utf8'
   );
   const route = await readFile(
     new URL('../api/ai-owner-novel-bible.js', import.meta.url),
     'utf8'
   );
-  assert.doesNotMatch(route, /owner-session-evidence|owner-outline-internal-adapter/);
+  assert.doesNotMatch(
+    route,
+    /owner-session-evidence|owner-outline-internal-adapter/
+  );
   assert.doesNotMatch(ownerAdapter, /owner-session-evidence/);
-  assert.doesNotMatch(source, /from\s*['"]@supabase\/|\.from\(|\.rpc\(|getSession\(|JSON\.parse\(|console\./);
+  assert.doesNotMatch(
+    source,
+    /from\s*['"]@supabase\/|\.from\(|\.rpc\(|getSession\(|JSON\.parse\(|console\./
+  );
   assert.match(source, /UNMOUNTED/);
-  assert.match(source, /verifySignedClaims MUST cryptographically verify the JWT/);
+  assert.match(
+    source,
+    /verifySignedClaims MUST cryptographically verify the JWT/
+  );
 });
