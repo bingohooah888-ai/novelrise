@@ -34,28 +34,56 @@ test('compiles a complete synthetic Lv.1-100 proposal into progress-gauge XP', (
 });
 
 test('rejects any change to existing beta Lv.1-30 XP', () => {
-  assert.throws(() => compile(proposalRows.map(row =>
-    row.level === 20 ? { ...row, cumulative_xp: row.cumulative_xp + 1 } : row
-  )), /cannot rewrite beta/);
+  assert.throws(
+    () =>
+      compile(
+        proposalRows.map((row) =>
+          row.level === 20
+            ? { ...row, cumulative_xp: row.cumulative_xp + 1 }
+            : row
+        )
+      ),
+    /cannot rewrite beta/
+  );
 });
 
 test('rejects missing, duplicated, unsorted and non-integer formal levels', () => {
   assert.throws(() => compile(proposalRows.slice(0, 99)), /Exactly 100/);
-  assert.throws(() => compile(proposalRows.map(row =>
-    row.level === 42 ? { ...row, level: 41 } : row
-  )), /1\.\.100/);
-  assert.throws(() => compile(proposalRows.map(row =>
-    row.level === 42 ? { ...row, cumulative_xp: -1 } : row
-  )), /increasing/);
-  assert.throws(() => compile(proposalRows.map(row =>
-    row.level === 42 ? { ...row, cumulative_xp: '20000' } : row
-  )), /increasing/);
+  assert.throws(
+    () =>
+      compile(
+        proposalRows.map((row) =>
+          row.level === 42 ? { ...row, level: 41 } : row
+        )
+      ),
+    /1\.\.100/
+  );
+  assert.throws(
+    () =>
+      compile(
+        proposalRows.map((row) =>
+          row.level === 42 ? { ...row, cumulative_xp: -1 } : row
+        )
+      ),
+    /increasing/
+  );
+  assert.throws(
+    () =>
+      compile(
+        proposalRows.map((row) =>
+          row.level === 42 ? { ...row, cumulative_xp: '20000' } : row
+        )
+      ),
+    /increasing/
+  );
 });
 
 test('supports a different future OWNER choice without hardcoded Lv.31-100 values', () => {
-  const alternative = proposalRows.map(row => row.level > 30
-    ? { ...row, cumulative_xp: row.cumulative_xp + 50 * (row.level - 30) }
-    : row);
+  const alternative = proposalRows.map((row) =>
+    row.level > 30
+      ? { ...row, cumulative_xp: row.cumulative_xp + 50 * (row.level - 30) }
+      : row
+  );
   const result = compile(alternative);
   assert.equal(result.requiredXpByLevel[30], 680);
   assert.equal(result.requiredXpByLevel[99], 2060);
@@ -64,7 +92,17 @@ test('supports a different future OWNER choice without hardcoded Lv.31-100 value
 });
 
 test('rejects cumulative XP overflow rather than silently rounding it', () => {
-  assert.throws(() => compile(proposalRows.map(row =>
-    row.level === 100 ? { ...row, cumulative_xp: Number.MAX_SAFE_INTEGER + 1 } : row
-  )), /increasing/);
+  assert.throws(
+    () =>
+      compile(
+        proposalRows.map((row) =>
+          row.level === 100
+            ? { ...row, cumulative_xp: Number.MAX_SAFE_INTEGER + 1 }
+            : row
+        )
+      ),
+    /increasing/
+  );
 });
+
+[executed on device: DESKTOP-8Q4GFC8 (821df8a8-1a95-4198-8dd5-c495dd81c4e3)]
