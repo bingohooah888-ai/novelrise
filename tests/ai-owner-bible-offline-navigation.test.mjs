@@ -28,12 +28,21 @@ function sessionReaderHarness() {
       return result;
     }
   });
-  return { read, calls, set(value) { result = value; } };
+  return {
+    read,
+    calls,
+    set(value) {
+      result = value;
+    }
+  };
 }
 
 test('Boolean true means a single owner+session attestation, not an auth.sessions row', async () => {
   const f = sessionReaderHarness();
-  const value = await f.read({ sessionId: SESSION.toUpperCase(), actorId: OWNER.toUpperCase() });
+  const value = await f.read({
+    sessionId: SESSION.toUpperCase(),
+    actorId: OWNER.toUpperCase()
+  });
   assert.deepEqual(value, {
     data: { id: SESSION, user_id: OWNER },
     error: null
@@ -46,8 +55,14 @@ test('Boolean true means a single owner+session attestation, not an auth.session
 test('fail closed for every non-boolean truthy response and lookup errors', async () => {
   const f = sessionReaderHarness();
   for (const value of [
-    false, null, undefined, 1, 'true', { exists: true },
-    { data: { id: SESSION, user_id: OWNER } }, 'throw'
+    false,
+    null,
+    undefined,
+    1,
+    'true',
+    { exists: true },
+    { data: { id: SESSION, user_id: OWNER } },
+    'throw'
   ]) {
     f.set(value);
     assert.equal(await f.read({ sessionId: SESSION, actorId: OWNER }), null);
@@ -58,7 +73,8 @@ test('fail closed for every non-boolean truthy response and lookup errors', asyn
 test('never call a privileged session capability for malformed IDs or missing dependency', async () => {
   const f = sessionReaderHarness();
   for (const params of [
-    {}, { actorId: OWNER },
+    {},
+    { actorId: OWNER },
     { actorId: OWNER, sessionId: 'missing' },
     { actorId: 'another-user', sessionId: SESSION },
     { actorId: OWNER, sessionId: SESSION + 'extra' },
@@ -68,7 +84,10 @@ test('never call a privileged session capability for malformed IDs or missing de
   }
   assert.equal(f.calls.length, 0);
   assert.equal(
-    await createOfflinePrivateSessionReader()({ actorId: OWNER, sessionId: SESSION }),
+    await createOfflinePrivateSessionReader()({
+      actorId: OWNER,
+      sessionId: SESSION
+    }),
     null
   );
 });
@@ -100,16 +119,22 @@ function harness() {
     failRpc: false,
     first: [
       {
-        episode_id: 99, episode_number: 2,
+        episode_id: 99,
+        episode_number: 2,
         episode_title: 'PRIVATE_DRAFT_TITLE',
         episode_status: 'draft',
-        chapter_id: 9, chapter_title: '章A', chapter_position: 1
+        chapter_id: 9,
+        chapter_title: '章A',
+        chapter_position: 1
       },
       {
-        episode_id: 40, episode_number: 1,
+        episode_id: 40,
+        episode_number: 1,
         episode_title: '第1話',
         episode_status: 'published',
-        chapter_id: null, chapter_title: null, chapter_position: null
+        chapter_id: null,
+        chapter_title: null,
+        chapter_position: null
       }
     ],
     second: null
@@ -140,8 +165,17 @@ function harness() {
               return {
                 async maybeSingle() {
                   return state.failNovel
-                    ? { error: { message: 'synthetic lookup failure' }, data: null }
-                    : { error: null, data: { id: state.currentNovel, user_id: state.novelOwner } };
+                    ? {
+                        error: { message: 'synthetic lookup failure' },
+                        data: null
+                      }
+                    : {
+                        error: null,
+                        data: {
+                          id: state.currentNovel,
+                          user_id: state.novelOwner
+                        }
+                      };
                 }
               };
             }
@@ -167,7 +201,9 @@ function harness() {
         state.onRpc?.(step);
         return {
           error: state.failRpc ? { message: 'PRIVATE_ERROR_TOKEN' } : null,
-          data: JSON.parse(JSON.stringify(step === 1 ? state.first : state.second))
+          data: JSON.parse(
+            JSON.stringify(step === 1 ? state.first : state.second)
+          )
         };
       }
     };
@@ -195,9 +231,11 @@ function harness() {
     assert.equal(actorId, OWNER);
     state.onLookup?.(count('exist'));
     if (state.failLookup) throw Error('PRIVATE_LOOKUP_ERROR');
-    return state.lookups === true &&
+    return (
+      state.lookups === true &&
       sessionId === state.currentSession &&
-      state.currentSession !== null;
+      state.currentSession !== null
+    );
   };
   const navigator = createOfflineOwnerBibleNavigation({
     serviceClient,
@@ -209,8 +247,11 @@ function harness() {
     previewEnabled: true
   });
   const preview = () => ({
-    novelId: 23, aiGenerated: false,
-    characters: [], notes: [{ title: 'PRIVATE_AUTHOR_NOTE' }], facts: []
+    novelId: 23,
+    aiGenerated: false,
+    characters: [],
+    notes: [{ title: 'PRIVATE_AUTHOR_NOTE' }],
+    facts: []
   });
   const read = (overrides = {}) =>
     navigator.read({
@@ -226,7 +267,10 @@ test('all existing contracts compose: owner verified, two outline reads, 3 singl
   const f = harness();
   const result = await f.read();
   assert.ok(result);
-  assert.deepEqual(result.outlineRows.map((r) => r.episode_number), [1, 2]);
+  assert.deepEqual(
+    result.outlineRows.map((r) => r.episode_number),
+    [1, 2]
+  );
   assert.equal(result.outlineRows[1].chapter_title, '章A');
   assert.equal(f.count('auth'), 2);
   assert.equal(f.count('novel'), 2);
@@ -236,8 +280,14 @@ test('all existing contracts compose: owner verified, two outline reads, 3 singl
   assert.equal(f.count('exist'), 3);
   const text = JSON.stringify(result);
   for (const secret of [
-    TOKEN, 'PRIVATE_DRAFT_TITLE', 'PRIVATE_AUTHOR_NOTE', 'episode_status',
-    'episode_title', 'session_id', SESSION, 'access_token'
+    TOKEN,
+    'PRIVATE_DRAFT_TITLE',
+    'PRIVATE_AUTHOR_NOTE',
+    'episode_status',
+    'episode_title',
+    'session_id',
+    SESSION,
+    'access_token'
   ]) {
     assert.equal(text.includes(secret), false);
   }
@@ -245,12 +295,23 @@ test('all existing contracts compose: owner verified, two outline reads, 3 singl
 
 test('missing server capabilities or disabled owner preview fail without RPC', async () => {
   const f = harness();
-  const privateDisabled = createOfflineOwnerBibleNavigation({ previewEnabled: false });
-  assert.equal(await privateDisabled.read({
-    bearer: 'Bearer ' + TOKEN, expectedNovelId: 23, preview: {
-      novelId: 23, aiGenerated: false, characters: [], notes: [], facts: []
-    }
-  }), null);
+  const privateDisabled = createOfflineOwnerBibleNavigation({
+    previewEnabled: false
+  });
+  assert.equal(
+    await privateDisabled.read({
+      bearer: 'Bearer ' + TOKEN,
+      expectedNovelId: 23,
+      preview: {
+        novelId: 23,
+        aiGenerated: false,
+        characters: [],
+        notes: [],
+        facts: []
+      }
+    }),
+    null
+  );
   assert.equal(await f.read({ bearer: 'Bearer no' }), null);
   assert.equal(await f.read({ expectedNovelId: 24 }), null);
   assert.equal(f.count('auth'), 0);
@@ -287,12 +348,24 @@ test('session rotation mid-request rejects old binding even when new session exi
 
 test('anonymous/foreign JWT, wrong novel ownership or expired JWT are rejected', async () => {
   for (const patch of [
-    (s) => { s.signedSubject = OTHER; },
-    (s) => { s.novelOwner = OTHER; },
-    (s) => { s.currentNovel = 24; },
-    (s) => { s.exp = NOW; },
-    (s) => { s.failGetUser = true; },
-    (s) => { s.failNovel = true; }
+    (s) => {
+      s.signedSubject = OTHER;
+    },
+    (s) => {
+      s.novelOwner = OTHER;
+    },
+    (s) => {
+      s.currentNovel = 24;
+    },
+    (s) => {
+      s.exp = NOW;
+    },
+    (s) => {
+      s.failGetUser = true;
+    },
+    (s) => {
+      s.failNovel = true;
+    }
   ]) {
     const f = harness();
     patch(f.state);
@@ -316,7 +389,9 @@ test('changed draft publishing state, unexpected metadata or missing lookup fail
 
 test('private capability never returns row fields or accepts a truthy object attestation', async () => {
   const reader = createOfflinePrivateSessionReader({
-    async lookupOneSession() { return { exists: true }; }
+    async lookupOneSession() {
+      return { exists: true };
+    }
   });
   assert.equal(await reader({ sessionId: SESSION, actorId: OWNER }), null);
   const f = harness();
@@ -327,11 +402,32 @@ test('private capability never returns row fields or accepts a truthy object att
 
 test('browser and production entrypoint do not import these unapproved offline modules', async () => {
   const [reader, composition, route] = await Promise.all([
-    readFile(new URL('../api/_lib/ai/owner-private-session-reader.js', import.meta.url), 'utf8'),
-    readFile(new URL('../api/_lib/ai/owner-bible-offline-navigation.js', import.meta.url), 'utf8'),
+    readFile(
+      new URL(
+        '../api/_lib/ai/owner-private-session-reader.js',
+        import.meta.url
+      ),
+      'utf8'
+    ),
+    readFile(
+      new URL(
+        '../api/_lib/ai/owner-bible-offline-navigation.js',
+        import.meta.url
+      ),
+      'utf8'
+    ),
     readFile(new URL('../api/ai-owner-novel-bible.js', import.meta.url), 'utf8')
   ]);
-  assert.doesNotMatch(reader, /process\.env|createClient|\.rpc\s*\(|\.from\s*\(|console\./);
-  assert.doesNotMatch(composition, /process\.env|createClient|\.rpc\s*\(|\.from\s*\(|console\./);
-  assert.doesNotMatch(route, /owner-private-session-reader|owner-bible-offline-navigation/);
+  assert.doesNotMatch(
+    reader,
+    /process\.env|createClient|\.rpc\s*\(|\.from\s*\(|console\./
+  );
+  assert.doesNotMatch(
+    composition,
+    /process\.env|createClient|\.rpc\s*\(|\.from\s*\(|console\./
+  );
+  assert.doesNotMatch(
+    route,
+    /owner-private-session-reader|owner-bible-offline-navigation/
+  );
 });
