@@ -229,10 +229,128 @@
     }
   }
 
+  // Offline-only adapter for the *existing* owner GET response contract.
+  // readPreview/readOutline are injected fixture readers: this function makes
+  // NO HTTP, Auth, DB, or AI calls and is NOT mounted by the production page.
+  // A future live caller must complete server-side auth/ownership checks first.
+  function createOfflineReader({
+    target,
+    novelId,
+    readPreview,
+    readOutline,
+    doc = target?.ownerDocument || root.document
+  } = {}) {
+    if (!target) return null;
+    target.hidden = true;
+    target.textContent = '';
+    const id = workId(novelId);
+    if (
+      !id ||
+      typeof readPreview !== 'function' ||
+      (readOutline !== undefined && typeof readOutline !== 'function') ||
+      typeof root.NovelightAiBibleAuthorWorkspace?.render !== 'function' ||
+      typeof doc?.createElement !== 'function' ||
+      typeof target.appendChild !== 'function'
+    )
+      return null;
+
+    const host = doc.createElement('section');
+    host.className = 'novelight-ai-bible-offline-reader';
+    host.setAttribute('aria-label', '作品カルテの読み取り確認（オフライン）');
+    const status = doc.createElement('p');
+    status.className = 'novelight-ai-bible-load-status';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    status.textContent = '作品カルテはまだ読み込まれていません。';
+    const reloadButton = doc.createElement('button');
+    reloadButton.className = 'novelight-ai-bible-reload';
+    reloadButton.type = 'button';
+    reloadButton.textContent = '読み込む';
+    const content = doc.createElement('div');
+    content.className = 'novelight-ai-bible-private-content';
+    content.hidden = true;
+    host.appendChild(status);
+    host.appendChild(reloadButton);
+    host.appendChild(content);
+    target.appendChild(host);
+    target.hidden = false;
+
+    let requestVersion = 0;
+    let disposed = false;
+    const clearPrivateContent = () => {
+      content.hidden = true;
+      content.textContent = '';
+    };
+
+    async function reload() {
+      if (disposed) return false;
+      const current = ++requestVersion;
+      // Clear the previous novel's private content *before* any await.
+      clearPrivateContent();
+      status.textContent = '作品カルテを読み込み中…';
+      reloadButton.disabled = true;
+      reloadButton.textContent = '読み込み中';
+
+      try {
+        // The dependency supplies the already parsed GET response. It must
+        // never be sourced from a client-declared owner/permission flag.
+        const payload = await readPreview({ novelId: id });
+        if (disposed || current !== requestVersion) return false;
+        if (!validPreviewResponse(payload, id)) throw new Error('BAD_PREVIEW');
+
+        let outlineRows;
+        if (readOutline) {
+          outlineRows = await readOutline({ novelId: id, preview: payload });
+          if (disposed || current !== requestVersion) return false;
+          // Do not silently drop a requested outline on read failure.
+          if (!Array.isArray(outlineRows)) throw new Error('BAD_OUTLINE');
+        }
+
+        if (!render({ target: content, payload, outlineRows })) {
+          throw new Error('BAD_RENDER');
+        }
+        status.textContent =
+          payload.characters.length ||
+          payload.notes.length ||
+          payload.facts.length
+            ? '作品カルテを読み込みました。'
+            : '登録情報はまだありません。';
+        reloadButton.disabled = false;
+        reloadButton.textContent = '再読込';
+        return true;
+      } catch {
+        // Do not leak unpublished material, JWTs or exception messages.
+        if (!disposed && current === requestVersion) {
+          clearPrivateContent();
+          status.textContent = '読み込みに失敗しました。再読込してください。';
+          reloadButton.disabled = false;
+          reloadButton.textContent = '再読込';
+        }
+        return false;
+      }
+    }
+
+    reloadButton.addEventListener('click', () => {
+      void reload();
+    });
+
+    function dispose() {
+      if (disposed) return;
+      disposed = true;
+      ++requestVersion;
+      clearPrivateContent();
+      target.hidden = true;
+      target.textContent = '';
+    }
+
+    return Object.freeze({ reload, dispose });
+  }
+
   root.NovelightAiBibleOwnerPanel = Object.freeze({
     mount,
     render,
     renderMockReview,
-    validPreviewResponse
+    validPreviewResponse,
+    createOfflineReader
   });
 })(globalThis);
