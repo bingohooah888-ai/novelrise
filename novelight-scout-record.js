@@ -557,7 +557,7 @@
     point.textContent = row.is_public
       ? '装備中'
       : Number(row.point_reward || 0) > 0
-        ? `報酬 +${n(row.point_reward)} pt`
+        ? `${earned ? '現在の' : ''}報酬 +${n(row.point_reward)} pt`
         : row.badge_category === 'author'
           ? '作者称号 / Point報酬なし'
           : earned
@@ -654,7 +654,7 @@
     setText(
       'badgeDialogReward',
       Number(row.point_reward || 0) > 0
-        ? `+${n(row.point_reward)} Scout Point`
+        ? `+${n(row.point_reward)} Scout Point${row.status === 'earned' ? '（現在の設定値）' : ''}`
         : 'なし'
     );
     setText('badgeDialogEarned', row.earned_at ? dateTime(row.earned_at) : '未獲得');
