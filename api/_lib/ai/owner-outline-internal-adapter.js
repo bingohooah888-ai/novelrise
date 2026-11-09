@@ -16,7 +16,8 @@ function positive(value) {
   if (
     typeof value !== 'number' &&
     (typeof value !== 'string' || !/^[1-9]\d*$/.test(value))
-  ) return null;
+  )
+    return null;
   const number = Number(value);
   return Number.isSafeInteger(number) && number > 0 ? number : null;
 }
@@ -35,7 +36,9 @@ function publishableKey(value) {
   if (!/^eyJ[a-zA-Z0-9_.-]+$/.test(value)) return false;
   try {
     const encoded = value.split('.')[1];
-    const claims = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    const claims = JSON.parse(
+      Buffer.from(encoded, 'base64url').toString('utf8')
+    );
     return claims.role === 'anon';
   } catch {
     return false;
@@ -63,13 +66,16 @@ export function createOwnerOutlineInternalAdapter({
     // The existing outline RPC returns only its declared seven columns,
     // never novel_id. Reject scope-bearing extras rather than silently
     // trusting an unexpected envelope as the requested work.
-    return Array.isArray(rows) &&
-      rows.every((row) =>
-        row &&
-        typeof row === 'object' &&
-        !Array.isArray(row) &&
-        !Object.hasOwn(row, 'novel_id')
-      );
+    return (
+      Array.isArray(rows) &&
+      rows.every(
+        (row) =>
+          row &&
+          typeof row === 'object' &&
+          !Array.isArray(row) &&
+          !Object.hasOwn(row, 'novel_id')
+      )
+    );
   }
 
   return Object.freeze({
@@ -93,7 +99,8 @@ export function createOwnerOutlineInternalAdapter({
         preview.novelId !== work ||
         preview.aiGenerated !== false ||
         Object.hasOwn(preview, 'candidates')
-      ) return null;
+      )
+        return null;
 
       const token = match[1];
       let before = null;
@@ -106,8 +113,12 @@ export function createOwnerOutlineInternalAdapter({
         const { data: userData, error: authError } =
           await serviceClient.auth.getUser(token);
         const verifiedActorId = ownerId(userData?.user?.id);
-        if (authError || !verifiedActorId ||
-            verifiedActorId !== configuredOwner) return null;
+        if (
+          authError ||
+          !verifiedActorId ||
+          verifiedActorId !== configuredOwner
+        )
+          return null;
 
         const { data: novel, error: novelError } = await serviceClient
           .from('novels')
@@ -119,7 +130,8 @@ export function createOwnerOutlineInternalAdapter({
           !novel ||
           positive(novel.id) !== work ||
           ownerId(novel.user_id) !== verifiedActorId
-        ) return null;
+        )
+          return null;
         return { actorId: verifiedActorId };
       }
 
@@ -138,7 +150,8 @@ export function createOwnerOutlineInternalAdapter({
           typeof observation.binding !== 'string' ||
           !observation.binding ||
           observation.binding.length > 128
-        ) return null;
+        )
+          return null;
         return observation.binding;
       }
 
@@ -156,7 +169,8 @@ export function createOwnerOutlineInternalAdapter({
           !authorClient ||
           authorClient === serviceClient ||
           typeof authorClient.rpc !== 'function'
-        ) return null;
+        )
+          return null;
 
         // The existing SQL RPC requires auth.uid() and scopes every row to
         // p_novel_id. An anon/service-role RPC must not substitute here.
