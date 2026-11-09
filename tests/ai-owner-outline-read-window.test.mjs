@@ -214,10 +214,12 @@ test('the existing Bible story index uses only vetted owner navigation fields', 
     kind: 'foreshadowing',
     key: '秘密の鍵',
     confirmed: [],
-    suggestions: [{
-      sourceEpisodeId: 900,
-      payload: { summary: '後で明らかになる', evidence: '鍵を拾った' }
-    }]
+    suggestions: [
+      {
+        sourceEpisodeId: 900,
+        payload: { summary: '後で明らかになる', evidence: '鍵を拾った' }
+      }
+    ]
   });
   const ready = check(fixture({ preview: p }));
   assert.ok(ready);
@@ -231,15 +233,21 @@ test('the existing Bible story index uses only vetted owner navigation fields', 
   assert.equal(view.foreshadowing[0].references[0].episodeNumber, 2);
   assert.equal(view.foreshadowing[0].references[0].chapterTitle, '序章');
   assert.equal(Object.hasOwn(ready.outlineRows[1], 'episode_title'), false);
-  assert.equal(Object.hasOwn(view.foreshadowing[0].references[0], 'episode_status'), false);
+  assert.equal(
+    Object.hasOwn(view.foreshadowing[0].references[0], 'episode_status'),
+    false
+  );
   assert.equal(Object.hasOwn(view.foreshadowing[0], 'storyTime'), false);
 
   p.facts[0].suggestions[0].sourceEpisodeId = 9999;
   const staleStory = globalThis.NovelightAiBibleAuthorWorkspace.storyIndex(p);
-  assert.equal(globalThis.NovelightAiBibleOwnerOutline.project({
-    expectedNovelId: ready.novelId,
-    preview: p,
-    outlineRows: ready.outlineRows,
-    story: staleStory
-  }), null);
+  assert.equal(
+    globalThis.NovelightAiBibleOwnerOutline.project({
+      expectedNovelId: ready.novelId,
+      preview: p,
+      outlineRows: ready.outlineRows,
+      story: staleStory
+    }),
+    null
+  );
 });
