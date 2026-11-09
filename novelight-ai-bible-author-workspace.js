@@ -809,6 +809,76 @@
       wrap.appendChild(characterPanel);
     }
 
+    // Link existing author notes to exact fact headings within their own
+    // category only. Notes are not converted to AI facts or duplicated in DB.
+    if (payload.notes.length) {
+      const notePanel = create('div', 'novelight-ai-workspace-note-links');
+      notePanel.setAttribute('aria-label', '創作ノートと設定の見出し連携');
+      notePanel.appendChild(create('h3', '', '創作ノートから設定を確認'));
+      notePanel.appendChild(
+        create(
+          'p',
+          '',
+          'ノートの種類と見出しが一致する登録設定を探します。内容の関連性・同一人物を推定するものではありません。'
+        )
+      );
+      for (const note of payload.notes) {
+        const matchingKinds =
+          note.type === 'character'
+            ? ['character']
+            : note.type === 'world'
+              ? ['world', 'location']
+              : ['other'];
+        const matchCount = payload.facts.filter(
+          (group) =>
+            matchingKinds.includes(group.kind) &&
+            normalizeName(group.key) === normalizeName(note.title)
+        ).length;
+        const row = create('div', 'novelight-ai-workspace-note-link');
+        row.appendChild(
+          create(
+            'p',
+            '',
+            '作者の' +
+              (note.type === 'character'
+                ? '人物'
+                : note.type === 'world'
+                  ? '世界観'
+                  : 'プロット') +
+              'ノート「' +
+              note.title +
+              '」／同じ見出しの登録設定：' +
+              matchCount +
+              '項目'
+          )
+        );
+        if (matchCount) {
+          const focus = create(
+            'button',
+            'novelight-ai-workspace-note-focus',
+            '同じ見出しの設定を検索'
+          );
+          focus.type = 'button';
+          focus.addEventListener('click', () => {
+            filter.value = note.title;
+            categoryFilter.value =
+              note.type === 'character'
+                ? 'characters'
+                : note.type === 'world'
+                  ? 'world'
+                  : 'plot';
+            statusFilter.value = 'all';
+            if (episodeFilter) episodeFilter.value = 'all';
+            if (characterFilter) characterFilter.value = 'all';
+            updateFilter();
+          });
+          row.appendChild(focus);
+        }
+        notePanel.appendChild(row);
+      }
+      wrap.appendChild(notePanel);
+    }
+
     const storyPanel = create('aside', 'novelight-ai-workspace-story-index');
     storyPanel.setAttribute('aria-label', '伏線と出来事の整理');
     storyPanel.appendChild(create('h3', '', '伏線・出来事の整理'));
@@ -821,6 +891,37 @@
           : '見出しと参照エピソードIDだけで整理しています。ID順は話数順・物語内の時系列順ではありません。'
       )
     );
+    const pendingClues = story.foreshadowing.filter(
+      (entry) => entry.candidateCount > 0
+    );
+    storyPanel.appendChild(
+      create(
+        'p',
+        'novelight-ai-workspace-clue-review-count',
+        'AI伏線候補の確認待ち：' +
+          pendingClues.reduce((total, item) => total + item.candidateCount, 0) +
+          '件（' +
+          pendingClues.length +
+          '項目）。回収済み・未回収はこのデータから判定していません。'
+      )
+    );
+    if (pendingClues.length) {
+      const reviewClues = create(
+        'button',
+        'novelight-ai-workspace-clue-review-focus',
+        '未確定の伏線候補だけを確認'
+      );
+      reviewClues.type = 'button';
+      reviewClues.addEventListener('click', () => {
+        filter.value = '';
+        categoryFilter.value = 'foreshadowing';
+        statusFilter.value = 'review';
+        if (episodeFilter) episodeFilter.value = 'all';
+        if (characterFilter) characterFilter.value = 'all';
+        updateFilter();
+      });
+      storyPanel.appendChild(reviewClues);
+    }
     const storyOrder = create('select', 'novelight-ai-workspace-order');
     storyOrder.setAttribute('aria-label', '伏線と出来事の並び順');
     const sortOptions = [
@@ -924,6 +1025,124 @@
     storyOrder.addEventListener('change', redrawStoryIndex);
     redrawStoryIndex();
     wrap.appendChild(storyPanel);
+
+    // These are stored source references, NOT revision timestamps or an
+    // automatically inferred progression of fictional events.
+    const multiSourceGroups = payload.facts.filter(
+      (group) => group.confirmed.length + group.suggestions.length >= 2
+    );
+    if (multiSourceGroups.length) {
+      const historyPanel = create(
+        'div',
+        'novelight-ai-workspace-source-records'
+      );
+      historyPanel.setAttribute('aria-label', '同じ見出しの出典別登録記録');
+      historyPanel.appendChild(
+        create(
+          'h3',
+          '',
+          '同じ見出しの出典別記録（' + multiSourceGroups.length + '項目）'
+        )
+      );
+      historyPanel.appendChild(
+        create(
+          'p',
+          '',
+          episodeById
+            ? '既存の章・話数順に出典を並べています。編集履歴や物語内の時間順ではありません。'
+            : '参照エピソードID順に並べています。編集履歴・実際の話数順・物語内の時間順ではありません。'
+        )
+      );
+      for (const group of multiSourceGroups) {
+        const category = FACT_SECTIONS[group.kind];
+        const records = [
+          ...group.confirmed.map((record, index) => ({
+            record,
+            status: '作者が確定した設定',
+            index
+          })),
+          ...group.suggestions.map((record, index) => ({
+            record,
+            status: 'AI抽出候補・未確定',
+            index: group.confirmed.length + index
+          }))
+        ];
+        records.sort((a, b) => {
+          const aId = a.record.sourceEpisodeId;
+          const bId = b.record.sourceEpisodeId;
+          const aOrder =
+            aId == null
+              ? Number.POSITIVE_INFINITY
+              : (episodeById?.get(aId)?.episodeNumber ?? aId);
+          const bOrder =
+            bId == null
+              ? Number.POSITIVE_INFINITY
+              : (episodeById?.get(bId)?.episodeNumber ?? bId);
+          return aOrder - bOrder || a.index - b.index;
+        });
+        const details = create(
+          'details',
+          'novelight-ai-workspace-source-record'
+        );
+        details.appendChild(
+          create(
+            'summary',
+            '',
+            group.key +
+              '／作者確定 ' +
+              group.confirmed.length +
+              '件・AI未確定 ' +
+              group.suggestions.length +
+              '件'
+          )
+        );
+        for (const { record, status } of records) {
+          const id = record.sourceEpisodeId;
+          const episode = id != null ? episodeById?.get(id) : null;
+          const source = episode
+            ? (episode.chapterTitle ? episode.chapterTitle + '／' : '') +
+              '第' +
+              episode.episodeNumber +
+              '話（ID：' +
+              id +
+              '）'
+            : id == null
+              ? '出典未登録'
+              : '参照エピソードID：' + id;
+          details.appendChild(
+            create(
+              'p',
+              '',
+              source +
+                '／' +
+                status +
+                '／' +
+                (record.payload.summary || '説明未登録') +
+                (record.payload.evidence
+                  ? '／引用根拠：' + record.payload.evidence
+                  : '')
+            )
+          );
+        }
+        const focus = create(
+          'button',
+          'novelight-ai-workspace-source-record-focus',
+          '同じ見出しの設定を検索'
+        );
+        focus.type = 'button';
+        focus.addEventListener('click', () => {
+          filter.value = group.key;
+          categoryFilter.value = category;
+          statusFilter.value = 'all';
+          if (episodeFilter) episodeFilter.value = 'all';
+          if (characterFilter) characterFilter.value = 'all';
+          updateFilter();
+        });
+        details.appendChild(focus);
+        historyPanel.appendChild(details);
+      }
+      wrap.appendChild(historyPanel);
+    }
 
     if (episodeById) {
       const referencedIds = new Set(

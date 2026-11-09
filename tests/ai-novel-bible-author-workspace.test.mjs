@@ -943,3 +943,189 @@ test('character select and story focus can be combined without stale filters', (
   );
   assert.match(target.textContent, /絞り込み結果：1件/);
 });
+
+test('source records group same headings by episode origin without claiming revisions', () => {
+  const payload = fixture();
+  payload.novelId = 23;
+  payload.aiGenerated = false;
+  payload.facts[1].confirmed[0].sourceEpisodeId = 900;
+  payload.facts[1].suggestions.push({
+    sourceEpisodeId: 100,
+    payload: { summary: '旅立ちは夜だったかも', evidence: '門を夜に出た' }
+  });
+  const before = JSON.stringify(payload);
+  const outlineRows = [
+    {
+      episode_id: 900,
+      episode_number: 9,
+      episode_title: '春',
+      episode_status: 'draft',
+      chapter_id: 2,
+      chapter_title: '第二章',
+      chapter_position: 2
+    },
+    {
+      episode_id: 100,
+      episode_number: 2,
+      episode_title: '夜',
+      episode_status: 'published',
+      chapter_id: 1,
+      chapter_title: '第一章',
+      chapter_position: 1
+    }
+  ];
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload, outlineRows }), true);
+  const history = nodes(target, 'div').find(
+    (item) => item.className === 'novelight-ai-workspace-source-records'
+  );
+  assert.ok(history);
+  assert.match(history.textContent, /同じ見出しの出典別記録（1項目）/);
+  assert.match(history.textContent, /編集履歴や物語内の時間順ではありません/);
+  assert.match(history.textContent, /出発／作者確定 1件・AI未確定 1件/);
+  assert.ok(
+    history.textContent.indexOf('第一章／第2話（ID：100）') <
+      history.textContent.indexOf('第二章／第9話（ID：900）')
+  );
+  assert.match(history.textContent, /AI抽出候補・未確定／旅立ちは夜だったかも/);
+  assert.match(history.textContent, /引用根拠：門を夜に出た/);
+  const focus = nodes(history, 'button')[0];
+  focus.listeners.get('click')();
+  assert.equal(nodes(target, 'input')[0].value, '出発');
+  assert.equal(nodes(target, 'select')[1].value, 'events');
+  assert.equal(
+    nodes(target, 'article').filter((item) => !item.hidden).length,
+    2
+  );
+  assert.equal(JSON.stringify(payload), before);
+});
+
+test('source-only records sort IDs without asserting episode or fictional time order', () => {
+  const payload = fixture();
+  payload.facts[1].confirmed[0].sourceEpisodeId = 900;
+  payload.facts[1].confirmed.push({
+    sourceEpisodeId: 100,
+    payload: { summary: '昼に出た', evidence: '' }
+  });
+  payload.facts[1].suggestions.push({
+    payload: { summary: '出典がまだない', evidence: '' }
+  });
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const history = nodes(target, 'div').find(
+    (item) => item.className === 'novelight-ai-workspace-source-records'
+  );
+  assert.match(
+    history.textContent,
+    /実際の話数順・物語内の時間順ではありません/
+  );
+  assert.ok(
+    history.textContent.indexOf('参照エピソードID：100') <
+      history.textContent.indexOf('参照エピソードID：900')
+  );
+  assert.ok(
+    history.textContent.indexOf('参照エピソードID：900') <
+      history.textContent.indexOf('出典未登録')
+  );
+  assert.match(history.textContent, /AI抽出候補・未確定／出典がまだない/);
+});
+
+test('author plot and world notes link only same-category exact headings', () => {
+  const payload = fixture();
+  payload.notes.push({
+    type: 'world',
+    title: '青い鍵',
+    body: '<script>非公開の伏線メモ</script>'
+  });
+  payload.facts.push(
+    {
+      kind: 'world',
+      key: '王都',
+      confirmed: [{ payload: { summary: '巨大な都市', evidence: '' } }],
+      suggestions: []
+    },
+    {
+      kind: 'other',
+      key: '第一幕',
+      confirmed: [],
+      suggestions: [{ payload: { summary: '旅の始まり', evidence: '' } }]
+    }
+  );
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const links = nodes(target, 'div').find(
+    (item) => item.className === 'novelight-ai-workspace-note-links'
+  );
+  assert.ok(links);
+  assert.match(links.textContent, /創作ノートから設定を確認/);
+  assert.match(
+    links.textContent,
+    /ノート「王都」／同じ見出しの登録設定：1項目/
+  );
+  assert.match(
+    links.textContent,
+    /ノート「第一幕」／同じ見出しの登録設定：1項目/
+  );
+  assert.match(
+    links.textContent,
+    /ノート「青い鍵」／同じ見出しの登録設定：0項目/
+  );
+  assert.equal(nodes(links, 'button').length, 2);
+  assert.equal(nodes(links, 'script').length, 0);
+  assert.match(target.textContent, /<script>非公開の伏線メモ<\/script>/);
+  const buttons = nodes(links, 'button');
+  buttons[0].listeners.get('click')();
+  assert.equal(nodes(target, 'select')[1].value, 'world');
+  assert.equal(nodes(target, 'input')[0].value, '王都');
+  assert.equal(
+    nodes(target, 'article').filter((item) => !item.hidden).length,
+    2
+  );
+  buttons[1].listeners.get('click')();
+  assert.equal(nodes(target, 'select')[1].value, 'plot');
+  assert.equal(nodes(target, 'input')[0].value, '第一幕');
+  assert.equal(
+    nodes(target, 'article').filter((item) => !item.hidden).length,
+    2
+  );
+});
+
+test('pending foreshadowing review button never assumes a recovered clue', () => {
+  const payload = fixture();
+  const before = JSON.stringify(payload);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const story = nodes(target, 'aside').find(
+    (item) => item.className === 'novelight-ai-workspace-story-index'
+  );
+  assert.match(story.textContent, /AI伏線候補の確認待ち：1件（1項目）/);
+  assert.match(
+    story.textContent,
+    /回収済み・未回収はこのデータから判定していません/
+  );
+  const focus = nodes(story, 'button').find(
+    (item) => item.className === 'novelight-ai-workspace-clue-review-focus'
+  );
+  assert.ok(focus);
+  focus.listeners.get('click')();
+  assert.equal(nodes(target, 'select')[0].value, 'review');
+  assert.equal(nodes(target, 'select')[1].value, 'foreshadowing');
+  assert.equal(
+    nodes(target, 'article').filter((item) => !item.hidden).length,
+    1
+  );
+  assert.match(target.textContent, /絞り込み結果：1件/);
+  assert.equal(JSON.stringify(payload), before);
+  payload.facts[0].suggestions = [];
+  assert.equal(render({ target, payload }), true);
+  const empty = nodes(target, 'aside').find(
+    (item) => item.className === 'novelight-ai-workspace-story-index'
+  );
+  assert.match(empty.textContent, /AI伏線候補の確認待ち：0件（0項目）/);
+  assert.equal(
+    nodes(empty, 'button').filter(
+      (item) => item.className === 'novelight-ai-workspace-clue-review-focus'
+    ).length,
+    0
+  );
+});
