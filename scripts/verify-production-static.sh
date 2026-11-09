@@ -110,7 +110,8 @@ if [ "$converged" != true ]; then
 fi
 
 html_targets=(/tmp/live-*.html)
-if [ -e "${html_targets[0]}" ] && grep -Eqi 'NovelRise|NOVELRISE' "${html_targets[@]}"; then
+# Ignore the legacy Vercel hostname used by auth host checks; retain visible branding detection.
+if [ -e "${html_targets[0]}" ] && grep -Eqi 'NovelRise|NOVELRISE' <(sed -E 's/novelrise\.vercel\.app//Ig' "${html_targets[@]}"); then
   echo 'Legacy user-facing NovelRise branding found in checked production HTML.'
   exit 1
 fi
