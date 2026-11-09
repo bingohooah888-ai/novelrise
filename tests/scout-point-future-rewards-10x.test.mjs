@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { URL } from 'node:url';
 
 const read = (relative) =>
   readFileSync(new URL(relative, import.meta.url), 'utf8').replaceAll(
