@@ -44,6 +44,19 @@ export function createOwnerOutlineInternalAdapter({
     key.length >= 16 &&
     (key.startsWith('sb_publishable_') || key.startsWith('eyJ'));
 
+  function validRpcRows(rows) {
+    // The existing outline RPC returns only its declared seven columns,
+    // never novel_id. Reject scope-bearing extras rather than silently
+    // trusting an unexpected envelope as the requested work.
+    return Array.isArray(rows) &&
+      rows.every((row) =>
+        row &&
+        typeof row === 'object' &&
+        !Array.isArray(row) &&
+        !Object.hasOwn(row, 'novel_id')
+      );
+  }
+
   return Object.freeze({
     async read({ bearer, expectedNovelId, preview } = {}) {
       const work = positive(expectedNovelId);
@@ -135,7 +148,7 @@ export function createOwnerOutlineInternalAdapter({
         const firstRead = await authorClient.rpc('novelight_novel_outline', {
           p_novel_id: work
         });
-        if (firstRead?.error || !Array.isArray(firstRead?.data)) return null;
+        if (firstRead?.error || !validRpcRows(firstRead?.data)) return null;
         before = firstRead.data;
 
         const middleBinding = await observedSession(first.actorId);
@@ -144,7 +157,7 @@ export function createOwnerOutlineInternalAdapter({
         const secondRead = await authorClient.rpc('novelight_novel_outline', {
           p_novel_id: work
         });
-        if (secondRead?.error || !Array.isArray(secondRead?.data)) return null;
+        if (secondRead?.error || !validRpcRows(secondRead?.data)) return null;
         after = secondRead.data;
 
         const last = await verifiedOwner();
