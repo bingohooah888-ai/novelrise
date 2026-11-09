@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import '../novelight-ai-bible-author-workspace.js';
+import '../novelight-ai-bible-owner-outline.js';
 
 const { render, toSections, localReviewSummary, storyIndex, sortStoryEntries } =
   globalThis.NovelightAiBibleAuthorWorkspace;
@@ -494,4 +495,101 @@ test('preview refuses excessive records and incomplete grouped API fields', () =
   payload.facts[1].confirmed = [item];
   delete payload.facts[1].suggestions;
   assert.equal(toSections(payload), null);
+});
+
+// Offline author workflow: trusted owner-only chapter rows enrich references,
+// but cannot turn an episode database ID into a fictional chronology.
+test('private chapter navigation joins real episode ordinals and offers focus actions', () => {
+  const payload = fixture();
+  payload.novelId = 23;
+  payload.aiGenerated = false;
+  payload.facts[0].suggestions[0].sourceEpisodeId = 900;
+  payload.facts[1].confirmed[0].sourceEpisodeId = 100;
+  const outlineRows = [
+    {
+      episode_id: 100, episode_number: 7, episode_title: '出発',
+      episode_status: 'published', chapter_id: 400,
+      chapter_title: '第一章', chapter_position: 2
+    },
+    {
+      episode_id: 900, episode_number: 2, episode_title: '鍵',
+      episode_status: 'draft', chapter_id: 300,
+      chapter_title: 'プロローグ', chapter_position: 1
+    }
+  ];
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload, outlineRows }), true);
+  assert.match(target.textContent, /プロローグ／第2話（エピソードID：900）/);
+  assert.match(target.textContent, /第一章／第7話（エピソードID：100）/);
+  assert.match(target.textContent, /物語内の時系列順ではありません/);
+  const order = nodes(target, 'select')[2];
+  assert.equal(order.children.length, 3);
+  order.value = 'episode-number';
+  order.listeners.get('change')();
+  const focus = nodes(target, 'button').find(
+    (button) =>
+      button.className === 'novelight-ai-workspace-story-focus' &&
+      button.attributes['aria-label'].includes('青い鍵')
+  );
+  assert.ok(focus);
+  focus.listeners.get('click')();
+  assert.equal(nodes(target, 'input')[0].value, '青い鍵');
+  assert.equal(nodes(target, 'select')[1].value, 'foreshadowing');
+  const visible = nodes(target, 'article').filter((card) => !card.hidden);
+  assert.equal(visible.length, 1);
+  assert.match(visible[0].textContent, /青い鍵/);
+  assert.match(target.textContent, /絞り込み結果：1件/);
+  assert.equal(payload.facts[0].suggestions.length, 1);
+});
+
+test('offline outline mismatch, missing projector and wrong novel clear private view', () => {
+  const payload = fixture();
+  payload.novelId = 23;
+  payload.aiGenerated = false;
+  payload.facts[0].suggestions[0].sourceEpisodeId = 900;
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const incompleteOutline = [{
+    episode_id: 900, episode_number: 2, episode_title: '鍵',
+    episode_status: 'draft', chapter_id: null,
+    chapter_title: null, chapter_position: null
+  }];
+  // A valid author-provided outline works when it covers every cited ID.
+  assert.equal(render({ target, payload, outlineRows: incompleteOutline }), true);
+  assert.match(target.textContent, /第2話/);
+  assert.equal(
+    render({
+      target,
+      payload,
+      outlineRows: [{ ...incompleteOutline[0], episode_id: 901 }]
+    }),
+    false
+  );
+  assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
+  assert.equal(render({
+    target,
+    payload: { ...payload, novelId: null },
+    outlineRows: incompleteOutline
+  }), false);
+  assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
+  assert.equal(render({ target, payload, outlineRows: [] }), false);
+  assert.equal(target.textContent, '');
+});
+
+test('story index focus locates source cards without any RPC, write or external navigation', () => {
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload: fixture() }), true);
+  const focus = nodes(target, 'button').find(
+    (button) =>
+      button.className === 'novelight-ai-workspace-story-focus' &&
+      button.attributes['aria-label'].includes('出発')
+  );
+  assert.ok(focus);
+  focus.listeners.get('click')();
+  assert.equal(nodes(target, 'input')[0].value, '出発');
+  assert.equal(nodes(target, 'select')[1].value, 'events');
+  assert.equal(nodes(target, 'article').filter((item) => !item.hidden).length, 1);
+  assert.match(target.textContent, /絞り込み結果：1件/);
 });

@@ -215,8 +215,48 @@
     };
   }
 
+  // Join navigation ordinals only after the existing owner-only outline
+  // projector has validated the exact novel and all referenced episode IDs.
+  // This is a private offline presentation join, never an access decision.
+  function joinStoryOutline(story, projected) {
+    if (!projected) return null;
+    const join = (original, enriched) => {
+      if (!Array.isArray(enriched) || original.length !== enriched.length)
+        return null;
+      const remaining = [...enriched];
+      const result = [];
+      for (const entry of original) {
+        const index = remaining.findIndex((candidate) => {
+          if (candidate.kind !== entry.kind || candidate.key !== entry.key)
+            return false;
+          const ids = candidate.references.map((ref) => ref.episodeId);
+          return (
+            ids.length === entry.sourceEpisodeIds.length &&
+            ids.every((id) => entry.sourceEpisodeIds.includes(id))
+          );
+        });
+        if (index < 0) return null;
+        const [match] = remaining.splice(index, 1);
+        result.push({
+          ...entry,
+          references: match.references,
+          firstEpisodeNumber: match.firstEpisodeNumber
+        });
+      }
+      return result;
+    };
+    const foreshadowing = join(story.foreshadowing, projected.foreshadowing);
+    const events = join(story.events, projected.events);
+    return foreshadowing && events ? { foreshadowing, events } : null;
+  }
+
   function sortStoryEntries(items, sortBy) {
     return [...items].sort((a, b) => {
+      if (sortBy === 'episode-number') {
+        const aNumber = a.firstEpisodeNumber ?? Number.POSITIVE_INFINITY;
+        const bNumber = b.firstEpisodeNumber ?? Number.POSITIVE_INFINITY;
+        if (aNumber !== bNumber) return aNumber - bNumber;
+      }
       if (sortBy === 'source-id') {
         const aId = a.sourceEpisodeIds[0] ?? Number.POSITIVE_INFINITY;
         const bId = b.sourceEpisodeIds[0] ?? Number.POSITIVE_INFINITY;
@@ -308,6 +348,7 @@
   function render({
     target,
     payload,
+    outlineRows,
     doc = target?.ownerDocument || root.document
   } = {}) {
     if (!target) return false;
@@ -316,7 +357,23 @@
     target.textContent = '';
     const sections = toSections(payload);
     const review = localReviewSummary(payload);
-    const story = storyIndex(payload);
+    const sourceStory = storyIndex(payload);
+    // No outline RPC is called here. Future server-authorized owner data
+    // must be explicitly passed; invalid or cross-novel rows clear the view.
+    const projected =
+      outlineRows === undefined
+        ? null
+        : root.NovelightAiBibleOwnerOutline?.project?.({
+            expectedNovelId: payload?.novelId,
+            preview: payload,
+            outlineRows,
+            story: sourceStory
+          });
+    const story = sourceStory && (
+      outlineRows === undefined
+        ? sourceStory
+        : joinStoryOutline(sourceStory, projected)
+    );
     if (
       !sections ||
       !review ||
@@ -450,15 +507,20 @@
       create(
         'p',
         '',
-        '見出しと参照エピソードIDだけで整理しています。ID順は話数順・物語内の時系列順ではありません。'
+        projected
+          ? '章・話数は既存の作品の章順情報に基づきます。物語内の時系列順ではありません。'
+          : '見出しと参照エピソードIDだけで整理しています。ID順は話数順・物語内の時系列順ではありません。'
       )
     );
     const storyOrder = create('select', 'novelight-ai-workspace-order');
     storyOrder.setAttribute('aria-label', '伏線と出来事の並び順');
-    for (const [value, title] of [
+    const sortOptions = [
       ['heading', '見出し順'],
       ['source-id', '参照エピソードID順（時系列ではありません）']
-    ]) {
+    ];
+    if (projected)
+      sortOptions.push(['episode-number', '実際の話数順（物語内の時系列ではありません）']);
+    for (const [value, title] of sortOptions) {
       const option = create('option', '', title);
       option.value = value;
       storyOrder.appendChild(option);
@@ -488,9 +550,21 @@
               : entry.kind === 'timeline'
                 ? '時系列メモ'
                 : '伏線';
-          const references = entry.sourceEpisodeIds.length
-            ? '／参照エピソードID：' + entry.sourceEpisodeIds.join('、')
-            : '／参照元ID：未登録';
+          const references = projected
+            ? entry.references.length
+              ? '／参照：' +
+                entry.references
+                  .map(
+                    (ref) =>
+                      (ref.chapterTitle ? ref.chapterTitle + '／' : '') +
+                      '第' + ref.episodeNumber + '話' +
+                      '（エピソードID：' + ref.episodeId + '）'
+                  )
+                  .join('、')
+              : '／参照元ID：未登録'
+            : entry.sourceEpisodeIds.length
+              ? '／参照エピソードID：' + entry.sourceEpisodeIds.join('、')
+              : '／参照元ID：未登録';
           row.textContent =
             kind +
             '「' +
@@ -504,6 +578,26 @@
             (entry.titleMatch
               ? '／同じ見出しの別区分あり（関連性は未判定）'
               : '');
+          // Open the matching cards inside this private workspace only.
+          // The action never navigates to unpublished episode content.
+          const focus = create(
+            'button',
+            'novelight-ai-workspace-story-focus',
+            '関連する設定を表示'
+          );
+          focus.type = 'button';
+          focus.setAttribute(
+            'aria-label',
+            kind + '「' + entry.key + '」の設定を絞り込む'
+          );
+          focus.addEventListener('click', () => {
+            filter.value = entry.key;
+            statusFilter.value = 'all';
+            categoryFilter.value =
+              entry.kind === 'foreshadowing' ? 'foreshadowing' : 'events';
+            updateFilter();
+          });
+          row.appendChild(focus);
           container.appendChild(row);
         }
         indexRows.appendChild(container);
@@ -632,6 +726,7 @@
     toSections,
     localReviewSummary,
     storyIndex,
-    sortStoryEntries
+    sortStoryEntries,
+    joinStoryOutline
   });
 })(globalThis);

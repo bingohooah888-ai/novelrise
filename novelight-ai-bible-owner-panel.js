@@ -178,7 +178,7 @@
     return true;
   }
 
-  function render({ target, payload }) {
+  function render({ target, payload, outlineRows }) {
     // Reuse the author-ready offline UI only on an already authorized
     // preview surface. The server's existing admin-only gate is unchanged.
     const workspace = root.NovelightAiBibleAuthorWorkspace;
@@ -186,8 +186,11 @@
       typeof workspace?.render === 'function' &&
       typeof target?.appendChild === 'function'
     ) {
-      return workspace.render({ target, payload });
+      return workspace.render({ target, payload, outlineRows });
     }
+    // An injected private chapter outline must not fall back to a
+    // text-only renderer that ignores its scope/consistency checks.
+    if (outlineRows !== undefined) return renderText(target, null);
     return renderText(target, previewText(payload));
   }
 
