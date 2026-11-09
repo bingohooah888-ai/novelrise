@@ -25,6 +25,21 @@ function ownerId(value) {
     : null;
 }
 
+// Match the current owner-preview allowlist. A legacy service-role JWT must
+// never be used as the browser-bound author client's Supabase API key.
+function publishableKey(value) {
+  if (typeof value !== 'string' || value.length > 3000) return false;
+  if (/^sb_publishable_[a-zA-Z0-9_-]+$/.test(value)) return true;
+  if (!/^eyJ[a-zA-Z0-9_.-]+$/.test(value)) return false;
+  try {
+    const encoded = value.split('.')[1];
+    const claims = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    return claims.role === 'anon';
+  } catch {
+    return false;
+  }
+}
+
 export function createOwnerOutlineInternalAdapter({
   serviceClient,
   createAuthorClient,
@@ -40,9 +55,7 @@ export function createOwnerOutlineInternalAdapter({
     configuredOwner &&
     typeof url === 'string' &&
     /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url) &&
-    typeof key === 'string' &&
-    key.length >= 16 &&
-    (key.startsWith('sb_publishable_') || key.startsWith('eyJ'));
+    publishableKey(key);
 
   function validRpcRows(rows) {
     // The existing outline RPC returns only its declared seven columns,
