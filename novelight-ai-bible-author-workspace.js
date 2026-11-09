@@ -369,11 +369,11 @@
             outlineRows,
             story: sourceStory
           });
-    const story = sourceStory && (
-      outlineRows === undefined
+    const story =
+      sourceStory &&
+      (outlineRows === undefined
         ? sourceStory
-        : joinStoryOutline(sourceStory, projected)
-    );
+        : joinStoryOutline(sourceStory, projected));
     if (
       !sections ||
       !review ||
@@ -462,6 +462,7 @@
     categoryFilter.value = 'all';
     wrap.appendChild(categoryFilter);
     let episodeFilter = null;
+    let characterFilter = null;
     const reviewSummary = create('aside', 'novelight-ai-workspace-review');
     reviewSummary.setAttribute('aria-label', '作品カルテの確認ポイント');
     reviewSummary.appendChild(create('h3', '', '設定の確認ポイント'));
@@ -547,10 +548,18 @@
         '作者確定設定と未確定候補の見比べ'
       );
       comparisonPanel.appendChild(
-        create('h3', '', '確定設定とAI候補を見比べる（' + comparisons.length + '項目）')
+        create(
+          'h3',
+          '',
+          '確定設定とAI候補を見比べる（' + comparisons.length + '項目）'
+        )
       );
       comparisonPanel.appendChild(
-        create('p', '', '同じ見出しの記述を並べています。矛盾の判定やAI候補の自動採用は行いません。')
+        create(
+          'p',
+          '',
+          '同じ見出しの記述を並べています。矛盾の判定やAI候補の自動採用は行いません。'
+        )
       );
       for (const group of comparisons) {
         const comparison = create('details', 'novelight-ai-workspace-compare');
@@ -560,7 +569,9 @@
           [group.suggestions, 'AI抽出候補・未確定']
         ]) {
           const side = create('div', 'novelight-ai-workspace-compare-side');
-          side.appendChild(create('h4', '', title + '（' + records.length + '件）'));
+          side.appendChild(
+            create('h4', '', title + '（' + records.length + '件）')
+          );
           for (const item of records) {
             side.appendChild(
               create(
@@ -583,6 +594,221 @@
       wrap.appendChild(comparisonPanel);
     }
 
+    // Reuse the existing character registry as the only profile identity source.
+    // A matching heading is a display aid, not AI identity recognition.
+    const normalizeName = (value) => value.trim().toLocaleLowerCase('ja-JP');
+    const characterProfiles = payload.characters.map((character, index) => {
+      const names = new Set(
+        [character.name, ...(character.aliases ?? [])]
+          .map(normalizeName)
+          .filter(Boolean)
+      );
+      const facts = payload.facts.filter(
+        (group) =>
+          group.kind === 'character' && names.has(normalizeName(group.key))
+      );
+      const notes = payload.notes.filter(
+        (note) =>
+          note.type === 'character' && names.has(normalizeName(note.title))
+      );
+      const confirmedCount = facts.reduce(
+        (total, group) => total + group.confirmed.length,
+        0
+      );
+      const suggestionCount = facts.reduce(
+        (total, group) => total + group.suggestions.length,
+        0
+      );
+      const sourceIds = [
+        ...new Set(
+          facts.flatMap((group) =>
+            [...group.confirmed, ...group.suggestions]
+              .map((record) => record.sourceEpisodeId)
+              .filter((id) => id != null)
+          )
+        )
+      ];
+      sourceIds.sort((a, b) =>
+        episodeById
+          ? episodeById.get(a).episodeNumber - episodeById.get(b).episodeNumber
+          : a - b
+      );
+      return {
+        index,
+        character,
+        names,
+        facts,
+        notes,
+        confirmedCount,
+        suggestionCount,
+        sourceIds
+      };
+    });
+    if (characterProfiles.length) {
+      const characterPanel = create(
+        'div',
+        'novelight-ai-workspace-character-profiles'
+      );
+      characterPanel.setAttribute('aria-label', '登場人物別の設定確認');
+      characterPanel.appendChild(create('h3', '', '登場人物別に設定を確認'));
+      characterPanel.appendChild(
+        create(
+          'p',
+          '',
+          '既存の人物名・別名と見出しが一致する設定だけを整理します。同一人物の推定や登場頻度の判定はしません。'
+        )
+      );
+      for (const profile of characterProfiles) {
+        const detail = create(
+          'details',
+          'novelight-ai-workspace-character-profile'
+        );
+        detail.appendChild(
+          create(
+            'summary',
+            '',
+            profile.character.name +
+              '／作者確定 ' +
+              profile.confirmedCount +
+              '件・AI未確定 ' +
+              profile.suggestionCount +
+              '件'
+          )
+        );
+        if (profile.character.aliases?.length) {
+          detail.appendChild(
+            create(
+              'p',
+              '',
+              '登録済みの別名：' + profile.character.aliases.join('、')
+            )
+          );
+        }
+        for (const group of profile.facts) {
+          for (const [items, label] of [
+            [group.confirmed, '作者が確定した設定'],
+            [group.suggestions, 'AI抽出候補・未確定']
+          ]) {
+            for (const record of items) {
+              detail.appendChild(
+                create(
+                  'p',
+                  '',
+                  label +
+                    '／' +
+                    group.key +
+                    '：' +
+                    (record.payload.summary || '説明未登録') +
+                    (record.sourceEpisodeId != null
+                      ? '／参照エピソードID：' + record.sourceEpisodeId
+                      : '／参照元ID：未登録')
+                )
+              );
+            }
+          }
+        }
+        for (const note of profile.notes) {
+          detail.appendChild(
+            create('p', '', '作者の創作ノート（非公開）：' + note.title)
+          );
+        }
+        if (!profile.facts.length && !profile.notes.length) {
+          detail.appendChild(
+            create('p', '', '一致する見出しの設定・人物ノートは未登録です。')
+          );
+        }
+        if (profile.sourceIds.length) {
+          detail.appendChild(
+            create(
+              'p',
+              '',
+              '登録済みの参照元：' +
+                profile.sourceIds
+                  .map((id) => {
+                    const episode = episodeById?.get(id);
+                    return episode
+                      ? (episode.chapterTitle
+                          ? episode.chapterTitle + '／'
+                          : '') +
+                          '第' +
+                          episode.episodeNumber +
+                          '話（ID：' +
+                          id +
+                          '）'
+                      : 'エピソードID：' + id;
+                  })
+                  .join('、') +
+                '（実際の登場回数とは限りません）'
+            )
+          );
+        }
+        const choose = create(
+          'button',
+          'novelight-ai-workspace-character-focus',
+          'この人物と同じ見出しの設定を表示'
+        );
+        choose.type = 'button';
+        choose.addEventListener('click', () => {
+          filter.value = '';
+          statusFilter.value = 'all';
+          categoryFilter.value = 'characters';
+          if (episodeFilter) episodeFilter.value = 'all';
+          if (characterFilter) characterFilter.value = String(profile.index);
+          updateFilter();
+        });
+        detail.appendChild(choose);
+        characterPanel.appendChild(detail);
+      }
+      const matched = new Set(
+        characterProfiles.flatMap((profile) => [...profile.names])
+      );
+      const unmatched = payload.facts.filter(
+        (group) =>
+          group.kind === 'character' && !matched.has(normalizeName(group.key))
+      );
+      if (unmatched.length) {
+        const missing = create(
+          'details',
+          'novelight-ai-workspace-character-unmatched'
+        );
+        missing.appendChild(
+          create(
+            'summary',
+            '',
+            '人物名・別名と見出しが一致しない設定（' +
+              unmatched.length +
+              '項目）'
+          )
+        );
+        missing.appendChild(
+          create(
+            'p',
+            '',
+            '設定が誤りとは限りません。名称の表記が一致しないため人物別には分類していません。'
+          )
+        );
+        for (const group of unmatched) {
+          const button = create(
+            'button',
+            'novelight-ai-workspace-character-unmatched-focus',
+            group.key + ' の設定を表示'
+          );
+          button.type = 'button';
+          button.addEventListener('click', () => {
+            filter.value = group.key;
+            statusFilter.value = 'all';
+            categoryFilter.value = 'characters';
+            if (episodeFilter) episodeFilter.value = 'all';
+            if (characterFilter) characterFilter.value = 'all';
+            updateFilter();
+          });
+          missing.appendChild(button);
+        }
+        characterPanel.appendChild(missing);
+      }
+      wrap.appendChild(characterPanel);
+    }
+
     const storyPanel = create('aside', 'novelight-ai-workspace-story-index');
     storyPanel.setAttribute('aria-label', '伏線と出来事の整理');
     storyPanel.appendChild(create('h3', '', '伏線・出来事の整理'));
@@ -602,7 +828,10 @@
       ['source-id', '参照エピソードID順（時系列ではありません）']
     ];
     if (projected)
-      sortOptions.push(['episode-number', '実際の話数順（物語内の時系列ではありません）']);
+      sortOptions.push([
+        'episode-number',
+        '実際の話数順（物語内の時系列ではありません）'
+      ]);
     for (const [value, title] of sortOptions) {
       const option = create('option', '', title);
       option.value = value;
@@ -640,8 +869,12 @@
                   .map(
                     (ref) =>
                       (ref.chapterTitle ? ref.chapterTitle + '／' : '') +
-                      '第' + ref.episodeNumber + '話' +
-                      '（エピソードID：' + ref.episodeId + '）'
+                      '第' +
+                      ref.episodeNumber +
+                      '話' +
+                      '（エピソードID：' +
+                      ref.episodeId +
+                      '）'
                   )
                   .join('、')
               : '／参照元ID：未登録'
@@ -677,6 +910,7 @@
             filter.value = entry.key;
             statusFilter.value = 'all';
             if (episodeFilter) episodeFilter.value = 'all';
+            if (characterFilter) characterFilter.value = 'all';
             categoryFilter.value =
               entry.kind === 'foreshadowing' ? 'foreshadowing' : 'events';
             updateFilter();
@@ -719,7 +953,10 @@
         )
       );
       episodeFilter = create('select', 'novelight-ai-workspace-episode-filter');
-      episodeFilter.setAttribute('aria-label', '参照話数で作品カルテを絞り込み');
+      episodeFilter.setAttribute(
+        'aria-label',
+        '参照話数で作品カルテを絞り込み'
+      );
       const allEpisodes = create('option', '', 'すべての話数');
       allEpisodes.value = 'all';
       episodeFilter.appendChild(allEpisodes);
@@ -728,7 +965,11 @@
           'option',
           '',
           (episode.chapterTitle ? episode.chapterTitle + '／' : '') +
-            '第' + episode.episodeNumber + '話（ID：' + episode.episodeId + '）'
+            '第' +
+            episode.episodeNumber +
+            '話（ID：' +
+            episode.episodeId +
+            '）'
         );
         option.value = String(episode.episodeId);
         episodeFilter.appendChild(option);
@@ -744,6 +985,28 @@
       wrap.appendChild(episodePanel);
     }
 
+    if (characterProfiles.length) {
+      characterFilter = create(
+        'select',
+        'novelight-ai-workspace-character-filter'
+      );
+      characterFilter.setAttribute(
+        'aria-label',
+        '登録済み人物名・別名の見出しで絞り込み'
+      );
+      const everyone = create('option', '', 'すべての人物');
+      everyone.value = 'all';
+      characterFilter.appendChild(everyone);
+      for (const profile of characterProfiles) {
+        const option = create('option', '', profile.character.name);
+        option.value = String(profile.index);
+        characterFilter.appendChild(option);
+      }
+      characterFilter.value = 'all';
+      characterFilter.addEventListener('change', () => updateFilter());
+      wrap.appendChild(characterFilter);
+    }
+
     const clearFilters = create(
       'button',
       'novelight-ai-workspace-clear-filters',
@@ -755,6 +1018,7 @@
       statusFilter.value = 'all';
       categoryFilter.value = 'all';
       if (episodeFilter) episodeFilter.value = 'all';
+      if (characterFilter) characterFilter.value = 'all';
       updateFilter();
     });
     wrap.appendChild(clearFilters);
@@ -819,6 +1083,7 @@
           sectionKey: section.key,
           review: item.review,
           sourceEpisodeId: item.sourceEpisodeId ?? null,
+          normalizedTitle: normalizeName(item.title),
           haystack: [
             section.title,
             item.title,
@@ -845,7 +1110,8 @@
         !!query ||
         statusFilter.value !== 'all' ||
         categoryFilter.value !== 'all' ||
-        (episodeFilter !== null && episodeFilter.value !== 'all');
+        (episodeFilter !== null && episodeFilter.value !== 'all') ||
+        (characterFilter !== null && characterFilter.value !== 'all');
       for (const item of searchable) {
         const matchesQuery = !query || item.haystack.includes(query);
         const matchesCategory =
@@ -855,6 +1121,14 @@
           episodeFilter === null ||
           episodeFilter.value === 'all' ||
           item.sourceEpisodeId === Number(episodeFilter.value);
+        const activeProfile =
+          characterFilter !== null && characterFilter.value !== 'all'
+            ? characterProfiles[Number(characterFilter.value)]
+            : null;
+        const matchesCharacter =
+          !activeProfile ||
+          (item.sectionKey === 'characters' &&
+            activeProfile.names.has(item.normalizedTitle));
         const matchesStatus =
           statusFilter.value === 'review'
             ? item.review
@@ -862,7 +1136,11 @@
               ? !item.review
               : true;
         const matches =
-          matchesQuery && matchesStatus && matchesCategory && matchesEpisode;
+          matchesQuery &&
+          matchesStatus &&
+          matchesCategory &&
+          matchesEpisode &&
+          matchesCharacter;
         item.element.hidden = !matches;
         if (matches) {
           shown += 1;

@@ -786,3 +786,160 @@ test('confirmed settings and AI candidates compare literally without silent adop
   assert.equal(nodes(comparison, 'button').length, 0);
   assert.equal(JSON.stringify(payload), before);
 });
+
+test('character dossiers combine exact registry names, aliases and author notes', () => {
+  const payload = fixture();
+  payload.novelId = 23;
+  payload.aiGenerated = false;
+  payload.notes.push({
+    type: 'character',
+    title: '凛',
+    body: '実際の人物設定ノート'
+  });
+  payload.facts.push(
+    {
+      kind: 'character',
+      key: '凛',
+      confirmed: [
+        {
+          sourceEpisodeId: 100,
+          payload: { summary: '一人称は私', evidence: '' }
+        }
+      ],
+      suggestions: []
+    },
+    {
+      kind: 'character',
+      key: '青い鍵の持ち主',
+      confirmed: [],
+      suggestions: [
+        {
+          sourceEpisodeId: 900,
+          payload: { summary: '鍵の使い手らしい', evidence: '手に鍵を持った' }
+        }
+      ]
+    }
+  );
+  const outlineRows = [
+    {
+      episode_id: 100,
+      episode_number: 9,
+      episode_title: '出会い',
+      episode_status: 'published',
+      chapter_id: 1,
+      chapter_title: '第一章',
+      chapter_position: 1
+    },
+    {
+      episode_id: 900,
+      episode_number: 2,
+      episode_title: '序章',
+      episode_status: 'draft',
+      chapter_id: 2,
+      chapter_title: 'プロローグ',
+      chapter_position: 2
+    }
+  ];
+  const before = JSON.stringify(payload);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload, outlineRows }), true);
+  const profiles = nodes(target, 'div').find(
+    (item) => item.className === 'novelight-ai-workspace-character-profiles'
+  );
+  assert.ok(profiles);
+  assert.match(profiles.textContent, /登場人物別に設定を確認/);
+  assert.match(profiles.textContent, /凛／作者確定 1件・AI未確定 1件/);
+  assert.match(profiles.textContent, /登録済みの別名：青い鍵の持ち主/);
+  assert.match(profiles.textContent, /作者の創作ノート（非公開）：凛/);
+  assert.match(profiles.textContent, /プロローグ／第2話（ID：900）/);
+  assert.match(profiles.textContent, /第一章／第9話（ID：100）/);
+  assert.ok(
+    profiles.textContent.indexOf('プロローグ／第2話（ID：900）') <
+      profiles.textContent.indexOf('第一章／第9話（ID：100）')
+  );
+  assert.match(profiles.textContent, /実際の登場回数とは限りません/);
+  const choose = nodes(profiles, 'button').find(
+    (item) => item.className === 'novelight-ai-workspace-character-focus'
+  );
+  assert.ok(choose);
+  choose.listeners.get('click')();
+  const selected = nodes(target, 'select').find(
+    (item) => item.className === 'novelight-ai-workspace-character-filter'
+  );
+  assert.equal(selected.value, '0');
+  assert.equal(nodes(target, 'select')[1].value, 'characters');
+  const visible = nodes(target, 'article').filter((item) => !item.hidden);
+  assert.equal(visible.length, 4);
+  assert.match(target.textContent, /絞り込み結果：4件/);
+  assert.equal(JSON.stringify(payload), before);
+});
+
+test('unmatched character headings remain visible without invented identity', () => {
+  const payload = fixture();
+  payload.facts.push({
+    kind: 'character',
+    key: '凛の口調',
+    confirmed: [{ payload: { summary: '丁寧な話し方', evidence: '' } }],
+    suggestions: []
+  });
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const profiles = nodes(target, 'div').find(
+    (item) => item.className === 'novelight-ai-workspace-character-profiles'
+  );
+  assert.match(
+    profiles.textContent,
+    /人物名・別名と見出しが一致しない設定（1項目）/
+  );
+  assert.match(profiles.textContent, /設定が誤りとは限りません/);
+  const jump = nodes(profiles, 'button').find(
+    (item) =>
+      item.className === 'novelight-ai-workspace-character-unmatched-focus'
+  );
+  jump.listeners.get('click')();
+  const visible = nodes(target, 'article').filter((item) => !item.hidden);
+  assert.equal(visible.length, 1);
+  assert.match(visible[0].textContent, /凛の口調/);
+  const selected = nodes(target, 'select').find(
+    (item) => item.className === 'novelight-ai-workspace-character-filter'
+  );
+  assert.equal(selected.value, 'all');
+  const reset = nodes(target, 'button').find(
+    (item) => item.className === 'novelight-ai-workspace-clear-filters'
+  );
+  reset.listeners.get('click')();
+  assert.equal(visible[0].hidden, false);
+  assert.equal(
+    nodes(target, 'article').filter((item) => !item.hidden).length,
+    7
+  );
+});
+
+test('character select and story focus can be combined without stale filters', () => {
+  const payload = fixture();
+  payload.characters.push({ name: '蒼', aliases: ['もう一人の剣士'] });
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const selection = nodes(target, 'select').find(
+    (item) => item.className === 'novelight-ai-workspace-character-filter'
+  );
+  selection.value = '1';
+  selection.listeners.get('change')();
+  assert.equal(
+    nodes(target, 'article').filter((item) => !item.hidden).length,
+    1
+  );
+  const focus = nodes(target, 'button').find(
+    (item) =>
+      item.className === 'novelight-ai-workspace-story-focus' &&
+      item.attributes['aria-label'].includes('青い鍵')
+  );
+  focus.listeners.get('click')();
+  assert.equal(selection.value, 'all');
+  assert.equal(nodes(target, 'select')[1].value, 'foreshadowing');
+  assert.equal(
+    nodes(target, 'article').filter((item) => !item.hidden).length,
+    1
+  );
+  assert.match(target.textContent, /絞り込み結果：1件/);
+});
