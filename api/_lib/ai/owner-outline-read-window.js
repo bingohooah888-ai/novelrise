@@ -12,7 +12,7 @@ function positive(value) {
   const n =
     typeof value === 'number'
       ? value
-      : typeof value === 'string' && /^[1-9]\\d*$/.test(value)
+      : typeof value === 'string' && /^[1-9]\d*$/.test(value)
         ? Number(value)
         : NaN;
   return Number.isSafeInteger(n) && n > 0 ? n : null;
