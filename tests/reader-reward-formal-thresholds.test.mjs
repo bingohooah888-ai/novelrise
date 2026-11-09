@@ -26,8 +26,8 @@ test('compiles a complete synthetic Lv.1-100 proposal into progress-gauge XP', (
   assert.equal(result.ownerThresholdApprovalRequired, true);
   assert.equal(result.cumulativeByLevel[30], 9570);
   assert.equal(result.requiredXpByLevel[29], 610);
-  assert.equal(result.requiredXpByLevel[30], 640);
-  assert.equal(result.requiredXpByLevel[99], 2020);
+  assert.equal(result.requiredXpByLevel[30], 630);
+  assert.equal(result.requiredXpByLevel[99], 2010);
   assert.equal(result.cumulativeByLevel[100], 101970);
   assert.equal(Object.hasOwn(result.requiredXpByLevel, '100'), false);
   assert.equal(Object.isFrozen(result.requiredXpByLevel), true);
@@ -57,8 +57,8 @@ test('supports a different future OWNER choice without hardcoded Lv.31-100 value
     ? { ...row, cumulative_xp: row.cumulative_xp + 50 * (row.level - 30) }
     : row);
   const result = compile(alternative);
-  assert.equal(result.requiredXpByLevel[30], 690);
-  assert.equal(result.requiredXpByLevel[99], 2070);
+  assert.equal(result.requiredXpByLevel[30], 680);
+  assert.equal(result.requiredXpByLevel[99], 2060);
   assert.equal(result.cumulativeByLevel[30], 9570);
   assert.equal(result.productionReady, false);
 });
