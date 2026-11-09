@@ -195,7 +195,10 @@ test('composed owner JWT observer checks signed session three times before retur
   const output = await f.run();
   assert.equal(output?.novelId, 23);
   assert.equal(output.outlineRows.length, 2);
-  assert.deepEqual(output.outlineRows.map((row) => row.episode_number), [5, 2]);
+  assert.deepEqual(
+    output.outlineRows.map((row) => row.episode_number),
+    [5, 2]
+  );
   assert.equal(output.outlineRows[1].chapter_title, '序章');
   assert.equal(f.count('getUser'), 2);
   assert.equal(f.count('novels'), 2);
@@ -204,7 +207,13 @@ test('composed owner JWT observer checks signed session three times before retur
   assert.equal(f.count('rpc'), 2);
   assert.equal(f.count('authorClient'), 1);
   const json = JSON.stringify(output);
-  for (const forbidden of [TOKEN, 'NONPUBLIC_DRAFT_TITLE_NEVER_RETURN', 'NONPUBLIC_NOTE', 'episode_status', 'episode_title']) {
+  for (const forbidden of [
+    TOKEN,
+    'NONPUBLIC_DRAFT_TITLE_NEVER_RETURN',
+    'NONPUBLIC_NOTE',
+    'episode_status',
+    'episode_title'
+  ]) {
     assert.equal(json.includes(forbidden), false);
   }
   assert.equal(JSON.stringify(f.state.events).includes(TOKEN), false);
@@ -260,13 +269,23 @@ test('replaced session row alone cannot be matched to the signed session ID', as
 
 test('signed subject or session owner switching mid-request fails closed', async () => {
   for (const change of [
-    (state) => { state.claims.sub = OTHER; },
-    (state) => { state.session.user_id = OTHER; },
-    (state) => { state.actor = OTHER; },
-    (state) => { state.owner = OTHER; }
+    (state) => {
+      state.claims.sub = OTHER;
+    },
+    (state) => {
+      state.session.user_id = OTHER;
+    },
+    (state) => {
+      state.actor = OTHER;
+    },
+    (state) => {
+      state.owner = OTHER;
+    }
   ]) {
     const f = harness();
-    f.state.onRpc = (n) => { if (n === 2) change(f.state); };
+    f.state.onRpc = (n) => {
+      if (n === 2) change(f.state);
+    };
     assert.equal(await f.run(), null);
     assert.equal(f.count('rpc'), 2);
   }
@@ -285,14 +304,30 @@ test('expired JWT during first RPC or final session verification fails closed', 
 
 test('invalid, anonymous or foreign-owner claims never reach the author RPC', async () => {
   for (const mutate of [
-    (s) => { s.claims.role = 'anon'; },
-    (s) => { s.claims.aud = 'other'; },
-    (s) => { s.claims.is_anonymous = true; },
-    (s) => { s.claims.sub = OTHER; },
-    (s) => { s.claims.exp = NOW; },
-    (s) => { s.session.user_id = OTHER; },
-    (s) => { s.owner = OTHER; },
-    (s) => { s.novelId = 999; }
+    (s) => {
+      s.claims.role = 'anon';
+    },
+    (s) => {
+      s.claims.aud = 'other';
+    },
+    (s) => {
+      s.claims.is_anonymous = true;
+    },
+    (s) => {
+      s.claims.sub = OTHER;
+    },
+    (s) => {
+      s.claims.exp = NOW;
+    },
+    (s) => {
+      s.session.user_id = OTHER;
+    },
+    (s) => {
+      s.owner = OTHER;
+    },
+    (s) => {
+      s.novelId = 999;
+    }
   ]) {
     const f = harness();
     mutate(f.state);
@@ -303,12 +338,24 @@ test('invalid, anonymous or foreign-owner claims never reach the author RPC', as
 
 test('verification, session lookup, auth, novel lookup and RPC errors return null with no secret reporting', async () => {
   for (const change of [
-    (s) => { s.verificationError = true; },
-    (s) => { s.sessionError = true; },
-    (s) => { s.authError = true; },
-    (s) => { s.dbError = true; },
-    (s) => { s.rpcError = true; },
-    (s) => { s.throwSensitive = true; }
+    (s) => {
+      s.verificationError = true;
+    },
+    (s) => {
+      s.sessionError = true;
+    },
+    (s) => {
+      s.authError = true;
+    },
+    (s) => {
+      s.dbError = true;
+    },
+    (s) => {
+      s.rpcError = true;
+    },
+    (s) => {
+      s.throwSensitive = true;
+    }
   ]) {
     const f = harness();
     change(f.state);
@@ -336,11 +383,26 @@ test('a later request does not reuse an earlier accepted session decision', asyn
 
 test('the composed test remains offline and the production routes remain disconnected', async () => {
   const [sessionModule, adapterModule, route] = await Promise.all([
-    readFile(new URL('../api/_lib/ai/owner-session-evidence.js', import.meta.url), 'utf8'),
-    readFile(new URL('../api/_lib/ai/owner-outline-internal-adapter.js', import.meta.url), 'utf8'),
+    readFile(
+      new URL('../api/_lib/ai/owner-session-evidence.js', import.meta.url),
+      'utf8'
+    ),
+    readFile(
+      new URL(
+        '../api/_lib/ai/owner-outline-internal-adapter.js',
+        import.meta.url
+      ),
+      'utf8'
+    ),
     readFile(new URL('../api/ai-owner-novel-bible.js', import.meta.url), 'utf8')
   ]);
-  assert.doesNotMatch(route, /owner-session-evidence|owner-outline-internal-adapter/);
+  assert.doesNotMatch(
+    route,
+    /owner-session-evidence|owner-outline-internal-adapter/
+  );
   assert.doesNotMatch(adapterModule, /from\s+['"]\.\/owner-session-evidence/);
-  assert.doesNotMatch(sessionModule, /from\s+['"]@supabase|\.from\(|\.rpc\(|console\./);
+  assert.doesNotMatch(
+    sessionModule,
+    /from\s+['"]@supabase|\.from\(|\.rpc\(|console\./
+  );
 });
