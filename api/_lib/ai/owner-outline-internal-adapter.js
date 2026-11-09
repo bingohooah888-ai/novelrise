@@ -5,6 +5,8 @@
 // lookup -> publishable-key author client -> scoped novelight_novel_outline RPC.
 // This module does not check live logout/revocation by itself; a FUTURE trusted
 // server-side checkSession observer is mandatory and must reject stale sessions.
+import { Buffer } from 'node:buffer';
+
 import { validateOwnerOutlineReadWindow } from './owner-outline-read-window.js';
 
 const UUID =
