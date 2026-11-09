@@ -3,6 +3,8 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { URL } from 'node:url';
 import { validateOwnerOutlineReadWindow as check } from '../api/_lib/ai/owner-outline-read-window.js';
+import '../novelight-ai-bible-owner-outline.js';
+import '../novelight-ai-bible-author-workspace.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
@@ -204,4 +206,40 @@ test('the contract is not mounted or a permission substitute', async () => {
   assert.doesNotMatch(source, /createClient|process\.env|service_role/i);
   assert.match(source, /NOT mounted as a route/);
   assert.match(source, /MUST originate from server-verified Supabase Auth/);
+});
+
+test('the existing Bible story index uses only vetted owner navigation fields', () => {
+  const p = preview();
+  p.facts.push({
+    kind: 'foreshadowing',
+    key: '秘密の鍵',
+    confirmed: [],
+    suggestions: [{
+      sourceEpisodeId: 900,
+      payload: { summary: '後で明らかになる', evidence: '鍵を拾った' }
+    }]
+  });
+  const ready = check(fixture({ preview: p }));
+  assert.ok(ready);
+  const story = globalThis.NovelightAiBibleAuthorWorkspace.storyIndex(p);
+  const view = globalThis.NovelightAiBibleOwnerOutline.project({
+    expectedNovelId: ready.novelId,
+    preview: p,
+    outlineRows: ready.outlineRows,
+    story
+  });
+  assert.equal(view.foreshadowing[0].references[0].episodeNumber, 2);
+  assert.equal(view.foreshadowing[0].references[0].chapterTitle, '序章');
+  assert.equal(Object.hasOwn(ready.outlineRows[1], 'episode_title'), false);
+  assert.equal(Object.hasOwn(view.foreshadowing[0].references[0], 'episode_status'), false);
+  assert.equal(Object.hasOwn(view.foreshadowing[0], 'storyTime'), false);
+
+  p.facts[0].suggestions[0].sourceEpisodeId = 9999;
+  const staleStory = globalThis.NovelightAiBibleAuthorWorkspace.storyIndex(p);
+  assert.equal(globalThis.NovelightAiBibleOwnerOutline.project({
+    expectedNovelId: ready.novelId,
+    preview: p,
+    outlineRows: ready.outlineRows,
+    story: staleStory
+  }), null);
 });
