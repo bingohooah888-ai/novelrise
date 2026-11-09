@@ -11,9 +11,15 @@ function integer(value) {
  * No XP amounts are decided here. The beta 1..30 cumulative ladder is immutable.
  * A row for Lv.100 defines the final 99->100 step, not a required Lv.100->101 step.
  */
-export function compileScoutFormalXpLadder({ betaThresholdRows, formalCumulativeRows }) {
+export function compileScoutFormalXpLadder({
+  betaThresholdRows,
+  formalCumulativeRows
+}) {
   const beta = validateScoutBetaThresholds(betaThresholdRows);
-  if (!Array.isArray(formalCumulativeRows) || formalCumulativeRows.length !== 100) {
+  if (
+    !Array.isArray(formalCumulativeRows) ||
+    formalCumulativeRows.length !== 100
+  ) {
     throw new RangeError('Exactly 100 formal level rows are required');
   }
   const byLevel = {};
@@ -29,10 +35,14 @@ export function compileScoutFormalXpLadder({ betaThresholdRows, formalCumulative
       !integer(row.cumulative_xp) ||
       row.cumulative_xp <= preceding
     ) {
-      throw new RangeError('Formal XP rows must be 1..100 with increasing cumulative XP');
+      throw new RangeError(
+        'Formal XP rows must be 1..100 with increasing cumulative XP'
+      );
     }
     if (level <= 30 && row.cumulative_xp !== beta.cumulativeByLevel[level]) {
-      throw new RangeError('Formal ladder cannot rewrite beta Lv.1-30 thresholds');
+      throw new RangeError(
+        'Formal ladder cannot rewrite beta Lv.1-30 thresholds'
+      );
     }
     byLevel[level] = row.cumulative_xp;
     preceding = row.cumulative_xp;
@@ -52,3 +62,5 @@ export function compileScoutFormalXpLadder({ betaThresholdRows, formalCumulative
     productionReady: false
   });
 }
+
+[executed on device: DESKTOP-8Q4GFC8 (821df8a8-1a95-4198-8dd5-c495dd81c4e3)]
