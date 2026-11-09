@@ -20,9 +20,7 @@ function uuid(value) {
     : null;
 }
 
-export function createOfflinePrivateSessionReader({
-  lookupOneSession
-} = {}) {
+export function createOfflinePrivateSessionReader({ lookupOneSession } = {}) {
   return async function readExistingSession({ sessionId, actorId } = {}) {
     const id = uuid(sessionId);
     const owner = uuid(actorId);
