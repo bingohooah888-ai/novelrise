@@ -9,6 +9,15 @@ phase: 02-07-05
 last_reviewed_jst: 2026-11-10
 <!-- CONTINUITY_FINGERPRINT_END -->
 
+## 2026-11-10 継続：制御面分離・Gate A〜C READ-ONLY判断（新しい実行権限なし）
+
+- **基準**：main 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3、MASTER blob e2501f9ed0722964e76fd0a49bf200717850b81d、Draft PR #2825 事前HEAD 96515f16b81f47e952e864e0162fc32115eb0b30。NLO resume BASELINE_MATCH、Runtime Gate start PASS（degraded）。コード/Workflow未変更、Gate A〜E 0/5。
+- **設計判断**：既存mainの02-07-05 workflowはOFFLINE PREFLIGHT ONLY。候補SHA対応の権限契約はDraft PR内にあり、信頼済みmain上の実制御jobからは未使用。後段では制御面だけを審査した小PRで信頼済みmainへ分離配置する案を第一候補とするが、PR作成・main統合・実行接続はいずれも別承認。候補PRのNode/workflowをSecrets付きで直接動かさない。
+- **Gate B READ**：旧Staging branch HEAD 0e4f3f594193d137d582fb693703ffdfe1d1cfd3。Vercel SSO Protectionは有効、対象旧branchおよび候補SHAのPreviewはそれぞれ0件。旧branch専用9キー中6名、未確認3名は SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY / NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY。共通Previewや他branchのキーを代用しない。値の復号/変更なし。
+- **Supabase READ**：Staging ref wmlzjgvxgoyrovdhbqbg はbranch一覧に存在。古い branch status MIGRATIONS_FAILED と preview_project_status ACTIVE_HEALTHY が併記され、個別project GETはNotFound。一方、同refのmigration一覧READは成功し215件、one-shot claim版20261101060000あり。実DBの操作権限・稼働・接続分離はこれだけで保証されない。矛盾するAPI結果は実接続前に解消する。
+- **Gate A/C未証明**：外部独立Watchdogの実kill/revoke/cleanup/zero census、保護jobのOWNER真正性・永続nonce、実JWTと原子claim、Provider利用資格と実費10円上限はいずれも未実証。既知の合成PASS・SQL6件・Cron停止・DO3件凍結は再実行/変更しない。
+- **次の境界**：制御面の最小差分とProductionデプロイ影響を別承認前に審査。Staging branch/Preview/Secrets/Watchdog/JWT/DB/有料AIは対象SHAとscope別の明示承認までNO-GO。詳細は本Draft PR内の接続計画書§8。新HEADはPRを再取得して判断。
+
 ## 2026-11-10 継続：候補SHA方式を既存権限契約へオフライン整合（本PR内、実環境OFF）
 
 - **最新基準**：main 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3、MASTER blob e2501f9ed0722964e76fd0a49bf200717850b81d。NLO隔離コピーでorigin/mainを再取得後、resume=BASELINE_MATCH（AUTHORIZATION=NONE、CLOUD_MUTATIONS=0）。mainやStaging branchは変更しない。

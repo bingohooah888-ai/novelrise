@@ -93,3 +93,37 @@
 - **信頼済み制御コードの本番基準への配置は未解決。** 現時点の契約変更はDraft PR内のため、mainの信頼済みrunnerへ自動反映されない。作品カルテをmainへ先行統合しないまま実環境試験するには、制御面のみを分離・審査・承認して信頼済み経路へ配置する手段（または同等の承認済み独立runner方式）が必要。PR由来の非信頼Workflowに機密を渡して解決してはいけない。
 - Watchdog実kill/revoke/cleanup権限、永続原子nonce、実OWNER本人確認、Staging Secret隔離、実JWT、請求・価格と円換算は未証明。ひとつでも未確認ならNO-GO。
 - 既存main限定局所オフラインテスト43/43 PASS、新規候補契約テスト5/5 PASS。最終GitHub CI/CodeQLはPR更新後に確認。正式Gate A〜Eは引き続き0/5。
+
+## 8. 2026-11-10：信頼済み制御面の分離・Gate A〜C接続前の最新READ-ONLY判断
+
+本節は前回の候補SHA契約を再実装せず、**どのコードに権限を与えるか**と**実環境の未確認事項**を固定する。2026-11-10 JST の観測基準は main `95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3`、PR #2825 観測HEAD `96515f16b81f47e952e864e0162fc32115eb0b30`（Draft・未統合）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`。これらのSHAは**今回の調査スナップショットであり、OWNERの実行承認や固定済み候補SHAではない**。この文書の更新によってPR HEADは再度変わり得る。
+
+### 8.1 実物の制御境界と解決案
+
+- **確認した事実**：main に存在する `ai-020705-owner-staging-paid-trial.yml` は `OFFLINE preflight only`。main checkout、GitHub issue READ、局所テスト、オフライン承認判定のみで、Staging protected environmentの実実行job、独立停止Controllerの接続、DB claim、課金Provider、Preview作成は実装・起動しない。一方、候補SHAに対応した Owner台帳・署名Watchdog・保護Runnerのコードは現時点ではDraft PR側にしか存在しない。
+- **推奨する最小構成**：信頼境界を「制御面（OWNER承認、GitHub API観測、署名検証、永続原子nonce、停止指令、費用監視）」と「検証対象（作品カルテUI/API、合成作品、StagingのPreview）」に分離。制御面は**審査済み・保護されたmain由来のコード**のみで動かす。PR候補のSHAはデータとして読み取り、承認対象の候補ブランチ・commit tree・Previewを独立に照合する。**PR由来のworkflow/NodeコードをSecrets付き制御jobで直接実行しない**。
+- **制御面コードの配置**：将来必要になった場合に限り、候補対応済みの制御部分を作品カルテ機能と分離した**制御面専用の小さな審査PR**に抽出する。保護されたmainへ統合する際はProduction自動デプロイの可能性も明示し、対象PR専用の**別の本番承認**が必須。今回は別PR作成・main統合とも行わない。外部専用repo/Runnerで代替する案は、権限境界を守れるが新規運用の負担が大きいため現段階では採用しない。
+- **実行分離**：信頼済み制御jobと候補ソースのbuild/アプリ実行を分離し、候補コードのpackage script・PR workflow・任意のインストールフックにOWNER/Controller/Production資格を渡さない。候補ソースを処理する場所はStaging専用・合成データ限定・最小権限とし、承認した**commit SHAそのもの**を独立取得して、ブランチHEAD・Preview SHA・Owner承認・署名済み停止スコープと照合する。実JWT/DB/有料POSTに必要なStaging限定資格は、その操作の別承認まで注入しない。
+- **既存システムを再利用**：既存Owner ledger、独立Watchdog署名、one-use claim、protected runner、read-only proof、cleanupを再実装しない。現在のオフライン契約は実権限の代わりにならない。main限定旧動作を緩めず、候補SHAモードのみ厳密に追加する。
+
+### 8.2 読み取り専用で確認した外部状態と未解決事項
+
+| 領域 | 実観測（2026-11-10） | 判定・次に必要な証拠 |
+| --- | --- | --- |
+| GitHub | mainは上記SHA、PR #2825はDraft/未統合。既存Staging branch `staging/ai-02-07-05-gatebc-20261105` HEAD `0e4f3f594193d137d582fb693703ffdfe1d1cfd3` | 当該branchは候補SHAと一致しない。今はbranch更新・新設不可。別のStaging承認後にのみ、exact candidate SHAに結び付いたbranchを用意 |
+| GitHub保護Workflow | mainの既存WorkflowはOFFLINEのみ。Issue #294 のOwner paid ledgerとPreview/Staging作成のOwner承認は**異なる操作** | 実OwnerコメントのGitHub API真正性、制御jobの保護環境・承認者・権限・single concurrencyを未証明。一般的な `workflow_dispatch` 引数やbooleanで承認を代替しない。Preview/Staging承認は既存の専用経路（Issue #188等）を別途使用 |
+| Vercel | project `novelrise`、SSO Protection設定はenabled（`all_except_custom_domains`）。指定旧Staging branchと上記候補SHAでのdeployment一覧は各0件 | 実候補Preview `dpl_`・READY・当該URLのSSO有効・Production非接続は未証明。新規Previewは別のStaging承認まで作成禁止 |
+| Vercel Env | 旧Staging branchにスコープ固定された必須9キーのうち6キー名を確認。未確認は `SUPABASE_SECRET_KEY`、`SUPABASE_PUBLISHABLE_KEY`、`NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY` | 共通Preview/他branch用キーは代用不可。今回の確認は**decrypt=false・値を取得しないメタデータ**だけ。対象branch専用の資格・実Staging projectRef・最小権限を独立して証明するまでNO-GO |
+| Supabase | Production projectRef `fiepaguycecrredwrcwx` に対するbranch一覧に Staging `wmlzjgvxgoyrovdhbqbg` が存在。branchのstatusは `MIGRATIONS_FAILED`（updated_atは2026-08-25）、preview_project_statusは `ACTIVE_HEALTHY`。Staging project個別詳細取得は `NotFound` | branch statusは更新時刻が古く、現時点のDB失敗を断定しない。一方、個別Project APIの不可視性も解消していない。接続先と権限の可視範囲・環境独立性を整理 |
+| Supabase Migration | Staging projectRefの `list_migrations` READは成功し215件を返した。既存one-shot claim版 `20261101060000` が履歴に含まれる | 「Staging全面アクセス不可」とは判断しない。ただし履歴の存在だけでテーブル/RLS/RPCの実権限、budget=0、合成JWT実行可を証明しない。実操作前に許可された最小のREADで別確認 |
+| Gate A | 既存合成結果とDO3件の凍結は従前のとおり。今回外部Controllerの停止操作なし | Runner消失時でも別host/権限がkill、AI OFF、JWT revoke、合成データcleanup、zero censusを完遂できる実証を別承認後に限定実施 |
+| Gate C/D | 候補SHAの局所契約は前回PASS、Workflow未接続。Provider利用資格・為替・最悪費用の実証なし | 本人承認・原子的consumption・価格上限・同意・停止条件が全て実観測できるまでは実JWT・DB claim・モデルPOST禁止。Dの10円以内1回はA〜C合格後の別承認 |
+
+### 8.3 依存の順番を固定（無用な安全機構・承認の増殖を禁止）
+
+1. **今回**：上記の設計とメタデータ観測をPR内に確定。既存のオフラインPASSは再実行しない。候補の新しいcommitはまだ実行対象として承認しない。
+2. **制御面のレビュー判断**：mainの信頼済み実行経路へ「制御面だけ」を置く小PRの差分・依存・Production影響を先に審査。これ自体の統合・workflowの有効化は別承認。制御面にPR由来の実行コードやProduction Secretを混入させない。
+3. **Gate A/Bの実接続**：独立Watchdogの停止能力、Staging branch/Secretの完全分離、Vercel protected Previewのexact SHA、Supabaseの実接続を**操作ごとのStaging/外部Controller承認**で実証。A/BのREAD棚卸しは並行可、実mutationは各承認まで停止。
+4. **Gate C以降**：独立証拠が揃った後にだけ、本人の合成JWT、既存原子one-shot claim、停止/cleanup/独立censusを一回限りの承認で検証。Gate Dの有料POST、Eの品質/管理人限定試用はさらに別承認。
+
+**結論**：現時点では候補SHAのオフライン契約整合まで完了し、**信頼済み制御面の配置・実資格と停止・Previewの実証は未完了**。Gate A〜Eは**0/5**。本節作成は実操作の承認、請求、DB mutation、公開の許可にならない。
