@@ -3,11 +3,23 @@
 **最終内容確認：2026-11-10 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: b826679b35862580d8097d7ddf95be3243500237
+source_main: 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
 last_reviewed_jst: 2026-11-10
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-10 実環境接続の依存・実証手順を一括固定（コード再作成なし）
+
+- 正本：[`docs/ai-phase2/02-07-05-live-connection-plan-20261110.md`](ai-phase2/02-07-05-live-connection-plan-20261110.md)。**承認不要の接続設計とREAD証拠の整理のみ**。新しいWatchdog/Runner/承認レイヤー・実LIVEアダプターを追加しない。
+- このチャットで観測したmainは`95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3`、PR #2825は作業着手時`368914c919e3b057cba0b7dd9a17b39d865d9326`（Draft・未統合）。新しいHEADはPR本文と実行時GitHubから必ず再取得。Staging branchは当時mainより**43コミット古く**Preview作成は未実施。
+- **工程②の実装側**：既存の作品カルテ一連の模擬操作およびGate A/B/Cオフライン連結は既存PR内で合格済み。実認証・実DB・外部AI・独立Watchdogを動かした証拠ではなく、Gate A〜Eは**0/5**。
+- **A/B/Cの実接続に必要**：(A) Runnerとは独立したController/heartbeat・真正性・最小停止権限と独立zero census、(B) Production非共有のStaging秘密値とSSO保護のexact SHA Preview、(C) Protected Workflow、合成Auth/JWT、Owner一回限り承認・実原子DB claim、料金/同意とcleanup。全てに費用・資格・期限を固定。
+- **重要なSHA循環依存**：既存Runnerの`trustedRef=refs/heads/main`と`Preview SHA == main SHA`を守ると、未統合PRの新コードをStaging先行検証する前にmain/Productionへ入れる必要が生じる。**候補SHA限定Staging実証方式をOWNERが先に選択し、正式な別PR/承認で検証契約を変更することを推奨。勝手なSHA条件緩和やmain統合はしない。**
+- **2026-11-10公式Provider参考**：`gpt-5.6-luna`の公開モデル資料と標準料金は確認できた。ただしアカウントの利用資格・為替・実請求・上限10円以内は未実証。ユーザーの課金承認前に再確認する。
+- 今回は**既存PASSの再実行不要**。文書のみの変更なら、無関係の実JWT・Staging・ブラウザ試験を起動しない。新たな承認要求は、候補SHA設計のOWNER判断と実環境・費用・停止権限・回数の確定後に限定する。
+
+
 
 ## 2026-11-10 オフラインでのGate A〜C統合（管理人承認前）
 
