@@ -31,7 +31,30 @@ create table novelight_formal_private.scout_comment_eligibility (
  verified_at timestamptz not null default clock_timestamp()
 );
 alter table novelight_formal_private.scout_comment_eligibility enable row level security;
-revoke all on novelight_formal_private.scout_comment_eligibility from public,anon,authenticated;
+revoke all on novelight_formal_private.scout_comment_eligibility from public,anon,authenticated,service_role;
+
+-- Durable immutable-by-application moderation provenance. This is not a
+-- payment ledger and is not exposed to browser/Data API clients.
+-- A verified admin identity comes only from requireAdmin in the trusted host.
+-- Never trust a reviewer ID or source digest from an ordinary client.
+create table novelight_formal_private.scout_comment_review_evidence (
+ review_id uuid primary key,
+ comment_id uuid not null unique references public.novel_comments(id) on delete restrict,
+ reviewer_user_id uuid not null references auth.users(id) on delete restrict,
+ comment_user_id uuid not null references auth.users(id) on delete restrict,
+ episode_id bigint not null check(episode_id>0),
+ body_sha256 text not null check(body_sha256 ~ '^[0-9a-f]{64}$'),
+ eligible boolean not null,
+ reviewer_rule text not null check(char_length(reviewer_rule) between 1 and 120),
+ reviewed_at timestamptz not null default clock_timestamp()
+);
+alter table novelight_formal_private.scout_comment_review_evidence
+ enable row level security;
+revoke all on novelight_formal_private.scout_comment_review_evidence
+ from public,anon,authenticated,service_role;
+-- No direct UPDATE/DELETE grants. All writes use a single restricted
+-- private function; direct privileged table-owner modifications are separately
+-- auditable but not cryptographically prevented by this schema.
 
 -- The future-only trigger captures the Level in exactly the transaction
 -- that creates an authoritative valid_read_events record. This works even
@@ -148,6 +171,7 @@ declare
  v_novel_author uuid;
  v_read uuid;
  v_attest boolean;
+ v_review novelight_formal_private.scout_comment_review_evidence%rowtype;
  v_month_start timestamp without time zone;
  v_count bigint;
  v_key text;
@@ -156,7 +180,8 @@ begin
  if p_release_at is null or p_release_at>clock_timestamp() then
    return jsonb_build_object('status','release_not_verified');
  end if;
- select * into v_comment from public.novel_comments where id=p_comment_id;
+ select * into v_comment from public.novel_comments
+ where id=p_comment_id for update;
  if not found then return jsonb_build_object('status','comment_missing'); end if;
  if v_comment.episode_id is null or v_comment.deleted_at is not null or
     v_comment.author_hidden_at is not null or
@@ -190,6 +215,19 @@ begin
  where comment_id=v_comment.id;
  if v_attest is distinct from true then
    return jsonb_build_object('status','content_review_pending_or_rejected');
+ end if;
+ select * into v_review from novelight_formal_private.scout_comment_review_evidence
+ where comment_id=v_comment.id;
+ if not found or v_review.eligible is distinct from true then
+   return jsonb_build_object('status','review_evidence_missing');
+ end if;
+ -- No Point if the content reviewed was changed before awarding.
+ -- Retroactive cancellation after award remains an OWNER policy decision.
+ if v_review.comment_user_id <> v_comment.user_id or
+    v_review.episode_id <> v_comment.episode_id or
+    v_review.body_sha256 <> pg_catalog.encode(
+      pg_catalog.sha256(pg_catalog.convert_to(v_comment.body,'UTF8')),'hex') then
+   return jsonb_build_object('status','review_source_changed_requires_owner_policy');
  end if;
  -- First eligible means earliest eligible *chapter* comment by server timestamp.
  -- Hold later comments while earlier visible qualifying comments remain
@@ -271,6 +309,7 @@ language plpgsql security definer set search_path=''
 as $review_award$
 declare
  v_comment public.novel_comments%rowtype;
+ v_proof novelight_formal_private.scout_comment_review_evidence%rowtype;
  v_saved boolean;
  v_reward jsonb;
 begin
@@ -279,8 +318,21 @@ begin
    return jsonb_build_object('status','review_evidence_missing');
  end if;
  select * into v_comment from public.novel_comments
- where id=p_comment_id;
+ where id=p_comment_id for update;
  if not found then return jsonb_build_object('status','comment_missing'); end if;
+ select * into v_proof from novelight_formal_private.scout_comment_review_evidence
+ where comment_id=p_comment_id;
+ if not found then return jsonb_build_object('status','review_evidence_missing'); end if;
+ if v_proof.eligible is distinct from p_content_eligible or
+    v_proof.reviewer_rule <> p_reviewer_rule then
+   return jsonb_build_object('status','review_conflict_requires_owner_policy');
+ end if;
+ if v_proof.comment_user_id <> v_comment.user_id or
+    v_proof.episode_id <> v_comment.episode_id or
+    v_proof.body_sha256 <> pg_catalog.encode(
+      pg_catalog.sha256(pg_catalog.convert_to(v_comment.body,'UTF8')),'hex') then
+   return jsonb_build_object('status','review_source_changed_requires_owner_policy');
+ end if;
  -- Immutable first moderation decision. Any later reversal is explicitly
  -- outside the current OWNER approval and cannot silently re-credit.
  insert into novelight_formal_private.scout_comment_eligibility(
@@ -343,7 +395,7 @@ create table novelight_formal_private.scout_earning_delivery (
 );
 alter table novelight_formal_private.scout_earning_delivery enable row level security;
 revoke all on novelight_formal_private.scout_earning_delivery
- from public,anon,authenticated;
+ from public,anon,authenticated,service_role;
 
 -- Re-enqueue is idempotent and cannot turn a terminal result into pending.
 create or replace function novelight_formal_private.enqueue_earning_draft(
@@ -407,27 +459,80 @@ create trigger scout_formal_comment_enqueue
 after insert or update of episode_id on public.novel_comments
 for each row execute function novelight_formal_private.on_episode_comment_formal_draft();
 
+-- Future trusted server passes only a reviewer identity returned by the
+-- existing admin-auth guard, plus its random receipt UUID and canonical
+-- SHA-256 fingerprint. No browser principal can call this private function.
+-- Comment/queue row locks make the source recheck + immutable evidence +
+-- transition to pending one atomic transaction.
 create or replace function novelight_formal_private.decide_earning_review_draft(
-  p_comment_id uuid,p_eligible boolean,p_rule text
+ p_comment_id uuid,p_eligible boolean,p_rule text,
+ p_reviewer_user_id uuid,p_review_id uuid,p_body_sha256 text,p_episode_id bigint
 ) returns jsonb language plpgsql security definer set search_path=''
 as $earning_review$
-declare v_state text;
+declare
+ v_comment public.novel_comments%rowtype;
+ v_state text;
+ v_old novelight_formal_private.scout_comment_review_evidence%rowtype;
 begin
  if p_comment_id is null or p_eligible is null or
-    p_rule is null or char_length(p_rule) not between 1 and 120 then
+    p_rule is null or char_length(p_rule) not between 1 and 120 or
+    p_reviewer_user_id is null or p_review_id is null or
+    p_body_sha256 is null or p_body_sha256 !~ '^[0-9a-f]{64}$' or
+    p_episode_id is null or p_episode_id<=0 then
    return jsonb_build_object('status','review_missing');
  end if;
+ select * into v_comment from public.novel_comments
+ where id=p_comment_id for update;
+ if not found then return jsonb_build_object('status','comment_missing'); end if;
+ select state into v_state from novelight_formal_private.scout_earning_delivery
+ where event_type='novel_episode_comment_reviewed'
+   and event_id=p_comment_id for update;
+ if not found then return jsonb_build_object('status','event_missing'); end if;
+ -- Check the locked source before even an idempotent replay response.
+ -- A previously reviewed but now edited source is not a valid replay.
+ if v_comment.episode_id is distinct from p_episode_id or
+    v_comment.body is null or
+    pg_catalog.encode(
+      pg_catalog.sha256(pg_catalog.convert_to(v_comment.body,'UTF8')),'hex'
+    ) <> p_body_sha256 then
+   return jsonb_build_object('status','review_source_changed');
+ end if;
+ if p_eligible and (v_comment.deleted_at is not null or
+                    v_comment.author_hidden_at is not null) then
+   return jsonb_build_object('status','review_source_unavailable');
+ end if;
+ -- No audit replacement or change of verdict, even when a second reviewer
+ -- submits an identical outcome; the first provenance remains authoritative.
+ select * into v_old from novelight_formal_private.scout_comment_review_evidence
+ where comment_id=p_comment_id;
+ if found then
+   if v_old.reviewer_user_id=p_reviewer_user_id and
+      v_old.eligible=p_eligible and v_old.reviewer_rule=p_rule and
+      v_old.body_sha256=p_body_sha256 and v_old.episode_id=p_episode_id then
+     return jsonb_build_object('status','review_already_recorded');
+   end if;
+   return jsonb_build_object('status','review_conflict_requires_owner_policy');
+ end if;
+ if v_state <> 'review_pending' then
+   return jsonb_build_object('status','review_not_pending');
+ end if;
+ insert into novelight_formal_private.scout_comment_review_evidence(
+  review_id,comment_id,reviewer_user_id,comment_user_id,
+  episode_id,body_sha256,eligible,reviewer_rule
+ ) values (
+  p_review_id,p_comment_id,p_reviewer_user_id,v_comment.user_id,
+  p_episode_id,p_body_sha256,p_eligible,p_rule
+ );
  update novelight_formal_private.scout_earning_delivery
  set moderation_decision=p_eligible,moderation_rule=p_rule,
      state='pending',next_attempt_at=now(),updated_at=now()
  where event_type='novel_episode_comment_reviewed'
-   and event_id=p_comment_id
-   and state='review_pending'
+   and event_id=p_comment_id and state='review_pending'
    and moderation_decision is null;
- if found then return jsonb_build_object('status','review_recorded'); end if;
- select state into v_state from novelight_formal_private.scout_earning_delivery
- where event_type='novel_episode_comment_reviewed' and event_id=p_comment_id;
- return jsonb_build_object('status',coalesce(v_state,'event_missing'));
+ if not found then
+   raise exception 'FORMAL_REVIEW_ATOMIC_CONFLICT';
+ end if;
+ return jsonb_build_object('status','review_recorded');
 end
 $earning_review$;
 
@@ -502,15 +607,15 @@ grant execute on function novelight_formal_private.on_episode_comment_formal_dra
  to service_role;
 revoke all on function novelight_formal_private.enqueue_earning_draft(text,uuid)
  from public,anon,authenticated;
-revoke all on function novelight_formal_private.decide_earning_review_draft(uuid,boolean,text)
- from public,anon,authenticated;
+revoke all on function novelight_formal_private.decide_earning_review_draft(uuid,boolean,text,uuid,uuid,text,bigint)
+ from public,anon,authenticated,service_role;
 revoke all on function novelight_formal_private.claim_earning_draft()
  from public,anon,authenticated;
 revoke all on function novelight_formal_private.finish_earning_draft(text,uuid,uuid,text)
  from public,anon,authenticated;
 grant execute on function novelight_formal_private.enqueue_earning_draft(text,uuid)
  to service_role;
-grant execute on function novelight_formal_private.decide_earning_review_draft(uuid,boolean,text)
+grant execute on function novelight_formal_private.decide_earning_review_draft(uuid,boolean,text,uuid,uuid,text,bigint)
  to service_role;
 grant execute on function novelight_formal_private.claim_earning_draft()
  to service_role;

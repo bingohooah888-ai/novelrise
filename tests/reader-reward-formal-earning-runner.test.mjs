@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { createFormalEarningRunner } from '../api/_lib/reader-reward/formal-earning-runner.js';
 import { reviewFormalEpisodeComment } from '../api/_lib/reader-reward/formal-comment-eligibility.js';
 
@@ -7,6 +8,8 @@ const commentId = '00000000-0000-4000-8000-000000000101';
 const readId = '00000000-0000-4000-8000-000000000102';
 const userId = '00000000-0000-4000-8000-000000000103';
 const token = '00000000-0000-4000-8000-000000000104';
+const reviewerId = '00000000-0000-4000-8000-000000000105';
+const reviewId = '00000000-0000-4000-8000-000000000106';
 const release = '2027-01-01T00:00:00Z';
 const launch = {
   formalEarningsEnabled: true,
@@ -23,6 +26,11 @@ const comment = {
   deleted_at: null,
   author_hidden_at: null
 };
+const reviewedProof = (body = comment.body) => ({
+  reviewerId,
+  reviewId,
+  bodySha256: createHash('sha256').update(body, 'utf8').digest('hex')
+});
 const create = (client, extra = {}) =>
   createFormalEarningRunner({
     postgresClient: client,
@@ -127,12 +135,12 @@ test('trusted reviewer may approve cross-episode identical text after explicit e
       reviewReceipt
     }) => {
       checked++;
-      return (
-        id === commentId &&
+      return id === commentId &&
         eligible === true &&
         rule === 'manual-relevance-v1' &&
         reviewReceipt.kind === 'trusted-review'
-      );
+        ? reviewedProof()
+        : false;
     }
   });
   const result = await runner.submitModeration({
@@ -146,7 +154,15 @@ test('trusted reviewer may approve cross-episode identical text after explicit e
   const stored = calls.find(([sql]) =>
     sql.includes('decide_earning_review_draft')
   );
-  assert.deepEqual(stored[1], [commentId, true, 'manual-relevance-v1']);
+  assert.deepEqual(stored[1], [
+    commentId,
+    true,
+    'manual-relevance-v1',
+    reviewerId,
+    reviewId,
+    reviewedProof().bodySha256,
+    9
+  ]);
 });
 
 test('repetitive text without semantic review remains held, not auto rejected', () => {
@@ -163,7 +179,7 @@ test('repetitive text without semantic review remains held, not auto rejected', 
 test('verified ineligible blank comment verdict is persisted for later comment progress', async () => {
   const { client, calls } = sourceDb({ body: '　　' });
   const runner = create(client, {
-    verifyModeratorReceipt: async () => true
+    verifyModeratorReceipt: async () => reviewedProof('　　')
   });
   assert.equal(
     (
@@ -178,7 +194,15 @@ test('verified ineligible blank comment verdict is persisted for later comment p
   );
   assert.deepEqual(
     calls.find(([sql]) => sql.includes('decide_earning_review_draft'))[1],
-    [commentId, false, 'manual-blank-v1']
+    [
+      commentId,
+      false,
+      'manual-blank-v1',
+      reviewerId,
+      reviewId,
+      reviewedProof('　　').bodySha256,
+      9
+    ]
   );
   const cannotApprove = await runner.submitModeration({
     commentId,
@@ -198,7 +222,7 @@ test('reviewer canonical source failure cannot write a verdict', async () => {
         return { rows: [] };
       }
     },
-    { verifyModeratorReceipt: async () => true }
+    { verifyModeratorReceipt: async () => reviewedProof() }
   );
   assert.equal(
     (

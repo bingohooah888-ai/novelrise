@@ -7,7 +7,7 @@ const SQL = Object.freeze({
   enqueue:
     'select novelight_formal_private.enqueue_earning_draft($1::text,$2::uuid) as result',
   review:
-    'select novelight_formal_private.decide_earning_review_draft($1::uuid,$2::boolean,$3::text) as result',
+    'select novelight_formal_private.decide_earning_review_draft($1::uuid,$2::boolean,$3::text,$4::uuid,$5::uuid,$6::text,$7::bigint) as result',
   claim: 'select novelight_formal_private.claim_earning_draft() as result',
   finish:
     'select novelight_formal_private.finish_earning_draft($1::text,$2::uuid,$3::uuid,$4::text) as result'
@@ -51,18 +51,31 @@ export function createFormalDurableDelivery({
         return { status: 'invalid_event' };
       return call(SQL.enqueue, [eventType, eventId]);
     },
-    async resolveReview(commentId, eligible, reviewRule) {
+    async resolveReview(commentId, eligible, reviewRule, evidence) {
       if (!enabled()) return { status: 'formal_connection_disabled' };
       if (
         !UUID.test(commentId) ||
         typeof eligible !== 'boolean' ||
         typeof reviewRule !== 'string' ||
         reviewRule.length < 1 ||
-        reviewRule.length > 120
+        reviewRule.length > 120 ||
+        !UUID.test(evidence?.reviewerId || '') ||
+        !UUID.test(evidence?.reviewId || '') ||
+        !/^[0-9a-f]{64}$/.test(evidence?.bodySha256 || '') ||
+        !Number.isSafeInteger(evidence?.episodeId) ||
+        evidence.episodeId < 1
       ) {
         return { status: 'review_missing' };
       }
-      return call(SQL.review, [commentId, eligible, reviewRule]);
+      return call(SQL.review, [
+        commentId,
+        eligible,
+        reviewRule,
+        evidence.reviewerId,
+        evidence.reviewId,
+        evidence.bodySha256,
+        evidence.episodeId
+      ]);
     },
     // Explicit one-at-a-time invocation only. Claim is persisted before the
     // award call, allowing a later invocation to recover an expired lease.

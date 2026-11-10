@@ -53,7 +53,7 @@ test('read reward is held without historical level evidence and uses the capture
   assert.match(sql, /on conflict\(event_key\) do nothing/i);
 });
 test('comment eligibility requires exact validated chapter read, not self comments or community posts', () => {
-  assert.match(sql, /from public\.novel_comments where id=p_comment_id/i);
+  assert.match(sql, /from public\.novel_comments\s+where id=p_comment_id/i);
   assert.match(sql, /v_comment\.episode_id is null/i);
   assert.match(sql, /from public\.novels n/i);
   assert.match(sql, /v_novel_author=v_comment\.user_id/i);

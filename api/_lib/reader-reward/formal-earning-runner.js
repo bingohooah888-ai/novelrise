@@ -1,6 +1,7 @@
 // Formal-release-only composition for an existing trusted server scheduler.
 // This module never registers a cron, endpoint, timer or database connection.
 // Its host must independently approve formal launch and moderation provenance.
+import { createHash } from 'node:crypto';
 import { createFormalDurableDelivery } from './formal-earning-durable.js';
 import { createFormalCanonicalSourceReader } from './formal-earning-source-reader.js';
 import { reviewFormalEpisodeComment } from './formal-comment-eligibility.js';
@@ -72,8 +73,15 @@ export function createFormalEarningRunner({
     } catch {
       verified = false;
     }
-    if (verified !== true)
+    if (
+      !verified ||
+      typeof verified !== 'object' ||
+      !UUID.test(verified.reviewerId || '') ||
+      !UUID.test(verified.reviewId || '') ||
+      !/^[0-9a-f]{64}$/.test(verified.bodySha256 || '')
+    ) {
       return Object.freeze({ status: 'review_provenance_rejected' });
+    }
 
     let source;
     try {
@@ -86,6 +94,17 @@ export function createFormalEarningRunner({
     }
     if (source.status !== 'canonical_source_verified')
       return Object.freeze({ status: source.status });
+
+    // Bind the explicit admin review to the exact canonical UTF-8 body.
+    // Any edit between source read and DB commit is checked again by SQL.
+    const canonicalBody = source.verifiedComment?.body;
+    if (
+      typeof canonicalBody !== 'string' ||
+      createHash('sha256').update(canonicalBody, 'utf8').digest('hex') !==
+        verified.bodySha256
+    ) {
+      return Object.freeze({ status: 'review_source_changed' });
+    }
 
     const assessment = reviewFormalEpisodeComment({
       comment: source.verifiedComment,
@@ -103,7 +122,12 @@ export function createFormalEarningRunner({
     try {
       // Stores the reviewed verdict only. Point issuance remains in the
       // existing claim / canonical source / transactional ledger pipeline.
-      const result = await delivery.resolveReview(commentId, eligible, rule);
+      const result = await delivery.resolveReview(commentId, eligible, rule, {
+        reviewerId: verified.reviewerId,
+        reviewId: verified.reviewId,
+        bodySha256: verified.bodySha256,
+        episodeId: source.verifiedComment.episode_id
+      });
       return Object.freeze({ status: result.status });
     } catch {
       return Object.freeze({ status: 'review_storage_unavailable' });
