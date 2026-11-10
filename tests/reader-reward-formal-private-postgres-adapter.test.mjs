@@ -94,7 +94,7 @@ test('malformed events, unknown functions and missing moderation do not run quer
       params: {
         p_comment_id: uid,
         p_release_at: stamp,
-        p_content_eligible: false,
+        p_content_eligible: 'unverified',
         p_reviewer_rule: 'x'
       }
     }
@@ -121,4 +121,17 @@ test('database failure cannot leak connection details to caller', async () => {
     data: null,
     error: { code: 'FORMAL_DB_QUERY_FAILED' }
   });
+});
+
+test('trusted negative moderation is persisted with no Point award',async()=>{
+ let args;
+ const db=createFormalPrivatePostgresAdapter({postgresClient:{
+   query:async(sql,values)=>{args=values;return {rows:[{result:{status:'reviewed_not_eligible'}}]}}
+ }});
+ const result=await db.callPrivateFunction({
+  schema:'novelight_formal_private',functionName:'review_comment_and_award_draft',
+  params:{p_comment_id:uid,p_release_at:stamp,p_content_eligible:false,p_reviewer_rule:'verified-human'}
+ });
+ assert.equal(result.data.status,'reviewed_not_eligible');
+ assert.deepEqual(args,[uid,stamp,false,'verified-human']);
 });
