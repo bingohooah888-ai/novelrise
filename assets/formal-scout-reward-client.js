@@ -21,6 +21,25 @@
       if (!UUID.test(id)) throw new Error('REWARD_OPERATION_ID_INVALID');
       return id;
     }
+    // Keep the same operation ID across an uncertain network response.
+    // A second tap must not mint a new claim for the same unresolved action.
+    const unresolved = new Map();
+    async function submit(key, payload) {
+      const id = unresolved.get(key) || operationId();
+      unresolved.set(key, id);
+      const result = await call('POST', { ...payload, operationId: id });
+      if (result.ok === false) throw new Error('REWARD_REQUEST_NOT_CONFIRMED');
+      if (
+        [
+          'request_received',
+          'started',
+          'already_processed',
+          'released'
+        ].includes(result.status)
+      )
+        unresolved.delete(key);
+      return result;
+    }
     return Object.freeze({
       fetchSnapshot: async () => {
         const data = await call('GET');
@@ -31,9 +50,8 @@
       onExchange: async ({ amountPoints }) => {
         if (!Number.isSafeInteger(amountPoints) || amountPoints < 30000)
           return { status: 'below_exchange_minimum' };
-        return call('POST', {
+        return submit('exchange:' + amountPoints, {
           action: 'exchange_request',
-          operationId: operationId(),
           amountPoints
         });
       },
@@ -43,9 +61,8 @@
           !/^[a-z][a-z0-9_-]{1,79}$/.test(featureId)
         )
           return { status: 'ai_feature_invalid' };
-        return call('POST', {
+        return submit('ai:' + featureId, {
           action: 'ai_use',
-          operationId: operationId(),
           featureId
         });
       }

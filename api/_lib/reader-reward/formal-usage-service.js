@@ -73,8 +73,8 @@ export function createFormalRewardUsageService({
     verification,
     eligibleAllocation = 0
   ) {
-    const wallet = tx.getWallet(operation.userId);
-    const budget = tx.getBudget(operation.purpose);
+    const wallet = await tx.getWallet(operation.userId);
+    const budget = await tx.getBudget(operation.purpose);
     if (!wallet || !budget) return response('wallet_or_budget_unavailable');
     const proposal = quoteScoutPointOperation({
       action,
@@ -115,7 +115,7 @@ export function createFormalRewardUsageService({
       eligibleReservedPoints:
         action === 'reserve' ? eligibleAllocation : oldAllocated
     };
-    tx.save({
+    await tx.save({
       wallet: { ...proposal.nextWallet, exchangeEligiblePoints: nextEligible },
       budget: proposal.nextBudget,
       operation: nextOp
@@ -145,7 +145,10 @@ export function createFormalRewardUsageService({
     if (purpose === 'external_exchange' && policy.giftProviderReady !== true)
       return response('gift_provider_unavailable');
     return repository.transact(userId, async (tx) => {
-      const prior = tx.getOperation(operationId);
+      const wallet = await tx.getWallet(userId);
+      if (!wallet || wallet.userId !== userId)
+        return response('wallet_unavailable');
+      const prior = await tx.getOperation(operationId);
       if (prior) {
         return response(
           prior.userId === userId &&
@@ -157,9 +160,6 @@ export function createFormalRewardUsageService({
           prior.userId === userId ? { phase: prior.phase } : {}
         );
       }
-      const wallet = tx.getWallet(userId);
-      if (!wallet || wallet.userId !== userId)
-        return response('wallet_unavailable');
       if (
         !safe(wallet.exchangeEligiblePoints) ||
         wallet.exchangeEligiblePoints > wallet.availablePoints
@@ -249,7 +249,10 @@ export function createFormalRewardUsageService({
     if (!UUID.test(userId || '') || !UUID.test(operationId || ''))
       return response('invalid_request');
     return repository.transact(userId, async (tx) => {
-      const op = tx.getOperation(operationId);
+      const wallet = await tx.getWallet(userId);
+      if (!wallet || wallet.userId !== userId)
+        return response('wallet_unavailable');
+      const op = await tx.getOperation(operationId);
       if (!op || op.userId !== userId || op.purpose !== purpose)
         return response('operation_missing');
       if (op.phase !== 'reserved')

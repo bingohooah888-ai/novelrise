@@ -69,6 +69,8 @@
       このページは正式版の画面仕様を確認するためのローカルプレビューです。実際のユーザー残高・認証情報・DBは参照せず、Point付与、申請、交換、AI処理、外部通信を行いません。実際のサイトには未接続です。
     </p>
     <script src="../../assets/formal-scout-reward-ui.js"></script>
+    <script src="../../assets/formal-scout-reward-client.js"></script>
+    <script src="../../assets/formal-scout-reward-mount.js"></script>
     <script>
       (function () {
         const first = {
@@ -130,19 +132,23 @@
           ]
         };
         let insufficient = false;
-        const panel = window.NovelightFormalScoutReward.createRewardReaderPanel(
+        const panel = window.NovelightFormalRewardMount.mountFormalReaderReward(
           {
             root: document.getElementById('app'),
-            fetchSnapshot: async () => ({
-              ...first,
-              wallet: insufficient
-                ? {
-                    availablePoints: 12500,
-                    exchangeEligiblePoints: 5000,
-                    heldPoints: 1200
-                  }
-                : first.wallet
-            })
+            nextOperationId: () => crypto.randomUUID(),
+            request: async ({ method }) => {
+              if (method !== 'GET') return { status: 'formal_use_disabled' };
+              return {
+                ...first,
+                wallet: insufficient
+                  ? {
+                      availablePoints: 12500,
+                      exchangeEligiblePoints: 5000,
+                      heldPoints: 1200
+                    }
+                  : first.wallet
+              };
+            }
           }
         );
         const toggle = document.getElementById('demoBalance');

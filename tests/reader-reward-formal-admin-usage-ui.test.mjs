@@ -126,3 +126,49 @@ test('admin preview remains isolated from actual site and payment systems', () =
     /supabase\.createClient|fetch\(|api\/formal|stripe|service_role/i
   );
 });
+
+test('reader and admin preview mounts reuse the real draft UI-to-host binding contract', async () => {
+  await import('../assets/formal-scout-reward-ui.js');
+  await import('../assets/formal-scout-reward-client.js');
+  await import('../assets/formal-scout-reward-mount.js');
+  const reader = new Element('main');
+  let readerCalls = 0;
+  const view = globalThis.NovelightFormalRewardMount.mountFormalReaderReward({
+    root: reader,
+    nextOperationId: () => '00000000-0000-4000-8000-000000000311',
+    request: async ({ method }) => {
+      readerCalls++;
+      if (method !== 'GET') throw new Error('OFFLINE_PREVIEW_FORBIDS_WRITES');
+      return {
+        serverVerified: true,
+        formalEnabled: false,
+        account: { level: 52, progressXp: 100, requiredXp: 400 },
+        wallet: {
+          availablePoints: 2000,
+          exchangeEligiblePoints: 500,
+          heldPoints: 0
+        },
+        history: [],
+        aiFeatures: []
+      };
+    }
+  });
+  await view.reload();
+  assert.ok(readerCalls >= 1);
+  assert.equal(
+    flatten(reader).some((n) => n.textContent === 'Lv.52'),
+    true
+  );
+  const admin = new Element('main');
+  const adminPanel =
+    globalThis.NovelightFormalRewardMount.mountFormalRewardAdmin({
+      root: admin,
+      authorized: true,
+      request: async ({ method }) =>
+        method === 'GET'
+          ? { status: 'queue_ready', items: [one] }
+          : { status: 'fulfillment_evidence_missing' }
+    });
+  await adminPanel.refresh();
+  assert.equal(match(admin, '30,000 pt（3,000円相当）').length, 1);
+});

@@ -40,6 +40,7 @@
       この画面は開発用のローカル試作です。管理者の実セッション、利用者の実情報、DB、ギフト事業者は接続していません。ボタンを押しても実際のPointやギフトを動かしません。
     </p>
     <script src="../../assets/formal-scout-reward-admin.js"></script>
+    <script src="../../assets/formal-scout-reward-mount.js"></script>
     <script>
       (function () {
         const example = [
@@ -50,11 +51,13 @@
             phase: 'reserved'
           }
         ];
-        window.NovelightFormalRewardAdmin.createFormalRewardAdminPanel({
+        window.NovelightFormalRewardMount.mountFormalRewardAdmin({
           root: document.getElementById('preview'),
           authorized: true,
-          loadQueue: async () => ({ status: 'queue_ready', items: example }),
-          onResolve: async () => ({ status: 'fulfillment_evidence_missing' })
+          request: async ({ method }) =>
+            method === 'GET'
+              ? { status: 'queue_ready', items: example }
+              : { status: 'fulfillment_evidence_missing' }
         });
       })();
     </script>

@@ -578,3 +578,36 @@ test('administrator UI binding calls the authenticated admin handler for queue a
   );
   assert.equal((await admin.loadQueue()).items.length, 0);
 });
+
+test('reader retry after a lost response keeps original operation UUID and prevents duplicate debit', async () => {
+  const f = fixture();
+  const api = makeHttp(f);
+  let submitted = 0;
+  const ids = [];
+  const binding =
+    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings(
+      {
+        request: async ({ method, body }) => {
+          const r = await invoke(api.reader, httpReq('user-1', method, body));
+          if (method === 'POST') {
+            ids.push(body.operationId);
+            submitted++;
+            if (submitted === 1)
+              throw new Error('synthetic lost response after commit');
+          }
+          return r.result;
+        },
+        nextOperationId: () => op1
+      }
+    );
+  await assert.rejects(
+    binding.onExchange({ amountPoints: 30000 }),
+    /synthetic lost response/
+  );
+  const retry = await binding.onExchange({ amountPoints: 30000 });
+  assert.equal(retry.status, 'already_processed');
+  assert.deepEqual(ids, [op1, op1]);
+  const snap = await f.service.getReaderSnapshot(first);
+  assert.equal(snap.wallet.availablePoints, 20000);
+  assert.equal((await f.service.listPendingExchanges()).items.length, 1);
+});
