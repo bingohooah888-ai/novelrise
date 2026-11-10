@@ -120,6 +120,10 @@
     section.appendChild(title);
     const list = doc.createElement('div');
     section.appendChild(list);
+    const reviewNotice = doc.createElement('p');
+    reviewNotice.textContent =
+      'AI候補の「採用」は確認記録です。正式な人物台帳・創作ノートには自動反映されません。';
+    section.appendChild(reviewNotice);
     let disposed = false;
     let busy = false;
     let subscription;
@@ -187,6 +191,11 @@
             decisionUnconfirmed();
             return;
           }
+          // Accepted is only a reviewed candidate, never author canon.
+          reviewNotice.textContent =
+            action === 'accept'
+              ? '候補を確認済みにしました。正式設定は作者が別途編集してください。'
+              : '候補を却下しました。';
           // Never perform a second POST automatically.
           row.remove();
         } catch {
@@ -212,7 +221,9 @@
         '／本文根拠：' +
         item.evidence;
       row.appendChild(details);
-      row.appendChild(button('採用（要確認）', 'accept', item, row));
+      row.appendChild(
+        button('候補を確認済みにする（正式設定は未変更）', 'accept', item, row)
+      );
       row.appendChild(button('却下', 'reject', item, row));
       list.appendChild(row);
     }
