@@ -220,46 +220,73 @@ test('trusted internal executor returns a non-issuance result when private RPC e
   assert.equal(result.mayIssuePoints, false);
 });
 
-test('composed trusted event handler refuses live DB actions while formal release disabled',async()=>{
- let calls=0;
- const handler=createFormalEarningInternalHandler({
-   postgresClient:{query:async()=>{calls++;return {rows:[{result:{status:'recorded'}}]}}},
-   releaseTimestampIso:release,
-   launchConfiguration:{formalEarningsEnabled:false,productionCutoverApproved:false},
-   trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
- });
- const v=await handler.handleCommittedEvent({
-   eventType:'valid_read_qualified',
-   verifiedEventId:event,
-   sourceCommitted:true,
-   authoritativeEvidenceVerified:true
- });
- assert.equal(v.status,'formal_connection_disabled');
- assert.equal(v.mayIssuePoints,false);
- assert.equal(calls,0);
+test('composed trusted event handler refuses live DB actions while formal release disabled', async () => {
+  let calls = 0;
+  const handler = createFormalEarningInternalHandler({
+    postgresClient: {
+      query: async () => {
+        calls++;
+        return { rows: [{ result: { status: 'recorded' } }] };
+      }
+    },
+    releaseTimestampIso: release,
+    launchConfiguration: {
+      formalEarningsEnabled: false,
+      productionCutoverApproved: false
+    },
+    trustedServerAuthorization: {
+      serviceRoleVerified: true,
+      verifiedByTrustedServer: true
+    }
+  });
+  const v = await handler.handleCommittedEvent({
+    eventType: 'valid_read_qualified',
+    verifiedEventId: event,
+    sourceCommitted: true,
+    authoritativeEvidenceVerified: true
+  });
+  assert.equal(v.status, 'formal_connection_disabled');
+  assert.equal(v.mayIssuePoints, false);
+  assert.equal(calls, 0);
 });
-test('composed trusted handler calls private parameterized SQL for verified formal events only',async()=>{
- let calls=0;
- const handler=createFormalEarningInternalHandler({
-   postgresClient:{query:async(sql,values)=>{
-     calls++;
-     assert.equal(sql,'select novelight_formal_private.review_comment_and_award_draft($1::uuid,$2::timestamptz,$3::boolean,$4::text) as result');
-     assert.deepEqual(values,[event,release,true,'moderation-approved-v1']);
-     return {rows:[{result:{status:'recorded',points:20}}]};
-   }},
-   releaseTimestampIso:release,
-   launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
-   trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
- });
- const v=await handler.handleCommittedEvent({
-   eventType:'novel_episode_comment_reviewed',
-   verifiedEventId:event,
-   sourceCommitted:true,
-   authoritativeEvidenceVerified:true,
-   commentModerationApproved:true,
-   verifiedModerationRule:'moderation-approved-v1'
- });
- assert.equal(v.status,'private_rpc_completed');
- assert.equal(v.databaseStatus,'recorded');
- assert.equal(calls,1);
+test('composed trusted handler calls private parameterized SQL for verified formal events only', async () => {
+  let calls = 0;
+  const handler = createFormalEarningInternalHandler({
+    postgresClient: {
+      query: async (sql, values) => {
+        calls++;
+        assert.equal(
+          sql,
+          'select novelight_formal_private.review_comment_and_award_draft($1::uuid,$2::timestamptz,$3::boolean,$4::text) as result'
+        );
+        assert.deepEqual(values, [
+          event,
+          release,
+          true,
+          'moderation-approved-v1'
+        ]);
+        return { rows: [{ result: { status: 'recorded', points: 20 } }] };
+      }
+    },
+    releaseTimestampIso: release,
+    launchConfiguration: {
+      formalEarningsEnabled: true,
+      productionCutoverApproved: true
+    },
+    trustedServerAuthorization: {
+      serviceRoleVerified: true,
+      verifiedByTrustedServer: true
+    }
+  });
+  const v = await handler.handleCommittedEvent({
+    eventType: 'novel_episode_comment_reviewed',
+    verifiedEventId: event,
+    sourceCommitted: true,
+    authoritativeEvidenceVerified: true,
+    commentModerationApproved: true,
+    verifiedModerationRule: 'moderation-approved-v1'
+  });
+  assert.equal(v.status, 'private_rpc_completed');
+  assert.equal(v.databaseStatus, 'recorded');
+  assert.equal(calls, 1);
 });
