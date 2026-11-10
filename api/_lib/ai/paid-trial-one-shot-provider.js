@@ -47,12 +47,11 @@ export function createPaidTrialOneShotOpenAiProvider({
     approved.capMicros < 1 ||
     approved.capMicros > 10000000 ||
     !SHA.test(approved?.mainSha ?? '') ||
-    (candidateMode(approved) && (
-      !SHA.test(approved?.candidateSha ?? '') ||
-      approved.candidateSha === approved.mainSha ||
-      !BRANCH.test(approved?.stagingBranch ?? '') ||
-      deployment?.branch !== approved.stagingBranch
-    )) ||
+    (candidateMode(approved) &&
+      (!SHA.test(approved?.candidateSha ?? '') ||
+        approved.candidateSha === approved.mainSha ||
+        !BRANCH.test(approved?.stagingBranch ?? '') ||
+        deployment?.branch !== approved.stagingBranch)) ||
     !DEPLOYMENT.test(approved?.previewDeploymentId ?? '') ||
     !Number.isFinite(current) ||
     !Number.isFinite(expiresAt) ||

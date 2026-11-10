@@ -16,7 +16,7 @@ last_reviewed_jst: 2026-11-10
 - **重要なDB契約**：原子claimの既存 p_main_sha 列へ「試験する候補SHA」を渡す（旧main方式は従来通りmain SHA）。DB schema・Migration・RLS変更なし。Owner台帳・Watchdog・Runnerは元のmainと候補を別々に照合する。
 - **対象試験**：旧main限定契約43/43、新規候補限定契約5/5合格（隔離ローカル）。幅広い局所テストは依存未導入の1件以外合格、GitHub CI/CodeQLで最終判定する。新たな実JWT、Staging/Preview、Secret、外部Watchdog、課金、DB、Production操作はゼロ。
 - **残る真の阻害要因**：信頼済み制御コードをmain側へ安全に配置する方法、Owner承認の実API真正性、独立した署名鍵・永続atomic nonce、実Watchdog kill/revoke/cleanup、Staging専用資格、実JWT/実DB/費用上限の証明。PR全体をmainへ先行統合せず、別途の対象限定承認で解決する。現行有料WorkflowはOFFLINE PREFLIGHT ONLY、Gate A〜Eは0/5。
-- **詳細**：docs/ai-phase2/02-07-05-live-connection-plan-20261110.md の§7（本Draft PR #2825）。最新HEADはGitHub PRを優先。
+- **詳細**：Draft PR #2825に含めた「Gate A〜C実環境接続・実証計画書」の§7。main未統合の文書であり、最新HEADはGitHub PRを優先。
 
 ## 2026-11-10 OWNER採用：候補SHA限定Staging先行方式（オフライン実装）
 
