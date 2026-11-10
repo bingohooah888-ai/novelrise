@@ -37,6 +37,11 @@ export async function admit020705SignedWatchdogArmOnce({
       repository: scope.repository,
       stagingProjectRef: scope.stagingProjectRef,
       mainSha: scope.mainSha,
+      ...(scope.candidateSha ? {
+        candidateSha: scope.candidateSha,
+        stagingBranch: scope.stagingBranch,
+        capMicros: scope.capMicros
+      } : {}),
       previewDeploymentId: scope.previewDeploymentId,
       actorId: scope.actorId,
       novelId: scope.novelId,

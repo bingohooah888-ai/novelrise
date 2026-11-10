@@ -9,6 +9,15 @@ phase: 02-07-05
 last_reviewed_jst: 2026-11-10
 <!-- CONTINUITY_FINGERPRINT_END -->
 
+## 2026-11-10 継続：候補SHA方式を既存権限契約へオフライン整合（本PR内、実環境OFF）
+
+- **最新基準**：main 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3、MASTER blob e2501f9ed0722964e76fd0a49bf200717850b81d。NLO隔離コピーでorigin/mainを再取得後、resume=BASELINE_MATCH（AUTHORIZATION=NONE、CLOUD_MUTATIONS=0）。mainやStaging branchは変更しない。
+- **変更箇所**：既存のOwner paid trial ledger、独立署名Watchdog/原子nonce、保護Runner、6種のread-only証明、one-shot Providerの候補SHA契約を整合。main基準は別フィールドに残し、候補SHA、専用Staging branch、Preview、OWNER承認コメント・Issue #294・run ID、合成対象、費用上限を同一試行に結び付ける。追加の監視基盤は作らない。
+- **重要なDB契約**：原子claimの既存 p_main_sha 列へ「試験する候補SHA」を渡す（旧main方式は従来通りmain SHA）。DB schema・Migration・RLS変更なし。Owner台帳・Watchdog・Runnerは元のmainと候補を別々に照合する。
+- **対象試験**：旧main限定契約43/43、新規候補限定契約5/5合格（隔離ローカル）。幅広い局所テストは依存未導入の1件以外合格、GitHub CI/CodeQLで最終判定する。新たな実JWT、Staging/Preview、Secret、外部Watchdog、課金、DB、Production操作はゼロ。
+- **残る真の阻害要因**：信頼済み制御コードをmain側へ安全に配置する方法、Owner承認の実API真正性、独立した署名鍵・永続atomic nonce、実Watchdog kill/revoke/cleanup、Staging専用資格、実JWT/実DB/費用上限の証明。PR全体をmainへ先行統合せず、別途の対象限定承認で解決する。現行有料WorkflowはOFFLINE PREFLIGHT ONLY、Gate A〜Eは0/5。
+- **詳細**：docs/ai-phase2/02-07-05-live-connection-plan-20261110.md の§7（本Draft PR #2825）。最新HEADはGitHub PRを優先。
+
 ## 2026-11-10 OWNER採用：候補SHA限定Staging先行方式（オフライン実装）
 
 - **設計方針の承認のみ**：現行main `95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3` を本番基準SHAとして維持し、検証対象のPR候補SHAとは**別値**で照合する。OwnerはStaging先行の候補SHA方式を採用したが、**実環境・main統合・Preview生成・Secret・実JWT・有料AI等は承認していない**。

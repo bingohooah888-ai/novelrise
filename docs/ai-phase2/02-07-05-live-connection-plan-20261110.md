@@ -73,3 +73,23 @@
 - **対象オフラインテスト**：base main ≠ candidate SHA、既存mainモード後方互換、branch/Previewずれ、共通Preview資格情報、OWNER/Issue/run/費用の不一致、独立停止条件欠落、Production/missing approvalsの拒否。Staging・DB・Secret・実Modelへの操作0件。Gate A〜Eは引き続き0/5。
 
 次は、**本番基準SHAと候補SHAを区別したOwner台帳・外部Watchdog署名・one-shot claimを既存契約のままどう安全に接続するか**を、一回のレビュー対象としてオフラインでまとめて設計する。新しい資格・費用・実行トリガーの承認が必要になった時点で操作別に提示する。不要なガード増殖や過去PASSの再実行は禁止。
+
+## 7. 2026-11-10：候補SHA方式の既存権限契約への整合（オフラインのみ）
+
+本節は§6の続き。新しいWatchdog・Runner・承認基盤を作らず、既存部品の候補SHA契約だけを拡張した。従来のmain限定モードは維持する。
+
+| 部品 | 候補SHAモードでの追加条件 | 維持する境界 |
+| --- | --- | --- |
+| owner-paid-trial-ledger.mjs | OWNERコメント本文のcandidateSha、stagingBranch、repository、Issue #294、runId、mainSha、対象・費用・期限を厳格に検証。CLAIMEDにも候補SHA・branchを含める | 実GitHub承認コメントを作らない。失敗・中断後の再使用を拒否 |
+| stage-readonly-proofs.mjs | mainの独立READ、信頼済みmain由来runner、候補checkout、候補SHAのPreview、独立したreadCandidateBranchを全て照合 | Protected runnerのmain trust ref、SSO・Staging資格・認証・費用証明を緩めない |
+| independent-watchdog-arm.mjs / watchdog-arm-one-use.mjs | 署名receiptと永続的原子nonce消費のscopeへcandidateSha、stagingBranch、capMicrosを加える | 署名一致だけで実停止能力の証明とはしない |
+| protected-stage-executor.mjs | trustedRefは引き続きrefs/heads/main、trustedShaはmainSha。candidateCheckoutShaは候補SHA、stagingBranchは承認ブランチと一致必須 | PR由来Workflowへ権限を移さない。既存6証明の前にclaimしない |
+| paid-trial-one-shot-provider.js | Previewのsha/branchを候補に一致。既存原子RPCのp_main_shaには試験対象のcandidateShaを渡す | DB migration/RLS・一回限りclaim・10円上限・再試行禁止は不変更 |
+
+### 技術上の注意
+
+- 既存DB列 main_sha は歴史的名称であり、候補方式の一回限りclaimでは「試験対象SHA」を記録する。基準main SHAはOWNER台帳・Watchdog・Runnerに別途固定して照合する。approval_comment_idの一意制約による二重使用防止は維持する。
+- 既存GitHub Workflow ai-020705-owner-staging-paid-trial.yml は引き続きOFFLINE PREFLIGHT ONLY。保護Runnerの実アダプターは結線せず、Secrets、外部Controller、実JWT、実DB、Preview、モデル、課金に触れていない。
+- **信頼済み制御コードの本番基準への配置は未解決。** 現時点の契約変更はDraft PR内のため、mainの信頼済みrunnerへ自動反映されない。作品カルテをmainへ先行統合しないまま実環境試験するには、制御面のみを分離・審査・承認して信頼済み経路へ配置する手段（または同等の承認済み独立runner方式）が必要。PR由来の非信頼Workflowに機密を渡して解決してはいけない。
+- Watchdog実kill/revoke/cleanup権限、永続原子nonce、実OWNER本人確認、Staging Secret隔離、実JWT、請求・価格と円換算は未証明。ひとつでも未確認ならNO-GO。
+- 既存main限定局所オフラインテスト43/43 PASS、新規候補契約テスト5/5 PASS。最終GitHub CI/CodeQLはPR更新後に確認。正式Gate A〜Eは引き続き0/5。

@@ -11,6 +11,9 @@ const STAGING_REF = 'wmlzjgvxgoyrovdhbqbg';
 const STAGING_URL = 'https://' + STAGING_REF + '.supabase.co';
 const OWNER = 'bingohooah888-ai';
 const SHA = /^[0-9a-f]{40}$/u;
+const BRANCH = /^staging\/ai-02-07-05-[a-z0-9-]+$/u;
+const candidateMode = (e) =>
+  e?.candidateSha !== undefined || e?.stagingBranch !== undefined;
 const PREVIEW = /^dpl_[A-Za-z0-9]+$/u;
 const READ_ONLY_PROOFS = [
   'verifyCurrentMain',
@@ -61,6 +64,19 @@ export function create020705ProtectedStageExecutor({
     !SHA.test(context?.mainSha ?? '') ||
     !PREVIEW.test(context?.previewDeploymentId ?? '') ||
     context?.mainSha !== expected?.mainSha ||
+    (candidateMode(expected) ? (
+      !SHA.test(expected?.candidateSha ?? '') ||
+      expected.candidateSha === expected.mainSha ||
+      !BRANCH.test(expected?.stagingBranch ?? '') ||
+      context?.candidateSha !== expected.candidateSha ||
+      context?.stagingBranch !== expected.stagingBranch ||
+      context?.candidateCheckoutSha !== expected.candidateSha ||
+      context?.trustedSha !== context.mainSha
+    ) : (
+      context?.candidateSha !== undefined ||
+      context?.stagingBranch !== undefined ||
+      context?.candidateCheckoutSha !== undefined
+    )) ||
     context?.previewDeploymentId !== expected?.previewDeploymentId ||
     !Number.isSafeInteger(context?.runId) ||
     context.runId < 1 ||
@@ -84,6 +100,10 @@ export function create020705ProtectedStageExecutor({
       novelId: expected.novelId,
       episodeId: expected.episodeId,
       mainSha: expected.mainSha,
+      ...(candidateMode(expected) ? {
+        candidateSha: expected.candidateSha,
+        stagingBranch: expected.stagingBranch
+      } : {}),
       previewDeploymentId: expected.previewDeploymentId,
       capMicros: expected.capMicros
     }) ||
@@ -128,6 +148,12 @@ export function create020705ProtectedStageExecutor({
         runId: context.runId,
         approvalCommentId: context.approvalCommentId,
         mainSha: context.mainSha,
+        ...(candidateMode(expected) ? {
+          candidateSha: context.candidateSha,
+          stagingBranch: context.stagingBranch,
+          capMicros: expected.capMicros,
+          actorId: expected.actorId
+        } : {}),
         previewDeploymentId: context.previewDeploymentId,
         stagingProjectRef: STAGING_REF,
         novelId: expected.novelId,
@@ -168,7 +194,12 @@ export function create020705ProtectedStageExecutor({
         readComments,
         writeComment,
         approvalCommentId: context.approvalCommentId,
-        expected,
+        expected: candidateMode(expected) ? {
+          ...expected,
+          repository: context.repository,
+          approvalIssueNumber: 294,
+          runId: context.runId
+        } : expected,
         runId: context.runId,
         now,
         guardedProvider,

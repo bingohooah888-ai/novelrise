@@ -6,6 +6,9 @@ const GUARDED_PROVIDERS = new WeakMap();
 const STAGING_REF = 'wmlzjgvxgoyrovdhbqbg';
 const STAGING_URL = 'https://' + STAGING_REF + '.supabase.co';
 const SHA = /^[a-f0-9]{40}$/u;
+const BRANCH = /^staging\/ai-02-07-05-[a-z0-9-]+$/u;
+const candidateMode = (a) =>
+  a?.candidateSha !== undefined || a?.stagingBranch !== undefined;
 const DEPLOYMENT = /^dpl_[A-Za-z0-9]+$/u;
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -44,6 +47,12 @@ export function createPaidTrialOneShotOpenAiProvider({
     approved.capMicros < 1 ||
     approved.capMicros > 10000000 ||
     !SHA.test(approved?.mainSha ?? '') ||
+    (candidateMode(approved) && (
+      !SHA.test(approved?.candidateSha ?? '') ||
+      approved.candidateSha === approved.mainSha ||
+      !BRANCH.test(approved?.stagingBranch ?? '') ||
+      deployment?.branch !== approved.stagingBranch
+    )) ||
     !DEPLOYMENT.test(approved?.previewDeploymentId ?? '') ||
     !Number.isFinite(current) ||
     !Number.isFinite(expiresAt) ||
@@ -53,7 +62,7 @@ export function createPaidTrialOneShotOpenAiProvider({
     deployment?.supabaseUrl !== STAGING_URL ||
     deployment?.isProduction !== false ||
     deployment?.ready !== true ||
-    deployment?.sha !== approved.mainSha ||
+    deployment?.sha !== (approved.candidateSha ?? approved.mainSha) ||
     deployment?.id !== approved.previewDeploymentId ||
     // This flag is never set by this module; only a separate authorized
     // Staging runtime may construct this evidence.
@@ -80,7 +89,10 @@ export function createPaidTrialOneShotOpenAiProvider({
           p_actor_id: approved.ownerId,
           p_novel_id: approved.novelId,
           p_episode_id: approved.episodeId,
-          p_main_sha: approved.mainSha,
+          // The immutable DB claim stores the exact TESTED commit SHA
+          // under its existing p_main_sha column. The base main remains
+          // separately pinned by the authenticated OWNER/runner/watchdog.
+          p_main_sha: approved.candidateSha ?? approved.mainSha,
           p_preview_deployment_id: approved.previewDeploymentId,
           p_provider: 'openai',
           p_model: 'gpt-5.6-luna',
@@ -103,6 +115,10 @@ export function createPaidTrialOneShotOpenAiProvider({
     novelId: approved.novelId,
     episodeId: approved.episodeId,
     mainSha: approved.mainSha,
+    ...(candidateMode(approved) ? {
+      candidateSha: approved.candidateSha,
+      stagingBranch: approved.stagingBranch
+    } : {}),
     previewDeploymentId: approved.previewDeploymentId,
     capMicros: approved.capMicros
   }));
