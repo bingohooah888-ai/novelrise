@@ -1024,4 +1024,12 @@ echo '::group::Verify restored-database structural integrity'
 "${REPLAY[@]}" -f supabase/checks/restore_validation.sql
 echo '::endgroup::'
 
+echo '::group::Verify Inquiry #84 cross-visit reader retention (disposable DB only)'
+# The historical regression suite above rolls back/reapplies the pre-cohort
+# analytics functions. Reapply the new migration and assert its final contract.
+"${REPLAY[@]}" -f supabase/migrations/20261110172000_author_reader_retention_cross_visit.sql
+"${REPLAY[@]}" -f supabase/checks/20261110172000_author_reader_retention_cross_visit_postcheck.sql
+"${REPLAY[@]}" -f tests/rls/light-analytics-cross-visit.sql
+echo '::endgroup::'
+
 echo 'Fresh NOVELIGHT migration replay passed.'
