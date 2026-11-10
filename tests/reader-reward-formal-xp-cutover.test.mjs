@@ -16,8 +16,14 @@ test('formal cutover is dormant and cannot auto-run as Supabase migration', () =
 });
 
 test('future formal capture reuses existing XP ledger and level state', () => {
-  assert.match(source, /create or replace function public\.novelight_cap_scout_xp_beta\(\)/i);
-  assert.match(source, /create or replace function novelight_formal_private\.on_scout_xp_insert\(\)/i);
+  assert.match(
+    source,
+    /create or replace function public\.novelight_cap_scout_xp_beta\(\)/i
+  );
+  assert.match(
+    source,
+    /create or replace function novelight_formal_private\.on_scout_xp_insert\(\)/i
+  );
   assert.match(source, /after insert on public\.scout_xp_ledger/i);
   assert.match(source, /novelight_formal_private\.apply_scout_xp\(new\.id\)/i);
   assert.match(source, /scout_formal_xp_after_insert/i);
