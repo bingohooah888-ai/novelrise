@@ -8,7 +8,7 @@ import {
 } from '../.github/staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
 import { create020705ReadOnlyStageProofs } from '../.github/staging-ai-02-07-05/stage-readonly-proofs.mjs';
 import { admit020705SignedWatchdogArmOnce } from '../.github/staging-ai-02-07-05/watchdog-arm-one-use.mjs';
-import { createPaidTrialOneShotOpenAiProvider } from '../.github/staging-ai-02-07-05/paid-trial-one-shot-provider.mjs';
+import { createPaidTrialOneShotOpenAiProvider } from '../api/_lib/ai/paid-trial-one-shot-provider.js';
 
 const NOW = Date.parse('2026-11-10T08:00:00Z');
 const MAIN = 'a'.repeat(40),
@@ -528,7 +528,7 @@ test('candidate protected runner accepts only main-sourced trusted workflow and 
   );
 });
 
-test('trusted control slice is self-contained without importing the author API', async () => {
+test('trusted control slice is self-contained; API compatibility shim shares provider identity', async () => {
   const dir = new globalThis.URL(
     '../.github/staging-ai-02-07-05/',
     import.meta.url
@@ -566,30 +566,35 @@ test('trusted control slice is self-contained without importing the author API',
 
   const trusted =
     await import('../.github/staging-ai-02-07-05/paid-trial-one-shot-provider.mjs');
-  // The existing main API provider is unchanged in this control-only PR.
-  // Its WeakMap identity may differ until #2825 supplies the API shim.
-  const legacyApi =
+  const compatible =
     await import('../api/_lib/ai/paid-trial-one-shot-provider.js');
-  assert.equal(typeof trusted.createPaidTrialOneShotOpenAiProvider, 'function');
-  assert.equal(typeof trusted.isPaidTrialOneShotGuardedProvider, 'function');
   assert.equal(
-    typeof legacyApi.createPaidTrialOneShotOpenAiProvider,
-    'function'
-  );
-  if (
-    legacyApi.createPaidTrialOneShotOpenAiProvider !==
+    compatible.createPaidTrialOneShotOpenAiProvider,
     trusted.createPaidTrialOneShotOpenAiProvider
-  ) {
-    assert.notEqual(
-      legacyApi.isPaidTrialOneShotGuardedProvider,
-      trusted.isPaidTrialOneShotGuardedProvider
-    );
-  }
+  );
+  assert.equal(
+    compatible.isPaidTrialOneShotGuardedProvider,
+    trusted.isPaidTrialOneShotGuardedProvider
+  );
+  assert.equal(
+    compatible.matchesPaidTrialOneShotGuardedProviderScope,
+    trusted.matchesPaidTrialOneShotGuardedProviderScope
+  );
   assert.equal(
     readFileSync(
       new globalThis.URL('paid-trial-one-shot-provider.mjs', dir),
       'utf8'
     ).includes('novelight_ai_020705_claim_once'),
     true
+  );
+  assert.doesNotMatch(
+    readFileSync(
+      new globalThis.URL(
+        '../api/_lib/ai/paid-trial-one-shot-provider.js',
+        import.meta.url
+      ),
+      'utf8'
+    ),
+    /novelight_ai_020705_claim_once/u
   );
 });

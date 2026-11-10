@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NOVELIGHT｜作品カルテ 作者画面オフラインデモ</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: 'Yu Mincho', 'Hiragino Mincho ProN', Georgia, serif;
+        background: #101927;
+        color: #f5f0e6;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        line-height: 1.65;
+      }
+      header {
+        background: #18273a;
+        border-bottom: 1px solid #a78b53;
+      }
+      .shell {
+        width: min(1100px, calc(100% - 32px));
+        margin: auto;
+      }
+      header .shell {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 0;
+      }
+      .brand {
+        color: #e6cc95;
+        font-weight: 700;
+        font-size: 21px;
+        letter-spacing: 0.14em;
+      }
+      .test-only {
+        color: #e9d9b7;
+        font-size: 12px;
+      }
+      main {
+        padding: 26px 0 60px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: clamp(23px, 4vw, 31px);
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 21px;
+        color: #e6cc95;
+      }
+      h3 {
+        font-size: 18px;
+        margin-top: 20px;
+        color: #e6cc95;
+      }
+      h4 {
+        margin-bottom: 4px;
+      }
+      p {
+        margin: 8px 0 14px;
+      }
+      .muted {
+        color: #c9c3bc;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+        margin-top: 20px;
+      }
+      .panel {
+        background: #172337;
+        border: 1px solid #394657;
+        border-radius: 12px;
+        padding: 20px;
+        min-width: 0;
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+      }
+      button,
+      select {
+        background: #263851;
+        color: #f5f0e6;
+        border: 1px solid #9b8151;
+        border-radius: 7px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      button:hover,
+      button:focus-visible {
+        border-color: #e6cc95;
+        background: #304667;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: progress;
+      }
+      input {
+        background: #0e1929;
+        border: 1px solid #65748a;
+        border-radius: 7px;
+        color: #fff;
+        padding: 8px;
+        max-width: 100%;
+      }
+      .scenario-options {
+        display: grid;
+        gap: 9px;
+        margin: 14px 0;
+      }
+      .scenario-options button {
+        text-align: left;
+      }
+      .scenario-options button[aria-pressed='true'] {
+        background: #655334;
+        border-color: #e6cc95;
+      }
+      .offline-label {
+        display: block;
+        color: #e9d9b7;
+        font-size: 12px;
+      }
+      .novelight-ai-bible-load-status {
+        border-left: 3px solid #c7a76e;
+        padding: 8px 12px;
+        background: #23334b;
+      }
+      .novelight-ai-bible-reload {
+        background: #826335;
+        font-weight: 700;
+      }
+      .novelight-ai-bible-private-content {
+        margin-top: 18px;
+      }
+      .novelight-ai-workspace-card,
+      .novelight-ai-workspace-story-row,
+      .novelight-ai-workspace-character-profile,
+      .novelight-ai-workspace-source-record,
+      .novelight-ai-workspace-note-link,
+      .novelight-ai-workspace-compare,
+      .novelight-ai-workspace-section,
+      .novelight-ai-workspace-story-index,
+      .novelight-ai-workspace-episode-index {
+        background: #1e2e44;
+        border: 1px solid #43536a;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin: 10px 0;
+      }
+      details {
+        margin: 10px 0;
+      }
+      summary {
+        cursor: pointer;
+        color: #e6cc95;
+      }
+      .novelight-ai-bible-private-content button,
+      .novelight-ai-bible-private-content select {
+        margin: 5px 6px 5px 0;
+      }
+      @media (max-width: 750px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        header .shell {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .panel {
+          padding: 15px;
+        }
+      }
+    </style>
+    <script
+      defer
+      src="../../../novelight-ai-bible-author-workspace.js"
+    ></script>
+    <script defer src="../../../novelight-ai-bible-owner-outline.js"></script>
+    <script defer src="../../../novelight-ai-bible-owner-panel.js"></script>
+    <script defer src="./ai-owner-bible-offline-demo.js"></script>
+  </head>
+  <body>
+    <header>
+      <div class="shell">
+        <span class="brand">NOVELIGHT</span>
+        <span class="test-only">テスト専用｜オフライン模擬画面｜非公開</span>
+      </div>
+    </header>
+    <main class="shell">
+      <h1>創作室 › 作品カルテ</h1>
+      <p class="muted">
+        サンプル作品「夜明けの鍵」／ 作者用画面を再現したオフライン検証です。
+      </p>
+      <div class="layout">
+        <aside class="panel" aria-label="模擬データの状態切り替え">
+          <h2>動作を試す</h2>
+          <span class="offline-label"
+            >すべて架空データ。認証・外部API・DB・有料AIには接続しません。</span
+          >
+          <div class="scenario-options">
+            <button type="button" data-scenario="normal" aria-pressed="true">
+              通常データで読込
+            </button>
+            <button type="button" data-scenario="empty" aria-pressed="false">
+              空結果で読込
+            </button>
+            <button type="button" data-scenario="error" aria-pressed="false">
+              エラーを再現
+            </button>
+            <button type="button" data-scenario="recovery" aria-pressed="false">
+              復旧して再読込
+            </button>
+          </div>
+          <p id="scenario-description" class="muted" aria-live="polite">
+            通常の模擬データを選択中です。
+          </p>
+          <p class="muted">
+            右側の「読み込む」「再読込」でも現在選択した状態を試せます。
+          </p>
+        </aside>
+        <section class="panel" aria-label="作者専用作品カルテの模擬表示">
+          <h2>作品カルテ</h2>
+          <div id="offline-author-bible"></div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

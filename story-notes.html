@@ -14,6 +14,64 @@
     /* AI owner-only prototype: the section is inserted only after authenticated API success. */
     .novelight-ai-bible-owner-section { margin-top: 24px; padding: 24px; }
     .novelight-ai-bible-owner-content { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 16px; font-weight: 500; line-height: 1.85; color: #1f2937; -webkit-text-fill-color: #1f2937; }
+
+    /* Owner-verified Novel Bible reader: a rich view, without global style changes. */
+    .novelight-ai-bible-owner-content .novelight-ai-bible-offline-reader { white-space: normal; color: #1f2937; -webkit-text-fill-color: #1f2937; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-load-status { margin: 0 0 12px; color: #22364f; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content { margin-top: 18px; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-reload,
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content button { min-height: 40px; padding: 7px 13px; margin: 4px 6px 4px 0; border-radius: 8px; border: 1px solid #365778; background: #0e1d35; color: #fff; -webkit-text-fill-color: #fff; font-weight: 700; cursor: pointer; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-reload:disabled { opacity: .6; cursor: wait; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content :is(input, select) { max-width: 100%; min-height: 40px; margin: 4px 8px 4px 0; padding: 7px 10px; border-radius: 7px; border: 1px solid #9ca3af; background: #fff; color: #1f2937; -webkit-text-fill-color: #1f2937; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content :is(article, aside, details) { min-width: 0; margin: 12px 0; padding: 12px; border: 1px solid #d5dce5; border-radius: 10px; background: #f8fafc; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content :is(p, h3, h4, summary, label) { overflow-wrap: anywhere; }
+    .novelight-ai-bible-owner-content .novelight-ai-bible-private-content summary { cursor: pointer; font-weight: 700; }
+    @media (max-width: 540px) { .novelight-ai-bible-owner-content .novelight-ai-bible-private-content { font-size: 14px; } .novelight-ai-bible-owner-content .novelight-ai-bible-private-content :is(input, select, button) { width: 100%; } }
+    /* The author-ready UI is still accessible only through the existing gated preview. */
+    .novelight-ai-workspace { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; color:#edf3f8; -webkit-text-fill-color:#edf3f8; }
+    .novelight-ai-workspace > h2, .novelight-ai-workspace > p, .novelight-ai-workspace-search { grid-column:1/-1; }
+    .novelight-ai-workspace > h2 { margin:0; font:700 25px Georgia,"Yu Mincho",serif; }
+    .novelight-ai-workspace-intro { margin:0; line-height:1.8; color:#d9e2e9; -webkit-text-fill-color:#d9e2e9; }
+    .novelight-ai-workspace-search { width:100%; min-height:44px; padding:11px 14px; background:#f8fafc; color:#182b3c; -webkit-text-fill-color:#182b3c; border:1px solid #b6c5d1; border-radius:10px; }
+    .novelight-ai-workspace-search:focus-visible { outline:3px solid #d7b65b; outline-offset:2px; }
+    .novelight-ai-workspace-filter { grid-column:1/-1; width:100%; padding:11px 14px; background:#f8fafc; color:#182b3c; -webkit-text-fill-color:#182b3c; border:1px solid #b6c5d1; border-radius:10px; }
+    .novelight-ai-workspace-filter:focus-visible { outline:3px solid #d7b65b; outline-offset:2px; }
+    .novelight-ai-workspace-review { grid-column:1/-1; padding:16px; border:1px solid #c7d5df; border-radius:12px; background:#edf3f7; color:#22384a; -webkit-text-fill-color:#22384a; }
+    .novelight-ai-workspace-review h3 { margin:0 0 10px; font-size:17px; }
+    .novelight-ai-workspace-review p { margin:8px 0; line-height:1.7; overflow-wrap:anywhere; }
+    .novelight-ai-workspace-warning { padding:10px; border-left:3px solid #aa792f; background:#fff; }
+    .novelight-ai-workspace-warning p { margin:0; }
+    .novelight-ai-workspace-reviewed-button { min-height:40px; padding:9px 12px; margin-top:8px; border:1px solid #48677d; border-radius:8px; background:#fff; color:#17334b; -webkit-text-fill-color:#17334b; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+    .novelight-ai-workspace-reviewed-button[aria-pressed="true"] { background:#d8e9ed; border-color:#315c68; }
+    .novelight-ai-workspace-reviewed-button:focus-visible { outline:3px solid #d7b65b; outline-offset:2px; }
+    .novelight-ai-workspace-reviewed-progress { font-weight:700; }
+
+    .novelight-ai-workspace-source { font-size:12px; color:#526273; -webkit-text-fill-color:#526273; }
+
+    .novelight-ai-workspace-category, .novelight-ai-workspace-order { width:100%; padding:11px 14px; border:1px solid #b6c5d1; border-radius:10px; background:#f8fafc; color:#182b3c; -webkit-text-fill-color:#182b3c; }
+    .novelight-ai-workspace-category { grid-column:1/-1; }
+    .novelight-ai-workspace-category:focus-visible, .novelight-ai-workspace-order:focus-visible { outline:3px solid #d7b65b; outline-offset:2px; }
+    .novelight-ai-workspace-story-index { grid-column:1/-1; padding:16px; border:1px solid #c7d5df; border-radius:12px; background:#edf3f7; color:#22384a; -webkit-text-fill-color:#22384a; }
+    .novelight-ai-workspace-story-index h3 { margin:0 0 8px; font-size:17px; }
+    .novelight-ai-workspace-story-index > p { margin:8px 0 14px; line-height:1.7; overflow-wrap:anywhere; }
+    .novelight-ai-workspace-story-rows { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:12px; }
+    .novelight-ai-workspace-story-group { min-width:0; padding:12px; border:1px solid #d0dbe4; border-radius:10px; background:#fff; }
+    .novelight-ai-workspace-story-group h4 { margin:0 0 10px; font-size:15px; }
+    .novelight-ai-workspace-story-row { padding:9px 0; border-bottom:1px solid #dde5ec; line-height:1.7; overflow-wrap:anywhere; }
+    .novelight-ai-workspace-section[hidden] { display:none; }
+    @media(max-width:800px){ .novelight-ai-workspace-story-rows { grid-template-columns:minmax(0,1fr); } }
+
+    .novelight-ai-workspace-result { margin:0; font-size:13px; }
+    .novelight-ai-workspace-section { min-width:0; padding:16px; border:1px solid #c8d2db; border-radius:14px; background:#f8fafc; color:#182b3c; -webkit-text-fill-color:#182b3c; }
+    .novelight-ai-workspace-section h3 { margin:0 0 12px; font-size:17px; overflow-wrap:anywhere; }
+    .novelight-ai-workspace-item { padding:12px; margin:10px 0; border:1px solid #d9e2eb; border-radius:10px; background:#fff; overflow-wrap:anywhere; }
+    .novelight-ai-workspace-item[hidden] { display:none; }
+    .novelight-ai-workspace-item h4 { margin:0 0 7px; font-size:15px; }
+    .novelight-ai-workspace-status { font-size:11px; font-weight:800; color:#445c71; -webkit-text-fill-color:#445c71; }
+    .novelight-ai-workspace-details summary { margin-top:8px; cursor:pointer; color:#194c72; -webkit-text-fill-color:#194c72; }
+    .novelight-ai-workspace-details p { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; }
+    .novelight-ai-workspace-empty { font-size:13px; color:#526273; -webkit-text-fill-color:#526273; }
+    @media(max-width:800px){ .novelight-ai-workspace { grid-template-columns:minmax(0,1fr); } }
     @media (max-width: 540px) { .novelight-ai-bible-owner-section { padding: 18px; } }
     /* The consent panel is off-DOM until the owner-only API approves it. */
     .novelight-ai-bible-consent-section { margin-top:24px; padding:24px; }
@@ -107,9 +165,11 @@
   <script src="novelight-client.js"></script>
   <script src="novelight-author-studio-shell.js"></script>
   <script src="novelight-characters.js"></script>
+  <script src="novelight-ai-bible-author-workspace.js"></script>
   <script src="novelight-ai-bible-owner-panel.js"></script>
   <script src="novelight-ai-bible-owner-studio.js"></script>
   <script src="novelight-ai-bible-consent-panel.js"></script>
+  <script src="novelight-ai-bible-note-transfer.js"></script>
   <script src="novelight-ai-bible-review-actions.js"></script>
   <script src="novelight-ai-bible-trial-panel.js"></script>
   <script>
@@ -130,7 +190,7 @@
   async function deleteNote(id){if(!ready||busy||!confirm('この非公開創作ノートを削除しますか？'))return;busy=true;save.disabled=true;setStatus('削除しています...');try{const result=await client.rpc('novelight_delete_private_story_note',{p_note_id:Number(id)});if(result.error)throw result.error;if(String(document.getElementById('noteId').value)===String(id))resetForm();await loadNotes();setStatus('削除しました。')}catch(error){console.error(error);setStatus(unavailable(error)?'創作ノートはデータベース反映待ちです。':'削除できませんでした。',true)}finally{busy=false;save.disabled=!ready}}
   form.addEventListener('submit',async event=>{event.preventDefault();if(!ready||busy)return;const noteType=document.getElementById('noteType').value,title=document.getElementById('title').value.trim(),body=document.getElementById('body').value,characterValue=document.getElementById('character').value;if(!title){setStatus('タイトルを入力してください。',true);return}if(noteType==='character'&&!characterValue){setStatus('キャラクターノートは登場人物を選択してください。',true);return}busy=true;save.disabled=true;setStatus('保存しています...');try{const result=await client.rpc('novelight_save_private_story_note',{p_novel_id:Number(novelId),p_note_id:document.getElementById('noteId').value?Number(document.getElementById('noteId').value):null,p_note_type:noteType,p_character_id:noteType==='character'?Number(characterValue):null,p_title:title,p_body:body});if(result.error)throw result.error;resetForm();await loadNotes();setStatus('非公開の創作ノートとして保存しました。')}catch(error){console.error(error);setStatus(unavailable(error)?'創作ノートはデータベース反映待ちです。':String(error?.message||'保存できませんでした。'),true)}finally{busy=false;save.disabled=!ready}});
   document.getElementById('cancel').onclick=()=>{resetForm();setStatus('編集を取り消しました。')};document.getElementById('title').addEventListener('input',updateCounts);document.getElementById('body').addEventListener('input',updateCounts);document.getElementById('noteType').addEventListener('change',syncCharacterField);document.getElementById('filter').addEventListener('change',render);
-  (async()=>{void NovelightClient.recordVisit(client);if(!novelId){setStatus('作品IDがありません。',true);return}document.getElementById('characterManageLink').href='characters.html?novel_id='+encodeURIComponent(novelId);try{const auth=await client.auth.getSession(),session=auth.data.session;if(!session){location.href='login.html?redirect='+encodeURIComponent('story-notes.html?novel_id='+novelId);return}void NovelightClient.claimAcquisition(client);const result=await client.from('novels').select('id,user_id,title').eq('id',novelId).single();if(result.error||!result.data||result.data.user_id!==session.user.id)throw result.error||new Error('not authorized');const returnToWork=document.getElementById('returnToWork');returnToWork.href='novel.html?id='+encodeURIComponent(result.data.id);returnToWork.hidden=false;document.getElementById('workTitle').textContent='「'+result.data.title+'」のプロット・人物設定・世界観を整理します。';await loadCharacters();await loadNotes();ready=true;save.disabled=false;setStatus('');syncCharacterField();void NovelightAiBibleOwnerStudio.attach({client,novelId,ownerId:session.user.id});void NovelightAiBibleConsentPanel.attach({client,novelId,ownerId:session.user.id});void NovelightAiBibleTrialPanel.attach({client,novelId,ownerId:session.user.id})}catch(error){console.error(error);ready=false;save.disabled=true;if(unavailable(error)){document.getElementById('pendingNotice').hidden=false;list.innerHTML='<div class="empty">創作ノートはデータベース反映後に表示されます。</div>';setStatus('創作ノートはデータベース反映待ちです。',true)}else{list.innerHTML='<div class="empty">創作ノートを読み込めませんでした。</div>';setStatus('創作ノートを準備できませんでした。',true)}}})();
+  (async()=>{void NovelightClient.recordVisit(client);if(!novelId){setStatus('作品IDがありません。',true);return}document.getElementById('characterManageLink').href='characters.html?novel_id='+encodeURIComponent(novelId);try{const auth=await client.auth.getSession(),session=auth.data.session;if(!session){location.href='login.html?redirect='+encodeURIComponent('story-notes.html?novel_id='+novelId);return}void NovelightClient.claimAcquisition(client);const result=await client.from('novels').select('id,user_id,title').eq('id',novelId).single();if(result.error||!result.data||result.data.user_id!==session.user.id)throw result.error||new Error('not authorized');const returnToWork=document.getElementById('returnToWork');returnToWork.href='novel.html?id='+encodeURIComponent(result.data.id);returnToWork.hidden=false;document.getElementById('workTitle').textContent='「'+result.data.title+'」のプロット・人物設定・世界観を整理します。';await loadCharacters();await loadNotes();ready=true;save.disabled=false;setStatus('');syncCharacterField();void NovelightAiBibleOwnerStudio.attach({client,novelId,ownerId:session.user.id});void NovelightAiBibleConsentPanel.attach({client,novelId,ownerId:session.user.id});void NovelightAiBibleReviewActions.attach({client,novelId,ownerId:session.user.id,onAccepted:async candidate=>{if(!ready||busy)return false;const current=await client.auth.getSession();if(current.error||current.data?.session?.user?.id!==session.user.id||current.data?.session?.access_token!==session.access_token)return false;const prepared=NovelightAiBibleNoteTransfer.prepare({candidate,doc:document,allowReplace:()=>window.confirm('現在の編集内容を置き換えて、AI候補を新しい創作ノートの下書きに転記しますか？')});if(prepared){setStatus('AI候補を下書きに転記しました。内容を確認して「保存」を押してください。人物候補は既存の登場人物を選択してください。');form.scrollIntoView?.({behavior:'smooth',block:'start'});}return prepared;}});void NovelightAiBibleTrialPanel.attach({client,novelId,ownerId:session.user.id})}catch(error){console.error(error);ready=false;save.disabled=true;if(unavailable(error)){document.getElementById('pendingNotice').hidden=false;list.innerHTML='<div class="empty">創作ノートはデータベース反映後に表示されます。</div>';setStatus('創作ノートはデータベース反映待ちです。',true)}else{list.innerHTML='<div class="empty">創作ノートを読み込めませんでした。</div>';setStatus('創作ノートを準備できませんでした。',true)}}})();
   </script>
 </body>
 </html>
