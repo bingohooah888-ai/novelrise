@@ -67,7 +67,8 @@
     ownerId,
     novelId,
     doc = root.document,
-    fetcher = root.fetch
+    fetcher = root.fetch,
+    onAccepted
   } = {}) {
     const host = doc?.getElementById?.('main-content');
     const id = positive(novelId);
@@ -198,6 +199,51 @@
               : '候補を却下しました。';
           // Never perform a second POST automatically.
           row.remove();
+          if (action === 'accept' && typeof onAccepted === 'function') {
+            const transfer = doc.createElement('div');
+            const transferButton = doc.createElement('button');
+            transferButton.type = 'button';
+            transferButton.textContent =
+              '創作ノートに転記して編集（保存は別途）';
+            transferButton.addEventListener('click', async () => {
+              if (disposed || busy) return;
+              busy = true;
+              try {
+                if (!(await currentSession())) {
+                  clear();
+                  return;
+                }
+                // This is only a draft handoff. The existing author editor
+                // performs a separate explicit save using the owner RPC.
+                const prepared = await onAccepted({
+                  kind: item.kind,
+                  key: item.key,
+                  summary: item.summary,
+                  evidence: item.evidence,
+                  episodeId: item.episodeId
+                });
+                if (!(await currentSession())) {
+                  clear();
+                  return;
+                }
+                if (prepared === true) {
+                  reviewNotice.textContent =
+                    '創作ノートの編集欄に転記しました。内容を確認して「保存」を押してください。';
+                  transfer.remove();
+                } else {
+                  reviewNotice.textContent =
+                    '転記しませんでした。編集内容とログイン状態を確認してください。';
+                }
+              } catch {
+                reviewNotice.textContent =
+                  '転記できませんでした。再度操作する前に編集内容を確認してください。';
+              } finally {
+                busy = false;
+              }
+            });
+            transfer.appendChild(transferButton);
+            list.appendChild(transfer);
+          }
         } catch {
           decisionUnconfirmed();
         } finally {
