@@ -135,8 +135,11 @@ test('trusted moderation records decision and award in same SQL transaction', ()
 });
 
 test('formal valid-read event automatically captures Level and atomically awards Points', () => {
-  assert.match(sql,/perform novelight_formal_private\.award_read_points_draft\(/i);
-  assert.match(sql,/new\.id,v_state\.review_anchor_at/);
-  assert.match(sql,/after insert on public\.valid_read_events/i);
-  assert.match(sql,/create trigger scout_formal_read_level_capture/i);
+  assert.match(
+    sql,
+    /perform novelight_formal_private\.award_read_points_draft\(/i
+  );
+  assert.match(sql, /new\.id,v_state\.review_anchor_at/);
+  assert.match(sql, /after insert on public\.valid_read_events/i);
+  assert.match(sql, /create trigger scout_formal_read_level_capture/i);
 });
