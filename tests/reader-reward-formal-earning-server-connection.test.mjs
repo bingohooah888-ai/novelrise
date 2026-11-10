@@ -35,7 +35,7 @@ test('server adapter routes only approved moderated episode comment to DB writer
     verifiedModerationRule: 'verified-source-review-v1'
   });
   assert.equal(p.functionName, 'review_comment_and_award_draft');
-  assert.deepEqual(p.params, { p_comment_id: event, p_release_at: release });
+  assert.deepEqual(p.params, { p_comment_id: event, p_release_at: release, p_content_eligible: true, p_reviewer_rule: 'verified-source-review-v1' });
   assert.equal(p.requiresReadTimeTrigger, null);
   assert.equal(p.mayIssuePoints, false);
 });
