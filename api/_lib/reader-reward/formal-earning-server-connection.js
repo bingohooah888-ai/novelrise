@@ -5,7 +5,7 @@
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const METHODS = Object.freeze({
   valid_read_qualified: 'award_read_points_draft',
-  novel_episode_comment_reviewed: 'award_comment_points_draft'
+  novel_episode_comment_reviewed: 'review_comment_and_award_draft'
 });
 const READ_TRIGGER = 'scout_formal_read_level_capture';
 
@@ -36,7 +36,9 @@ function validRelease(value) {
  * 2. post-commit event consumer: confirm durable read+level evidence, invoke
  *    award_read_points_draft inside the database transaction.
  * 3. reviewed episode comment: check comment content attestation by server,
- *    invoke award_comment_points_draft, whose own user row lock and event
+ *    invoke review_comment_and_award_draft, which records the reviewed
+ *    content decision and calls the reward writer in one transaction. The
+ *    award function's own user row lock and event
  *    key uniqueness determine the only eligible comment in an episode.
  */
 export function planFormalEarningServerConnection({
@@ -46,7 +48,8 @@ export function planFormalEarningServerConnection({
   sourceCommitted,
   serverPrincipalVerified,
   authoritativeEvidenceVerified,
-  commentModerationApproved
+  commentModerationApproved,
+  verifiedModerationRule
 }) {
   if (!(eventType in METHODS)) {
     return Object.freeze({
@@ -68,7 +71,10 @@ export function planFormalEarningServerConnection({
   }
   if (
     eventType === 'novel_episode_comment_reviewed' &&
-    commentModerationApproved !== true
+    (commentModerationApproved !== true ||
+      typeof verifiedModerationRule !== 'string' ||
+      verifiedModerationRule.length < 1 ||
+      verifiedModerationRule.length > 120)
   ) {
     return Object.freeze({
       status: 'comment_moderation_pending',
@@ -82,7 +88,8 @@ export function planFormalEarningServerConnection({
     params: Object.freeze(
       eventType === 'valid_read_qualified'
         ? { p_read_event_id: eventId, p_release_at: release }
-        : { p_comment_id: eventId, p_release_at: release }
+        : { p_comment_id: eventId, p_release_at: release,
+            p_content_eligible: true, p_reviewer_rule: verifiedModerationRule }
     ),
     requiresReadTimeTrigger:
       eventType === 'valid_read_qualified' ? READ_TRIGGER : null,
