@@ -105,6 +105,26 @@ export function createSupabaseOwnerBibleReviewRepository({
       return data.map(mapRow);
     },
 
+    // Previously accepted candidates remain available to the same author
+    // for an explicit, separate transfer into the existing note editor.
+    // This is a scoped read only; it does not promote AI output to canon.
+    async listAccepted({ actorId, novelId }) {
+      requireScope(actorId, novelId);
+      const { data, error } = await serviceClient
+        .from('novelight_ai_review_candidates')
+        .select(
+          'id,actor_id,novel_id,source_episode_id,source_hash,' +
+            'fact_kind,fact_key,summary,evidence,status,revision'
+        )
+        .eq('actor_id', actorId)
+        .eq('novel_id', novelId)
+        .eq('status', 'accepted')
+        .order('id', { ascending: false })
+        .limit(100);
+      if (error || !Array.isArray(data)) unavailable();
+      return data.map(mapRow);
+    },
+
     async readCandidate({ actorId, novelId, candidateId }) {
       requireScope(actorId, novelId);
       if (!validId(candidateId)) unavailable();
