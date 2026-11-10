@@ -45,14 +45,14 @@ export function createFormalPrivatePostgresAdapter({ postgresClient }) {
       const values = [eventId, release];
       if (functionName === 'review_comment_and_award_draft') {
         if (
-          params?.p_content_eligible !== true ||
+          typeof params?.p_content_eligible !== 'boolean' ||
           typeof params?.p_reviewer_rule !== 'string' ||
           params.p_reviewer_rule.length < 1 ||
           params.p_reviewer_rule.length > 120
         ) {
           return { data: null, error: { code: 'UNVERIFIED_COMMENT_REVIEW' } };
         }
-        values.push(true, params.p_reviewer_rule);
+        values.push(params.p_content_eligible, params.p_reviewer_rule);
       }
       try {
         // A DB function call is one atomic statement; its transaction commits
