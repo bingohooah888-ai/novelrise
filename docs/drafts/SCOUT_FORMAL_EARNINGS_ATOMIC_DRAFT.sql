@@ -53,6 +53,13 @@ begin
  ) values (new.id,new.reader_id,new.qualified_at,
            v_state.current_level,v_state.revision)
  on conflict(read_event_id) do nothing;
+ -- Release-scoped Level state is the authoritative earning start:
+ -- beta accounts anchor at formal release, new accounts at registration.
+ -- The same INSERT transaction now writes qualification, level evidence,
+ -- and the first-time Point claim; no post-commit worker is required.
+ perform novelight_formal_private.award_read_points_draft(
+   new.id,v_state.review_anchor_at
+ );
  return new;
 end
 $capture_read$;
