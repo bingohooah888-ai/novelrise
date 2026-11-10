@@ -145,7 +145,7 @@ test('trusted internal executor invokes only approved private RPC with committed
  assert.equal(out.mayIssuePoints,true);
 });
 test('trusted internal executor returns a non-issuance result when private RPC errors',async()=>{
- const p=plan({eventType:'novel_episode_comment_reviewed',commentModerationApproved:true});
+ const p=plan({eventType:'novel_episode_comment_reviewed',commentModerationApproved:true,verifiedModerationRule:'verified-source-review-v1'});
  const result=await executeApprovedFormalEarningConnection({
    plan:p,db:{callPrivateFunction:async()=>({data:null,error:{message:'mock failure'}})},
    launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
