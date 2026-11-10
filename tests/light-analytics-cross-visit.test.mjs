@@ -11,7 +11,7 @@ const runtime = read('novelight-analytics.js');
 const replay = read('scripts/run-migration-replay.sh');
 const fixture = read('tests/rls/light-analytics-cross-visit.sql');
 
-test('reader continuation uses author/work/viewer cohort, not a single impression ID', () => {
+test('reader continuation groups by viewer across separate visits', () => {
   assert.equal(
     (migration.match(/reader_cohorts as materialized/gu) || []).length,
     2
@@ -29,7 +29,7 @@ test('reader continuation uses author/work/viewer cohort, not a single impressio
   assert.match(migration, /p_days > 90/u);
 });
 
-test('per-work analysis remains plan-gated, trend aggregates remain author-only', () => {
+test('per-work analysis remains plan-gated and aggregate-only for Free', () => {
   assert.match(migration, /where v_plan in \('standard', 'premium'\)/u);
   assert.match(migration, /having v_plan = 'free'/u);
   assert.match(migration, /v_plan = 'premium'/u);
@@ -43,7 +43,7 @@ test('per-work analysis remains plan-gated, trend aggregates remain author-only'
   );
 });
 
-test('analytics page explicitly distinguishes available plan features and beta prices', () => {
+test('analytics page distinguishes plan features and beta prices', () => {
   assert.match(html, /id="analyticsPlanCompareTitle"/u);
   assert.match(html, /data-analytics-tier="free"/u);
   assert.match(html, /data-analytics-tier="standard"/u);
@@ -54,7 +54,7 @@ test('analytics page explicitly distinguishes available plan features and beta p
   assert.match(runtime, /cell\.dataset\.analyticsTier === plan/u);
 });
 
-test('historical 16-day continuation and Free/Standard boundaries are exercised in replay', () => {
+test('16-day continuation and plan boundaries run in replay', () => {
   assert.match(replay, /tests\/rls\/light-analytics-cross-visit\.sql/u);
   assert.match(
     replay,
