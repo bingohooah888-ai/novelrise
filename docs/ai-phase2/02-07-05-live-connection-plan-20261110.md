@@ -127,3 +127,11 @@
 4. **Gate C以降**：独立証拠が揃った後にだけ、本人の合成JWT、既存原子one-shot claim、停止/cleanup/独立censusを一回限りの承認で検証。Gate Dの有料POST、Eの品質/管理人限定試用はさらに別承認。
 
 **結論**：現時点では候補SHAのオフライン契約整合まで完了し、**信頼済み制御面の配置・実資格と停止・Previewの実証は未完了**。Gate A〜Eは**0/5**。本節作成は実操作の承認、請求、DB mutation、公開の許可にならない。
+
+## 9. 2026-11-10：保護制御コードだけの分離準備（オフライン実装）
+
+- **原因**：保護Runnerの `protected-stage-executor.mjs` と `paid-trial-cleanup-runner.mjs` が `../../api/_lib/ai/paid-trial-one-shot-provider.js` を直接importしていた。制御jobへ作品カルテ/APIコードを持ち込む依存が残り、候補ソースをSecrets付き信頼済みjobから隔離できなかった。
+- **最小差分**：上記Providerの実装本体を**変更なしで** `.github/staging-ai-02-07-05/paid-trial-one-shot-provider.mjs` へ移し、保護Runnerの2つのimportを同じ制御フォルダ内へ変更。既存API側の旧公開経路は3つの関数を同一モジュールから再exportするだけの互換shimとした。WeakMapの一回限りガード／scope比較の**同一インスタンス**を使用し、二重実装・二重claimを作らない。JWT・DB・有料Providerへの実接続は行わない。
+- **信頼境界の局所試験**：既存の候補SHA契約試験に、全 `.github/staging-ai-02-07-05/*.mjs` の静的importが同じ制御フォルダかNode内蔵のみであること、dynamic import / requireが存在しないこと、制御ProviderとAPI互換exportの関数identityが一致すること、DB claim実装が制御側の一箇所にしかないことを追加。既存Owner ledger / signed Watchdog / protected Runner / Provider契約を再利用する。これらは**静的構造とオフライン動作のみの証拠**で、保護branchへの配置や外部権限の証明ではない。
+- **将来の制御面専用PRに切り出す単位**：上記制御フォルダ内の候補SHA対応差分（Owner ledger、署名Watchdog、one-use、read-only proofs、protected executorとその同フォルダ依存、guarded Provider）をレビュー済みの**最小依存閉包**として抽出する。API互換shim・作者UI・Novel Bible機能・Previewアプリ本体は抽出PRへ混ぜない。抽出範囲を固定した後、main/Productionへの影響を確認して**別の本番承認**を得る。現在のDraft PR #2825自体は未統合のまま維持する。
+- **明確に未実装・未実証**：保護実行Workflowの実接続、GitHub Owner承認の真正性、永続atomic nonce、独立Watchdogの実停止/cleanup、Staging資格・Previewの候補SHA一致、実JWT/DBと費用上限。既存 `ai-020705-owner-staging-paid-trial.yml` は引き続き `OFFLINE PREFLIGHT ONLY`。Gate A〜E **0/5**。このPR更新でPreview/環境/DB/Secret/課金を動かさない。

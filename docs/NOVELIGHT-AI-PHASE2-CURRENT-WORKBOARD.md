@@ -9,6 +9,13 @@ phase: 02-07-05
 last_reviewed_jst: 2026-11-10
 <!-- CONTINUITY_FINGERPRINT_END -->
 
+## 2026-11-10 継続：制御コード分離のオフライン実装（本Draft PR内／実環境OFF）
+
+- **観測基準**：main 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3、MASTER blob e2501f9ed0722964e76fd0a49bf200717850b81d、作業開始時PR #2825 HEAD 5f210513dc13c6fe73fa6b585819cf8080fc0531。新しいHEADはGitHub PRを優先。NLO resume BASELINE_MATCH、AUTHORIZATION NONE。
+- **実装**：API側に残っていた一回限り有料Providerガードの実装を変更せずに既存 `.github/staging-ai-02-07-05` 制御フォルダへ移動。保護Runnerの2箇所のimportをローカル制御モジュールへ変更。API側は3 exportの互換shimとし、WeakMapとDB claimの実装は一箇所のみ。
+- **検証**：既存のOwner/署名Watchdog/候補SHA/Runner/Provider試験を局所実行。追加した静的import閉包とAPI互換identityの試験が成功。GitHub CI/CodeQLは更新HEADの最新実行結果を参照。既存PASSの無関係な再実行禁止は維持。
+- **次の作業**：この制御フォルダの候補SHA関連差分だけを独立審査できる小PRの範囲として整理する。現時点で別PR作成・main統合・保護Workflow live化はしない。実Controller/nonce、OWNER認証、Staging専用資格・Preview、実JWT/DB、有料Modelは未実証。Gate A〜E **0/5**、本番未公開。詳細は同PRの接続計画書§9。
+
 ## 2026-11-10 継続：制御面分離・Gate A〜C READ-ONLY判断（新しい実行権限なし）
 
 - **基準**：main 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3、MASTER blob e2501f9ed0722964e76fd0a49bf200717850b81d、Draft PR #2825 事前HEAD 96515f16b81f47e952e864e0162fc32115eb0b30。NLO resume BASELINE_MATCH、Runtime Gate start PASS（degraded）。コード/Workflow未変更、Gate A〜E 0/5。

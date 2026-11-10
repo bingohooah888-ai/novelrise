@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 import {
   inspect020705OwnerLedger,
@@ -524,5 +525,76 @@ test('candidate protected runner accepts only main-sourced trusted workflow and 
   await assert.rejects(
     create020705ProtectedStageExecutor(options).run(),
     /AI_020705_PROTECTED_STAGE_DENIED/u
+  );
+});
+
+test('trusted control slice is self-contained; API compatibility shim shares provider identity', async () => {
+  const dir = new globalThis.URL(
+    '../.github/staging-ai-02-07-05/',
+    import.meta.url
+  );
+  const controlled = readdirSync(dir).filter((name) => name.endsWith('.mjs'));
+  assert.ok(controlled.includes('protected-stage-executor.mjs'));
+  assert.ok(controlled.includes('paid-trial-one-shot-provider.mjs'));
+
+  for (const name of controlled) {
+    const source = readFileSync(new globalThis.URL(name, dir), 'utf8');
+    assert.doesNotMatch(source, /\bimport\s*\(/u, name + ': dynamic import');
+    assert.doesNotMatch(source, /\brequire\s*\(/u, name + ': require');
+    assert.doesNotMatch(
+      source,
+      /(?:^|\n)\s*import\s*['"]/u,
+      name + ': side-effect import'
+    );
+    for (const match of source.matchAll(/\bfrom\s+['"]([^'"]+)['"]/gu)) {
+      const spec = match[1];
+      assert.ok(
+        spec.startsWith('node:') || spec.startsWith('./'),
+        name + ': untrusted import ' + spec
+      );
+      if (spec.startsWith('./')) {
+        const target = new globalThis.URL(spec, dir);
+        assert.equal(target.pathname.startsWith(dir.pathname), true, name);
+        assert.equal(
+          existsSync(target),
+          true,
+          name + ': missing dependency ' + spec
+        );
+      }
+    }
+  }
+
+  const trusted =
+    await import('../.github/staging-ai-02-07-05/paid-trial-one-shot-provider.mjs');
+  const compatible =
+    await import('../api/_lib/ai/paid-trial-one-shot-provider.js');
+  assert.equal(
+    compatible.createPaidTrialOneShotOpenAiProvider,
+    trusted.createPaidTrialOneShotOpenAiProvider
+  );
+  assert.equal(
+    compatible.isPaidTrialOneShotGuardedProvider,
+    trusted.isPaidTrialOneShotGuardedProvider
+  );
+  assert.equal(
+    compatible.matchesPaidTrialOneShotGuardedProviderScope,
+    trusted.matchesPaidTrialOneShotGuardedProviderScope
+  );
+  assert.equal(
+    readFileSync(
+      new globalThis.URL('paid-trial-one-shot-provider.mjs', dir),
+      'utf8'
+    ).includes('novelight_ai_020705_claim_once'),
+    true
+  );
+  assert.doesNotMatch(
+    readFileSync(
+      new globalThis.URL(
+        '../api/_lib/ai/paid-trial-one-shot-provider.js',
+        import.meta.url
+      ),
+      'utf8'
+    ),
+    /novelight_ai_020705_claim_once/u
   );
 });
