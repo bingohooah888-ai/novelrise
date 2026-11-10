@@ -51,6 +51,7 @@ export function planFormalEarningServerConnection({
   serverPrincipalVerified,
   authoritativeEvidenceVerified,
   commentModerationApproved,
+  commentContentEligible = true,
   verifiedModerationRule
 }) {
   if (!(eventType in METHODS)) {
@@ -74,6 +75,7 @@ export function planFormalEarningServerConnection({
   if (
     eventType === 'novel_episode_comment_reviewed' &&
     (commentModerationApproved !== true ||
+      typeof commentContentEligible !== 'boolean' ||
       typeof verifiedModerationRule !== 'string' ||
       verifiedModerationRule.length < 1 ||
       verifiedModerationRule.length > 120)
@@ -93,7 +95,7 @@ export function planFormalEarningServerConnection({
         : {
             p_comment_id: eventId,
             p_release_at: release,
-            p_content_eligible: true,
+            p_content_eligible: commentContentEligible,
             p_reviewer_rule: verifiedModerationRule
           }
     ),
@@ -220,6 +222,7 @@ export function createFormalEarningInternalHandler({
       sourceCommitted,
       authoritativeEvidenceVerified,
       commentModerationApproved,
+      commentContentEligible,
       verifiedModerationRule
     }) {
       const plan = planFormalEarningServerConnection({
@@ -232,6 +235,7 @@ export function createFormalEarningInternalHandler({
           trustedServerAuthorization?.verifiedByTrustedServer === true,
         authoritativeEvidenceVerified,
         commentModerationApproved,
+        commentContentEligible,
         verifiedModerationRule
       });
       return executeApprovedFormalEarningConnection({
