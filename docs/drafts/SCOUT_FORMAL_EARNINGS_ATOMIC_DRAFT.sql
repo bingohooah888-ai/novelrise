@@ -43,6 +43,7 @@ language plpgsql security definer set search_path=''
 as $capture_read$
 declare
  v_state novelight_formal_private.scout_level_state%rowtype;
+ v_award jsonb;
 begin
  if new.reader_id=new.author_id_snapshot then return new; end if;
  select * into v_state from novelight_formal_private.scout_level_state
@@ -57,9 +58,16 @@ begin
  -- beta accounts anchor at formal release, new accounts at registration.
  -- The same INSERT transaction now writes qualification, level evidence,
  -- and the first-time Point claim; no post-commit worker is required.
- perform novelight_formal_private.award_read_points_draft(
+ v_award:=novelight_formal_private.award_read_points_draft(
    new.id,v_state.review_anchor_at
  );
+ -- The canonical Point ledger is already the idempotency guard.
+ -- Only a read whose initial award was held needs durable later replay.
+ if v_award->>'status' not in ('recorded','already_recorded') then
+   perform novelight_formal_private.enqueue_earning_draft(
+     'valid_read_qualified',new.id
+   );
+ end if;
  return new;
 end
 $capture_read$;
@@ -368,6 +376,28 @@ $earning_enqueue$;
 
 -- A trusted moderator resolves the existing pending decision.
 -- No fake automatic semantic classification. No changes to settled verdicts.
+
+-- Formal-only comment source hook. Source INSERT and review_pending claim are
+-- atomic, so server restarts do not lose newly published chapter comments.
+-- It is never applied to the existing beta deployment.
+create or replace function novelight_formal_private.on_episode_comment_formal_draft()
+returns trigger language plpgsql security definer set search_path=''
+as $comment_enqueue$
+begin
+ if new.episode_id is null then return new; end if;
+ if not exists(select 1 from novelight_formal_private.scout_level_state
+               where user_id=new.user_id) then return new; end if;
+ perform novelight_formal_private.enqueue_earning_draft(
+   'novel_episode_comment_reviewed',new.id
+ );
+ return new;
+end
+$comment_enqueue$;
+
+create trigger scout_formal_comment_enqueue
+after insert on public.novel_comments
+for each row execute function novelight_formal_private.on_episode_comment_formal_draft();
+
 create or replace function novelight_formal_private.decide_earning_review_draft(
   p_comment_id uuid,p_eligible boolean,p_rule text
 ) returns jsonb language plpgsql security definer set search_path=''
@@ -456,6 +486,10 @@ begin
 end
 $earning_finish$;
 
+revoke all on function novelight_formal_private.on_episode_comment_formal_draft()
+ from public,anon,authenticated;
+grant execute on function novelight_formal_private.on_episode_comment_formal_draft()
+ to service_role;
 revoke all on function novelight_formal_private.enqueue_earning_draft(text,uuid)
  from public,anon,authenticated;
 revoke all on function novelight_formal_private.decide_earning_review_draft(uuid,boolean,text)
