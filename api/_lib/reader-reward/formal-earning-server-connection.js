@@ -1,3 +1,5 @@
+import { createFormalPrivatePostgresAdapter } from './formal-private-postgres-adapter.js';
+
 // Formal reader reward server connection CONTRACT, never registered as a route.
 // No Supabase client, network I/O, Point issue or beta change occurs here.
 // The only writer after future owner-approved release will be the formal
@@ -194,5 +196,50 @@ export async function simulateFormalEarningServerConnection({
     resultStatus:
       typeof response?.status === 'string' ? response.status : 'unknown',
     mayIssuePoints: false
+  });
+}
+
+/**
+ * Fully composed, but unregistered, trusted-server-only formal event handler.
+ * Its caller must independently verify the source event on the server and
+ * supply a private PostgreSQL connection. Nothing attaches to a beta route,
+ * creates a DB connection or enables a production feature flag in this file.
+ */
+export function createFormalEarningInternalHandler({
+  postgresClient,
+  releaseTimestampIso,
+  launchConfiguration,
+  trustedServerAuthorization
+}) {
+  const db = createFormalPrivatePostgresAdapter({ postgresClient });
+  const release = validRelease(releaseTimestampIso);
+  return Object.freeze({
+    async handleCommittedEvent({
+      eventType,
+      verifiedEventId,
+      sourceCommitted,
+      authoritativeEvidenceVerified,
+      commentModerationApproved,
+      verifiedModerationRule
+    }) {
+      const plan = planFormalEarningServerConnection({
+        eventType,
+        verifiedEventId,
+        releaseTimestampIso: release,
+        sourceCommitted,
+        serverPrincipalVerified:
+          trustedServerAuthorization?.serviceRoleVerified === true &&
+          trustedServerAuthorization?.verifiedByTrustedServer === true,
+        authoritativeEvidenceVerified,
+        commentModerationApproved,
+        verifiedModerationRule
+      });
+      return executeApprovedFormalEarningConnection({
+        plan,
+        db,
+        launchConfiguration,
+        trustedServerAuthorization
+      });
+    }
   });
 }
