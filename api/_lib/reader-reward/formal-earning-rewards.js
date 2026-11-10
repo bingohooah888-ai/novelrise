@@ -140,7 +140,8 @@ export function quoteFormalCommentPointReward({
   formalReleaseAtMs,
   evidenceVerified,
   commentPolicyApprovedAndEligible,
-  verifiedUtcMonth,
+  verifiedPolicyMonth,
+  policyMonthVerified,
   verifiedRewardedCommentsInMonth,
   ledgerHistoryComplete,
   existingLedgerEventKeys
@@ -170,10 +171,13 @@ export function quoteFormalCommentPointReward({
   if (when < auth.releaseAtMs) {
     return Object.freeze({ status: 'pre_release_not_eligible' });
   }
-  if (typeof verifiedUtcMonth !== 'string' ||
-      !/^\d{4}-(0[1-9]|1[0-2])$/.test(verifiedUtcMonth) ||
-      new Date(when).toISOString().slice(0, 7) !== verifiedUtcMonth) {
-    return Object.freeze({ status: 'month_evidence_incomplete' });
+  // The policy month/timezone boundary is not yet OWNER-approved.
+  // Do not silently assume UTC, JST or client-calculated calendar months.
+  if (policyMonthVerified !== true ||
+      typeof verifiedPolicyMonth !== 'string' ||
+      verifiedPolicyMonth.length === 0 ||
+      verifiedPolicyMonth.length > 32) {
+    return Object.freeze({ status: 'month_policy_pending' });
   }
   if (!Number.isSafeInteger(verifiedRewardedCommentsInMonth) ||
       verifiedRewardedCommentsInMonth < 0) {
