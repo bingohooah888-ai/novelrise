@@ -117,10 +117,19 @@ test('future and pre-release comments cannot claim formal points or block earlie
 });
 
 test('trusted moderation records decision and award in same SQL transaction', () => {
-  assert.match(sql,/create or replace function novelight_formal_private\.review_comment_and_award_draft\(/);
-  assert.match(sql,/insert into novelight_formal_private\.scout_comment_eligibility/);
-  assert.match(sql,/on conflict\(comment_id\) do nothing/);
-  assert.match(sql,/review_conflict_requires_owner_policy/);
-  assert.match(sql,/award_comment_points_draft\(p_comment_id,p_release_at\)/);
-  assert.match(sql,/revoke all on function novelight_formal_private\.review_comment_and_award_draft/);
+  assert.match(
+    sql,
+    /create or replace function novelight_formal_private\.review_comment_and_award_draft\(/
+  );
+  assert.match(
+    sql,
+    /insert into novelight_formal_private\.scout_comment_eligibility/
+  );
+  assert.match(sql, /on conflict\(comment_id\) do nothing/);
+  assert.match(sql, /review_conflict_requires_owner_policy/);
+  assert.match(sql, /award_comment_points_draft\(p_comment_id,p_release_at\)/);
+  assert.match(
+    sql,
+    /revoke all on function novelight_formal_private\.review_comment_and_award_draft/
+  );
 });
