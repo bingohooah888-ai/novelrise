@@ -99,6 +99,7 @@ export function planFormalEarningServerConnection({
  * Trusted internal adapter, intentionally not bound to a public route.
  * A verified service-role RPC client is injected only by a future formal
  * release worker; this module never instantiates a client itself.
+ * Supabase PostgREST must NOT expose the private schema to invoke these functions.
  * Do not infer publication from a request header or browser Boolean.
  */
 export async function executeApprovedFormalEarningConnection({
@@ -114,7 +115,7 @@ export async function executeApprovedFormalEarningConnection({
       launchConfiguration.productionCutoverApproved !== true ||
       trustedServerAuthorization?.serviceRoleVerified !== true ||
       trustedServerAuthorization?.verifiedByTrustedServer !== true ||
-      typeof db?.rpc !== 'function') {
+      typeof db?.callPrivateFunction !== 'function') {
     return Object.freeze({
       status: 'formal_connection_disabled',
       mayIssuePoints: false
@@ -136,11 +137,11 @@ export async function executeApprovedFormalEarningConnection({
   }
   // A real grant is only possible in the separately approved future release.
   // Never call this with an ordinary user JWT or in the current beta runtime.
-  const { data, error } = await db.rpc(
-    plan.functionName,
-    plan.params,
-    { schema: plan.schema }
-  );
+  const { data, error } = await db.callPrivateFunction({
+    schema: plan.schema,
+    functionName: plan.functionName,
+    params: plan.params
+  });
   if (error) {
     return Object.freeze({
       status: 'private_rpc_failed',
