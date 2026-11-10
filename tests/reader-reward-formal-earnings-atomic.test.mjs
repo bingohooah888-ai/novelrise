@@ -13,7 +13,8 @@ const sql = readFileSync(
 test('formal reward SQL remains dormant, with no live triggers, migrations or client access', () => {
   assert.match(sql, /DRAFT ONLY\. NOT A MIGRATION/);
   assert.match(sql, /not under supabase\/migrations/);
-  assert.doesNotMatch(sql, /create\s+trigger/i);
+  assert.match(sql, /The proposed read-capture trigger is release-only/);
+  assert.match(sql, /create trigger scout_formal_read_level_capture/i);
   assert.doesNotMatch(sql, /create\s+or\s+replace\s+function\s+public\./i);
   assert.match(
     sql,
@@ -106,10 +107,12 @@ test('content/anti-spam requires explicit server-reviewed attestation, not clien
   assert.doesNotMatch(sql, /p_comment_eligibility_approved/i);
 });
 
-test('read evidence requires the same PostgreSQL transaction, not just recent time', () => {
-  assert.match(sql,/select xmin::text::bigint into v_qualified_tx/);
-  assert.match(sql,/v_qualified_tx is distinct from txid_current\(\)/);
-  assert.match(sql,/read_transaction_not_matched/);
+test('read evidence uses a same-transaction INSERT trigger rather than brittle xmin comparisons', () => {
+  assert.match(sql,/after insert on public\\.valid_read_events/);
+  assert.match(sql,/returns trigger/);
+  assert.match(sql,/new\\.reader_id/);
+  assert.doesNotMatch(sql,/txid_current\\(\\)/);
+  assert.doesNotMatch(sql,/read_transaction_not_matched/);
 });
 test('future and pre-release comments cannot claim formal points or block earlier paid order',()=>{
   assert.match(sql,/future_comment_not_eligible/);
