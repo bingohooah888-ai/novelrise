@@ -241,12 +241,61 @@ begin
 end
 $award_comment$;
 
+
+-- Trusted comment reviewer attests and awards inside ONE database transaction.
+-- This function is never exposed as a public endpoint. Calling service must
+-- separately review repetitive/irrelevant content; an author or browser must
+-- never be allowed to supply the eligibility verdict.
+create or replace function novelight_formal_private.review_comment_and_award_draft(
+ p_comment_id uuid,
+ p_release_at timestamptz,
+ p_content_eligible boolean,
+ p_reviewer_rule text
+) returns jsonb
+language plpgsql security definer set search_path=''
+as $review_award$
+declare
+ v_comment public.novel_comments%rowtype;
+ v_saved boolean;
+ v_reward jsonb;
+begin
+ if p_content_eligible is null or p_reviewer_rule is null or
+    char_length(p_reviewer_rule) not between 1 and 120 then
+   return jsonb_build_object('status','review_evidence_missing');
+ end if;
+ select * into v_comment from public.novel_comments
+ where id=p_comment_id;
+ if not found then return jsonb_build_object('status','comment_missing'); end if;
+ -- Immutable first moderation decision. Any later reversal is explicitly
+ -- outside the current OWNER approval and cannot silently re-credit.
+ insert into novelight_formal_private.scout_comment_eligibility(
+   comment_id,eligible,reviewer_rule
+ ) values(p_comment_id,p_content_eligible,p_reviewer_rule)
+ on conflict(comment_id) do nothing;
+ select eligible into v_saved from
+   novelight_formal_private.scout_comment_eligibility
+ where comment_id=p_comment_id;
+ if v_saved is distinct from p_content_eligible then
+   return jsonb_build_object('status','review_conflict_requires_owner_policy');
+ end if;
+ if v_saved is distinct from true then
+   return jsonb_build_object('status','reviewed_not_eligible');
+ end if;
+ v_reward:=novelight_formal_private.award_comment_points_draft(p_comment_id,p_release_at);
+ return v_reward;
+end
+$review_award$;
+
 revoke all on function novelight_formal_private.on_valid_read_formal_draft()
  from public,anon,authenticated;
 revoke all on function novelight_formal_private.award_read_points_draft(uuid,timestamptz)
  from public,anon,authenticated;
 revoke all on function novelight_formal_private.award_comment_points_draft(uuid,timestamptz)
  from public,anon,authenticated;
+revoke all on function novelight_formal_private.review_comment_and_award_draft(
+ uuid,timestamptz,boolean,text) from public,anon,authenticated;
+grant execute on function novelight_formal_private.review_comment_and_award_draft(
+ uuid,timestamptz,boolean,text) to service_role;
 grant execute on function novelight_formal_private.on_valid_read_formal_draft()
  to service_role;
 grant execute on function novelight_formal_private.award_read_points_draft(uuid,timestamptz)
