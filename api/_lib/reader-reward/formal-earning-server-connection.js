@@ -88,8 +88,12 @@ export function planFormalEarningServerConnection({
     params: Object.freeze(
       eventType === 'valid_read_qualified'
         ? { p_read_event_id: eventId, p_release_at: release }
-        : { p_comment_id: eventId, p_release_at: release,
-            p_content_eligible: true, p_reviewer_rule: verifiedModerationRule }
+        : {
+            p_comment_id: eventId,
+            p_release_at: release,
+            p_content_eligible: true,
+            p_reviewer_rule: verifiedModerationRule
+          }
     ),
     requiresReadTimeTrigger:
       eventType === 'valid_read_qualified' ? READ_TRIGGER : null,
@@ -115,22 +119,26 @@ export async function executeApprovedFormalEarningConnection({
   launchConfiguration,
   trustedServerAuthorization
 }) {
-  if (plan?.status !== 'private_rpc_wiring_plan_only' ||
-      plan?.mayIssuePoints !== false ||
-      !launchConfiguration ||
-      launchConfiguration.formalEarningsEnabled !== true ||
-      launchConfiguration.productionCutoverApproved !== true ||
-      trustedServerAuthorization?.serviceRoleVerified !== true ||
-      trustedServerAuthorization?.verifiedByTrustedServer !== true ||
-      typeof db?.callPrivateFunction !== 'function') {
+  if (
+    plan?.status !== 'private_rpc_wiring_plan_only' ||
+    plan?.mayIssuePoints !== false ||
+    !launchConfiguration ||
+    launchConfiguration.formalEarningsEnabled !== true ||
+    launchConfiguration.productionCutoverApproved !== true ||
+    trustedServerAuthorization?.serviceRoleVerified !== true ||
+    trustedServerAuthorization?.verifiedByTrustedServer !== true ||
+    typeof db?.callPrivateFunction !== 'function'
+  ) {
     return Object.freeze({
       status: 'formal_connection_disabled',
       mayIssuePoints: false
     });
   }
   // No arbitrary RPC path: only the two verified, fixed private functions.
-  if (METHODS.valid_read_qualified !== plan.functionName &&
-      METHODS.novel_episode_comment_reviewed !== plan.functionName) {
+  if (
+    METHODS.valid_read_qualified !== plan.functionName &&
+    METHODS.novel_episode_comment_reviewed !== plan.functionName
+  ) {
     return Object.freeze({
       status: 'unsupported_private_rpc',
       mayIssuePoints: false
