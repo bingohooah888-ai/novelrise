@@ -96,6 +96,65 @@ export function planFormalEarningServerConnection({
 }
 
 /**
+ * Trusted internal adapter, intentionally not bound to a public route.
+ * A verified service-role RPC client is injected only by a future formal
+ * release worker; this module never instantiates a client itself.
+ * Do not infer publication from a request header or browser Boolean.
+ */
+export async function executeApprovedFormalEarningConnection({
+  plan,
+  db,
+  launchConfiguration,
+  trustedServerAuthorization
+}) {
+  if (plan?.status !== 'private_rpc_wiring_plan_only' ||
+      plan?.mayIssuePoints !== false ||
+      !launchConfiguration ||
+      launchConfiguration.formalEarningsEnabled !== true ||
+      launchConfiguration.productionCutoverApproved !== true ||
+      trustedServerAuthorization?.serviceRoleVerified !== true ||
+      trustedServerAuthorization?.verifiedByTrustedServer !== true ||
+      typeof db?.rpc !== 'function') {
+    return Object.freeze({
+      status: 'formal_connection_disabled',
+      mayIssuePoints: false
+    });
+  }
+  // No arbitrary RPC path: only the two verified, fixed private functions.
+  if (METHODS.valid_read_qualified !== plan.functionName &&
+      METHODS.novel_episode_comment_reviewed !== plan.functionName) {
+    return Object.freeze({
+      status: 'unsupported_private_rpc',
+      mayIssuePoints: false
+    });
+  }
+  if (plan.schema !== 'novelight_formal_private') {
+    return Object.freeze({
+      status: 'invalid_private_schema',
+      mayIssuePoints: false
+    });
+  }
+  // A real grant is only possible in the separately approved future release.
+  // Never call this with an ordinary user JWT or in the current beta runtime.
+  const { data, error } = await db.rpc(
+    plan.functionName,
+    plan.params,
+    { schema: plan.schema }
+  );
+  if (error) {
+    return Object.freeze({
+      status: 'private_rpc_failed',
+      mayIssuePoints: false
+    });
+  }
+  return Object.freeze({
+    status: 'private_rpc_completed',
+    databaseStatus: data?.status ?? 'unknown',
+    mayIssuePoints: data?.status === 'recorded'
+  });
+}
+
+/**
  * Test-only simulator for an already-built plan. Requires a callback passed
  * by a unit test; no RPC client is constructed and no real DB client is used.
  */
