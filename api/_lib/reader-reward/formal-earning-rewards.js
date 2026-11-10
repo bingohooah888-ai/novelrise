@@ -226,16 +226,17 @@ export function quoteFormalCommentPointReward({
   if (when < auth.releaseAtMs) {
     return Object.freeze({ status: 'pre_release_not_eligible' });
   }
-  // The policy month/timezone boundary is not yet OWNER-approved.
-  // Do not silently assume UTC, JST or client-calculated calendar months.
+  // OWNER-approved JST calendar month. The host must attest the verified
+  // month and the server independently derives it from the event timestamp.
+  const expectedJstMonth = new Date(when + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 7);
   if (
     policyMonthVerified !== true ||
     verifiedCommentInsidePolicyMonth !== true ||
-    typeof verifiedPolicyMonth !== 'string' ||
-    verifiedPolicyMonth.length === 0 ||
-    verifiedPolicyMonth.length > 32
+    verifiedPolicyMonth !== expectedJstMonth
   ) {
-    return Object.freeze({ status: 'month_policy_pending' });
+    return Object.freeze({ status: 'month_policy_mismatch' });
   }
   if (
     !Number.isSafeInteger(verifiedRewardedCommentsInMonth) ||
