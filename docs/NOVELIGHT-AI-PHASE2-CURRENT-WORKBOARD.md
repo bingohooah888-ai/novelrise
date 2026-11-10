@@ -1,13 +1,27 @@
 # NOVELIGHT AI 工程②（02-07-05）— 継続用・唯一の現状ボード
 
-**最終内容確認：2026-11-05 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
+**最終内容確認：2026-11-10 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 03f64b14138ec5c6a90c0d8231a0784f878e78fa
-source_master_blob: 91d11fa367b7de64990b13397b13d4bb6e3c0230
+source_main: b826679b35862580d8097d7ddf95be3243500237
+source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
-last_reviewed_jst: 2026-11-05
+last_reviewed_jst: 2026-11-10
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-10 最新main・Draft PR #2825 事前確認（Feature First）
+
+- **監査基準（読み取り専用）**：main `b826679b35862580d8097d7ddf95be3243500237`、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`、Draft PR #2825 HEAD `bbd639ba55a1862e49d4f536fccb0876f795062b`。PRはDraft・未統合（main/Productionへのコード反映ではない）。ボードの新fingerprintはmainの**観測値**であり、PRをmergeしてよい承認ではない。
+- **工程②のコード側**：PR #2825では作品カルテの本文・候補・出典・作者レビュー・創作ノートへの**作者が選択して転記／既存保存RPCで再読込**までオフライン結線済み。2026-11-10 HEADの既存CI・CodeQLはPASS。作者が保存前に候補を再読込する経路も実装済み。**実JWT・外部モデル・実DB保存は未検証**であり、正式Gate A～Eは0/5を維持。
+- **main進行の確認**：監査開始時は `a6a921fffe276252c5b93f4d2ef097a61efe12d0`。作業中に `b826679b35862580d8097d7ddf95be3243500237` へ1 commit前進し、差分はAnalytics UI/DB migration関連8ファイルのみ。AI工程②の監査対象アダプター・MASTER・AGENTSには変更なし。PR #2825のbaseは旧main `a6a921fffe276252c5b93f4d2ef097a61efe12d0` のままで、無断でPR branchへのmain syncやmain統合は行わない。
+- **Gate A（外部独立実行の不足）**：read-only `detached-supervisor-offline-drill.mjs`と既存署名・終端・cleanup契約は実外部コントローラの実行/停止権限を持たない。現時点で実独立host/heartbeat、最小権限トークンと期限・費用上限、Runner死亡の独立確認、Staging限定stop/revoke/cleanup、他権限によるzero censusが不足。2026-11-05のA2-P2三件／SQL6件PASS・A2-P3 Cron停止PASSは**再実行禁止**。過去のDO残存3件は承認がないため**そのまま維持**。A2専用権限・課金条件未確認のままWorker/DOを配備・削除しない。
+- **Gate B（現時点の阻害要因）**：`staging/ai-02-07-05-gatebc-20261105` HEAD `0e4f3f594193d137d582fb693703ffdfe1d1cfd3`、最新mainより**42コミット古い**。このブランチの最新SHAと一致する新Previewは未存在（当日対象ブランチ一覧0件）。Vercel設定名は当該ブランチ専用6種＋共通Preview3種＝計9種だが、共通 `SUPABASE_SECRET_KEY`／`SUPABASE_PUBLISHABLE_KEY`／`NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY` の**Staging専用接続を非機密メタデータだけで証明できない**。9名揃うことと分離済みは別。値の復号・転記・変更は未実施。新たな`inspect020705PreviewPrecreation`オフライン判定は、旧ブランチSHA不一致・共通資格キー未証明を個別に返すが、**Preview作成は許可しない**。
+- **Gate C（現時点の阻害要因）**：既存 `.github/workflows/ai-020705-owner-staging-paid-trial.yml`は**OFFLINE PREFLIGHT ONLY**。既存`protected-stage-executor.mjs`はライブのJWT/Provider/Claim/Stopアダプター注入を必要とし、Workflowからは接続されていない。保護runnerの真正性、Staging限定実JWT・合成同意、実原子one-shot claim/消費墓標、OpenAIの実利用資格・円換算最新価格・**10円以内**・一回限り・停止・独立censusは本番同等の実証なし。2026-11-10のStagingの固定read-only SELECTではAI OFF、4予算0、対象AI関連行0、claimテーブルRLS ON・service_role限定EXECUTEを観測。**あくまで当時のスナップショット**であり実試行直前に再確認要。
+- **重要なSHA依存**：現行の保護Runner／Gate Bの検証は、対象Preview SHAと**承認対象main SHAの厳密一致**を要求する。未統合PR #2825のHEADを、mainと同一と扱うことはできない。新Staging branchの更新、main統合、Preview、Secret操作のどれも今の依頼では許可されていない。実行環境の承認前に、**PR統合後のSHAを基準にした本番影響の範囲**を別途特定するか、別PRで正式に検証された一回限りのSHA設計を承認してもらう必要がある。勝手に緩和しない。
+- **次の一括承認前準備**：1）Aの外部停止資格とWorkers/DO費用・稼働選択、2）Bの専用ブランチ/commit・Preview保護・共通SecretsがProductionに到達しないことの非機密証跡、3）Cのprotected Workflow・実JWT・claim・provider資格/価格上限・独立停止/清掃の接続先を**一枚のpreflight台帳**にまとめる。すべて確定するまで個別の外部変更ボタンを出さない。既存PASS再試験、新Watchdog/Runner増設、全体の制約緩和はしない。
+- **このPRでの修正範囲**：既存preview/read-only、detached supervisor、protected runnerの計3アダプターに、**未接続依存と環境メタデータ不足が判定できるread-onlyフィールドのみ**追加。対象テストの拡張と本ボード更新までで、Workflow・DB・Secrets・Vercel・Cloudflare・既存の停止/実行ロジックに変更は加えない。PRのHEAD更新後は、ここに記載した以前のHEADを**監査基点**として残し、最新HEADとPR本文の結果を優先する。
+
+
 
 ## 0. 最初に結論を確認する
 
