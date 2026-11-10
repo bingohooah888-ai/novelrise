@@ -62,3 +62,44 @@ export function compileScoutFormalXpLadder({
     productionReady: false
   });
 }
+
+/**
+ * OWNER-approved 2026-11-10 formal-release progression.
+ * Preserve the 30 historical beta levels (Lv.30 cumulative 9,570 XP).
+ * Exactly 400 XP is required for each promotion from Lv.30 to Lv.100.
+ * This is a dormant source of future thresholds, not a beta or DB cutover.
+ */
+export const FORMAL_SCOUT_XP_PER_LEVEL_AFTER_30 = 400;
+export const FORMAL_SCOUT_MAX_LEVEL = 100;
+export const FORMAL_SCOUT_LEVEL_100_CUMULATIVE_XP = 37570;
+
+export function compileApprovedScoutFormalXpLadder({ betaThresholdRows }) {
+  const beta = validateScoutBetaThresholds(betaThresholdRows);
+  const formalCumulativeRows = Array.from({ length: FORMAL_SCOUT_MAX_LEVEL }, (_, index) => {
+    const level = index + 1;
+    return {
+      level,
+      cumulative_xp: level <= 30
+        ? beta.cumulativeByLevel[level]
+        : beta.cumulativeByLevel[30] + (level - 30) * FORMAL_SCOUT_XP_PER_LEVEL_AFTER_30
+    };
+  });
+  const ladder = compileScoutFormalXpLadder({
+    betaThresholdRows,
+    formalCumulativeRows
+  });
+  if (
+    ladder.cumulativeByLevel[100] !== FORMAL_SCOUT_LEVEL_100_CUMULATIVE_XP ||
+    ladder.requiredXpByLevel[30] !== FORMAL_SCOUT_XP_PER_LEVEL_AFTER_30 ||
+    ladder.requiredXpByLevel[99] !== FORMAL_SCOUT_XP_PER_LEVEL_AFTER_30
+  ) {
+    throw new RangeError('Approved Level 100 ladder does not match OWNER policy');
+  }
+  return Object.freeze({
+    ...ladder,
+    status: 'owner_thresholds_approved_offline',
+    ownerThresholdApprovalRequired: false,
+    // Explicitly separate the XP policy decision from production deployment.
+    productionReady: false
+  });
+}
