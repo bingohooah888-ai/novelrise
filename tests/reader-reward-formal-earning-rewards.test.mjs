@@ -223,7 +223,8 @@ test('per-episode one-time comment key is shared across comment IDs', () => {
 
 test('JST month boundary cannot be faked by a UTC calendar assumption', () => {
   const justAfterMidnightJst={...comment,created_at:'2027-01-31T15:00:01Z'};
-  const q=quoteComment({verifiedComment:justAfterMidnightJst,verifiedPolicyMonth:'2027-02'});
+  const earlierRead={serverVerified:true,readerId:userId,episodeId:'456',qualifiedAt:'2027-01-31T14:00:00Z'};
+  const q=quoteComment({verifiedComment:justAfterMidnightJst,verifiedCommentReadEvent:earlierRead,verifiedPolicyMonth:'2027-02'});
   assert.equal(q.status,'reward_quote_only');
-  assert.equal(quoteComment({verifiedComment:justAfterMidnightJst,verifiedPolicyMonth:'2027-01'}).status,'month_policy_mismatch');
+  assert.equal(quoteComment({verifiedComment:justAfterMidnightJst,verifiedCommentReadEvent:earlierRead,verifiedPolicyMonth:'2027-01'}).status,'month_policy_mismatch');
 });
