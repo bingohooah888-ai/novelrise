@@ -201,6 +201,9 @@ export function quoteFormalCommentPointReward({
   ) {
     return Object.freeze({ status: 'comment_not_visible' });
   }
+  if (readTimestamp(verifiedComment.created_at, 'Comment creation') < auth.releaseAtMs) {
+    return Object.freeze({ status: 'pre_release_not_eligible' });
+  }
   if (!Number.isSafeInteger(verifiedComment.episode_id) ||
       verifiedComment.episode_id <= 0) {
     return Object.freeze({ status: 'episode_required' });
