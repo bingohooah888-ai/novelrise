@@ -9,6 +9,16 @@ phase: 02-07-05
 last_reviewed_jst: 2026-11-10
 <!-- CONTINUITY_FINGERPRINT_END -->
 
+## 2026-11-10 オフラインでのGate A〜C統合（管理人承認前）
+
+- **最新確認**：main `95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3`。PR #2825のHEADは作業着手時`14b9a0773a042f833e2d3d4f830eacf8a0e6f329`（Draft）。直近main追加差分はAnalytics CSSのみでGate A〜Cの検査コードとの競合なし。Staging `staging/ai-02-07-05-gatebc-20261105` はmainより**43コミット古い**。PRへのmain同期やStagingブランチの変更は禁止のまま。
+- **実装**：既存`protected-runner-offline-drill.mjs`に`inspect020705CombinedGateABCOffline`を追加。既存のPreview事前確認、独立Supervisor観測、保護Runnerの6証拠を**同じmain SHA・Staging ref・Preview・管理人・作品・承認コメント・run ID**で整合させる。既知のブランチ不一致・共通PreviewのSecret未分離があれば後段の観測コールバックを呼ばず`PREVIEW_PRECONDITIONS_NO_GO`。スコープ混同・不正観測では機密を伏せた一律拒否。既存のSupervisorやRunnerは再実装していない。
+- **新規対象試験**：A〜Cの合成証拠整合、旧SHA、共通Previewキー、Owner/Previewスコープ混同、観測例外でのfail-closedを**5/5 PASS**。オフライン・純粋な合成入力で、ネットワーク/Watchdog起動/DB/Secret/外部Modelアクセスなし。既存の有効な合格試験を無意味に再実行しない。
+- **正確な完了区別**：これは**オフラインの照合処理が動作する状態**であり、独立Watchdogの実配備・revoke/cleanup、認証済み観測源、Vercel Previewの資格分離、実JWT、保護された実行Workflow、原子claim、10円以内の有料AI1回は**すべて未実証**。単体検査に合格しても`authorizesExecution`/`authorizesMutation`/`authorizesPaidCall`は全てfalse。正式Gate A〜Eは**0/5**。
+- **残件と承認順**：①既存Watchdogに外部資格情報・独立死活監視・停止/清掃/zero censusを結線し費用/最小権限を確証、②Productionと共有しない専用Staging資格・最新SHA整合とPreview保護を確証、③承認済みのone-shot実Runner経路へ実JWT/claim/Provider/停止を結線して単発実証。この3点は環境・SHA・費用・回数・停止条件が確定するまで**外部操作承認を要求しない**。main統合・Preview作成・環境変数変更・DB書込・有料AIは現在禁止。
+
+
+
 ## 2026-11-10 最新main・Draft PR #2825 事前確認（Feature First）
 
 - **監査基準（読み取り専用）**：main `b826679b35862580d8097d7ddf95be3243500237`、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`、Draft PR #2825 HEAD `bbd639ba55a1862e49d4f536fccb0876f795062b`。PRはDraft・未統合（main/Productionへのコード反映ではない）。ボードの新fingerprintはmainの**観測値**であり、PRをmergeしてよい承認ではない。
