@@ -105,13 +105,13 @@ test('content/anti-spam requires explicit server-reviewed attestation, not clien
 });
 
 test('read evidence uses a same-transaction INSERT trigger rather than brittle xmin comparisons', () => {
-  assert.match(sql,/after insert on public\.valid_read_events/);
-  assert.match(sql,/returns trigger/);
-  assert.match(sql,/new\.reader_id/);
-  assert.doesNotMatch(sql,/txid_current\(\)/);
-  assert.doesNotMatch(sql,/read_transaction_not_matched/);
+  assert.match(sql, /after insert on public\.valid_read_events/);
+  assert.match(sql, /returns trigger/);
+  assert.match(sql, /new\.reader_id/);
+  assert.doesNotMatch(sql, /txid_current\(\)/);
+  assert.doesNotMatch(sql, /read_transaction_not_matched/);
 });
-test('future and pre-release comments cannot claim formal points or block earlier paid order',()=>{
-  assert.match(sql,/future_comment_not_eligible/);
-  assert.match(sql,/prior.created_at>=p_release_at/);
+test('future and pre-release comments cannot claim formal points or block earlier paid order', () => {
+  assert.match(sql, /future_comment_not_eligible/);
+  assert.match(sql, /prior.created_at>=p_release_at/);
 });
