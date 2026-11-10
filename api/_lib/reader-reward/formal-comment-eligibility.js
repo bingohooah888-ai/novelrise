@@ -86,7 +86,13 @@ export function reviewFormalEpisodeComment({
     return blocked;
   }
   if (reviewerDecision === 'ineligible') {
-    return Object.freeze({ status: 'reviewed_ineligible', mayAward: false });
+    return Object.freeze({
+      status: 'reviewed_ineligible',
+      mayAward: false,
+      mayRecordDecision: true,
+      commentId: comment.id,
+      verifiedModerationRule: reviewerRule
+    });
   }
   return Object.freeze({
     status: 'reviewed_eligible',
