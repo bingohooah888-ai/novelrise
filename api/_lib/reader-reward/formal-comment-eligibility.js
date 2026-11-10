@@ -34,8 +34,9 @@ export function reviewFormalEpisodeComment({
     return blocked;
   }
   if (
-    comment.deleted_at != null ||
-    comment.author_hidden_at != null ||
+    (comment.deleted_at !== null && comment.deleted_at !== undefined) ||
+    (comment.author_hidden_at !== null &&
+      comment.author_hidden_at !== undefined) ||
     typeof comment.body !== 'string'
   ) {
     return Object.freeze({
