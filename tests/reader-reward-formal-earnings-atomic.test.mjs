@@ -105,3 +105,13 @@ test('content/anti-spam requires explicit server-reviewed attestation, not clien
   assert.doesNotMatch(sql, /p_comment_evidence_verified/i);
   assert.doesNotMatch(sql, /p_comment_eligibility_approved/i);
 });
+
+test('read evidence requires the same PostgreSQL transaction, not just recent time', () => {
+  assert.match(sql,/select xmin::text::bigint into v_qualified_tx/);
+  assert.match(sql,/v_qualified_tx is distinct from txid_current\(\)/);
+  assert.match(sql,/read_transaction_not_matched/);
+});
+test('future and pre-release comments cannot claim formal points or block earlier paid order',()=>{
+  assert.match(sql,/future_comment_not_eligible/);
+  assert.match(sql,/prior.created_at>=p_release_at/);
+});
