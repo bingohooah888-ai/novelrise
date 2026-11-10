@@ -101,7 +101,7 @@ test('only a positively labeled test mock can simulate a private RPC; never exec
 
 test('trusted server executor is disabled by default; production cutover and service auth required',async()=>{
  let calls=0;
- const db={rpc:async()=>{calls++;return {data:{status:'recorded'},error:null}}};
+ const db={callPrivateFunction:async()=>{calls++;return {data:{status:'recorded'},error:null}}};
  const p=plan();
  const base={
    plan:p,db,
@@ -128,11 +128,11 @@ test('trusted internal executor invokes only approved private RPC with committed
  const p=plan();
  const out=await executeApprovedFormalEarningConnection({
    plan:p,
-   db:{rpc:async(name,params,settings)=>{
+   db:{callPrivateFunction:async({schema,functionName,params})=>{
      called++;
-     assert.equal(name,'award_read_points_draft');
+     assert.equal(functionName,'award_read_points_draft');
      assert.deepEqual(params,p.params);
-     assert.equal(settings.schema,'novelight_formal_private');
+     assert.equal(schema,'novelight_formal_private');
      return {data:{status:'recorded'},error:null};
    }},
    launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
@@ -146,7 +146,7 @@ test('trusted internal executor invokes only approved private RPC with committed
 test('trusted internal executor returns a non-issuance result when private RPC errors',async()=>{
  const p=plan({eventType:'novel_episode_comment_reviewed',commentModerationApproved:true});
  const result=await executeApprovedFormalEarningConnection({
-   plan:p,db:{rpc:async()=>({data:null,error:{message:'mock failure'}})},
+   plan:p,db:{callPrivateFunction:async()=>({data:null,error:{message:'mock failure'}})},
    launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
    trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
  });
