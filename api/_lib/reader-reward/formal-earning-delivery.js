@@ -2,6 +2,8 @@
 // Reuses existing internal handler; no cron, queue, endpoint, storage or
 // external provider is created. DB event_key remains the idempotency source.
 import { reviewFormalEpisodeComment } from './formal-comment-eligibility.js';
+import { createFormalCanonicalSourceReader } from './formal-earning-source-reader.js';
+import { createFormalEarningInternalHandler } from './formal-earning-server-connection.js';
 
 const RETRYABLE = new Set([
   'private_rpc_failed',
@@ -112,5 +114,63 @@ export async function deliverFormalRewardBatch({
   return Object.freeze({
     status: 'dry_run_or_authorized_internal_batch',
     results: Object.freeze(results)
+  });
+}
+
+/**
+ * Private, unregistered formal delivery entrypoint. One invocation reads
+ * canonical DB event evidence and invokes the existing transactional writer
+ * only if the separately approved formal launch configuration is enabled.
+ * A future trusted service must own retries across invocations; this function
+ * creates neither a scheduler nor a durable outbox.
+ */
+export function createFormalEarningDeliveryPipeline({
+  postgresClient,
+  releaseTimestampIso,
+  launchConfiguration,
+  trustedServerAuthorization
+}) {
+  const reader = createFormalCanonicalSourceReader({ postgresClient });
+  const handler = createFormalEarningInternalHandler({
+    postgresClient,
+    releaseTimestampIso,
+    launchConfiguration,
+    trustedServerAuthorization
+  });
+  return Object.freeze({
+    async deliverVerifiedEvent({
+      eventType,
+      eventId,
+      moderationDecision,
+      moderationRule,
+      trustedModeratorVerified
+    }) {
+      const source = await reader.load(eventType, eventId);
+      if (source.status !== 'canonical_source_verified') {
+        return Object.freeze({
+          status: source.status,
+          mayIssuePoints: false
+        });
+      }
+      const authorizedModerator =
+        trustedModeratorVerified === true &&
+        trustedServerAuthorization?.verifiedByTrustedServer === true;
+      const event = {
+        eventType,
+        verifiedEventId: eventId,
+        sourceCommitted: true,
+        authoritativeEvidenceVerified: true,
+        trustedSourceVerified: true,
+        verifiedComment: source.verifiedComment,
+        verifiedPriorUserComments: source.verifiedPriorUserComments,
+        reviewerDecision: authorizedModerator ? moderationDecision : undefined,
+        reviewerRule: authorizedModerator ? moderationRule : undefined
+      };
+      const batch = await deliverFormalRewardBatch({
+        events: [event],
+        internalHandler: handler
+      });
+      return batch.results[0];
+    }
   });
 }
