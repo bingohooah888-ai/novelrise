@@ -181,6 +181,37 @@ begin
  if v_attest is distinct from true then
    return jsonb_build_object('status','content_review_pending_or_rejected');
  end if;
+ -- First eligible means earliest eligible *chapter* comment by server timestamp.
+ -- Hold later comments while earlier visible qualifying comments remain
+ -- unreviewed, rather than rewarding a later comment and then an earlier one.
+ if exists(
+   select 1 from public.novel_comments prior
+   left join novelight_formal_private.scout_comment_eligibility review
+     on review.comment_id=prior.id
+   where prior.user_id=v_comment.user_id
+     and prior.episode_id=v_comment.episode_id
+     and (prior.created_at,prior.id)<(v_comment.created_at,v_comment.id)
+     and prior.deleted_at is null and prior.author_hidden_at is null
+     and exists(select 1 from public.valid_read_events earlier_read
+       where earlier_read.reader_id=prior.user_id
+         and earlier_read.episode_id_snapshot=prior.episode_id::text
+         and earlier_read.qualified_at<=prior.created_at)
+     and review.eligible is null
+ ) then return jsonb_build_object('status','earlier_comment_review_pending'); end if;
+ if exists(
+   select 1 from public.novel_comments prior
+   join novelight_formal_private.scout_comment_eligibility review
+     on review.comment_id=prior.id and review.eligible=true
+   where prior.user_id=v_comment.user_id
+     and prior.episode_id=v_comment.episode_id
+     and (prior.created_at,prior.id)<(v_comment.created_at,v_comment.id)
+     and prior.deleted_at is null and prior.author_hidden_at is null
+     and exists(select 1 from public.valid_read_events earlier_read
+       where earlier_read.reader_id=prior.user_id
+         and earlier_read.episode_id_snapshot=prior.episode_id::text
+         and earlier_read.qualified_at<=prior.created_at)
+ ) then return jsonb_build_object('status','earlier_eligible_comment_exists'); end if;
+
  -- Serialize both monthly quota and reader/episode dedupe on one state row.
  select * into v_level from novelight_formal_private.scout_level_state
  where user_id=v_comment.user_id for update;
