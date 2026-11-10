@@ -377,16 +377,25 @@ $earning_enqueue$;
 -- A trusted moderator resolves the existing pending decision.
 -- No fake automatic semantic classification. No changes to settled verdicts.
 
--- Formal-only comment source hook. Source INSERT and review_pending claim are
--- atomic, so server restarts do not lose newly published chapter comments.
--- It is never applied to the existing beta deployment.
+-- Formal-only comment source hook. The existing episode-comment RPC first
+-- INSERTs a novel comment with episode_id NULL, then UPDATEs episode_id.
+-- Enqueue on INSERT with a chapter id OR the first NULL-to-chapter UPDATE;
+-- either transition and the review_pending claim are atomic in that source
+-- transaction. Later chapter reassignment must not silently re-enqueue.
+-- This trigger is NOT applied to the existing beta deployment.
 create or replace function novelight_formal_private.on_episode_comment_formal_draft()
 returns trigger language plpgsql security definer set search_path=''
 as $comment_enqueue$
 begin
  if new.episode_id is null then return new; end if;
- if not exists(select 1 from novelight_formal_private.scout_level_state
-               where user_id=new.user_id) then return new; end if;
+ -- Chapter scope in the existing post RPC is finalized by a subsequent
+ -- UPDATE. Only the first NULL -> non-NULL change is eligible to enqueue.
+ if tg_op='UPDATE' then
+   if old.episode_id is not null then return new; end if;
+ end if;
+ -- Do not discard a canonical comment when its formal Level state has not
+ -- yet been initialized. Reward eligibility remains blocked until a trusted
+ -- state exists, but the durable review record must not be lost.
  perform novelight_formal_private.enqueue_earning_draft(
    'novel_episode_comment_reviewed',new.id
  );
@@ -395,7 +404,7 @@ end
 $comment_enqueue$;
 
 create trigger scout_formal_comment_enqueue
-after insert on public.novel_comments
+after insert or update of episode_id on public.novel_comments
 for each row execute function novelight_formal_private.on_episode_comment_formal_draft();
 
 create or replace function novelight_formal_private.decide_earning_review_draft(
@@ -467,7 +476,8 @@ begin
                 'self_or_missing_author','monthly_comment_cap_reached') then
    v_final_state:='completed';v_retry:=false;
  elsif p_result in ('private_rpc_failed','formal_level_unavailable',
-                    'read_time_level_unverified','earlier_comment_review_pending',
+                    'formal_state_missing','read_time_level_unverified',
+                    'earlier_comment_review_pending',
                     'content_review_pending_or_rejected') then
    v_final_state:='retry';v_retry:=true;
  else

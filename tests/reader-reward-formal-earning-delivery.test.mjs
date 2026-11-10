@@ -216,3 +216,24 @@ test('verified ineligible verdict is persisted as a review without awarding', as
   assert.equal(calls.length, 1);
   assert.equal(calls[0].commentContentEligible, false);
 });
+
+test('temporarily missing formal state is retryable rather than forgotten', async () => {
+  let attempts = 0;
+  const result = await deliverFormalRewardBatch({
+    events: [{ ...evt, reviewerDecision: 'eligible' }],
+    maxAttempts: 2,
+    internalHandler: {
+      handleCommittedEvent: async () => {
+        attempts++;
+        return {
+          status: 'private_rpc_completed',
+          databaseStatus: 'formal_state_missing',
+          mayIssuePoints: false
+        };
+      }
+    }
+  });
+  assert.equal(attempts, 2);
+  assert.equal(result.results[0].needsReplay, true);
+  assert.equal(result.results[0].mayIssuePoints, false);
+});

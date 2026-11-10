@@ -11,6 +11,7 @@ const RETRYABLE = new Set([
   'earlier_comment_review_pending',
   'content_review_pending_or_rejected',
   'formal_level_unavailable',
+  'formal_state_missing',
   'server_evidence_pending',
   'comment_moderation_pending'
 ]);

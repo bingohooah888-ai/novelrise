@@ -39,7 +39,10 @@ test('future-only canonical INSERT triggers enroll held reader XP and chapter co
     /v_award->>'status' not in \('recorded','already_recorded'\)/
   );
   assert.match(sql, /create trigger scout_formal_comment_enqueue/);
-  assert.match(sql, /after insert on public\.novel_comments/);
+  assert.match(
+    sql,
+    /after insert or update of episode_id on public\.novel_comments/
+  );
   assert.match(
     sql,
     /perform novelight_formal_private\.enqueue_earning_draft\(/
@@ -83,4 +86,42 @@ test('no cron, published endpoint, production migration or live beta change', ()
   assert.match(sql, /FORMAL-RELEASE DRAFT ONLY\. NOT A MIGRATION/);
   assert.doesNotMatch(sql, /create\s+extension/i);
   assert.doesNotMatch(sql, /create\s+or\s+replace\s+function\s+public\./i);
+});
+
+test('existing episode comment RPC sets chapter scope after insert; formal draft enqueue covers it exactly once', () => {
+  const episodePostingSql = readFileSync(
+    new URL(
+      '../supabase/migrations/20260930030000_episode_comments.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(
+    episodePostingSql,
+    /v_result\s*:=\s*public\.novelight_post_novel_comment\(/i
+  );
+  assert.match(
+    episodePostingSql,
+    /update public\.novel_comments\s+set episode_id\s*=\s*v_episode_id/i
+  );
+
+  assert.match(sql, /if new\.episode_id is null then return new; end if/);
+  assert.match(
+    sql,
+    /if tg_op='UPDATE' then\s+if old\.episode_id is not null then return new; end if;/
+  );
+  assert.match(
+    sql,
+    /after insert or update of episode_id on public\.novel_comments/
+  );
+  assert.match(sql, /on conflict\(event_type,event_id\) do nothing/);
+  const hook = sql.match(
+    /as \$comment_enqueue\$([\s\S]*?)\$comment_enqueue\$/
+  )?.[1];
+  assert.ok(hook, 'future-only trigger body must exist');
+  assert.doesNotMatch(hook, /not exists\([\s\S]*?scout_level_state/);
+  assert.doesNotMatch(
+    episodePostingSql,
+    /insert into novelight_formal_private\.scout_earning_delivery/i
+  );
 });
