@@ -17,7 +17,10 @@ test('formal persistence draft cannot run automatically as a migration', () => {
 });
 
 test('private state and durable XP/review unique claims exist', () => {
-  assert.match(sql, /create table novelight_formal_private\.scout_level_state/i);
+  assert.match(
+    sql,
+    /create table novelight_formal_private\.scout_level_state/i
+  );
   assert.match(sql, /current_level smallint not null/i);
   assert.match(sql, /highest_level smallint not null/i);
   assert.match(sql, /level_progress_xp integer not null/i);
@@ -30,15 +33,32 @@ test('private state and durable XP/review unique claims exist', () => {
     'scout_xp_claim',
     'scout_review_claim'
   ]) {
-    assert.match(sql, new RegExp('alter table novelight_formal_private\\.' + table + ' enable row level security', 'i'));
+    assert.match(
+      sql,
+      new RegExp(
+        'alter table novelight_formal_private\\.' +
+          table +
+          ' enable row level security',
+        'i'
+      )
+    );
   }
 });
 
 test('formal XP pathway is gated to future service role and uses one locked state', () => {
-  assert.match(sql, /grant execute on function novelight_formal_private\.apply_scout_xp\(uuid\)\s+to service_role/i);
-  assert.match(sql, /revoke all on schema novelight_formal_private from public, anon, authenticated/i);
+  assert.match(
+    sql,
+    /grant execute on function novelight_formal_private\.apply_scout_xp\(uuid\)\s+to service_role/i
+  );
+  assert.match(
+    sql,
+    /revoke all on schema novelight_formal_private from public, anon, authenticated/i
+  );
   assert.match(sql, /for update/i);
-  assert.match(sql, /if exists\(select 1 from novelight_formal_private\.scout_xp_claim/i);
+  assert.match(
+    sql,
+    /if exists\(select 1 from novelight_formal_private\.scout_xp_claim/i
+  );
   assert.match(sql, /v_required := 400/i);
   assert.match(sql, /level_100_surplus_policy_pending/i);
   assert.match(sql, /revision=revision\+1/i);
@@ -52,7 +72,10 @@ test('30-day review counts all XP kinds while preserving the approved floor', ()
   assert.match(sql, /when v_next<v_state\.current_level then 0/i);
   assert.match(sql, /scout_review_claim/i);
   assert.match(sql, /p_as_of > clock_timestamp\(\)/i);
-  assert.doesNotMatch(sql, /xp_kind <> 'light_seed_discovery'\s*;\s*if v_negative/i);
+  assert.doesNotMatch(
+    sql,
+    /xp_kind <> 'light_seed_discovery'\s*;\s*if v_negative/i
+  );
 });
 
 test('beta handoff preserves Level 30 cap and excludes historical discovery XP', () => {
