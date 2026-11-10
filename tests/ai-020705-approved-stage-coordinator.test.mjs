@@ -7,7 +7,7 @@ import { coordinate020705ProtectedStagingTrial } from
   '../.github/staging-ai-02-07-05/approved-stage-coordinator.mjs';
 // prettier-ignore
 import { createPaidTrialOneShotOpenAiProvider } from
-  '../api/_lib/ai/paid-trial-one-shot-provider.js';
+  '../.github/staging-ai-02-07-05/paid-trial-one-shot-provider.mjs';
 
 // prettier-ignore
 const NOW = Date.parse('2026-11-01T08:00:00Z');

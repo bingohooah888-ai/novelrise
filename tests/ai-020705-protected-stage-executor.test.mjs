@@ -8,7 +8,7 @@ import { create020705ProtectedStageExecutor } from
   '../.github/staging-ai-02-07-05/protected-stage-executor.mjs';
 // prettier-ignore
 import { createPaidTrialOneShotOpenAiProvider } from
-  '../api/_lib/ai/paid-trial-one-shot-provider.js';
+  '../.github/staging-ai-02-07-05/paid-trial-one-shot-provider.mjs';
 
 const NOW = Date.parse('2026-11-01T08:00:00Z');
 const OWNER_ID = '11111111-1111-4111-8111-111111111111';
