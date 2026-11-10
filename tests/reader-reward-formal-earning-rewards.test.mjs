@@ -182,7 +182,7 @@ test('comment requires server approved period membership after release', () => {
   );
   assert.equal(
     quoteComment({ verifiedCommentInsidePolicyMonth: false }).status,
-    'month_policy_pending'
+    'month_policy_mismatch'
   );
   assert.equal(
     quoteComment({
