@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
 
@@ -288,4 +290,84 @@ test('declined initial preview never exposes controls, a review or a paid call',
   assert.equal(f.requests[0].options.method, 'GET');
   assert.equal(f.main.children.length, 0);
   assert.equal(find(f.main, 'novelight-ai-bible-reload'), null);
+});
+
+test('offline owner studio displays trusted chapter order through an injected reader', async () => {
+  const f = rig();
+  const calls = [];
+  const joined = await attach({
+    ...args(f),
+    readOutline: async ({ novelId, preview }) => {
+      calls.push([novelId, preview.novelId]);
+      return [
+        {
+          episode_id: 100,
+          episode_number: 3,
+          chapter_id: 5,
+          chapter_title: '第一章',
+          chapter_position: 1
+        }
+      ];
+    }
+  });
+  assert.equal(joined, true);
+  assert.deepEqual(calls, [[9, 9]]);
+  assert.equal(f.requests.length, 1);
+  assert.equal(f.requests[0].url, '/api/ai-owner-novel-bible?novel_id=9');
+  assert.match(f.main.textContent, /第一章／第3話／参照エピソードID：100/);
+  assert.match(f.main.textContent, /初回の非公開メモ/);
+  f.revoke();
+  assert.equal(f.main.textContent, '');
+});
+
+test('offline outline reader refuses an account switch while the read is pending', async () => {
+  const f = rig();
+  let resolveOutline;
+  const outlined = new Promise((resolve) => {
+    resolveOutline = resolve;
+  });
+  const pending = attach({
+    ...args(f),
+    readOutline: async () => outlined
+  });
+  await delay(0);
+  f.switchOwner();
+  resolveOutline([
+    {
+      episode_id: 100,
+      episode_number: 3,
+      chapter_id: null,
+      chapter_title: null,
+      chapter_position: null
+    }
+  ]);
+  assert.equal(await pending, false);
+  assert.equal(f.main.children.length, 0);
+  assert.doesNotMatch(f.main.textContent, /非公開メモ|第3話/);
+});
+
+test('offline outline denial and missing dependency do not expose a private owner section', async () => {
+  for (const readOutline of [
+    async () => null,
+    async () => [],
+    'not-a-function'
+  ]) {
+    const f = rig();
+    assert.equal(await attach({ ...args(f), readOutline }), false);
+    assert.equal(f.main.children.length, 0);
+    assert.equal(f.main.textContent, '');
+  }
+});
+
+test('deployed story notes cannot activate the optional offline outline dependency', () => {
+  const page = readFileSync(
+    new URL('../story-notes.html', import.meta.url),
+    'utf8'
+  );
+  assert.match(
+    page,
+    /NovelightAiBibleOwnerStudio\.attach\(\{client,novelId,ownerId:/
+  );
+  assert.doesNotMatch(page, /readOutline\s*:/);
+  assert.doesNotMatch(page, /novelight_novel_outline/);
 });
