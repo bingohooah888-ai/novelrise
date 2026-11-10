@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <title>NOVELIGHT SCOUT REWARD — 非公開画面プレビュー</title>
+    <link rel="stylesheet" href="../../assets/formal-scout-reward-ui.css" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        background: #0c0e1c;
+        color: #eee;
+        min-height: 100vh;
+        margin: 0;
+        padding: 24px;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Yu Gothic', sans-serif;
+      }
+      .demo-head {
+        max-width: 1050px;
+        margin: 0 auto 20px;
+        display: flex;
+        gap: 15px;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .demo-head strong {
+        font-size: 14px;
+      }
+      .demo-head span {
+        font-size: 12px;
+        color: #c6a969;
+      }
+      .demo-head button {
+        border: 1px solid #6a6287;
+        border-radius: 9px;
+        padding: 10px 14px;
+        background: #29233e;
+        color: #fff;
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+      }
+      .demo-note {
+        max-width: 1050px;
+        color: #a7a6b8;
+        font-size: 12px;
+        line-height: 1.7;
+        margin: 18px auto 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-head">
+      <div>
+        <strong>NOVELIGHT / SCOUT REWARD</strong>
+        <div>
+          <span>未公開・開発用プレビュー・すべて架空のサンプルデータ</span>
+        </div>
+      </div>
+      <button id="demoBalance" type="button">残高不足の表示に切り替える</button>
+    </div>
+    <main id="app" aria-label="読者報酬の開発用画面"></main>
+    <p class="demo-note">
+      このページは正式版の画面仕様を確認するためのローカルプレビューです。実際のユーザー残高・認証情報・DBは参照せず、Point付与、申請、交換、AI処理、外部通信を行いません。実際のサイトには未接続です。
+    </p>
+    <script src="../../assets/formal-scout-reward-ui.js"></script>
+    <script>
+      (function () {
+        const first = {
+          serverVerified: true,
+          formalEnabled: false,
+          exchangeEnabled: false,
+          giftProviderReady: false,
+          account: {
+            level: 72,
+            progressXp: 320,
+            requiredXp: 400,
+            earnedXpInPeriod: 164,
+            nextMaintenanceAt: '2027-01-15T00:00:00Z'
+          },
+          wallet: {
+            availablePoints: 38500,
+            exchangeEligiblePoints: 31500,
+            heldPoints: 1200
+          },
+          history: [
+            {
+              kind: 'read',
+              status: 'confirmed',
+              points: 6,
+              at: '2027-01-05T05:00:00Z'
+            },
+            {
+              kind: 'comment',
+              status: 'confirmed',
+              points: 20,
+              at: '2027-01-04T05:00:00Z'
+            },
+            {
+              kind: 'level',
+              status: 'confirmed',
+              points: 50,
+              at: '2027-01-03T05:00:00Z'
+            },
+            {
+              kind: 'exchange',
+              status: 'pending',
+              points: -30000,
+              at: '2027-01-02T05:00:00Z'
+            }
+          ],
+          aiFeatures: [
+            {
+              id: 'story-analysis',
+              name: '作品分析',
+              pricePoints: null,
+              approved: false
+            },
+            {
+              id: 'writing-assist',
+              name: '執筆支援',
+              pricePoints: null,
+              approved: false
+            }
+          ]
+        };
+        let insufficient = false;
+        const panel = window.NovelightFormalScoutReward.createRewardReaderPanel(
+          {
+            root: document.getElementById('app'),
+            fetchSnapshot: async () => ({
+              ...first,
+              wallet: insufficient
+                ? {
+                    availablePoints: 12500,
+                    exchangeEligiblePoints: 5000,
+                    heldPoints: 1200
+                  }
+                : first.wallet
+            })
+          }
+        );
+        const toggle = document.getElementById('demoBalance');
+        toggle.addEventListener('click', () => {
+          insufficient = !insufficient;
+          toggle.textContent = insufficient
+            ? '通常残高に戻す'
+            : '残高不足の表示に切り替える';
+          panel.reload();
+        });
+      })();
+    </script>
+  </body>
+</html>
