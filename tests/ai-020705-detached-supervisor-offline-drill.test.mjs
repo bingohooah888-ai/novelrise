@@ -95,6 +95,11 @@ test('detached dry-run yields advisory only, never mutation capability', async()
   assert.equal(x.provenanceAuthenticated,false);
   assert.equal(x.separatelyDeployedWatchdogVerified,false);
   assert.equal(x.requiresSeparateOwnerApproval,true);
+  assert.ok(x.missingLiveDependencies.includes(
+    'STAGING_ONLY_KILL_REVOKE_CLEANUP_CAPABILITY'));
+  assert.ok(x.missingLiveDependencies.includes(
+    'INDEPENDENT_ZERO_CENSUS_AND_COST_BOUND'));
+  assert.equal(x.missingLiveDependencies.length, 5);
 });
 // prettier-ignore
 test('missing detached heartbeat blocks any recovery advice', async()=>{

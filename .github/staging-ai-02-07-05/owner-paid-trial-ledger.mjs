@@ -13,6 +13,12 @@ const APPROVAL_KEYS = [
   'model', 'novelId', 'previewDeploymentId', 'provider',
   'stagingProjectRef'
 ].sort();
+const CANDIDATE_KEYS = [
+  ...APPROVAL_KEYS, 'approvalIssueNumber', 'candidateSha',
+  'repository', 'runId', 'stagingBranch'
+].sort();
+const BRANCH = /^staging\/ai-02-07-05-[a-z0-9-]+$/u;
+const REPO = 'bingohooah888-ai/novelrise';
 
 function deny() {
   throw new Error('AI_020705_OWNER_LEDGER_DENIED');
@@ -58,8 +64,25 @@ export function inspect020705OwnerLedger({ comments, approvalCommentId, expected
   if (approvals.length !== 1 || !isOwner(approvals[0])) deny();
   const approved = payload(approvals[0].body, 'APPROVE');
   const expiry = Date.parse(approved?.expiresAt);
+  const candidate = approved?.candidateSha !== undefined ||
+    approved?.stagingBranch !== undefined ||
+    expected?.candidateSha !== undefined ||
+    expected?.stagingBranch !== undefined;
   if (
-    !exactKeys(approved, APPROVAL_KEYS) ||
+    !exactKeys(approved, candidate ? CANDIDATE_KEYS : APPROVAL_KEYS) ||
+    (candidate && (
+      !SHA.test(approved?.candidateSha ?? '') ||
+      approved.candidateSha === approved.mainSha ||
+      !BRANCH.test(approved?.stagingBranch ?? '') ||
+      approved.repository !== REPO ||
+      approved.approvalIssueNumber !== 294 ||
+      !Number.isSafeInteger(approved.runId) || approved.runId < 1 ||
+      expected?.candidateSha !== approved.candidateSha ||
+      expected?.stagingBranch !== approved.stagingBranch ||
+      expected?.repository !== REPO ||
+      expected?.approvalIssueNumber !== 294 ||
+      expected?.runId !== approved.runId
+    )) ||
     approved.confirmation !== 'STAGING PAID 1 CALL APPROVED' ||
     approved.approvalScope !== 'synthetic-one-provider-one-call-only' ||
     approved.provider !== 'openai' ||
@@ -100,6 +123,11 @@ export function inspect020705OwnerLedger({ comments, approvalCommentId, expected
   return Object.freeze({
     approvalCommentId,
     mainSha: approved.mainSha,
+    ...(candidate ? {
+      candidateSha: approved.candidateSha,
+      stagingBranch: approved.stagingBranch,
+      runId: approved.runId
+    } : {}),
     previewDeploymentId: approved.previewDeploymentId,
     expiresAt: approved.expiresAt,
     capMicros: approved.capMicros,
@@ -137,6 +165,10 @@ export async function claim020705OwnerApproval({
   const claim = {
     approvalCommentId,
     mainSha: snapshot.mainSha,
+    ...(snapshot.candidateSha ? {
+      candidateSha: snapshot.candidateSha,
+      stagingBranch: snapshot.stagingBranch
+    } : {}),
     previewDeploymentId: snapshot.previewDeploymentId,
     runId
   };
@@ -219,6 +251,8 @@ export function verify020705ClaimedOwnerApproval({
     matches[0].user?.login !== 'github-actions[bot]' ||
     payload(matches[0].body, 'CLAIMED')?.runId !== runId ||
     payload(matches[0].body, 'CLAIMED')?.mainSha !== snapshot.mainSha ||
+    payload(matches[0].body, 'CLAIMED')?.candidateSha !== snapshot.candidateSha ||
+    payload(matches[0].body, 'CLAIMED')?.stagingBranch !== snapshot.stagingBranch ||
     payload(matches[0].body, 'CLAIMED')?.previewDeploymentId !==
       snapshot.previewDeploymentId
   ) deny();
