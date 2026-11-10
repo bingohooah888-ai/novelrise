@@ -1,6 +1,9 @@
 // Draft-only formal Scout XP ladder: compile OWNER-supplied cumulative levels
 // into the existing Gate 04 progress-gauge format. Never deploy or select values.
-import { quoteScoutBetaToFormalHandoff, validateScoutBetaThresholds } from './scout-db-compatibility.js';
+import {
+  quoteScoutBetaToFormalHandoff,
+  validateScoutBetaThresholds
+} from './scout-db-compatibility.js';
 import { validateScoutLevelStateSnapshot } from './state-transition.js';
 
 function integer(value) {
@@ -76,15 +79,20 @@ export const FORMAL_SCOUT_LEVEL_100_CUMULATIVE_XP = 37570;
 
 export function compileApprovedScoutFormalXpLadder({ betaThresholdRows }) {
   const beta = validateScoutBetaThresholds(betaThresholdRows);
-  const formalCumulativeRows = Array.from({ length: FORMAL_SCOUT_MAX_LEVEL }, (_, index) => {
-    const level = index + 1;
-    return {
-      level,
-      cumulative_xp: level <= 30
-        ? beta.cumulativeByLevel[level]
-        : beta.cumulativeByLevel[30] + (level - 30) * FORMAL_SCOUT_XP_PER_LEVEL_AFTER_30
-    };
-  });
+  const formalCumulativeRows = Array.from(
+    { length: FORMAL_SCOUT_MAX_LEVEL },
+    (_, index) => {
+      const level = index + 1;
+      return {
+        level,
+        cumulative_xp:
+          level <= 30
+            ? beta.cumulativeByLevel[level]
+            : beta.cumulativeByLevel[30] +
+              (level - 30) * FORMAL_SCOUT_XP_PER_LEVEL_AFTER_30
+      };
+    }
+  );
   const ladder = compileScoutFormalXpLadder({
     betaThresholdRows,
     formalCumulativeRows
@@ -94,7 +102,9 @@ export function compileApprovedScoutFormalXpLadder({ betaThresholdRows }) {
     ladder.requiredXpByLevel[30] !== FORMAL_SCOUT_XP_PER_LEVEL_AFTER_30 ||
     ladder.requiredXpByLevel[99] !== FORMAL_SCOUT_XP_PER_LEVEL_AFTER_30
   ) {
-    throw new RangeError('Approved Level 100 ladder does not match OWNER policy');
+    throw new RangeError(
+      'Approved Level 100 ladder does not match OWNER policy'
+    );
   }
   return Object.freeze({
     ...ladder,
@@ -136,9 +146,7 @@ export function quoteApprovedScoutBetaFormalState({
     lastReviewedWindowEndMs: null,
     revision: 0
   });
-  if (
-    state.levelProgressXp >= ladder.requiredXpByLevel[state.currentLevel]
-  ) {
+  if (state.levelProgressXp >= ladder.requiredXpByLevel[state.currentLevel]) {
     return Object.freeze({
       status: 'beta_progress_mismatch',
       ready: false
