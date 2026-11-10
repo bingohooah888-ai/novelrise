@@ -57,7 +57,7 @@ export async function deliverFormalRewardBatch({
         reviewerDecision: event.reviewerDecision,
         reviewerRule: event.reviewerRule
       });
-      if (!decision.mayAward) {
+      if (!decision.mayAward && decision.mayRecordDecision !== true) {
         results.push(Object.freeze({ status: decision.status, attempts: 0 }));
         continue;
       }
@@ -71,6 +71,7 @@ export async function deliverFormalRewardBatch({
       eventArgs = {
         ...eventArgs,
         commentModerationApproved: true,
+        commentContentEligible: decision.mayAward === true,
         verifiedModerationRule: decision.verifiedModerationRule
       };
     }
