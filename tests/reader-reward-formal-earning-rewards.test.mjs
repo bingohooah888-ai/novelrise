@@ -50,7 +50,12 @@ function quoteComment(overrides = {}) {
     userId,
     verifiedComment: comment,
     verifiedNovelAuthorId: otherId,
-    verifiedCommentReadEvent: { serverVerified: true, readerId: userId, episodeId: '456', qualifiedAt: '2027-02-01T00:55:00Z' },
+    verifiedCommentReadEvent: {
+      serverVerified: true,
+      readerId: userId,
+      episodeId: '456',
+      qualifiedAt: '2027-02-01T00:55:00Z'
+    },
     formalReleaseAtMs,
     evidenceVerified: true,
     commentPolicyApprovedAndEligible: true,
@@ -121,8 +126,23 @@ test('unverified read evidence cannot be rewarded', () => {
     'evidence_incomplete'
   );
   assert.throws(() => quoteRead({ verifiedScoutLevel: 101 }), RangeError);
-  assert.equal(quoteRead({ verifiedReadTimeLevelEvidence: null }).status, 'read_time_level_unverified');
-  assert.equal(quoteRead({ verifiedReadTimeLevelEvidence: {readEventId:readId,readerId:userId,qualifiedAt:read.qualified_at,level:1,revision:10,serverVerified:false} }).status, 'read_time_level_unverified');
+  assert.equal(
+    quoteRead({ verifiedReadTimeLevelEvidence: null }).status,
+    'read_time_level_unverified'
+  );
+  assert.equal(
+    quoteRead({
+      verifiedReadTimeLevelEvidence: {
+        readEventId: readId,
+        readerId: userId,
+        qualifiedAt: read.qualified_at,
+        level: 1,
+        revision: 10,
+        serverVerified: false
+      }
+    }).status,
+    'read_time_level_unverified'
+  );
 });
 test('comment awards exactly 20 Point through the 50th verified claim', () => {
   for (const n of [0, 1, 48, 49]) {
@@ -207,24 +227,77 @@ test('the shared ledger history must be complete and unique', () => {
 });
 
 test('comment needs qualifying chapter-read and excludes self-comment', () => {
-  assert.equal(quoteComment({verifiedComment:{...comment,episode_id:null}}).status,'episode_required');
-  assert.equal(quoteComment({verifiedNovelAuthorId:userId}).status,'self_comment_not_eligible');
-  assert.equal(quoteComment({verifiedCommentReadEvent:null}).status,'valid_read_required');
-  assert.equal(quoteComment({verifiedCommentReadEvent:{serverVerified:true,readerId:userId,episodeId:'456',qualifiedAt:'2027-02-01T01:10:00Z'}}).status,'valid_read_required');
-  assert.equal(quoteComment({verifiedCommentReadEvent:{serverVerified:true,readerId:userId,episodeId:'555',qualifiedAt:'2027-02-01T00:00:00Z'}}).status,'valid_read_required');
+  assert.equal(
+    quoteComment({ verifiedComment: { ...comment, episode_id: null } }).status,
+    'episode_required'
+  );
+  assert.equal(
+    quoteComment({ verifiedNovelAuthorId: userId }).status,
+    'self_comment_not_eligible'
+  );
+  assert.equal(
+    quoteComment({ verifiedCommentReadEvent: null }).status,
+    'valid_read_required'
+  );
+  assert.equal(
+    quoteComment({
+      verifiedCommentReadEvent: {
+        serverVerified: true,
+        readerId: userId,
+        episodeId: '456',
+        qualifiedAt: '2027-02-01T01:10:00Z'
+      }
+    }).status,
+    'valid_read_required'
+  );
+  assert.equal(
+    quoteComment({
+      verifiedCommentReadEvent: {
+        serverVerified: true,
+        readerId: userId,
+        episodeId: '555',
+        qualifiedAt: '2027-02-01T00:00:00Z'
+      }
+    }).status,
+    'valid_read_required'
+  );
 });
 test('per-episode one-time comment key is shared across comment IDs', () => {
-  const first=quoteComment();
-  const later=quoteComment({verifiedComment:{...comment,id:'00000000-0000-4000-8000-000000000099'}});
-  assert.equal(first.eventKey,'formal_comment_reward:'+userId+':456');
-  assert.equal(later.eventKey,first.eventKey);
-  assert.equal(quoteComment({existingLedgerEventKeys:[first.eventKey]}).status,'already_awarded');
+  const first = quoteComment();
+  const later = quoteComment({
+    verifiedComment: { ...comment, id: '00000000-0000-4000-8000-000000000099' }
+  });
+  assert.equal(first.eventKey, 'formal_comment_reward:' + userId + ':456');
+  assert.equal(later.eventKey, first.eventKey);
+  assert.equal(
+    quoteComment({ existingLedgerEventKeys: [first.eventKey] }).status,
+    'already_awarded'
+  );
 });
 
 test('JST month boundary cannot be faked by a UTC calendar assumption', () => {
-  const justAfterMidnightJst={...comment,created_at:'2027-01-31T15:00:01Z'};
-  const earlierRead={serverVerified:true,readerId:userId,episodeId:'456',qualifiedAt:'2027-01-31T14:00:00Z'};
-  const q=quoteComment({verifiedComment:justAfterMidnightJst,verifiedCommentReadEvent:earlierRead,verifiedPolicyMonth:'2027-02'});
-  assert.equal(q.status,'reward_quote_only');
-  assert.equal(quoteComment({verifiedComment:justAfterMidnightJst,verifiedCommentReadEvent:earlierRead,verifiedPolicyMonth:'2027-01'}).status,'month_policy_mismatch');
+  const justAfterMidnightJst = {
+    ...comment,
+    created_at: '2027-01-31T15:00:01Z'
+  };
+  const earlierRead = {
+    serverVerified: true,
+    readerId: userId,
+    episodeId: '456',
+    qualifiedAt: '2027-01-31T14:00:00Z'
+  };
+  const q = quoteComment({
+    verifiedComment: justAfterMidnightJst,
+    verifiedCommentReadEvent: earlierRead,
+    verifiedPolicyMonth: '2027-02'
+  });
+  assert.equal(q.status, 'reward_quote_only');
+  assert.equal(
+    quoteComment({
+      verifiedComment: justAfterMidnightJst,
+      verifiedCommentReadEvent: earlierRead,
+      verifiedPolicyMonth: '2027-01'
+    }).status,
+    'month_policy_mismatch'
+  );
 });
