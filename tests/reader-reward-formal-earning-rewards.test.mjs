@@ -29,7 +29,7 @@ function quoteComment(overrides = {}) {
   return quoteFormalCommentPointReward({
     userId, verifiedComment: comment, formalReleaseAtMs,
     evidenceVerified: true, commentPolicyApprovedAndEligible: true,
-    verifiedUtcMonth: '2027-02', verifiedRewardedCommentsInMonth: 0,
+    verifiedPolicyMonth: 'example-policy-2027-02', policyMonthVerified: true, verifiedCommentInsidePolicyMonth: true, verifiedRewardedCommentsInMonth: 0,
     ledgerHistoryComplete: true, existingLedgerEventKeys: [], ...overrides
   });
 }
@@ -79,9 +79,10 @@ test('comment duplicate, wrong reader, hidden and deleted cannot earn', () => {
   assert.equal(quoteComment({verifiedComment:{...comment,deleted_at:'2027-02-03T00:00:00Z'}}).status,'comment_not_visible');
   assert.equal(quoteComment({verifiedComment:{...comment,author_hidden_at:'2027-02-03T00:00:00Z'}}).status,'comment_not_visible');
 });
-test('comment only qualifies in the verified month after formal release', () => {
-  assert.equal(quoteComment({verifiedUtcMonth:'2027-03'}).status,'month_evidence_incomplete');
-  assert.equal(quoteComment({verifiedComment:{...comment,created_at:'2026-12-31T23:59:00Z'},verifiedUtcMonth:'2026-12'}).status,'pre_release_not_eligible');
+test('comment requires server approved period membership after release', () => {
+  assert.equal(quoteComment({policyMonthVerified:false}).status,'month_policy_pending');
+  assert.equal(quoteComment({verifiedCommentInsidePolicyMonth:false}).status,'month_policy_pending');
+  assert.equal(quoteComment({verifiedComment:{...comment,created_at:'2026-12-31T23:59:00Z'}}).status,'pre_release_not_eligible');
   assert.throws(()=>quoteComment({verifiedRewardedCommentsInMonth:-1}),RangeError);
 });
 test('the shared ledger history must be complete and unique', () => {
