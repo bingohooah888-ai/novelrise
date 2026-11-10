@@ -66,9 +66,17 @@ test('blank and hidden comments excluded; cross-episode identical comments held'
     episode_id: 99
   };
   assert.equal(
+    reviewFormalEpisodeComment({
+      ...baseline,
+      priorUserComments: [other],
+      reviewerDecision: undefined
+    }).status,
+    'repetitive_text_requires_review'
+  );
+  assert.equal(
     reviewFormalEpisodeComment({ ...baseline, priorUserComments: [other] })
       .status,
-    'repetitive_text_requires_review'
+    'reviewed_eligible'
   );
   assert.equal(
     reviewFormalEpisodeComment({

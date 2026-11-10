@@ -10,6 +10,24 @@ function normalise(value) {
     .replace(/\s+/gu, '')
     .toLocaleLowerCase('ja-JP');
 }
+function reviewedRejection(status, commentId, decision, rule) {
+  if (
+    decision === 'ineligible' &&
+    typeof rule === 'string' &&
+    rule.length >= 1 &&
+    rule.length <= 120
+  ) {
+    return Object.freeze({
+      status,
+      mayAward: false,
+      mayRecordDecision: true,
+      commentId,
+      verifiedModerationRule: rule
+    });
+  }
+  return Object.freeze({ status, mayAward: false });
+}
+
 export function reviewFormalEpisodeComment({
   comment,
   priorUserComments,
@@ -39,14 +57,21 @@ export function reviewFormalEpisodeComment({
       comment.author_hidden_at !== undefined) ||
     typeof comment.body !== 'string'
   ) {
-    return Object.freeze({
-      status: 'ineligible_hidden_or_missing',
-      mayAward: false
-    });
+    return reviewedRejection(
+      'ineligible_hidden_or_missing',
+      comment.id,
+      reviewerDecision,
+      reviewerRule
+    );
   }
   const text = normalise(comment.body);
   if (!text) {
-    return Object.freeze({ status: 'ineligible_blank', mayAward: false });
+    return reviewedRejection(
+      'ineligible_blank',
+      comment.id,
+      reviewerDecision,
+      reviewerRule
+    );
   }
   for (const previous of priorUserComments) {
     if (
@@ -66,7 +91,11 @@ export function reviewFormalEpisodeComment({
       previous.episode_id !== comment.episode_id &&
       normalise(previous.body) === text
   );
-  if (exactCrossEpisode && reviewerDecision !== 'ineligible') {
+  if (
+    exactCrossEpisode &&
+    reviewerDecision !== 'eligible' &&
+    reviewerDecision !== 'ineligible'
+  ) {
     return Object.freeze({
       status: 'repetitive_text_requires_review',
       mayAward: false
