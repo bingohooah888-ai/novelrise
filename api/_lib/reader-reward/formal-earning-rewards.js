@@ -130,7 +130,7 @@ export function quoteFormalReadPointReward({
  * has been separately validated by the server. Existing novel_comments
  * is the canonical source; community comments are not eligible by default.
  *
- * Count means CONFIRMED reward ledger claims in the UTC calendar month,
+ * Count means CONFIRMED reward ledger claims in the OWNER-approved policy month,
  * not the number of published comments. A future authorized writer must
  * serialize this count with the unique event-key insert in one transaction.
  */
@@ -142,6 +142,7 @@ export function quoteFormalCommentPointReward({
   commentPolicyApprovedAndEligible,
   verifiedPolicyMonth,
   policyMonthVerified,
+  verifiedCommentInsidePolicyMonth,
   verifiedRewardedCommentsInMonth,
   ledgerHistoryComplete,
   existingLedgerEventKeys
@@ -174,6 +175,7 @@ export function quoteFormalCommentPointReward({
   // The policy month/timezone boundary is not yet OWNER-approved.
   // Do not silently assume UTC, JST or client-calculated calendar months.
   if (policyMonthVerified !== true ||
+      verifiedCommentInsidePolicyMonth !== true ||
       typeof verifiedPolicyMonth !== 'string' ||
       verifiedPolicyMonth.length === 0 ||
       verifiedPolicyMonth.length > 32) {
