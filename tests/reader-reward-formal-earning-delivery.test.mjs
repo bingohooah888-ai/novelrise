@@ -187,17 +187,24 @@ test('only bounded batches and matching reviewed event IDs are processed', async
   );
 });
 
-test('verified ineligible verdict is persisted as a review without awarding',async()=>{
-  const calls=[];
-  const event={...evt,reviewerDecision:'ineligible'};
-  const r=await deliverFormalRewardBatch({events:[event],internalHandler:{
-    handleCommittedEvent:async args=>{
-      calls.push(args);
-      return {status:'private_rpc_completed',databaseStatus:'reviewed_not_eligible',mayIssuePoints:false};
+test('verified ineligible verdict is persisted as a review without awarding', async () => {
+  const calls = [];
+  const event = { ...evt, reviewerDecision: 'ineligible' };
+  const r = await deliverFormalRewardBatch({
+    events: [event],
+    internalHandler: {
+      handleCommittedEvent: async (args) => {
+        calls.push(args);
+        return {
+          status: 'private_rpc_completed',
+          databaseStatus: 'reviewed_not_eligible',
+          mayIssuePoints: false
+        };
+      }
     }
-  }});
-  assert.equal(r.results[0].status,'reviewed_not_eligible');
-  assert.equal(r.results[0].mayIssuePoints,false);
-  assert.equal(calls.length,1);
-  assert.equal(calls[0].commentContentEligible,false);
+  });
+  assert.equal(r.results[0].status, 'reviewed_not_eligible');
+  assert.equal(r.results[0].mayIssuePoints, false);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].commentContentEligible, false);
 });
