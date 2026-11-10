@@ -35,7 +35,12 @@ test('server adapter routes only approved moderated episode comment to DB writer
     verifiedModerationRule: 'verified-source-review-v1'
   });
   assert.equal(p.functionName, 'review_comment_and_award_draft');
-  assert.deepEqual(p.params, { p_comment_id: event, p_release_at: release, p_content_eligible: true, p_reviewer_rule: 'verified-source-review-v1' });
+  assert.deepEqual(p.params, {
+    p_comment_id: event,
+    p_release_at: release,
+    p_content_eligible: true,
+    p_reviewer_rule: 'verified-source-review-v1'
+  });
   assert.equal(p.requiresReadTimeTrigger, null);
   assert.equal(p.mayIssuePoints, false);
 });
@@ -100,57 +105,116 @@ test('only a positively labeled test mock can simulate a private RPC; never exec
   assert.equal(calls, 1);
 });
 
-test('trusted server executor is disabled by default; production cutover and service auth required',async()=>{
- let calls=0;
- const db={callPrivateFunction:async()=>{calls++;return {data:{status:'recorded'},error:null}}};
- const p=plan();
- const base={
-   plan:p,db,
-   launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
-   trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
- };
- for(const override of [
-   {launchConfiguration:{formalEarningsEnabled:false,productionCutoverApproved:true}},
-   {launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:false}},
-   {trustedServerAuthorization:{serviceRoleVerified:false,verifiedByTrustedServer:true}},
-   {trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:false}},
-   {db:null},
-   {plan:{...p,schema:'public'}},
-   {plan:{...p,functionName:'arbitrary'}}
- ]) {
-   const result=await executeApprovedFormalEarningConnection({...base,...override});
-   assert.notEqual(result.status,'private_rpc_completed');
-   assert.equal(result.mayIssuePoints,false);
- }
- assert.equal(calls,0);
+test('trusted server executor is disabled by default; production cutover and service auth required', async () => {
+  let calls = 0;
+  const db = {
+    callPrivateFunction: async () => {
+      calls++;
+      return { data: { status: 'recorded' }, error: null };
+    }
+  };
+  const p = plan();
+  const base = {
+    plan: p,
+    db,
+    launchConfiguration: {
+      formalEarningsEnabled: true,
+      productionCutoverApproved: true
+    },
+    trustedServerAuthorization: {
+      serviceRoleVerified: true,
+      verifiedByTrustedServer: true
+    }
+  };
+  for (const override of [
+    {
+      launchConfiguration: {
+        formalEarningsEnabled: false,
+        productionCutoverApproved: true
+      }
+    },
+    {
+      launchConfiguration: {
+        formalEarningsEnabled: true,
+        productionCutoverApproved: false
+      }
+    },
+    {
+      trustedServerAuthorization: {
+        serviceRoleVerified: false,
+        verifiedByTrustedServer: true
+      }
+    },
+    {
+      trustedServerAuthorization: {
+        serviceRoleVerified: true,
+        verifiedByTrustedServer: false
+      }
+    },
+    { db: null },
+    { plan: { ...p, schema: 'public' } },
+    { plan: { ...p, functionName: 'arbitrary' } }
+  ]) {
+    const result = await executeApprovedFormalEarningConnection({
+      ...base,
+      ...override
+    });
+    assert.notEqual(result.status, 'private_rpc_completed');
+    assert.equal(result.mayIssuePoints, false);
+  }
+  assert.equal(calls, 0);
 });
-test('trusted internal executor invokes only approved private RPC with committed source',async()=>{
- let called=0;
- const p=plan();
- const out=await executeApprovedFormalEarningConnection({
-   plan:p,
-   db:{callPrivateFunction:async({schema,functionName,params})=>{
-     called++;
-     assert.equal(functionName,'award_read_points_draft');
-     assert.deepEqual(params,p.params);
-     assert.equal(schema,'novelight_formal_private');
-     return {data:{status:'recorded'},error:null};
-   }},
-   launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
-   trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
- });
- assert.equal(called,1);
- assert.equal(out.status,'private_rpc_completed');
- assert.equal(out.databaseStatus,'recorded');
- assert.equal(out.mayIssuePoints,true);
+test('trusted internal executor invokes only approved private RPC with committed source', async () => {
+  let called = 0;
+  const p = plan();
+  const out = await executeApprovedFormalEarningConnection({
+    plan: p,
+    db: {
+      callPrivateFunction: async ({ schema, functionName, params }) => {
+        called++;
+        assert.equal(functionName, 'award_read_points_draft');
+        assert.deepEqual(params, p.params);
+        assert.equal(schema, 'novelight_formal_private');
+        return { data: { status: 'recorded' }, error: null };
+      }
+    },
+    launchConfiguration: {
+      formalEarningsEnabled: true,
+      productionCutoverApproved: true
+    },
+    trustedServerAuthorization: {
+      serviceRoleVerified: true,
+      verifiedByTrustedServer: true
+    }
+  });
+  assert.equal(called, 1);
+  assert.equal(out.status, 'private_rpc_completed');
+  assert.equal(out.databaseStatus, 'recorded');
+  assert.equal(out.mayIssuePoints, true);
 });
-test('trusted internal executor returns a non-issuance result when private RPC errors',async()=>{
- const p=plan({eventType:'novel_episode_comment_reviewed',commentModerationApproved:true,verifiedModerationRule:'verified-source-review-v1'});
- const result=await executeApprovedFormalEarningConnection({
-   plan:p,db:{callPrivateFunction:async()=>({data:null,error:{message:'mock failure'}})},
-   launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
-   trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
- });
- assert.equal(result.status,'private_rpc_failed');
- assert.equal(result.mayIssuePoints,false);
+test('trusted internal executor returns a non-issuance result when private RPC errors', async () => {
+  const p = plan({
+    eventType: 'novel_episode_comment_reviewed',
+    commentModerationApproved: true,
+    verifiedModerationRule: 'verified-source-review-v1'
+  });
+  const result = await executeApprovedFormalEarningConnection({
+    plan: p,
+    db: {
+      callPrivateFunction: async () => ({
+        data: null,
+        error: { message: 'mock failure' }
+      })
+    },
+    launchConfiguration: {
+      formalEarningsEnabled: true,
+      productionCutoverApproved: true
+    },
+    trustedServerAuthorization: {
+      serviceRoleVerified: true,
+      verifiedByTrustedServer: true
+    }
+  });
+  assert.equal(result.status, 'private_rpc_failed');
+  assert.equal(result.mayIssuePoints, false);
 });
