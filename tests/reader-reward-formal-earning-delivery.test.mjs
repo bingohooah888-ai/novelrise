@@ -17,7 +17,7 @@ test('no client semantic guess: reviewer evidence required, ambiguous comments h
  assert.equal(reviewFormalEpisodeComment(baseline).status,'reviewed_eligible');
 });
 test('blank and hidden comments excluded; cross-episode identical comments held',()=>{
- assert.equal(reviewFormalEpisodeComment({...baseline,comment:{...c,body:' 　\\n'}}).status,'ineligible_blank');
+ assert.equal(reviewFormalEpisodeComment({...baseline,comment:{...c,body:' 　'}}).status,'ineligible_blank');
  assert.equal(reviewFormalEpisodeComment({...baseline,comment:{...c,deleted_at:'2027-01-01'}}).status,'ineligible_hidden_or_missing');
  const other={...c,id:'00000000-0000-4000-8000-000000000033',episode_id:99};
  assert.equal(reviewFormalEpisodeComment({...baseline,priorUserComments:[other]}).status,'repetitive_text_requires_review');
