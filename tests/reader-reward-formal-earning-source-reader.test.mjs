@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {createFormalCanonicalSourceReader} from '../api/_lib/reader-reward/formal-earning-source-reader.js';
 import {createFormalEarningInternalHandler} from '../api/_lib/reader-reward/formal-earning-server-connection.js';
-import {deliverFormalRewardBatch} from '../api/_lib/reader-reward/formal-earning-delivery.js';
+import {deliverFormalRewardBatch,createFormalEarningDeliveryPipeline} from '../api/_lib/reader-reward/formal-earning-delivery.js';
 const id='00000000-0000-4000-8000-000000000091';
 const user='00000000-0000-4000-8000-000000000092';
 const time='2027-02-01T00:10:00Z';
@@ -67,4 +67,56 @@ test('full inert server integration checks source, moderation, and runs bound SQ
  }],internalHandler:handler});
  assert.equal(result.results[0].status,'recorded');
  assert.equal(writes,1);
+});
+
+test('composed private pipeline loads database rows and dispatches reviewed comment once',async()=>{
+ let writes=0;
+ const comment={id,user_id:user,episode_id:22,body:'作品の描写が良かったです',created_at:time,deleted_at:null,author_hidden_at:null};
+ const client={query:async(sql,params)=>{
+  if(sql.includes('from public.novel_comments where id='))return {rows:[comment]};
+  if(sql.includes('from public.novel_comments where user_id='))return {rows:[]};
+  if(sql.includes('review_comment_and_award_draft(')){
+   writes++;assert.deepEqual(params,[id,'2027-01-01T00:00:00Z',true,'reviewed-v1']);
+   return {rows:[{result:{status:'recorded',points:20}}]};
+  }
+  throw Error('Unexpected source query');
+ }};
+ const pipeline=createFormalEarningDeliveryPipeline({
+  postgresClient:client,
+  releaseTimestampIso:'2027-01-01T00:00:00Z',
+  launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
+  trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
+ });
+ const r=await pipeline.deliverVerifiedEvent({
+  eventType:'novel_episode_comment_reviewed',eventId:id,
+  moderationDecision:'eligible',moderationRule:'reviewed-v1',
+  trustedModeratorVerified:true
+ });
+ assert.equal(r.status,'recorded');
+ assert.equal(writes,1);
+});
+test('composed pipeline refuses absent moderator or disabled formal launch',async()=>{
+ let writes=0;
+ const comment={id,user_id:user,episode_id:22,body:'本の感想です',created_at:time,deleted_at:null,author_hidden_at:null};
+ const client={query:async(sql)=>{
+  if(sql.includes('from public.novel_comments where id='))return {rows:[comment]};
+  if(sql.includes('from public.novel_comments where user_id='))return {rows:[]};
+  writes++;return {rows:[{result:{status:'recorded'}}]};
+ }};
+ const build=(enabled)=>createFormalEarningDeliveryPipeline({
+  postgresClient:client,releaseTimestampIso:'2027-01-01T00:00:00Z',
+  launchConfiguration:{formalEarningsEnabled:enabled,productionCutoverApproved:enabled},
+  trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
+ });
+ const withoutReview=await build(true).deliverVerifiedEvent({
+  eventType:'novel_episode_comment_reviewed',eventId:id,
+  moderationDecision:'eligible',moderationRule:'r-v1',trustedModeratorVerified:false
+ });
+ assert.equal(withoutReview.status,'semantic_review_required');
+ const disabled=await build(false).deliverVerifiedEvent({
+  eventType:'novel_episode_comment_reviewed',eventId:id,
+  moderationDecision:'eligible',moderationRule:'r-v1',trustedModeratorVerified:true
+ });
+ assert.equal(disabled.status,'formal_connection_disabled');
+ assert.equal(writes,0);
 });
