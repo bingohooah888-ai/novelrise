@@ -17,7 +17,9 @@ function nonemptyId(value) {
 }
 function validRelease(value) {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
-    throw new TypeError('Server-configured formal release ISO timestamp required');
+    throw new TypeError(
+      'Server-configured formal release ISO timestamp required'
+    );
   }
   return value;
 }
@@ -47,7 +49,10 @@ export function planFormalEarningServerConnection({
   commentModerationApproved
 }) {
   if (!(eventType in METHODS)) {
-    return Object.freeze({ status: 'unsupported_formal_event', mayIssuePoints: false });
+    return Object.freeze({
+      status: 'unsupported_formal_event',
+      mayIssuePoints: false
+    });
   }
   const eventId = nonemptyId(verifiedEventId);
   const release = validRelease(releaseTimestampIso);
@@ -56,13 +61,19 @@ export function planFormalEarningServerConnection({
     serverPrincipalVerified !== true ||
     authoritativeEvidenceVerified !== true
   ) {
-    return Object.freeze({ status: 'server_evidence_pending', mayIssuePoints: false });
+    return Object.freeze({
+      status: 'server_evidence_pending',
+      mayIssuePoints: false
+    });
   }
   if (
     eventType === 'novel_episode_comment_reviewed' &&
     commentModerationApproved !== true
   ) {
-    return Object.freeze({ status: 'comment_moderation_pending', mayIssuePoints: false });
+    return Object.freeze({
+      status: 'comment_moderation_pending',
+      mayIssuePoints: false
+    });
   }
   return Object.freeze({
     status: 'private_rpc_wiring_plan_only',
@@ -73,7 +84,8 @@ export function planFormalEarningServerConnection({
         ? { p_read_event_id: eventId, p_release_at: release }
         : { p_comment_id: eventId, p_release_at: release }
     ),
-    requiresReadTimeTrigger: eventType === 'valid_read_qualified' ? READ_TRIGGER : null,
+    requiresReadTimeTrigger:
+      eventType === 'valid_read_qualified' ? READ_TRIGGER : null,
     sourceCommitted: true,
     useSupabaseServiceRoleOnTrustedServerOnly: true,
     mustRecheckCanonicalSourceInDatabase: true,
@@ -104,7 +116,8 @@ export async function simulateFormalEarningServerConnection({
   );
   return Object.freeze({
     status: 'mock_rpc_response_only',
-    resultStatus: typeof response?.status === 'string' ? response.status : 'unknown',
+    resultStatus:
+      typeof response?.status === 'string' ? response.status : 'unknown',
     mayIssuePoints: false
   });
 }
