@@ -179,7 +179,10 @@ begin
   if not found then raise exception 'formal state missing'; end if;
   v_start := coalesce(v_state.last_review_end_at,v_state.review_anchor_at);
   v_end := v_start+interval '30 days';
-  if p_as_of is null or p_as_of < v_end then
+  if p_as_of is null or p_as_of > clock_timestamp() then
+    raise exception 'review time must be a verified past or current instant';
+  end if;
+  if p_as_of < v_end then
     return jsonb_build_object('status','not_due');
   end if;
   if exists(select 1 from novelight_formal_private.scout_review_claim
