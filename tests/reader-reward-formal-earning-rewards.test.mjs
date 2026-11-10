@@ -54,7 +54,7 @@ function quoteComment(overrides = {}) {
     formalReleaseAtMs,
     evidenceVerified: true,
     commentPolicyApprovedAndEligible: true,
-    verifiedPolicyMonth: 'example-policy-2027-02',
+    verifiedPolicyMonth: '2027-02',
     policyMonthVerified: true,
     verifiedCommentInsidePolicyMonth: true,
     verifiedRewardedCommentsInMonth: 0,
@@ -178,7 +178,7 @@ test('comment duplicate, wrong reader, hidden and deleted cannot earn', () => {
 test('comment requires server approved period membership after release', () => {
   assert.equal(
     quoteComment({ policyMonthVerified: false }).status,
-    'month_policy_pending'
+    'month_policy_mismatch'
   );
   assert.equal(
     quoteComment({ verifiedCommentInsidePolicyMonth: false }).status,
@@ -219,4 +219,11 @@ test('per-episode one-time comment key is shared across comment IDs', () => {
   assert.equal(first.eventKey,'formal_comment_reward:'+userId+':456');
   assert.equal(later.eventKey,first.eventKey);
   assert.equal(quoteComment({existingLedgerEventKeys:[first.eventKey]}).status,'already_awarded');
+});
+
+test('JST month boundary cannot be faked by a UTC calendar assumption', () => {
+  const justAfterMidnightJst={...comment,created_at:'2027-01-31T15:00:01Z'};
+  const q=quoteComment({verifiedComment:justAfterMidnightJst,verifiedPolicyMonth:'2027-02'});
+  assert.equal(q.status,'reward_quote_only');
+  assert.equal(quoteComment({verifiedComment:justAfterMidnightJst,verifiedPolicyMonth:'2027-01'}).status,'month_policy_mismatch');
 });
