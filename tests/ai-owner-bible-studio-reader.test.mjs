@@ -371,3 +371,42 @@ test('deployed story notes cannot activate the optional offline outline dependen
   assert.doesNotMatch(page, /readOutline\s*:/);
   assert.doesNotMatch(page, /novelight_novel_outline/);
 });
+
+test('reloading an offline chapter view cannot retain private data after owner change', async () => {
+  const f = rig();
+  const rows = [
+    {
+      episode_id: 100,
+      episode_number: 3,
+      chapter_id: null,
+      chapter_title: null,
+      chapter_position: null
+    }
+  ];
+  let hold = false;
+  let resume;
+  assert.equal(
+    await attach({
+      ...args(f),
+      readOutline: async () =>
+        hold
+          ? new Promise((resolve) => {
+              resume = resolve;
+            })
+          : rows
+    }),
+    true
+  );
+  const section = f.main.children[0];
+  assert.match(section.textContent, /初回の非公開メモ/);
+  hold = true;
+  const reload = find(section, 'novelight-ai-bible-reload');
+  reload.listeners.get('click')();
+  await delay(0);
+  assert.equal(typeof resume, 'function');
+  f.switchOwner();
+  resume(rows);
+  await delay(0);
+  assert.doesNotMatch(section.textContent, /初回の非公開メモ|第3話/);
+  assert.match(section.textContent, /読み込みに失敗しました/);
+});
