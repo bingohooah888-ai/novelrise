@@ -138,7 +138,9 @@ function formalBeta30(overrides = {}) {
 }
 
 test('approved 400 XP progression preserves all beta thresholds and reaches 37,570 at Lv100', () => {
-  const ladder = compileApprovedScoutFormalXpLadder({ betaThresholdRows: betaRows });
+  const ladder = compileApprovedScoutFormalXpLadder({
+    betaThresholdRows: betaRows
+  });
   assert.equal(ladder.status, 'owner_thresholds_approved_offline');
   assert.equal(ladder.ownerThresholdApprovalRequired, false);
   assert.equal(ladder.productionReady, false);
@@ -147,7 +149,10 @@ test('approved 400 XP progression preserves all beta thresholds and reaches 37,5
   assert.equal(ladder.cumulativeByLevel[70], 25570);
   assert.equal(ladder.cumulativeByLevel[100], 37570);
   for (let level = 1; level <= 30; level += 1) {
-    assert.equal(ladder.cumulativeByLevel[level], betaRows[level - 1].cumulative_xp);
+    assert.equal(
+      ladder.cumulativeByLevel[level],
+      betaRows[level - 1].cumulative_xp
+    );
   }
   for (let level = 30; level < 100; level += 1) {
     assert.equal(ladder.requiredXpByLevel[level], 400);
