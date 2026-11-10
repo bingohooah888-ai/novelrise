@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   planFormalEarningServerConnection,
-  simulateFormalEarningServerConnection
+  simulateFormalEarningServerConnection,
+  executeApprovedFormalEarningConnection
 } from '../api/_lib/reader-reward/formal-earning-server-connection.js';
 
 const event = '00000000-0000-4000-8000-000000000017';
@@ -96,4 +97,59 @@ test('only a positively labeled test mock can simulate a private RPC; never exec
   assert.equal(result.resultStatus, 'recorded');
   assert.equal(result.mayIssuePoints, false);
   assert.equal(calls, 1);
+});
+
+test('trusted server executor is disabled by default; production cutover and service auth required',async()=>{
+ let calls=0;
+ const db={rpc:async()=>{calls++;return {data:{status:'recorded'},error:null}}};
+ const p=plan();
+ const base={
+   plan:p,db,
+   launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
+   trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
+ };
+ for(const override of [
+   {launchConfiguration:{formalEarningsEnabled:false,productionCutoverApproved:true}},
+   {launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:false}},
+   {trustedServerAuthorization:{serviceRoleVerified:false,verifiedByTrustedServer:true}},
+   {trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:false}},
+   {db:null},
+   {plan:{...p,schema:'public'}},
+   {plan:{...p,functionName:'arbitrary'}}
+ ]) {
+   const result=await executeApprovedFormalEarningConnection({...base,...override});
+   assert.notEqual(result.status,'private_rpc_completed');
+   assert.equal(result.mayIssuePoints,false);
+ }
+ assert.equal(calls,0);
+});
+test('trusted internal executor invokes only approved private RPC with committed source',async()=>{
+ let called=0;
+ const p=plan();
+ const out=await executeApprovedFormalEarningConnection({
+   plan:p,
+   db:{rpc:async(name,params,settings)=>{
+     called++;
+     assert.equal(name,'award_read_points_draft');
+     assert.deepEqual(params,p.params);
+     assert.equal(settings.schema,'novelight_formal_private');
+     return {data:{status:'recorded'},error:null};
+   }},
+   launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
+   trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
+ });
+ assert.equal(called,1);
+ assert.equal(out.status,'private_rpc_completed');
+ assert.equal(out.databaseStatus,'recorded');
+ assert.equal(out.mayIssuePoints,true);
+});
+test('trusted internal executor returns a non-issuance result when private RPC errors',async()=>{
+ const p=plan({eventType:'novel_episode_comment_reviewed',commentModerationApproved:true});
+ const result=await executeApprovedFormalEarningConnection({
+   plan:p,db:{rpc:async()=>({data:null,error:{message:'mock failure'}})},
+   launchConfiguration:{formalEarningsEnabled:true,productionCutoverApproved:true},
+   trustedServerAuthorization:{serviceRoleVerified:true,verifiedByTrustedServer:true}
+ });
+ assert.equal(result.status,'private_rpc_failed');
+ assert.equal(result.mayIssuePoints,false);
 });
