@@ -93,8 +93,8 @@ test('repo source-only review NEVER means a live proof', () => {
   assert.equal(review.mayMergeMain, false);
   assert.equal(review.mayDeploy, false);
 });
-test('2026-11 repo snapshot: 428 tracked candidate sources and 51 SQL DML sites', () => {
-  assert.equal(review.trackedSourceFileCount, 428);
+test('2026-11 repo snapshot: 439 tracked candidate sources and 51 SQL DML sites', () => {
+  assert.equal(review.trackedSourceFileCount, 439);
   assert.equal(review.mutationSites.length, 51);
   assert.equal(new Set(review.mutationSites.map((x) => x.path)).size, 15);
 });
