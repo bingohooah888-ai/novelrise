@@ -21,7 +21,8 @@
     ownerId,
     doc = root.document,
     panel = root.NovelightAiBibleOwnerPanel,
-    fetcher = root.fetch
+    fetcher = root.fetch,
+    readOutline
   } = {}) {
     const host = doc?.getElementById?.('main-content');
     if (
@@ -35,7 +36,10 @@
       (typeof panel?.createOfflineReader !== 'function' &&
         typeof panel?.mount !== 'function') ||
       (typeof panel?.createOfflineReader === 'function' &&
-        typeof fetcher !== 'function')
+        typeof fetcher !== 'function') ||
+      (readOutline !== undefined &&
+        (typeof readOutline !== 'function' ||
+          typeof panel?.createOfflineReader !== 'function'))
     ) {
       return false;
     }
@@ -110,9 +114,43 @@
             )
               throw new Error('SESSION_CHANGED');
             return payload;
-          }
-          // No owner-verified outline GET exists yet. Do not call a private
-          // outline RPC directly from a browser or synthesize chapter order.
+          },
+          // Offline injection only. Production story-notes does not pass a
+          // reader, and this controller never fetches private outline data.
+          // A future server implementation must independently authorize the
+          // requested work/session before supplying chapter navigation.
+          readOutline:
+            readOutline === undefined
+              ? undefined
+              : async ({ novelId: requestedNovelId, preview }) => {
+                  if (disposed) throw new Error('SESSION_ENDED');
+                  const before = await client.auth.getSession();
+                  if (
+                    before.error ||
+                    !sameOwner(
+                      before.data?.session,
+                      ownerId,
+                      session.access_token
+                    )
+                  )
+                    throw new Error('SESSION_CHANGED');
+                  const rows = await readOutline({
+                    novelId: requestedNovelId,
+                    preview
+                  });
+                  const after = await client.auth.getSession();
+                  if (
+                    disposed ||
+                    after.error ||
+                    !sameOwner(
+                      after.data?.session,
+                      ownerId,
+                      session.access_token
+                    )
+                  )
+                    throw new Error('SESSION_CHANGED');
+                  return rows;
+                }
         });
         allowed = reader ? await reader.reload() : false;
       } else {
