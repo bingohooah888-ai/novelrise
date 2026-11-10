@@ -5,6 +5,7 @@
 -- It reuses public.valid_read_events, public.novel_comments,
 -- public.scout_point_ledger, and the private formal state row lock.
 -- No cron, client endpoints, or live Point grants are enabled by this file.
+-- The proposed read-capture trigger is release-only and is NEVER applied to beta.
 
 
 begin;
@@ -32,50 +33,33 @@ create table novelight_formal_private.scout_comment_eligibility (
 alter table novelight_formal_private.scout_comment_eligibility enable row level security;
 revoke all on novelight_formal_private.scout_comment_eligibility from public,anon,authenticated;
 
-create or replace function novelight_formal_private.capture_read_level_draft(
- p_read_event_id uuid, p_release_at timestamptz
-) returns jsonb
+-- The future-only trigger captures the Level in exactly the transaction
+-- that creates an authoritative valid_read_events record. This works even
+-- inside PostgreSQL savepoints/subtransactions, unlike comparing xmin/xid.
+-- Do not activate the trigger until the separately approved formal cutover.
+create or replace function novelight_formal_private.on_valid_read_formal_draft()
+returns trigger
 language plpgsql security definer set search_path=''
 as $capture_read$
 declare
- v_read public.valid_read_events%rowtype;
  v_state novelight_formal_private.scout_level_state%rowtype;
- v_qualified_tx bigint;
- v_id uuid;
 begin
- if p_release_at is null or p_release_at>clock_timestamp() then
-   return jsonb_build_object('status','release_not_verified');
- end if;
- select * into v_read from public.valid_read_events where id=p_read_event_id;
- if not found then return jsonb_build_object('status','valid_read_missing'); end if;
- if v_read.qualified_at<p_release_at or v_read.reader_id=v_read.author_id_snapshot then
-   return jsonb_build_object('status','read_not_eligible');
- end if;
- -- The valid_read_events row must be newly inserted by THIS database
- -- transaction, not merely have a recent timestamp supplied by another path.
- select xmin::text::bigint into v_qualified_tx
- from public.valid_read_events where id=v_read.id;
- if v_qualified_tx is distinct from txid_current() then
-   return jsonb_build_object('status','read_transaction_not_matched');
- end if;
- -- Capture must happen alongside the validated read transaction. Past events
- -- cannot be re-priced without an independently verified historical snapshot.
- if v_read.qualified_at<transaction_timestamp()-interval '30 seconds' or
-    v_read.qualified_at>clock_timestamp() then
-   return jsonb_build_object('status','historical_level_evidence_missing');
- end if;
+ if new.reader_id=new.author_id_snapshot then return new; end if;
  select * into v_state from novelight_formal_private.scout_level_state
- where user_id=v_read.reader_id for update;
- if not found then return jsonb_build_object('status','formal_state_missing'); end if;
+ where user_id=new.reader_id for update;
+ if not found then return new; end if;
  insert into novelight_formal_private.scout_read_level_evidence(
-   read_event_id,reader_id,qualified_at,scout_level,level_revision
- ) values (v_read.id,v_read.reader_id,v_read.qualified_at,
+  read_event_id,reader_id,qualified_at,scout_level,level_revision
+ ) values (new.id,new.reader_id,new.qualified_at,
            v_state.current_level,v_state.revision)
- on conflict(read_event_id) do nothing returning read_event_id into v_id;
- if v_id is null then return jsonb_build_object('status','evidence_already_present'); end if;
- return jsonb_build_object('status','captured','level',v_state.current_level);
+ on conflict(read_event_id) do nothing;
+ return new;
 end
 $capture_read$;
+
+create trigger scout_formal_read_level_capture
+after insert on public.valid_read_events
+for each row execute function novelight_formal_private.on_valid_read_formal_draft();
 
 create or replace function novelight_formal_private.award_read_points_draft(
  p_read_event_id uuid, p_release_at timestamptz
@@ -257,13 +241,13 @@ begin
 end
 $award_comment$;
 
-revoke all on function novelight_formal_private.capture_read_level_draft(uuid,timestamptz)
+revoke all on function novelight_formal_private.on_valid_read_formal_draft()
  from public,anon,authenticated;
 revoke all on function novelight_formal_private.award_read_points_draft(uuid,timestamptz)
  from public,anon,authenticated;
 revoke all on function novelight_formal_private.award_comment_points_draft(uuid,timestamptz)
  from public,anon,authenticated;
-grant execute on function novelight_formal_private.capture_read_level_draft(uuid,timestamptz)
+grant execute on function novelight_formal_private.on_valid_read_formal_draft()
  to service_role;
 grant execute on function novelight_formal_private.award_read_points_draft(uuid,timestamptz)
  to service_role;
