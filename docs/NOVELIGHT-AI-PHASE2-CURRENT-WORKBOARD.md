@@ -1,13 +1,23 @@
 # NOVELIGHT AI 工程②（02-07-05）— 継続用・唯一の現状ボード
 
-**最終内容確認：2026-11-10 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
+**最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3
+source_main: fd651701e8bc810db8523e629024d9bde23ca6be
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
-last_reviewed_jst: 2026-11-10
+last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 継続：#2835 main統合後の #2825 オフライン再同期（本番実行なし）
+
+- **最新基準**：main `fd651701e8bc810db8523e629024d9bde23ca6be`（#2835 squash統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`（不変）。#2825 の同期前HEAD `f636bfa917fc024caddb6da84e395b44790ab6ec`。#2835の旧本番承認は消費済みで#2825に流用しない。mainとProductionはこの同期で更新しない。
+- **競合と選択**：ローカル `origin/main` を既存Draft #2825の隔離worktreeへmergeし、競合は本ボードと `tests/ai-020705-candidate-runtime-contract-offline.test.mjs` のみ。新mainの制御コードはそのまま保持。候補SHAテストは #2825 側のAPI互換shimと制御Providerの**同一関数identity**を検証する仕様を維持し、認証・nonce・scopeの拒否条件を緩和しない。新mainの制御面独立テストは他の専用テストに残る。
+- **#2835の確認済み結果**：main CI / CodeQL SUCCESS。Vercelの新main Productionデプロイは既存ignore commandにより意図的CANCELEDで、`novelight.jp` のREADYは旧Production SHA `95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3`。Productionで#2835の新コードが稼働したとみなさない。
+- **Supabase READ ONLY**：GitHub連携のSupabase Preview checkはFAILURE（`Remote migration versions not found in local migrations directory.`）。Staging `wmlzjgvxgoyrovdhbqbg` から取得したremote 215版と新main `supabase/migrations` のlocal 215版を名前の先頭14桁で比較すると、remote専有 `20261110080421`、local専有 `20261110172000`。同番号ではなく、migrationの実体・適用状態や安全な同期方法は未確認。DB/Branch修復、Migration実行、Preview作成をしない。Staging Branch一覧の古い `MIGRATIONS_FAILED` と `ACTIVE_HEALTHY` は継続観測扱い。
+- **残る境界**：#2825はDraftのオフライン再同期・回帰試験・GitHub CI/CodeQL確認のみ。新mainへの統合、Staging/Productionの変更、Secret・DB書込、実JWT、有料AI、独立Watchdog稼働は別途明示承認まで禁止。Gate A〜Eは **0/5**。AI工程②のオフライン実装進捗と実証完了を混同しない。
+
+
 
 ## 2026-11-10 継続：制御コード分離のオフライン実装（本Draft PR内／実環境OFF）
 
