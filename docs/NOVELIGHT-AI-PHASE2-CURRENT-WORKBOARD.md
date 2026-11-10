@@ -3,11 +3,22 @@
 **最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 148524993c0c96d0432cec1380cf2c01263b7cc3
+source_main: 4abbb30721ace3d7a74560e235d53d28b4273601
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
 last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 継続：作者専用章情報HTTP境界をオフライン接続（本番未接続）
+
+- **基準**：main `4abbb30721ace3d7a74560e235d53d28b4273601`（PR #2837統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`。該当mainのNOVELIGHT CI/CodeQL SUCCESS、Vercel Production READY。今回の変更は別Draftのみ、main/Productionを更新しない。
+- **作者向け機能**：既存 `OwnerStudio.attach` → `OwnerPanel.createOfflineReader` → `OwnerOutline.project` の表示経路は前PRでオフライン接続済み。今回、`api/_lib/ai/owner-bible-outline-offline-api.js` に**非公開・未mountのHTTP handler factory**を追加。`GET` + Same Origin + bearer形式 + 正数novel_idを検査し、サーバー専用の注入 `readOwnerPreview` で取得した正しい作品プレビューを既存 `createOfflineOwnerBibleNavigation` に引き渡す。内部では既存 `owner-outline-internal-adapter`／`owner-session-evidence`／`owner-private-session-reader` を再利用し、返却値は `novelId, aiGenerated:false, outlineRows` の章／話数表示列だけとする。非公開原稿本文、話タイトル、下書き状態、JWT、セッション情報は返さない。
+- **実行境界**：既定の `enabled=false` と既存のプレビュー許可フラグ・個別の章フラグがそろわなければ404。public `api/*.js` と `story-notes.html` は新handlerをimportせず、Browserでの新しいoutline fetchもなし。Auth/DB接続、JWT検証機能やprivileged session queryの実実装、Staging資格は今回追加していない。注入が不足・失敗ならプレビューや章情報を出さない。これは**将来の専用APIに必要なオフラインHTTP契約完成**であり、本番接続完成／作者利用可能を意味しない。
+- **テスト**：合成JWT相当の架空文字列・模擬Auth／owner／auth.sessions存在判定・既存RPC fixtureのみ。入力遮断、同一作品の章情報の投影、署名・セッション三点照合、RPC二重読取、途中失効・改変拒否、秘密文字列を返さないこと、既存作者画面が新API未接続であることを検証。実JWTやDB/APIリクエストは0。Node関連テスト、CI/CodeQLは新Draft HEAD結果を参照。
+- **Supabase Preview（READのみ）**：リモート専有 `20261110080421`（`formal_scout_level_staging_2762_20261110`）とリポジトリ専有 `20261110172000`（`author_reader_retention_cross_visit`）が別機能として分岐。自動rename/repairやMigration実行をせず、差分とエラーを継続記録。
+- **残る必須接続**：実環境では `readOwnerPreview` と、署名検証・限定privileged `auth.sessions` 存在確認のサーバー専用capabilityが未供給。これらを勝手に仮定してGOしない。次工程もMASTERの機能完成優先で既存部品の再利用を検討。Staging実JWT/DB/Preview/Secret/有料AI/Watchdogとmain統合は別途明示承認のみ。正式Gate A〜E **0/5**。
+
+
 
 ## 2026-11-11 作者向け章情報のオフライン表示接続（新Draft候補・実環境OFF）
 
