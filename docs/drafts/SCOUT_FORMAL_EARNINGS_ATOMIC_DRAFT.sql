@@ -310,4 +310,167 @@ grant execute on function novelight_formal_private.award_read_points_draft(uuid,
 grant execute on function novelight_formal_private.award_comment_points_draft(uuid,timestamptz)
  to service_role;
 
+
+-- Formal-only durable delivery state. It is NOT a new exchange ledger,
+-- scheduler, public route, or beta migration. Canonical source rows and
+-- public.scout_point_ledger remain the source of truth.
+create table novelight_formal_private.scout_earning_delivery (
+  event_type text not null check(event_type in ('valid_read_qualified','novel_episode_comment_reviewed')),
+  event_id uuid not null,
+  state text not null default 'pending'
+    check(state in ('pending','review_pending','retry','leased','completed','held')),
+  moderation_decision boolean,
+  moderation_rule text,
+  attempt_count integer not null default 0 check(attempt_count>=0),
+  next_attempt_at timestamptz not null default now(),
+  lease_token uuid,
+  leased_until timestamptz,
+  last_result text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key(event_type,event_id),
+  check((lease_token is null and leased_until is null) or
+        (lease_token is not null and leased_until is not null)),
+  check(moderation_rule is null or char_length(moderation_rule) between 1 and 120)
+);
+alter table novelight_formal_private.scout_earning_delivery enable row level security;
+revoke all on novelight_formal_private.scout_earning_delivery
+ from public,anon,authenticated;
+
+-- Re-enqueue is idempotent and cannot turn a terminal result into pending.
+create or replace function novelight_formal_private.enqueue_earning_draft(
+  p_event_type text,p_event_id uuid
+) returns jsonb language plpgsql security definer set search_path=''
+as $earning_enqueue$
+declare v_state text;
+begin
+ if p_event_type not in ('valid_read_qualified','novel_episode_comment_reviewed')
+    or p_event_id is null then
+   return jsonb_build_object('status','unsupported_event');
+ end if;
+ if p_event_type='valid_read_qualified' and not exists(
+   select 1 from public.valid_read_events where id=p_event_id
+ ) then return jsonb_build_object('status','source_missing'); end if;
+ if p_event_type='novel_episode_comment_reviewed' and not exists(
+   select 1 from public.novel_comments where id=p_event_id
+ ) then return jsonb_build_object('status','source_missing'); end if;
+ insert into novelight_formal_private.scout_earning_delivery(
+   event_type,event_id,state
+ ) values(p_event_type,p_event_id,
+   case when p_event_type='novel_episode_comment_reviewed'
+        then 'review_pending' else 'pending' end)
+ on conflict(event_type,event_id) do nothing;
+ select state into v_state from novelight_formal_private.scout_earning_delivery
+ where event_type=p_event_type and event_id=p_event_id;
+ return jsonb_build_object('status',v_state);
+end
+$earning_enqueue$;
+
+-- A trusted moderator resolves the existing pending decision.
+-- No fake automatic semantic classification. No changes to settled verdicts.
+create or replace function novelight_formal_private.decide_earning_review_draft(
+  p_comment_id uuid,p_eligible boolean,p_rule text
+) returns jsonb language plpgsql security definer set search_path=''
+as $earning_review$
+declare v_state text;
+begin
+ if p_comment_id is null or p_eligible is null or
+    p_rule is null or char_length(p_rule) not between 1 and 120 then
+   return jsonb_build_object('status','review_missing');
+ end if;
+ update novelight_formal_private.scout_earning_delivery
+ set moderation_decision=p_eligible,moderation_rule=p_rule,
+     state='pending',next_attempt_at=now(),updated_at=now()
+ where event_type='novel_episode_comment_reviewed'
+   and event_id=p_comment_id
+   and state='review_pending'
+   and moderation_decision is null;
+ if found then return jsonb_build_object('status','review_recorded'); end if;
+ select state into v_state from novelight_formal_private.scout_earning_delivery
+ where event_type='novel_episode_comment_reviewed' and event_id=p_comment_id;
+ return jsonb_build_object('status',coalesce(v_state,'event_missing'));
+end
+$earning_review$;
+
+-- Explicit caller-initiated batch only: no timer, cron or automatic worker.
+-- FOR UPDATE SKIP LOCKED ensures only one delivery owns a claim.
+-- Expired leases recover after process crash; successful outcomes are never
+-- reclaimed. A lease token prevents stale workers from finalizing a new lease.
+create or replace function novelight_formal_private.claim_earning_draft()
+returns jsonb language plpgsql security definer set search_path=''
+as $earning_claim$
+declare v_row novelight_formal_private.scout_earning_delivery%rowtype;
+declare v_token uuid;
+begin
+ select * into v_row
+ from novelight_formal_private.scout_earning_delivery
+ where ((state in ('pending','retry') and next_attempt_at<=now())
+       or (state='leased' and leased_until<now()))
+   and (event_type='valid_read_qualified' or moderation_decision is not null)
+ order by next_attempt_at,created_at,event_id
+ for update skip locked limit 1;
+ if not found then return jsonb_build_object('status','no_due_event'); end if;
+ v_token:=pg_catalog.gen_random_uuid();
+ update novelight_formal_private.scout_earning_delivery
+ set state='leased',lease_token=v_token,leased_until=now()+interval '5 minutes',
+     attempt_count=attempt_count+1,updated_at=now()
+ where event_type=v_row.event_type and event_id=v_row.event_id;
+ return jsonb_build_object('status','leased','event_type',v_row.event_type,
+   'event_id',v_row.event_id,'lease_token',v_token,
+   'attempt_count',v_row.attempt_count+1,
+   'moderation_decision',v_row.moderation_decision,
+   'moderation_rule',v_row.moderation_rule);
+end
+$earning_claim$;
+
+-- Finalization never itself issues Points. A database ledger insert is
+-- independently idempotent and precedes this status update in delivery.
+create or replace function novelight_formal_private.finish_earning_draft(
+  p_event_type text,p_event_id uuid,p_token uuid,p_result text
+) returns jsonb language plpgsql security definer set search_path=''
+as $earning_finish$
+declare v_final_state text;
+declare v_retry boolean;
+begin
+ if p_result in ('recorded','already_recorded','already_recorded_for_episode',
+                'reviewed_not_eligible','pre_release_not_eligible',
+                'self_or_missing_author','monthly_comment_cap_reached') then
+   v_final_state:='completed';v_retry:=false;
+ elsif p_result in ('private_rpc_failed','formal_level_unavailable',
+                    'read_time_level_unverified','earlier_comment_review_pending',
+                    'content_review_pending_or_rejected') then
+   v_final_state:='retry';v_retry:=true;
+ else
+   v_final_state:='held';v_retry:=false;
+ end if;
+ update novelight_formal_private.scout_earning_delivery
+ set state=v_final_state,lease_token=null,leased_until=null,
+     last_result=left(coalesce(p_result,'unknown'),100),
+     next_attempt_at=case when v_retry then now()+interval '5 minutes'
+                          else next_attempt_at end,
+     updated_at=now()
+ where event_type=p_event_type and event_id=p_event_id and
+       lease_token=p_token and state='leased';
+ if not found then return jsonb_build_object('status','lease_mismatch'); end if;
+ return jsonb_build_object('status',v_final_state);
+end
+$earning_finish$;
+
+revoke all on function novelight_formal_private.enqueue_earning_draft(text,uuid)
+ from public,anon,authenticated;
+revoke all on function novelight_formal_private.decide_earning_review_draft(uuid,boolean,text)
+ from public,anon,authenticated;
+revoke all on function novelight_formal_private.claim_earning_draft()
+ from public,anon,authenticated;
+revoke all on function novelight_formal_private.finish_earning_draft(text,uuid,uuid,text)
+ from public,anon,authenticated;
+grant execute on function novelight_formal_private.enqueue_earning_draft(text,uuid)
+ to service_role;
+grant execute on function novelight_formal_private.decide_earning_review_draft(uuid,boolean,text)
+ to service_role;
+grant execute on function novelight_formal_private.claim_earning_draft()
+ to service_role;
+grant execute on function novelight_formal_private.finish_earning_draft(text,uuid,uuid,text)
+ to service_role;
+
 commit;
