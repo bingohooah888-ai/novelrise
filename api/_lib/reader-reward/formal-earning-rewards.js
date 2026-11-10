@@ -87,6 +87,7 @@ export function quoteFormalReadPointReward({
   userId,
   verifiedReadEvent,
   verifiedScoutLevel,
+  verifiedReadTimeLevelEvidence,
   formalReleaseAtMs,
   evidenceVerified,
   ledgerHistoryComplete,
@@ -128,6 +129,16 @@ export function quoteFormalReadPointReward({
   if (auth.keys.has(eventKey)) {
     return Object.freeze({ status: 'already_awarded', eventKey });
   }
+  // A LEVEL seen at claim time must not re-price a read qualified earlier.
+  const snapshot = verifiedReadTimeLevelEvidence;
+  if (!snapshot || snapshot.serverVerified !== true ||
+      verifiedUuid(snapshot.readEventId, 'Read-time evidence event') !== id ||
+      verifiedUuid(snapshot.readerId, 'Read-time evidence reader') !== auth.id ||
+      snapshot.qualifiedAt !== verifiedReadEvent.qualified_at ||
+      !Number.isSafeInteger(snapshot.revision) || snapshot.revision < 0 ||
+      snapshot.level !== verifiedScoutLevel) {
+    return Object.freeze({ status: 'read_time_level_unverified' });
+  }
   // The rate table itself validates the authoritative Level [1,100].
   return quoteResult({
     userId: auth.id,
@@ -150,6 +161,8 @@ export function quoteFormalReadPointReward({
 export function quoteFormalCommentPointReward({
   userId,
   verifiedComment,
+  verifiedCommentReadEvent,
+  verifiedNovelAuthorId,
   formalReleaseAtMs,
   evidenceVerified,
   commentPolicyApprovedAndEligible,
@@ -188,6 +201,24 @@ export function quoteFormalCommentPointReward({
   ) {
     return Object.freeze({ status: 'comment_not_visible' });
   }
+  if (!Number.isSafeInteger(verifiedComment.episode_id) ||
+      verifiedComment.episode_id <= 0) {
+    return Object.freeze({ status: 'episode_required' });
+  }
+  if (!verifiedNovelAuthorId ||
+      verifiedUuid(verifiedNovelAuthorId, 'Novel author') === auth.id) {
+    return Object.freeze({ status: 'self_comment_not_eligible' });
+  }
+  const qualifiedRead = verifiedCommentReadEvent;
+  if (!qualifiedRead || qualifiedRead.serverVerified !== true ||
+      verifiedUuid(qualifiedRead.readerId, 'Comment read reader') !== auth.id ||
+      qualifiedRead.episodeId !== String(verifiedComment.episode_id)) {
+    return Object.freeze({ status: 'valid_read_required' });
+  }
+  if (readTimestamp(qualifiedRead.qualifiedAt, 'Comment read qualification') >
+      readTimestamp(verifiedComment.created_at, 'Comment creation')) {
+    return Object.freeze({ status: 'valid_read_required' });
+  }
   const when = readTimestamp(verifiedComment.created_at, 'Comment creation');
   if (when < auth.releaseAtMs) {
     return Object.freeze({ status: 'pre_release_not_eligible' });
@@ -211,7 +242,7 @@ export function quoteFormalCommentPointReward({
       'Verified month ledger count must be nonnegative integer'
     );
   }
-  const eventKey = 'formal_comment_reward:' + id;
+  const eventKey = 'formal_comment_reward:' + auth.id + ':' + verifiedComment.episode_id;
   if (auth.keys.has(eventKey)) {
     return Object.freeze({ status: 'already_awarded', eventKey });
   }
