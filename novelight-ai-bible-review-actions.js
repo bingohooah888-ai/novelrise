@@ -22,13 +22,13 @@
     return Number.isSafeInteger(number) ? number : null;
   }
 
-  function validItem(item) {
+  function validItem(item, status = 'pending') {
     return (
       positive(item?.id) &&
       positive(item?.episodeId) &&
       Number.isSafeInteger(item?.revision) &&
-      item.revision > 0 &&
-      item.status === 'pending' &&
+      item.revision >= (status === 'accepted' ? 2 : 1) &&
+      item.status === status &&
       FACT_KINDS.has(item.kind) &&
       typeof item.key === 'string' &&
       item.key.trim().length > 0 &&
@@ -53,10 +53,20 @@
       payload.aiGenerated !== false ||
       !Array.isArray(payload.candidates) ||
       payload.candidates.length > 100 ||
-      !payload.candidates.every(validItem)
+      !payload.candidates.every((item) => validItem(item))
     )
       return false;
-    const ids = payload.candidates.map((item) => positive(item.id));
+    const accepted = payload.acceptedCandidates ?? [];
+    if (
+      !Array.isArray(accepted) ||
+      accepted.length > 100 ||
+      !accepted.every((item) => validItem(item, 'accepted'))
+    ) {
+      return false;
+    }
+    const ids = [...payload.candidates, ...accepted].map((item) =>
+      positive(item.id)
+    );
     return new Set(ids).size === ids.length;
   }
 
@@ -145,6 +155,51 @@
         '採用結果を確認できませんでした。ページを再読み込みしてください。';
     }
 
+    function offerTransfer(item) {
+      const transfer = doc.createElement('div');
+      const transferButton = doc.createElement('button');
+      transferButton.type = 'button';
+      transferButton.textContent = '創作ノートに転記して編集（保存は別途）';
+      transferButton.addEventListener('click', async () => {
+        if (disposed || busy) return;
+        busy = true;
+        try {
+          if (!(await currentSession())) {
+            clear();
+            return;
+          }
+          // This is only an editable draft; the author explicitly saves
+          // through the existing owner-verified Story Notes RPC separately.
+          const prepared = await onAccepted({
+            kind: item.kind,
+            key: item.key,
+            summary: item.summary,
+            evidence: item.evidence,
+            episodeId: item.episodeId
+          });
+          if (!(await currentSession())) {
+            clear();
+            return;
+          }
+          if (prepared === true) {
+            reviewNotice.textContent =
+              '創作ノートの編集欄に転記しました。内容を確認して「保存」を押してください。';
+            transfer.remove();
+          } else {
+            reviewNotice.textContent =
+              '転記しませんでした。編集内容とログイン状態を確認してください。';
+          }
+        } catch {
+          reviewNotice.textContent =
+            '転記できませんでした。再度操作する前に編集内容を確認してください。';
+        } finally {
+          busy = false;
+        }
+      });
+      transfer.appendChild(transferButton);
+      return transfer;
+    }
+
     function button(label, action, item, row) {
       const element = doc.createElement('button');
       element.type = 'button';
@@ -200,49 +255,7 @@
           // Never perform a second POST automatically.
           row.remove();
           if (action === 'accept' && typeof onAccepted === 'function') {
-            const transfer = doc.createElement('div');
-            const transferButton = doc.createElement('button');
-            transferButton.type = 'button';
-            transferButton.textContent =
-              '創作ノートに転記して編集（保存は別途）';
-            transferButton.addEventListener('click', async () => {
-              if (disposed || busy) return;
-              busy = true;
-              try {
-                if (!(await currentSession())) {
-                  clear();
-                  return;
-                }
-                // This is only a draft handoff. The existing author editor
-                // performs a separate explicit save using the owner RPC.
-                const prepared = await onAccepted({
-                  kind: item.kind,
-                  key: item.key,
-                  summary: item.summary,
-                  evidence: item.evidence,
-                  episodeId: item.episodeId
-                });
-                if (!(await currentSession())) {
-                  clear();
-                  return;
-                }
-                if (prepared === true) {
-                  reviewNotice.textContent =
-                    '創作ノートの編集欄に転記しました。内容を確認して「保存」を押してください。';
-                  transfer.remove();
-                } else {
-                  reviewNotice.textContent =
-                    '転記しませんでした。編集内容とログイン状態を確認してください。';
-                }
-              } catch {
-                reviewNotice.textContent =
-                  '転記できませんでした。再度操作する前に編集内容を確認してください。';
-              } finally {
-                busy = false;
-              }
-            });
-            transfer.appendChild(transferButton);
-            list.appendChild(transfer);
+            list.appendChild(offerTransfer(item));
           }
         } catch {
           decisionUnconfirmed();
@@ -275,6 +288,31 @@
     }
     if (!data.candidates.length) {
       list.textContent = '保留中の候補はありません。';
+    }
+    // Previously reviewed candidates are still recoverable after reload,
+    // but neither listing nor transfer changes the author's canonical notes.
+    if (data.acceptedCandidates?.length && typeof onAccepted === 'function') {
+      const heading = doc.createElement('p');
+      heading.textContent =
+        '確認済み候補（まだ創作ノートへ保存していない場合は転記できます）';
+      list.appendChild(heading);
+      for (const item of data.acceptedCandidates) {
+        const row = doc.createElement('div');
+        const details = doc.createElement('p');
+        details.textContent =
+          item.kind +
+          '：' +
+          item.key +
+          '／参照エピソードID：' +
+          item.episodeId +
+          '／確認済み候補：' +
+          item.summary +
+          '／本文根拠：' +
+          item.evidence;
+        row.appendChild(details);
+        row.appendChild(offerTransfer(item));
+        list.appendChild(row);
+      }
     }
     const listener = client.auth.onAuthStateChange((_event, next) => {
       if (next?.user?.id !== ownerId || next?.access_token !== token) {

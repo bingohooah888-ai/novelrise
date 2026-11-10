@@ -287,33 +287,57 @@ export function createOwnerBibleReviewWorkflow({
       novelId: novel.id
     });
     if (!Array.isArray(rows) || rows.length > 100) denied();
-    const candidates = rows.map((row) => {
-      if (
-        !row ||
-        row.actorId !== actorId ||
-        positiveId(row.novelId) !== novel.id ||
-        !Number.isSafeInteger(row.revision) ||
-        row.revision < 1 ||
-        row.status !== 'pending' ||
-        row.provenance !== 'ai_inferred' ||
-        !KINDS.has(row.factKind) ||
-        typeof row.sourceHash !== 'string' ||
-        !SHA256.test(row.sourceHash)
-      ) {
-        denied();
-      }
-      return {
-        id: positiveId(row.id),
-        revision: row.revision,
-        episodeId: positiveId(row.sourceEpisodeId),
-        kind: row.factKind,
-        key: boundedText(row.factKey, 120),
-        summary: boundedText(row.summary, 320),
-        evidence: boundedText(row.evidence, 160),
-        status: 'pending'
-      };
+    function project(rowsToProject, expectedStatus) {
+      if (!Array.isArray(rowsToProject) || rowsToProject.length > 100) denied();
+      const ids = new Set();
+      return rowsToProject.map((row) => {
+        if (
+          !row ||
+          row.actorId !== actorId ||
+          positiveId(row.novelId) !== novel.id ||
+          !Number.isSafeInteger(row.revision) ||
+          row.revision < (expectedStatus === 'accepted' ? 2 : 1) ||
+          row.status !== expectedStatus ||
+          row.provenance !== 'ai_inferred' ||
+          !KINDS.has(row.factKind) ||
+          typeof row.sourceHash !== 'string' ||
+          !SHA256.test(row.sourceHash)
+        ) {
+          denied();
+        }
+        const id = positiveId(row.id);
+        if (ids.has(id)) denied();
+        ids.add(id);
+        return {
+          id,
+          revision: row.revision,
+          episodeId: positiveId(row.sourceEpisodeId),
+          kind: row.factKind,
+          key: boundedText(row.factKey, 120),
+          summary: boundedText(row.summary, 320),
+          evidence: boundedText(row.evidence, 160),
+          status: expectedStatus
+        };
+      });
+    }
+    const candidates = project(rows, 'pending');
+    if (typeof repository.listAccepted !== 'function') {
+      // Offline repositories created before this feature stay compatible.
+      return { novelId: novel.id, candidates, aiGenerated: false };
+    }
+    const acceptedRows = await repository.listAccepted({
+      actorId,
+      novelId: novel.id
     });
-    return { novelId: novel.id, candidates, aiGenerated: false };
+    const acceptedCandidates = project(acceptedRows, 'accepted');
+    const known = new Set(candidates.map((item) => item.id));
+    if (acceptedCandidates.some((item) => known.has(item.id))) denied();
+    return {
+      novelId: novel.id,
+      candidates,
+      acceptedCandidates,
+      aiGenerated: false
+    };
   }
 
   return Object.freeze({ stage, decide, list });
