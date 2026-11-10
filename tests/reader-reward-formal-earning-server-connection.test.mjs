@@ -31,9 +31,10 @@ test('server adapter routes valid read event to existing private transactional r
 test('server adapter routes only approved moderated episode comment to DB writer', () => {
   const p = plan({
     eventType: 'novel_episode_comment_reviewed',
-    commentModerationApproved: true
+    commentModerationApproved: true,
+    verifiedModerationRule: 'verified-source-review-v1'
   });
-  assert.equal(p.functionName, 'award_comment_points_draft');
+  assert.equal(p.functionName, 'review_comment_and_award_draft');
   assert.deepEqual(p.params, { p_comment_id: event, p_release_at: release });
   assert.equal(p.requiresReadTimeTrigger, null);
   assert.equal(p.mayIssuePoints, false);
