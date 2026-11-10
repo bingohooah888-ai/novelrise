@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 
 const source = readFileSync(
   new URL('../docs/drafts/SCOUT_FORMAL_XP_CUTOVER_DRAFT.sql', import.meta.url),
