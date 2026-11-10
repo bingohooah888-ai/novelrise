@@ -1,6 +1,7 @@
 // Draft-only formal Scout XP ladder: compile OWNER-supplied cumulative levels
 // into the existing Gate 04 progress-gauge format. Never deploy or select values.
-import { validateScoutBetaThresholds } from './scout-db-compatibility.js';
+import { quoteScoutBetaToFormalHandoff, validateScoutBetaThresholds } from './scout-db-compatibility.js';
+import { validateScoutLevelStateSnapshot } from './state-transition.js';
 
 function integer(value) {
   return Number.isSafeInteger(value) && value >= 0;
@@ -101,5 +102,55 @@ export function compileApprovedScoutFormalXpLadder({ betaThresholdRows }) {
     ownerThresholdApprovalRequired: false,
     // Explicitly separate the XP policy decision from production deployment.
     productionReady: false
+  });
+}
+
+/**
+ * Formal launch-only state initializer preview. Reuses Gate 05 beta handoff
+ * rather than reinterpreting beta XP or replaying capped discovery rewards.
+ * There is no DB I/O, no release timestamp default and no user-state write.
+ */
+export function quoteApprovedScoutBetaFormalState({
+  userId,
+  authenticatedBetaSummary,
+  betaThresholdRows,
+  formalReleaseAtMs,
+  accountCreatedAtMs
+}) {
+  const handoff = quoteScoutBetaToFormalHandoff({
+    authenticatedBetaSummary,
+    betaThresholdRows,
+    formalReleaseAtMs,
+    accountCreatedAtMs
+  });
+  if (handoff.status !== 'handoff_quote_only') {
+    return Object.freeze({
+      status: handoff.status,
+      ready: false
+    });
+  }
+  const ladder = compileApprovedScoutFormalXpLadder({ betaThresholdRows });
+  const state = validateScoutLevelStateSnapshot({
+    userId,
+    ...handoff.proposed,
+    lastReviewedWindowEndMs: null,
+    revision: 0
+  });
+  if (
+    state.levelProgressXp >= ladder.requiredXpByLevel[state.currentLevel]
+  ) {
+    return Object.freeze({
+      status: 'beta_progress_mismatch',
+      ready: false
+    });
+  }
+  return Object.freeze({
+    status: 'formal_state_quote_only',
+    ready: false,
+    state,
+    firstReviewDueAtMs: handoff.firstReviewDueAtMs,
+    requiredXpByLevel: ladder.requiredXpByLevel,
+    requiresServerLedgerCrossCheck: true,
+    requiresOwnerReleaseApproval: true
   });
 }
