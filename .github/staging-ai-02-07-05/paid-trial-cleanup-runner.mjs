@@ -2,8 +2,7 @@
 // network client, secrets or workflow trigger. A separately approved protected
 // workflow must inject verified callbacks and the guarded provider; this file
 // must NEVER be used to turn AI on or provision a user.
-import { isPaidTrialOneShotGuardedProvider } from
-  '../../api/_lib/ai/paid-trial-one-shot-provider.js';
+import { isPaidTrialOneShotGuardedProvider } from './paid-trial-one-shot-provider.mjs';
 
 function deny() {
   throw new Error('AI_020705_PAID_RUNNER_DENIED');

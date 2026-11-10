@@ -70,3 +70,74 @@ test('production project, wrong main or invalid preview target fail closed', () 
     }
   }), /AI_020705_PREVIEW_PREFLIGHT_DENIED/u);
 });
+
+// This case mirrors the 2026-11-10 observation: stale branch HEAD,
+// six branch-scoped names plus shared Preview credentials with unknown origin.
+test('stale branch and shared Preview credentials remain NO-GO without reading values', () => {
+  const branch = 'staging/ai-02-07-05-gatebc-20261105';
+  const metadata = [
+    ...[
+      'SUPABASE_URL',
+      'NOVELIGHT_STAGING_SUPABASE_URL',
+      'NOVELIGHT_AI_ENABLED',
+      'NOVELIGHT_AI_REVIEW_ENABLED',
+      'NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED',
+      'NOVELIGHT_AI_020705_ONE_SHOT_ENABLED'
+    ].map((key) => ({
+      key,
+      target: ['preview'],
+      gitBranch: branch
+    })),
+    ...[
+      'SUPABASE_PUBLISHABLE_KEY',
+      'SUPABASE_SECRET_KEY',
+      'NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY'
+    ].map((key) => ({
+      key,
+      target: ['preview']
+    }))
+  ];
+  const result = inspect020705PreviewPrecreation({
+    scope: { ...scope, branch },
+    currentMain: main,
+    stagingBranchHeadSha: 'b'.repeat(40),
+    envMetadata: metadata
+  });
+  assert.equal(result.status, 'STAGING_BRANCH_SHA_MISMATCH');
+  assert.equal(result.branchHeadMatchesMain, false);
+  assert.equal(result.missingBranchScopedEnvNames.length, 3);
+  assert.deepEqual(
+    [...result.sharedCredentialsNeedingIsolationProof].sort(),
+    [
+      'NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY',
+      'SUPABASE_PUBLISHABLE_KEY',
+      'SUPABASE_SECRET_KEY'
+    ].sort()
+  );
+  assert.equal(result.stagingCredentialsVerified, false);
+  assert.equal(result.authorizesPreviewCreation, false);
+  assert.equal(result.authorizesPaidCall, false);
+});
+
+test('matching branch SHA does not turn common credentials into isolation proof', () => {
+  const result = inspect020705PreviewPrecreation({
+    scope,
+    currentMain: main,
+    stagingBranchHeadSha: SHA,
+    envMetadata: [
+      {
+        key: 'SUPABASE_SECRET_KEY',
+        target: ['preview'],
+        gitBranch: null
+      }
+    ]
+  });
+  assert.equal(result.branchHeadMatchesMain, true);
+  assert.equal(result.stagingCredentialsVerified, false);
+  assert.deepEqual(result.sharedCredentialsNeedingIsolationProof, [
+    'SUPABASE_SECRET_KEY'
+  ]);
+  assert.ok(result.missingBranchScopedEnvNames.includes('SUPABASE_SECRET_KEY'));
+  assert.equal(result.noDeploymentCreated, true);
+  assert.equal(result.authorizesStagingWrite, false);
+});

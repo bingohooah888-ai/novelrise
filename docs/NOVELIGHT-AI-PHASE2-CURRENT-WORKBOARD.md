@@ -1,13 +1,23 @@
 # NOVELIGHT AI 工程②（02-07-05）— 継続用・唯一の現状ボード
 
-**最終内容確認：2026-11-05 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
+**最終内容確認：2026-11-10 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 03f64b14138ec5c6a90c0d8231a0784f878e78fa
-source_master_blob: 91d11fa367b7de64990b13397b13d4bb6e3c0230
+source_main: 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3
+source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
-last_reviewed_jst: 2026-11-05
+last_reviewed_jst: 2026-11-10
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-10 制御面専用Draft PR／信頼境界オフライン確認
+
+- **最新正本の照合**：main `95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3`、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`。基準変更を反映し、旧11月5日の合成試験、SQL6件、Cron停止、DO3件凍結は再実行しない。過去の承認は再利用しない。
+- **分離元**：Draft PR #2825 の制御コードHEAD `b941ea2727136f8a713d1c918916cfcd7f353d16`。今回の独立branch `work/ai-020705-trusted-control-slice-20261110` はmain起点で、既存 `.github/staging-ai-02-07-05/` 内の候補SHA／Owner台帳／Watchdog／保護Runner／Provider／READ検証差分と対応するオフラインテストのみを抽出。Novel BibleのUI・API本体、DB、workflowの変更は含めない。
+- **重要な互換性境界**：このcontrol-only branchの新Providerと、mainで未変更の従来API Providerは別モジュールであり、WeakMap identityは一致しない。制御側テストは同一制御Providerから構築してPASS。**mainの従来API Providerを制御Runnerへ渡す経路は接続禁止・fail closed**。PR #2825のAPI互換shimと同一になったことはこのPR単独では証明できない。両者の統合審査を将来別途要求し、ガードを緩和しない。
+- **実行権限**：mainのowner staging paid trial Workflowは `OFFLINE PREFLIGHT ONLY`。新しいWatchdog・Runner・承認基盤や実アダプターを作成せず、OWNER実承認、永続atomic nonce、独立stop/revoke/cleanup、Staging専用認証、Preview一致、実JWT／DB／有料AIは全て未実証。Gate A〜E **0/5**。
+- **次の境界**：本branchはDraft PRでのレビュー・CIまで。main統合およびProduction自動デプロイの可能性を伴う操作には、PRとSHAに束縛した別の明示的な本番承認が必要。Staging/Preview/Secret/実JWT/DB mutation/有料AIにはさらに別の個別承認が必要。
+
+
 
 ## 0. 最初に結論を確認する
 
