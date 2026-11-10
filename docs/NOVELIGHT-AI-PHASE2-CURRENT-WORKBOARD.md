@@ -9,6 +9,14 @@ phase: 02-07-05
 last_reviewed_jst: 2026-11-10
 <!-- CONTINUITY_FINGERPRINT_END -->
 
+## 2026-11-10 OWNER採用：候補SHA限定Staging先行方式（オフライン実装）
+
+- **設計方針の承認のみ**：現行main `95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3` を本番基準SHAとして維持し、検証対象のPR候補SHAとは**別値**で照合する。OwnerはStaging先行の候補SHA方式を採用したが、**実環境・main統合・Preview生成・Secret・実JWT・有料AI等は承認していない**。
+- **最小オフライン実装**：既存 `preview-precreation-readonly.mjs` に候補SHAの任意スコープと `inspect020705CandidateStagingOffline` を追加。mainの実SHA観測は変えず、Staging branchとPreview SHAは候補SHAに固定。OWNER/Issue #294/承認ID/run/モデル/10円上限・1回/停止計画を同じ候補に束縛。共通Preview資格情報と不一致はNO-GO。**実承認認証・独立停止・実Provider利用資格は常に未確認、実行許可はfalse**。
+- **既存ライブ系はOFF**：保護Runner/OWNER paid ledger/署名Watchdogの現行 main SHA 固定と Workflow `OFFLINE PREFLIGHT ONLY` は**未変更**。候補SHAの実行に必要な台帳・署名・DB claim側の変更／実証は次の**一括レビュー**対象であり、今回は制約を外さない。Gate A〜Eは**0/5**。
+- **詳細**：本Draft PR #2825内の実環境接続・実証計画書に、OWNER採用決定、具体的な候補SHA読取り契約、残る正式アダプター接続境界を追記。GitHub Actions結果はPR本文の当該HEADを参照。
+
+
 ## 2026-11-10 実環境接続の依存・実証手順を一括固定（コード再作成なし）
 
 - 実証手順の詳細：このDraft PRに追加したGate A〜C実環境接続計画書（PR変更ファイル参照）。**承認不要の接続設計とREAD証拠の整理のみ**。新しいWatchdog/Runner/承認レイヤー・実LIVEアダプターを追加しない。

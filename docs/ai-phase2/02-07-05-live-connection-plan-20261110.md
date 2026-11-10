@@ -34,7 +34,7 @@
 - **代替**：現契約を変えずPRをmainへ統合後に検証。ただしProduction自動デプロイの可能性があり、**機能のStaging先行検証という今回の目的と矛盾するため推奨しない**。
 - 11月10日現在、既存Staging branch `0e4f3f...` はmain `95f9ddff...` より**43コミット古い**。差分やPreviewを無断で同期・作成しない。実操作前にブランチとPreviewの対象SHAを再取得する。
 
-**このSHA設計の意思決定は、Gate B承認を出すより前の必須工程。** 実行可能なコードへの変更は、その決定・PRレビュー・明示承認の後に限る。
+**2026-11-10 OWNER決定：候補SHA限定Staging先行方式を設計方針として採用。** ただし**実Runner有効化・外部環境操作・main統合への承認ではない**。候補検証契約は今回PR #2825のオフラインコードとして実装し、実環境アダプター／Workflowの変更は別途レビュー・対象限定承認が必要。
 
 ## 3. 認証情報の独立性と失敗時の絶対条件
 
@@ -63,3 +63,13 @@
 **この文書および更新する進捗ボードは実環境の操作指示ではない。** 今回の変更は文書のみで、既存の実行コードや古いPASS証拠は改変・再実行しない。実行権限を持つ新Watchdog、Runner、Secret配布レイヤー、CI/Workflowの有効化も行わない。
 
 **今回の作業の完了条件**：既存アダプター・提供元・実環境で不足するもの・証拠と停止条件・SHA循環依存・承認順序を一箇所に固定し、Draft PRでレビュー可能にすること。Gate A〜Eは**0/5**のまま。外部で未実証の事項を成功と記載しない。
+
+## 6. 2026-11-10 採用した候補SHA方式：オフラインコードの具体仕様
+
+- 既存 `.github/staging-ai-02-07-05/preview-precreation-readonly.mjs` に **`scope.candidateSha`（省略可能）**を追加。`currentMain.sha === scope.mainSha`は引き続き必須。候補を指定した場合に限り、`stagingBranchHeadSha` と `existingPreview.sha` は **`candidateSha` に一致**させる。candidateShaとmainShaは同一不可。従来のmain専用モードは変更なし。
+- 同一ファイルの `inspect020705CandidateStagingOffline` が **`ownerIntent`、`watchdogPlan`、`budget` の模擬メタデータ**を、repository、Staging project、base main SHA、candidate SHA、専用branch、Preview ID、承認comment ID、run IDで厳密に照合する。OWNER `bingohooah888-ai`、Issue #294、合成対象作品と話、失効時間は最大60分、1回限り・再試行禁止、10円相当上限 `capMicros <= 10000000`。停止計画には独立Host、stop/revoke、外部zero census、timeout停止をすべて必須とする。
+- SHA・権限・費用のメタデータが一致していても **`ownerApprovalAuthenticated:false`、`independentStopVerified:false`、`billingEntitlementVerified:false`、`protectedRunnerWired:false`** のまま。`authorizesExecution`、`authorizesPaidCall`、`authorizesStagingWrite`、`authorizesPreviewCreation`、`authorizesMutation` は**すべて常にfalse**。外部Ownerの実承認・認証トランスポート・実署名・Secret分離・独立kill権限・Provider利用資格は本契約では証明できない。
+- このオフライン検証を**既存 `protected-stage-executor.mjs` とライブ有料Workflowへ結線しない**。その既存コードは依然として `trustedRef=refs/heads/main` と `approved.mainSha` を要求し、候補SHAでの実有料実行は**未対応・NO-GO**。実資格・実JWT・実モデル・実監視へ接続するには、owner-paid ledger・signed watchdog scope・atomic one-shot claimを含む**正式な候補SHA版の権限契約を別のレビュー済み変更で一括整合**させる必要がある。現在の制約を抜くことで動かすのは禁止。
+- **対象オフラインテスト**：base main ≠ candidate SHA、既存mainモード後方互換、branch/Previewずれ、共通Preview資格情報、OWNER/Issue/run/費用の不一致、独立停止条件欠落、Production/missing approvalsの拒否。Staging・DB・Secret・実Modelへの操作0件。Gate A〜Eは引き続き0/5。
+
+次は、**本番基準SHAと候補SHAを区別したOwner台帳・外部Watchdog署名・one-shot claimを既存契約のままどう安全に接続するか**を、一回のレビュー対象としてオフラインでまとめて設計する。新しい資格・費用・実行トリガーの承認が必要になった時点で操作別に提示する。不要なガード増殖や過去PASSの再実行は禁止。
