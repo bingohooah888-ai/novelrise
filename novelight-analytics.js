@@ -312,6 +312,14 @@
 
   function renderPlanNote() {
     const note = byId('planNotice');
+    const currentPlan = byId('currentAnalyticsPlan');
+    if (currentPlan) {
+      const names = { free: 'Free', standard: 'Standard', premium: 'Premium' };
+      currentPlan.textContent = names[plan] || 'Free';
+      document.querySelectorAll('[data-analytics-tier]').forEach((cell) => {
+        cell.classList.toggle('is-current-plan', cell.dataset.analyticsTier === plan);
+      });
+    }
     if (plan === 'free') {
       note.innerHTML =
         '<div><strong>Freeでは全作品合計の基本LIGHT ANALYTICSを表示しています。</strong><p>期間推移と前期間比較は利用できます。作品ごとのファネルと追加露出の効果はStandard以上で確認できます。</p></div><a href="pricing.html">プランを確認する →</a>';
