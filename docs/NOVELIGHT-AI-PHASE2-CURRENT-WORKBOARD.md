@@ -3,11 +3,22 @@
 **最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: fd651701e8bc810db8523e629024d9bde23ca6be
+source_main: 148524993c0c96d0432cec1380cf2c01263b7cc3
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
 last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 作者向け章情報のオフライン表示接続（新Draft候補・実環境OFF）
+
+- **正本**：最新main `148524993c0c96d0432cec1380cf2c01263b7cc3`、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`。PR #2835・#2825はともに統合済み。Vercel Productionは同SHAでREADY、CI/CodeQL/Production ReadinessはSUCCESS。ただし本番の管理人プレビューフラグを有効にした事実や実JWT検証を意味しない。
+- **ユーザー機能の既存経路**：`story-notes.html` が作者の作品・セッションを確認後、既存 `NovelightAiBibleOwnerStudio.attach` を起動し、管理人フラグがONの場合だけ `GET /api/ai-owner-novel-bible` の非公開設定を表示する。レビュー採否、下書きへの明示転記、同意と管理人試用の画面は既存部品を使用。一般作者向け公開・有料AI実行とは異なる。
+- **不足・今回の最小実装**：章／話数を正規の順序で表示する既存 `NovelightAiBibleOwnerOutline.project` と `OwnerPanel.createOfflineReader` の読取契約が、作者Studioの呼び出し境界では未接続だった。Studioに**任意の外部注入 `readOutline`** を追加し、受け取る前後の現在セッション一致を確認して既存Readerへ渡す。**公開済みstory-notes側は `readOutline` を一切渡さない**ため、未承認のHTTP・RPC・Auth・DB・AI呼び出しを増やさない。偽の話順や作者判定は行わず、合成fixture上だけで既存の章表示UIを動かす。
+- **オフライン試験**：読み取り依存の注入、章・話数の表示、途中ログアウト／主体変更、無効な入力と読取失敗の遮断を検証。開発中のテスト成功は将来のserver-owner-outline GETの実接続承認ではない。
+- **Supabase Preview failure（READのみ）**：Stagingのremote 215版とmain local 215版の差は remote-only `20261110080421`（`formal_scout_level_staging_2762_20261110`）、local-only `20261110172000`（`author_reader_retention_cross_visit`）。**別機能のMigrationが分岐した状態**であり、番号だけ変更する処理は禁止。リモート適用状態・修復方針は未確定で、DB・Preview・Migration変更は個別承認までNO-GO。
+- **次の境界**：Draft PRでのオフライン実装・CI/CodeQLのみ。main統合・Vercel Production自動デプロイは別途本番承認、Staging／Preview／実JWT／DB／Secret／有料AI／独立Watchdog実行はさらに別承認が必要。Gate A〜Eは**0/5**。これ以前のボード文中の「未統合」は履歴であって最新状態ではない。
+
+
 
 ## 2026-11-11 継続：#2835 main統合後の #2825 オフライン再同期（本番実行なし）
 
