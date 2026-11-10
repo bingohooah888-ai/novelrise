@@ -38,10 +38,7 @@ test('read-time level is captured from locked formal state with a canonical vali
     sql,
     /select \* into v_read from public\.valid_read_events where id=p_read_event_id/i
   );
-  assert.match(
-    sql,
-    /qualified_at<transaction_timestamp\(\)-interval '30 seconds'/i
-  );
+  assert.match(sql, /after insert on public\.valid_read_events/i);
   assert.match(sql, /level_revision bigint not null/i);
   assert.match(sql, /scout_level_state[\s\S]*?for update/i);
   assert.match(sql, /on conflict\(read_event_id\) do nothing/i);
