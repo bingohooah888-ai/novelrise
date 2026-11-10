@@ -11,7 +11,7 @@ last_reviewed_jst: 2026-11-10
 
 ## 2026-11-10 実環境接続の依存・実証手順を一括固定（コード再作成なし）
 
-- 正本：[`docs/ai-phase2/02-07-05-live-connection-plan-20261110.md`](ai-phase2/02-07-05-live-connection-plan-20261110.md)。**承認不要の接続設計とREAD証拠の整理のみ**。新しいWatchdog/Runner/承認レイヤー・実LIVEアダプターを追加しない。
+- 実証手順の詳細：このDraft PRに追加したGate A〜C実環境接続計画書（PR変更ファイル参照）。**承認不要の接続設計とREAD証拠の整理のみ**。新しいWatchdog/Runner/承認レイヤー・実LIVEアダプターを追加しない。
 - このチャットで観測したmainは`95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3`、PR #2825は作業着手時`368914c919e3b057cba0b7dd9a17b39d865d9326`（Draft・未統合）。新しいHEADはPR本文と実行時GitHubから必ず再取得。Staging branchは当時mainより**43コミット古く**Preview作成は未実施。
 - **工程②の実装側**：既存の作品カルテ一連の模擬操作およびGate A/B/Cオフライン連結は既存PR内で合格済み。実認証・実DB・外部AI・独立Watchdogを動かした証拠ではなく、Gate A〜Eは**0/5**。
 - **A/B/Cの実接続に必要**：(A) Runnerとは独立したController/heartbeat・真正性・最小停止権限と独立zero census、(B) Production非共有のStaging秘密値とSSO保護のexact SHA Preview、(C) Protected Workflow、合成Auth/JWT、Owner一回限り承認・実原子DB claim、料金/同意とcleanup。全てに費用・資格・期限を固定。
