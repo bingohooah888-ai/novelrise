@@ -59,5 +59,7 @@ test('pending XP replay is explicitly invoked and processes review windows in ch
   assert.match(source, /review_scout_30_days\(p_user_id,p_as_of\)/i);
   assert.match(source, /apply_scout_xp\(v_xp.id\)/i);
   assert.match(source, /p_limit > 100/i);
+  assert.match(source, /'status','more_pending'/i);
+  assert.match(source, /Never close a maintenance window while older unclaimed XP/);
   assert.doesNotMatch(source, /create\s+extension\s+pg_cron/i);
 });
