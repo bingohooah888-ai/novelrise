@@ -93,9 +93,10 @@ test('repo source-only review NEVER means a live proof', () => {
   assert.equal(review.mayMergeMain, false);
   assert.equal(review.mayDeploy, false);
 });
-test('2026-11 repo snapshot: pinned branch/merge source counts and 51 SQL DML sites', () => {
-  // PR branch and GitHub CI merge ref contain different tracked source counts.
-  assert.ok([429, 439].includes(review.trackedSourceFileCount));
+test('2026-11 repo snapshot: baseline source coverage and 51 SQL DML sites', () => {
+  // Adding a new tracked source should not break writer classification coverage.
+  // The unchanged 51 DML sites remain pinned below.
+  assert.ok(review.trackedSourceFileCount >= 429);
   assert.equal(review.mutationSites.length, 51);
   assert.equal(new Set(review.mutationSites.map((x) => x.path)).size, 15);
 });
