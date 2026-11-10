@@ -201,6 +201,19 @@ begin
     end if;
     v_applied:=v_applied+1;
   end loop;
+  -- Never close a maintenance window while older unclaimed XP still awaits
+  -- a subsequent bounded page. The next invocation resumes the same queue.
+  if exists (
+    select 1 from public.scout_xp_ledger x
+    where x.user_id=p_user_id and x.occurred_at>=v_state.review_anchor_at
+      and x.occurred_at<=p_as_of
+      and not exists (
+        select 1 from novelight_formal_private.scout_xp_claim cl where cl.xp_id=x.id
+      )
+  ) then
+    return jsonb_build_object('status','more_pending','xp_applied',v_applied,
+      'reviews',v_reviews,'candidates',v_seen);
+  end if;
   -- Even if no XP arrived, all completed maintenance windows must be reviewed.
   loop
     select * into v_state from novelight_formal_private.scout_level_state
