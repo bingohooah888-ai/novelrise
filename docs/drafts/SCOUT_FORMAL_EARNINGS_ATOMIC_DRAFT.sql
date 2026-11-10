@@ -40,6 +40,7 @@ as $capture_read$
 declare
  v_read public.valid_read_events%rowtype;
  v_state novelight_formal_private.scout_level_state%rowtype;
+ v_qualified_tx bigint;
  v_id uuid;
 begin
  if p_release_at is null or p_release_at>clock_timestamp() then
@@ -49,6 +50,13 @@ begin
  if not found then return jsonb_build_object('status','valid_read_missing'); end if;
  if v_read.qualified_at<p_release_at or v_read.reader_id=v_read.author_id_snapshot then
    return jsonb_build_object('status','read_not_eligible');
+ end if;
+ -- The valid_read_events row must be newly inserted by THIS database
+ -- transaction, not merely have a recent timestamp supplied by another path.
+ select xmin::text::bigint into v_qualified_tx
+ from public.valid_read_events where id=v_read.id;
+ if v_qualified_tx is distinct from txid_current() then
+   return jsonb_build_object('status','read_transaction_not_matched');
  end if;
  -- Capture must happen alongside the validated read transaction. Past events
  -- cannot be re-priced without an independently verified historical snapshot.
@@ -159,6 +167,9 @@ begin
  if v_comment.created_at < p_release_at then
    return jsonb_build_object('status','pre_release_not_eligible');
  end if;
+ if v_comment.created_at>clock_timestamp() then
+   return jsonb_build_object('status','future_comment_not_eligible');
+ end if;
  select n.user_id into v_novel_author from public.novels n
  where n.id=v_comment.novel_id;
  if v_novel_author is null or v_novel_author=v_comment.user_id then
@@ -192,6 +203,7 @@ begin
      and prior.episode_id=v_comment.episode_id
      and (prior.created_at,prior.id)<(v_comment.created_at,v_comment.id)
      and prior.deleted_at is null and prior.author_hidden_at is null
+     and prior.created_at>=p_release_at
      and exists(select 1 from public.valid_read_events earlier_read
        where earlier_read.reader_id=prior.user_id
          and earlier_read.episode_id_snapshot=prior.episode_id::text
