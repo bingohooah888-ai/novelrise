@@ -3,11 +3,22 @@
 **最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: a3da5374ea31da483da17c3701e476c2813b8f2c
+source_main: fe1f5fffaf738d3fea1ee78959bc07598fce207a
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
 last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 継続：確認状態Staging接続前の権限・Migration・rollback一括監査（Draft未統合）
+
+- **基準と統合後証跡**：main `fe1f5fffaf738d3fea1ee78959bc07598fce207a`、PR #2848統合済み、CodeQL run #43003951093 SUCCESS、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 不変。過去段落の「新Draft／未統合」は当時の履歴であり現在状態ではない。
+- **既知Migration分岐**：Staging ref `wmlzjgvxgoyrovdhbqbg` のremote-only `20261110080421`（SCOUT）とmain local-only `20261110172000`（作者閲覧維持）は過去の読取診断証拠。現行Staging再取得は未承認のため行わない。既存 `scripts/audit-staging-migration-recovery.mjs` を活用し、両方向差分と修復禁止を維持。
+- **SQL権限の具体的P0**：PostgreSQL `FOR SHARE` には対象テーブル列のSELECTだけでなくUPDATE権限が必要。`service_role` のRLS bypassと `auth.sessions` の参照・ロック可否は別。現行の確認状態PROPOSALには `service_role` のauth schema usage、auth.sessionsのid/user_id SELECT・UPDATE（ロック用）、novelsのSELECT・UPDATEを事前に検証するfail-closedガードを追加。権限自動追加・SECURITY DEFINER化・Auth Data API公開はしない。
+- **オフラインでの実装**：service_role readerは確認状態のread後、返却直前にも `novels(id,user_id)` の作品所有権を再検証する。`reports/sql/novelight_ai_owner_review_state_READONLY_PREFLIGHT.sql` はauth行／JWTを取得せず権限booleanだけを返す未実行SELECT。`reports/sql/novelight_ai_owner_review_state_ROLLBACK_PROPOSAL.sql` は孤立Stagingの空テーブルに限定した未実行の別途破壊的承認必須案（DROP CASCADEなし）。関連合成テストと `docs/NOVELIGHT-AI-PHASE2-REVIEW-STATE-STAGING-READINESS.md` を追加。
+- **次の承認候補S0**：隔離Staging `wmlzjgvxgoyrovdhbqbg`、その時点のexact SHAを条件に、①Migration history **版番号のみ**読取1回、②pg_catalog権限SELECT **1回**、合計2回まで。Preview/JWT/SQL mutation/DB書込/AIはゼロ。移行履歴不一致または権限不足・対象違いならNO-GOとし修復は別承認。S1/S2のStaging write・Migration・実JWTと本番公開はこの承認に含まない。Gate A〜Eは **0/5**。
+- **今回禁止の境界**：main統合、Preview生成、Staging/Production設定・データ変更、DB接続、Migration実行/repair、Secret、実Auth/JWT、有料AI、Watchdog/Runner、本番API有効化を行わない。S0でも対象プロジェクトと承認条件を再照合し、ログから個人情報・Secretを排除する。
+
+
 
 ## 2026-11-11 継続：作品カルテ確認状態の永続化用SQL提案・service-role CAS repository・既存セッション検証接続を一括オフライン実装（新Draft）
 
