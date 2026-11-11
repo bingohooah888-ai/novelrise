@@ -8,6 +8,9 @@ import { SCOUT_POINT_MIN_EXTERNAL_EXCHANGE } from './scout-point-usage.js';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const FEATURE_ID = /^[a-z][a-z0-9_-]{1,79}$/;
 const positive = (n) => Number.isSafeInteger(n) && n > 0;
+// public.scout_point_ledger.point_value CHECK (-1,000,000..1,000,000).
+// Reject an unrecordable charge BEFORE reserving points or executing AI.
+const CANONICAL_LEDGER_ENTRY_MAX = 1_000_000;
 const safe = (n) => Number.isSafeInteger(n) && n >= 0;
 const frozen = (value) => Object.freeze(value);
 const response = (status, fields = {}) => frozen({ status, ...fields });
@@ -144,6 +147,10 @@ export function createFormalRewardUsageService({
       !positive(amountPoints)
     )
       return response('invalid_request');
+    // Both the debit and a potential later refund must fit in one canonical
+    // ledger row. A reservation above this ceiling can never be settled.
+    if (amountPoints > CANONICAL_LEDGER_ENTRY_MAX)
+      return response('canonical_ledger_entry_limit');
     if (
       purpose === 'external_exchange' &&
       amountPoints < SCOUT_POINT_MIN_EXTERNAL_EXCHANGE

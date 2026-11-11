@@ -780,3 +780,99 @@ test('admin-only HTTP refund view and operation reject normal reader and forged 
     50000
   );
 });
+
+test('canonical Point ledger entry ceiling blocks un-settleable exchange and AI before any reservation or external work', async () => {
+  const repository = createOfflineFormalUsageRepository({
+    readers: [
+      {
+        userId: first,
+        availablePoints: 2_000_000,
+        exchangeEligiblePoints: 2_000_000
+      }
+    ],
+    budgets: {
+      external_exchange: {
+        scopeId: 'offline-exchange-cap',
+        limitPoints: 3_000_000
+      },
+      ai_direct_use: { scopeId: 'offline-ai-cap', limitPoints: 3_000_000 }
+    }
+  });
+  let aiCalls = 0;
+  let externalChecks = 0;
+  const service = createFormalRewardUsageService({
+    repository,
+    releaseConfiguration: {
+      formalRewardsEnabled: true,
+      productionCutoverApproved: true
+    },
+    trustedServerAuthorization: {
+      verifiedByTrustedServer: true,
+      serviceRoleVerified: true
+    },
+    catalog: [
+      {
+        id: 'very_large_mock',
+        name: '開発用架空AI',
+        pricePoints: 1_000_001,
+        approved: true
+      }
+    ],
+    policy: {
+      giftProviderReady: true,
+      verifyExchange: async () => {
+        externalChecks++;
+        return approval;
+      },
+      verifyAi: async () => {
+        externalChecks++;
+        return approval;
+      },
+      allocateAiEligiblePoints: async () => 0
+    },
+    aiExecutor: async () => {
+      aiCalls++;
+      return {
+        status: 'succeeded',
+        costPoints: 1_000_001
+      };
+    }
+  });
+  const before = await service.getReaderSnapshot(first);
+  assert.equal(
+    (
+      await service.requestExchange({
+        userId: first,
+        operationId: op1,
+        amountPoints: 1_000_001
+      })
+    ).status,
+    'canonical_ledger_entry_limit'
+  );
+  assert.equal(
+    (
+      await service.requestAiUse({
+        userId: first,
+        operationId: op2,
+        featureId: 'very_large_mock'
+      })
+    ).status,
+    'canonical_ledger_entry_limit'
+  );
+  const after = await service.getReaderSnapshot(first);
+  assert.deepEqual(after.wallet, before.wallet);
+  assert.equal((await service.listPendingExchanges()).items.length, 0);
+  assert.equal(externalChecks, 0);
+  assert.equal(aiCalls, 0);
+  // Canonical integer boundary itself remains permitted for the gift path.
+  assert.equal(
+    (
+      await service.requestExchange({
+        userId: first,
+        operationId: op3,
+        amountPoints: 1_000_000
+      })
+    ).status,
+    'request_received'
+  );
+});
