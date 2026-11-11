@@ -3,11 +3,22 @@
 **最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 1d3f3f3cae61cbe0e06682ff06e6aeed8f4ca882
+source_main: 9546af76e6b1100737c17966312440fd9077da69
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
 last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 継続：作者「確認済み」状態のサーバー側CAS・Owner HTTP／Browser契約をオフライン一括実装（新Draft）
+
+- **正本・対象**：main `9546af76e6b1100737c17966312440fd9077da69`（PR #2845統合済み）。MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 不変。新規隔離branchから1 Draft PRのみ作成し、本番・Preview・Staging・DB・Secretは変更しない。
+- **既存部品の再利用**：既存の作者作品カルテ `localReviewSummary` による同じ確認ポイントIDをサーバー側でも計算。既存 `createOwnerBibleReviewWorkflow` と同様に `auth.getUser(token)`、管理人ID allowlist、`novels(id,user_id)` の作品所有権再確認を利用した専用の未mount workflowを実装。`readOwnerPreview` はクライアント申告ではなく独立して作品所有権を確認するサーバー専用readerとして注入する。既存AI候補の `accepted/rejected` は作者の「確認済み」と意味が異なるため、`novelight_ai_review_decide` を転用しない。
+- **作者体験の一括実装**：`GET`で `version:1,novelId,revision,reviewedIds` だけを取得し、本人／作品／現在の確認ポイントIDを照合して復元。`POST`は明示操作・現在のrevision・100件以下の妥当なIDを要求。保存前に認証再確認し、保存repositoryの原子的 `compareAndSwap` 契約へ引き渡す。旧revision不一致、同時書込負け、古い確認ポイント、別作者・別作品、権限失効では失敗を返し、保存成功と誤表示しない。確認済みはAI候補の採用や正式設定への転記ではない。
+- **HTTP／Browserオフライン接続**：新規 `api/_lib/ai/owner-bible-review-state-offline-api.js`（公開API未mount・既定OFF）は明示フラグ2件と `enabled=true` を要求し、Same-Origin、Bearer、POST Origin・追加ヘッダ、JSON形式・上限を検査。`novelight-ai-bible-owner-review-state-offline-http.js` も未importの独立モジュールで、作者・トークン一致の前後確認、GET/POST、409競合検出を行う。既存 `OwnerStudio.attach` → `OwnerPanel.createOfflineReader` → `AuthorWorkspace.render` への任意注入を使い、架空作者の保存・再開を一連で検証。`story-notes.html` 等公開UIは変更なし。
+- **未完成・未実証**：実保存テーブル／transactional RPC・DB/RLS、実 `auth.sessions` 有効性確認、実作者JWT、実HTTP route、Preview、Staging、本人試用、AI Providerは未接続。`readSnapshot` / `compareAndSwap` は将来の永続化driverの注入口のみ。同時CASの証明は合成メモリrepositoryであり、今回のコードだけで実データは保存されない。Productionの機能スイッチはOFF。正式Gate A〜Eは **0/5**。
+- **残工程**：専用の原子的永続化repository＋DB/RLSを別途承認のうえ整備し、既存の実セッション検証・所有権RPCと結線してStaging実JWT／ブラウザ検証／Gate A〜Eへ進む。Supabase Previewの既知Migration分岐は **READ ONLY**、修復・再実行なし。新DraftのCI・CodeQL結果を実証正本とし、main統合は禁止。
+
+
 
 ## 2026-11-11 継続：作者チェックリストの再開契約と保存失敗時表示を一括オフライン接続（本Draftのみ）
 
