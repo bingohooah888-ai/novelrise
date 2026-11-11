@@ -187,3 +187,156 @@ test('existing Point 10x workflow conditions and independent job gates are intac
     3
   );
 });
+
+test('main-existing migration-sync workflow keeps its original admission and reusable jobs', () => {
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/supabase-staging-sync-request.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const [original, separate] = workflow.split(
+    '\n  # Separate OWNER-only proof for one new synthetic Staging reader.'
+  );
+  assert.ok(separate);
+  assert.ok(
+    original.includes('NOVELIGHT_STAGING_APPROVE {"scope":"migration-sync",')
+  );
+  assert.match(original, /^  request:/m);
+  assert.match(original, /^  sync:/m);
+  assert.match(original, /^  record:/m);
+  assert.match(
+    original,
+    /uses: \.\/\.github\/workflows\/supabase-staging-sync.yml/
+  );
+  assert.doesNotMatch(original, /ONE_READER_ONE_APPROVE/);
+  assert.match(separate, /^  admit_one_new_reader:/m);
+  assert.match(separate, /^  stage_one_new_reader:/m);
+  assert.match(separate, /^  record_one_new_reader:/m);
+  assert.doesNotMatch(separate, /NOVELIGHT_STAGING_READER_POINT10X_APPROVE/);
+});
+
+test('one-reader main job has a unique approval, fail-closed identity and scope gates', () => {
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/supabase-staging-sync-request.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const section = workflow.slice(workflow.indexOf('\n  admit_one_new_reader:'));
+  assert.match(
+    section,
+    /startsWith\(github\.event\.comment\.body, 'NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE '\)/
+  );
+  assert.match(section, /v\.maxReaders!==1/);
+  assert.match(section, /v\.pr!==2762/);
+  assert.match(section, /v\.mainSha!==main\.object\?\.sha/);
+  assert.match(section, /NOVELIGHT_STAGING_NEW_READER_ONE_CLAIMED/);
+  assert.match(section, /NOVELIGHT_STAGING_NEW_READER_ONE_CONSUMED/);
+  assert.match(section, /GITHUB_RUN_ATTEMPT.*1/);
+  assert.match(section, /environment: staging/);
+});
+
+test('inline proof code has only synthetic Auth createUser, one JWT proof and two new-row INSERTs', () => {
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/supabase-staging-sync-request.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const section = workflow.slice(workflow.indexOf('\n  admit_one_new_reader:'));
+  assert.match(section, /auth\.admin\.createUser/);
+  assert.match(section, /auth\.signInWithPassword/);
+  assert.match(section, /auth\.getUser/);
+  assert.match(section, /SET TRANSACTION ISOLATION LEVEL SERIALIZABLE/);
+  assert.match(section, /raw_user_meta_data/);
+  assert.equal(
+    (section.match(/INSERT INTO novelight_formal_private\./g) || []).length,
+    2
+  );
+  assert.match(
+    section,
+    /INSERT INTO novelight_formal_private\.scout_level_state/
+  );
+  assert.match(
+    section,
+    /INSERT INTO novelight_formal_private\.scout_point_usage_wallets/
+  );
+  assert.doesNotMatch(
+    section,
+    /(?:^\s*UPDATE\s|DELETE FROM|TRUNCATE|DROP TABLE|CREATE TRIGGER|vercel deploy|vercel\.app)/im
+  );
+  assert.doesNotMatch(
+    section,
+    /scripts\/scout-formal-new-reader-staging-proof\.mjs/
+  );
+  assert.doesNotMatch(section, /ref: (?:feature\/|pull\/)/);
+});
+
+test('both embedded GitHub Actions JavaScript snippets pass node --check without execution', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/supabase-staging-sync-request.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const matches = [
+    ...workflow.matchAll(
+      /^ {10}node --input-type=module <<'JS'[^\n]*\r?\n([\s\S]*?)^ {10}JS\r?$/gm
+    )
+  ];
+  assert.equal(matches.length, 2);
+  for (const match of matches) {
+    const code = match[1]
+      .split(/\r?\n/)
+      .map((line) => (line.startsWith('          ') ? line.slice(10) : line))
+      .join('\n');
+    const r = spawnSync(process.execPath, ['--input-type=module', '--check'], {
+      input: code,
+      encoding: 'utf8'
+    });
+    assert.equal(r.status, 0, r.stderr);
+  }
+});
+
+test('new-reader workflow does not expose Staging secrets to npm, checkout or whole job', () => {
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/supabase-staging-sync-request.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const reader = workflow.slice(
+    workflow.indexOf('\n  stage_one_new_reader:'),
+    workflow.indexOf('\n  record_one_new_reader:')
+  );
+  const jobEnv = reader.slice(
+    reader.indexOf('\n    env:'),
+    reader.indexOf('\n    steps:')
+  );
+  assert.doesNotMatch(
+    jobEnv,
+    /STAGING_SUPABASE_SECRET_KEY:|STAGING_SUPABASE_PUBLISHABLE_KEY:|STAGING_DATABASE_URL_SOURCE:/
+  );
+  assert.match(
+    reader,
+    /STAGING_DATABASE_URL_SOURCE: \${{ secrets\.STAGING_DATABASE_URL }}/
+  );
+  assert.match(
+    reader,
+    /STAGING_SUPABASE_SECRET_KEY: \${{ secrets\.STAGING_SUPABASE_SECRET_KEY }}/
+  );
+  assert.match(
+    reader,
+    /STAGING_SUPABASE_PUBLISHABLE_KEY: \${{ secrets\.STAGING_SUPABASE_PUBLISHABLE_KEY }}/
+  );
+  assert.match(reader, /marker IS DISTINCT FROM/);
+  assert.match(reader, /setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38/);
+  assert.doesNotMatch(reader, /uses: \S+@(?:main|feature)/);
+});

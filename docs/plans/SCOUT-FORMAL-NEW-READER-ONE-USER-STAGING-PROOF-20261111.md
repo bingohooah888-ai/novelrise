@@ -208,3 +208,30 @@ NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE {"confirmation":"STAGING APPROVED","mai
 その後で、さらに別OWNER承認によりStaging合成Auth1件・実JWT本人照合・正式LEVEL Lv.1／Wallet 0各1行だけを実行する。旧ID1,604人と旧Point、旧XP、報酬トリガー、Production、Previewは対象外。失敗時の無断再実行や合成Authユーザー削除も禁止。
 
 **今回の承認は上記5番目のファイルの編集を認めない。** 現段階では追加実装をせず、この不成立の根拠と追加承認範囲を記録するだけとする。
+
+## 2026-11-12：既存main Workflowへ移植可能な単一ファイル入口をPR内で準備
+
+OWNERが追加編集を明示承認した**既存の** `.github/workflows/supabase-staging-sync-request.yml` にのみ、新規読者用 `admit_one_new_reader` / `stage_one_new_reader` / `record_one_new_reader` を追加。元の `request` / `sync` / `record` とMigration同期プレフィックス、再利用Workflow呼出しは変更しない。新しいWorkflowファイルは作成しない。
+
+### 実行経路（現時点ではDormant）
+
+- OWNER本人が既存Issue #294に `NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE ` の**新しい固有コメント**を作成したときに限り入場。正確な対象main SHA、PR #2762、対象Staging `wmlzjgvxgoyrovdhbqbg`、テスト用UTC基準 `2026-11-10T00:00:00.000Z`、最大Auth1件、専用scopeを照合。GitHub Actions botのCLAIM/CONSUMED記録で同コメントの再利用を拒否し、再実行を行わない。
+- レビューされたmain SHAだけをcheckoutする。**未信頼Draft PRのスクリプトは呼び出さない**。事前検証後、Staging Environment Secretを専用ステップに限って使用。既存mainの `resolve-staging-session-pooler.mjs` と `verify-staging-migration-target.mjs` を再利用し、接続文字列は0600の一時ファイルを経由。DBログイン情報・JWT・メール・パスワードは出力しない。
+- 認証：`auth.admin.createUser` 最大1回、生成UUIDの本人が `auth.signInWithPassword` / `auth.getUser` で一致することを確認。合成ユーザーの識別メタデータと登録日時も、書込み時に同じauth行で照合する。
+- DB：生成された**1UUID**に既存Point/XP/LEVEL/Walletがなければ、1つのSERIALIZABLE PostgreSQLトランザクションで `scout_level_state` のLv.1と `scout_point_usage_wallets` の残高0を各1行INSERT。読取で値・行数・登録日時起点・Point/XPへの追加なしを確認し、失敗は中断・無断再試行なし。旧1,604人と旧Pointを更新・除外・換算しない。
+- 試験で作成したAuth・LEVEL・Walletを**自動削除しない**。報酬発行・消費、旧Point10倍、外部交換、AI、Preview、Productionの操作もなし。
+- この検証はAuth本人一致とDB2テーブルの初期値を確認するもので、未公開の正式API・読者画面・管理画面の実HTTP/実UI試験と区別する。
+
+### main限定反映の**正確なファイル範囲**とビルド保護
+
+main反映承認は**今回まだ受けていない**。最小反映の候補は次の**1ファイルだけ**：
+
+```
+.github/workflows/supabase-staging-sync-request.yml
+```
+
+ユーザー未承認の旧Point10倍Workflow `.github/workflows/staging-reader-point-tenfold-proof.yml` と、 `scripts/scout-formal-new-reader-staging-proof.mjs`、テスト、ドキュメント、PR #2762の他の差分は**mainへ移さない**。新規読者用処理が上記既存Workflowに内包されたので、これらのファイルをmainに追加する必要はない。
+
+現在mainのVercel設定は `git.deploymentEnabled={"**":false,"main":true}`、`ignoreCommand="node scripts/vercel-ignore-build.mjs"`。mainからの**変更パスが上記の単一`.github/`ファイルだけ**で、Vercelビルド時に`HEAD^`と`HEAD`を比較できる条件なら、既存の`shouldIgnoreProductionBuild`はProductionビルドをスキップする。変更ファイルが他にも混ざる、Git差分を取得できない、Vercelのプロジェクト設定が別の判定をする等の場合は**スキップを保証できない**。mainへのpush自体がVercelのデプロイイベントを生じうるため、ビルド抑止だけで「Productionを一切動かさない」と断言してはならない。
+
+次のOWNER承認は、最新mainとPRのSHAを再固定し、上記1ファイル**だけ**の限定移植（PRの全体merge禁止）と、Vercelの実デプロイを行わずにビルド抑止条件を事前確認する操作に限定すべき。main反映を承認しただけでIssue #294へ承認コメントを投稿・StagingのAuthやDBに書き込むことはない。実Staging Auth1件作成・実JWT・LEVEL/Walletの操作には**さらに別の明示OWNER承認**を要する。
