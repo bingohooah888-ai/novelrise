@@ -41,6 +41,9 @@
       return result;
     }
     return Object.freeze({
+      // Explicit user action only. There is never an onboarding request on GET.
+      initializeNewReader: () =>
+        call('POST', { action: 'initialize_new_formal_reader' }),
       fetchSnapshot: async () => {
         const data = await call('GET');
         if (data.serverVerified !== true)

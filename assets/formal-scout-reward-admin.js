@@ -33,13 +33,15 @@
     notice.setAttribute('role', 'status');
     const list = node('div', 'rr-admin-list');
     const refunds = node('div', 'rr-admin-list');
-    shell.append(title, caption, notice, list, refunds);
+    const newReaders = node('div', 'rr-admin-list');
+    shell.append(title, caption, notice, newReaders, list, refunds);
     root.replaceChildren(shell);
 
     async function refresh() {
       const requestId = ++latestRequest;
       list.replaceChildren();
       refunds.replaceChildren();
+      newReaders.replaceChildren();
       if (authorized !== true) {
         notice.textContent = '管理者の本人確認と正式版の利用開始が必要です。';
         return { status: 'admin_not_verified' };
@@ -61,6 +63,43 @@
       }
       notice.textContent =
         '未完了の交換申請：' + fmt(result.items.length) + '件';
+      if (typeof loadNewReaderSummary === 'function') {
+        let overview = null;
+        try {
+          overview = await loadNewReaderSummary();
+        } catch {
+          /* unavailable */
+        }
+        if (requestId !== latestRequest)
+          return { status: 'stale_queue_response' };
+        if (
+          overview?.status === 'new_reader_summary_ready' &&
+          [
+            overview.totalRegistered,
+            overview.initialized,
+            overview.partial
+          ].every((value) => Number.isSafeInteger(value) && value >= 0)
+        ) {
+          newReaders.append(
+            node('h3', '', '正式版以降の新規読者'),
+            node(
+              'p',
+              'rr-admin-muted',
+              '登録：' +
+                fmt(overview.totalRegistered) +
+                '人　初期化完了：' +
+                fmt(overview.initialized) +
+                '人　要確認：' +
+                fmt(overview.partial) +
+                '人'
+            )
+          );
+        } else {
+          newReaders.append(
+            node('p', 'rr-admin-muted', '新規読者の初期化状況は未確認です。')
+          );
+        }
+      }
       for (const item of result.items) {
         if (
           !item ||
@@ -206,6 +245,8 @@
     return Object.freeze({
       loadQueue: () => request({ method: 'GET' }),
       loadRefunds: () => request({ method: 'GET', query: { view: 'refunds' } }),
+      loadNewReaderSummary: () =>
+        request({ method: 'GET', query: { view: 'new_readers' } }),
       onResolve: ({ operationId, action }) =>
         request({ method: 'POST', body: { operationId, action } })
     });

@@ -2,7 +2,12 @@
 // transport bindings and admin panel; creates no HTTP endpoint or network call.
 (function () {
   'use strict';
-  function mountFormalReaderReward({ root, request, nextOperationId }) {
+  function mountFormalReaderReward({
+    root,
+    request,
+    nextOperationId,
+    newReaderOnboardingAvailable = false
+  }) {
     if (
       !globalThis.NovelightFormalScoutReward ||
       !globalThis.NovelightFormalRewardReaderBindings
@@ -14,6 +19,7 @@
       );
     return globalThis.NovelightFormalScoutReward.createRewardReaderPanel({
       root,
+      newReaderOnboardingAvailable,
       ...binding
     });
   }

@@ -18,7 +18,9 @@ export function createUnregisteredFormalRewardHost({
   verifyGiftNonFulfillment,
   verifyGiftRefund,
   verifyAiRefund,
-  env
+  env,
+  initializeNewReader,
+  getNewReaderSummary
 } = {}) {
   const service = createFormalRewardUsageService({
     repository,
@@ -35,7 +37,9 @@ export function createUnregisteredFormalRewardHost({
   const handlers = createFormalUsageHttpHandlers({
     service,
     supabase,
-    env
+    env,
+    initializeNewReader,
+    getNewReaderSummary
   });
   return Object.freeze({ service, handlers });
 }

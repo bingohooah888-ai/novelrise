@@ -56,7 +56,9 @@ function mapResult(res, result) {
 export function createFormalUsageHttpHandlers({
   supabase,
   service,
-  env = process.env
+  env = process.env,
+  initializeNewReader,
+  getNewReaderSummary
 } = {}) {
   if (typeof supabase?.auth?.getUser !== 'function')
     throw new TypeError('Trusted existing Supabase Auth client required');
@@ -113,6 +115,23 @@ export function createFormalUsageHttpHandlers({
       }
       if (req.method !== 'POST') return stop(res, 405, 'METHOD_NOT_ALLOWED');
       if (
+        fieldsAre(req.body, ['action']) &&
+        req.body.action === 'initialize_new_formal_reader'
+      ) {
+        if (typeof initializeNewReader !== 'function')
+          return stop(res, 403, 'FORMAL_NEW_READER_DISABLED');
+        // The user ID comes from verified Supabase Auth, never POST body.
+        const result = await initializeNewReader(user.id);
+        if (
+          result?.status === 'new_reader_initialized' ||
+          result?.status === 'new_reader_already_initialized'
+        )
+          return res.status(200).json({ ok: true, status: result.status });
+        if (result?.status === 'new_reader_initialization_disabled')
+          return stop(res, 403, 'FORMAL_NEW_READER_DISABLED');
+        return stop(res, 409, result?.status || 'FORMAL_NEW_READER_HOLD');
+      }
+      if (
         fieldsAre(req.body, ['action', 'operationId', 'amountPoints']) &&
         req.body.action === 'exchange_request' &&
         UUID.test(req.body.operationId || '') &&
@@ -158,10 +177,19 @@ export function createFormalUsageHttpHandlers({
     }
     if (!reviewer) return;
     try {
-      if (req.method === 'GET')
+      if (req.method === 'GET') {
+        if (req.query?.view === 'new_readers') {
+          if (typeof getNewReaderSummary !== 'function')
+            return stop(res, 503, 'FORMAL_NEW_READER_UNAVAILABLE');
+          return res.status(200).json({
+            ok: true,
+            ...(await getNewReaderSummary())
+          });
+        }
         return req.query?.view === 'refunds'
           ? mapResult(res, await service.listRefundCandidates())
           : mapResult(res, await service.listPendingExchanges());
+      }
       if (req.method !== 'POST') return stop(res, 405, 'METHOD_NOT_ALLOWED');
       if (!req.headers?.origin) return stop(res, 403, 'ORIGIN_REQUIRED');
       if (

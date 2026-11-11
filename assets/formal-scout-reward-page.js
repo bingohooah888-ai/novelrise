@@ -10,7 +10,8 @@
     adminEndpoint,
     getAccessToken,
     fetchImpl,
-    nextOperationId
+    nextOperationId,
+    newReaderOnboardingAvailable = false
   } = {}) {
     const transport = globalThis.NovelightFormalRewardTransport;
     const mount = globalThis.NovelightFormalRewardMount;
@@ -31,6 +32,7 @@
         mount.mountFormalReaderReward({
           root: readerRoot,
           nextOperationId,
+          newReaderOnboardingAvailable,
           request: transport.createFormalRewardTransport({
             endpoint: readerEndpoint,
             getAccessToken,

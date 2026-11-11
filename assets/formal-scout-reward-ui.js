@@ -104,7 +104,9 @@
     root,
     fetchSnapshot,
     onExchange,
-    onAiUse
+    onAiUse,
+    initializeNewReader,
+    newReaderOnboardingAvailable = false
   }) {
     if (
       !root ||
@@ -131,14 +133,50 @@
     );
     const notice = el('p', 'rr-notice');
     notice.setAttribute('role', 'status');
+    const onboarding = el('div', 'rr-onboarding');
     const metrics = el('div', 'rr-metrics');
     const tabs = el('div', 'rr-tabs');
     tabs.setAttribute('role', 'tablist');
     const contents = el('div', 'rr-content');
     const feedback = el('p', 'rr-feedback');
     feedback.setAttribute('aria-live', 'polite');
-    shell.append(h, notice, metrics, tabs, contents, feedback);
+    shell.append(h, notice, onboarding, metrics, tabs, contents, feedback);
     root.replaceChildren(shell);
+    // No sign-up, account mutation, or Point issuance on page load.
+    // The future approved host may expose an explicit user-action button.
+    if (
+      newReaderOnboardingAvailable === true &&
+      typeof initializeNewReader === 'function'
+    ) {
+      const start = el('button', 'rr-action', '正式スカウトを利用開始');
+      start.type = 'button';
+      start.addEventListener('click', async () => {
+        if (busy) return;
+        busy = true;
+        start.disabled = true;
+        try {
+          const result = await initializeNewReader();
+          if (
+            result?.status === 'new_reader_initialized' ||
+            result?.status === 'new_reader_already_initialized'
+          ) {
+            const snapshot = await reload();
+            feedback.textContent = snapshot.verified
+              ? '正式スカウトの状態を確認しました。'
+              : '初期化後の状態を取得できません。運営の確認が必要です。';
+          } else {
+            feedback.textContent =
+              '初期化は保留されています。運営の確認が必要です。';
+          }
+        } catch {
+          feedback.textContent = '初期化の状態を確認できませんでした。';
+        } finally {
+          busy = false;
+          start.disabled = false;
+        }
+      });
+      onboarding.append(start);
+    }
 
     function metric(name, value, detail) {
       const card = el('article', 'rr-metric');

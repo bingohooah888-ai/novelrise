@@ -5,6 +5,7 @@
 import { createUnregisteredFormalPostgresRewardHost } from './formal-usage-host.js';
 import { createFormalEarningRunner } from './formal-earning-runner.js';
 import { createUnregisteredFormalOpeningSync } from './formal-opening-sync.js';
+import { createUnregisteredFormalNewReaderOnboarding } from './formal-new-reader-onboarding.js';
 import { createUnregisteredFormalApiDispatch } from './formal-api-dispatch.js';
 
 export function createUnregisteredFormalApplication({
@@ -33,9 +34,21 @@ export function createUnregisteredFormalApplication({
   ) {
     throw new TypeError('Injected trusted PostgreSQL pool and Auth required');
   }
+  // New post-release readers are independent from unresolved beta histories.
+  // The registration/write gate remains OFF until explicit Staging approval.
+  const newReader = createUnregisteredFormalNewReaderOnboarding({
+    pool,
+    releaseAt: releaseTimestampIso,
+    now,
+    stagingRef,
+    releaseConfiguration,
+    trustedServerAuthorization
+  });
   // Read Level from scout_level_state and XP ledger; reconcile wallet to the
   // existing canonical Point ledger. No second source of truth is introduced.
   const usage = createUnregisteredFormalPostgresRewardHost({
+    initializeNewReader: newReader.initializeOne,
+    getNewReaderSummary: newReader.getAdminSummary,
     pool,
     supabase,
     unitVerification,
@@ -84,6 +97,9 @@ export function createUnregisteredFormalApplication({
     inspectFormalOpening: opening.inspect,
     inspectFormalOpeningCohort: opening.inspectCohort,
     initializeFormalOpening: opening.initializeOne,
+    inspectNewReader: newReader.inspectOne,
+    getNewReaderSummary: newReader.getAdminSummary,
+    initializeNewReader: newReader.initializeOne,
     getReaderSnapshot: usage.service.getReaderSnapshot,
     submitModeration: earnings.submitModeration,
     drainDueEarnings: earnings.drainDue,

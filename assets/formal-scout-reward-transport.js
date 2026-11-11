@@ -33,10 +33,10 @@
         if (
           !query ||
           Object.keys(query).length !== 1 ||
-          query.view !== 'refunds'
+          !['refunds', 'new_readers'].includes(query.view)
         )
           throw new TypeError('Formal reward query rejected');
-        params.set('view', 'refunds');
+        params.set('view', query.view);
       }
       const url = endpoint + (params.size ? '?' + params.toString() : '');
       const res = await fetchImpl(url, {
