@@ -39,3 +39,17 @@ Staging DBロールの既存事実: `service_role`はNOLOGIN。`postgres`・`aut
 4. 実Point発行・消費、正式報酬トリガー有効化、外部交換、有料AI、Production、main、Previewはこれらの承認にも含めず別判断。
 
 追加したのは局所的な非実行見積りとSELECT案のみ。新規PR・Workflow・監査基盤、DB更新、実JWT、秘密情報取得なし。
+
+## 2026-11-11：旧ID出所の追加検証（読み取り専用・確定不能）
+
+本節は既存の履歴とStagingの集計のみ。ユーザーID・メールアドレス・秘密値は出力しない。
+
+- Point台帳の3,581行は `badge` のイベントキーで、`reason_type=badge_reward`・`rule_version=badge-system-beta-2026-09-21` に統一。バッジID別は `reader_read_001` 1,605行、`reader_bronze_seed_001` 988行、`reader_seed_001` 988行。読書バッジは1人1行、後者2種はそれぞれ988ユーザー（両ユーザー集合の一致は未確認）。
+- `user_scout_badges` 916,548行／6,500ユーザーのうち、**899,104行は未獲得（earned_at null）**。6,432ユーザーは各142行、同一ユーザー内の `created_at` は全142行で同じ。これはバッジ全候補状態の初期一括作成と整合し、「全件が獲得済み」「6,500人が現在有効なAuth会員」を意味しない。
+- `user_scout_badges.user_id` に`auth.users`外部キーはなく、旧Point保有者1,605人全員はバッジ状態表に存在する。しかし認証との一致は旧Point保有者の1人のみで、バッジ状態表全体でも認証と一致するのは5人。出所未確認IDを実ユーザー・テストユーザーと自動分類できない。
+- バッジ発行の既存正本は `supabase/migrations/20260921063000_badge_system_catalog.sql`（`novelight_apply_scout_badge_evaluation` と旧badge idからの状態移行）および `20260921022608_scout_badge_foundation.sql`。コードには旧データを維持した移行・バッジ付与処理があるが、**1,604人を生成／複製／Auth削除した特定ジョブやログは発見できなかった**。
+- `docs/STAGING-RUNBOOK.md` の一時Auth fixture運用と `docs/COMMUNITY-STAGING-VERIFICATION-ROUTE.md` の旧スナップショット記録は「起こりうる経緯」を示すだけで、この1,604人に対する直接の出所証明ではない。
+
+**結果**：今回の限定調査で、バッジ履歴が本物のbadge付与機構を通っていることと、非獲得バッジの大量初期化構造は確認できた。しかし古いIDの正当性・認証削除の有無・Stagingコピー元は断定不能。これ以上同じStagingテーブルを照会してもIDの出所は確定しない。必要なのは**Staging構築時の元データ・Authバックアップ・インポート記録のいずれかに紐づく直接証拠**。接続権限の範囲ではその証拠は未取得。過去Pointの10倍変更と初期Wallet作成を承認候補に挙げず、1,604人を保留する。
+
+**コード変更の要否**：既存の `formal-opening-sync.js` は旧Point単位とAuth不一致の両方を検出して同期を拒否するため、今回新たな修正は不要。既存の非実行10倍試算・SELECT SQLも変更しない。テストも再実行不要。これ以上PRに新たな監査基盤は足さない。
