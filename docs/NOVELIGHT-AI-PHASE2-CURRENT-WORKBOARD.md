@@ -3,11 +3,22 @@
 **最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 9546af76e6b1100737c17966312440fd9077da69
+source_main: a3da5374ea31da483da17c3701e476c2813b8f2c
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
 last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 継続：作品カルテ確認状態の永続化用SQL提案・service-role CAS repository・既存セッション検証接続を一括オフライン実装（新Draft）
+
+- **最新正本**：main `a3da5374ea31da483da17c3701e476c2813b8f2c`（PR #2846 squash統合済み）。MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 不変。継続ボードの旧PR未統合記述は履歴。過去の本番承認は再利用しない。
+- **SQL設計のみ・未適用**：`reports/sql/novelight_ai_owner_review_state_PROPOSAL.sql` は **Migrationではない**。専用 `novelight_ai_owner_review_states`（actor_id+novel_id主キー、revision、最大100件のreviewed_ids、novels外部キー）、service_role以外の権限剥奪、RLS有効化、SECURITY INVOKERでservice_role専用 `novelight_ai_owner_review_state_cas` の原子的初回INSERT/UPDATEを設計。`FOR SHARE`でnovels所有者と `auth.sessions(id,user_id)` の行を保護し、トランザクション内のrevision比較と衝突時0行返却を定義。実DBのSQL構文・実権限・ロック挙動は**未実証**。
+- **永続化repository**：新規 `api/_lib/ai/owner-bible-review-state-repository.js` は、既存AI候補保存と同じservice-role限定のSupabase `.from` / `.rpc` パターンに準拠し、作者本人・作品ID・署名付きセッション証拠・妥当なIDとrevision・RPC返却値の形式を検証。bearerはRPCへ送らず、署名済みsession_idのみサーバー内で渡す。競合時はnull、拒否・異常応答では失敗として扱う。`api/_lib/ai/owner-bible-review-state-offline.js` がtokenをrepositoryへ非公開注入し、既存のサーバー側認可も維持。
+- **サーバー接続**：新規 `api/_lib/ai/owner-bible-review-state-offline-wiring.js` は既存 `createOfflineOwnerSessionCheck` / `createOfflinePrivateSessionReader` と、署名・発行者等を検証すべき `serviceClient.auth.getClaims`、権限限定 `lookupOneSession`（存在booleanのみ）、trusted server clock、既存Owner workflowを合成接続。public `api/*.js` と `story-notes.html` はimportしない。default OFF。実 `lookupOneSession` とprivileged session observerは**未供給**。
+- **合成検証**：初回revision0→1、2回目更新、競合、他作者・違う作品、旧revision、不正ID、欠落権限、署名不正、セッション失効（読取り中も含む）、RPCエラー、偽造receipt、ユーザー向けプレビュー・候補採否の分離、SQL権限・RLS・セッションロック・Migration非混入をテスト。環境を伴うSQL/RLS/本番接続の動作実証ではない。
+- **継続的禁止と次工程**：本Draftをmainへ統合しない。Preview生成、実DB書込、Migration/repair、Staging/Production、実JWT、Secret変更、有料AI、Runner/Watchdog稼働、公開API有効化を行わない。Supabase Previewの既知migration divergenceはREAD ONLY。`auth.sessions`のservice_role参照権限とPostgres上の実CAS/RLS、実作者JWT、公開ルート・フラグ、Staging実動作の証拠は独立承認までNO-GO。正式Gate A〜Eは **0/5**。
+
+
 
 ## 2026-11-11 継続：作者「確認済み」状態のサーバー側CAS・Owner HTTP／Browser契約をオフライン一括実装（新Draft）
 
