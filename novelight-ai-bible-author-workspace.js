@@ -269,6 +269,55 @@
     });
   }
 
+  // Stable, opaque UI checklist IDs. These are NOT access grants, signed IDs,
+  // or authorization for AI candidates. No private heading is sent as a key.
+  function reviewCheckId(title, detail, occurrence) {
+    const source = JSON.stringify([title, detail, occurrence]);
+    let first = 2166136261;
+    let second = 2246822519;
+    for (let i = 0; i < source.length; i += 1) {
+      const code = source.charCodeAt(i);
+      first = Math.imul(first ^ code, 16777619) >>> 0;
+      second = Math.imul(second ^ code, 3266489917) >>> 0;
+    }
+    return (
+      'rv1-' +
+      first.toString(16).padStart(8, '0') +
+      second.toString(16).padStart(8, '0')
+    );
+  }
+
+  // A persistence receipt must come from an independently owner-authorized
+  // repository in the future. This local validation only protects display.
+  function parseReviewSnapshot(snapshot, novelId, checks) {
+    if (
+      !Number.isSafeInteger(novelId) ||
+      novelId < 1 ||
+      !snapshot ||
+      typeof snapshot !== 'object' ||
+      Array.isArray(snapshot) ||
+      snapshot.version !== 1 ||
+      snapshot.novelId !== novelId ||
+      !Number.isSafeInteger(snapshot.revision) ||
+      snapshot.revision < 0 ||
+      !Array.isArray(snapshot.reviewedIds) ||
+      snapshot.reviewedIds.length > 100 ||
+      snapshot.reviewedIds.some(
+        (id) => typeof id !== 'string' || !/^rv1-[0-9a-f]{16}$/.test(id)
+      ) ||
+      new Set(snapshot.reviewedIds).size !== snapshot.reviewedIds.length
+    ) {
+      return null;
+    }
+    const visible = new Set(checks.map((check) => check.id));
+    return {
+      version: 1,
+      novelId,
+      revision: snapshot.revision,
+      reviewedIds: snapshot.reviewedIds.filter((id) => visible.has(id))
+    };
+  }
+
   // A deterministic checklist, not semantic contradiction detection.
   // No data is transmitted, and no author-confirmed record is modified.
   function localReviewSummary(payload) {
@@ -338,9 +387,19 @@
         }
       }
     }
+    const repeated = new Map();
+    const identified = checks.slice(0, 100).map((check) => {
+      const identity = JSON.stringify([check.title, check.detail]);
+      const occurrence = repeated.get(identity) ?? 0;
+      repeated.set(identity, occurrence + 1);
+      return {
+        ...check,
+        id: reviewCheckId(check.title, check.detail, occurrence)
+      };
+    });
     return {
       pending,
-      checks: checks.slice(0, 100),
+      checks: identified,
       remaining: Math.max(0, checks.length - 100)
     };
   }
@@ -349,6 +408,8 @@
     target,
     payload,
     outlineRows,
+    reviewState,
+    saveReviewState,
     doc = target?.ownerDocument || root.document
   } = {}) {
     if (!target) return false;
@@ -357,6 +418,16 @@
     target.textContent = '';
     const sections = toSections(payload);
     const review = localReviewSummary(payload);
+    // Neither callback nor a persisted snapshot exists on the public page.
+    // Explicit persistence must be an all-or-nothing injected owner contract.
+    const persistenceRequested =
+      reviewState !== undefined || saveReviewState !== undefined;
+    const snapshot =
+      review &&
+      reviewState !== undefined &&
+      typeof saveReviewState === 'function'
+        ? parseReviewSnapshot(reviewState, payload?.novelId, review.checks)
+        : null;
     const sourceStory = storyIndex(payload);
     // No outline RPC is called here. Future server-authorized owner data
     // must be explicitly passed; invalid or cross-novel rows clear the view.
@@ -378,6 +449,7 @@
       !sections ||
       !review ||
       !story ||
+      (persistenceRequested && !snapshot) ||
       typeof doc?.createElement !== 'function' ||
       typeof target.appendChild !== 'function'
     )
@@ -491,37 +563,113 @@
     const reviewedProgress = create(
       'p',
       'novelight-ai-workspace-reviewed-progress',
-      'この画面だけの確認済み：0/' +
-        review.checks.length +
-        '件（保存されません）'
+      ''
     );
     reviewedProgress.setAttribute('aria-live', 'polite');
     reviewSummary.appendChild(reviewedProgress);
-    let reviewedCount = 0;
+    const saveStatus = snapshot
+      ? create(
+          'p',
+          'novelight-ai-workspace-save-status',
+          '確認状態は設定の正式確定やAI候補の採用ではありません。'
+        )
+      : null;
+    if (saveStatus) {
+      saveStatus.setAttribute('aria-live', 'polite');
+      reviewSummary.appendChild(saveStatus);
+    }
+    let reviewedIds = new Set(snapshot?.reviewedIds ?? []);
+    let revision = snapshot?.revision ?? 0;
+    let saving = false;
+    const reviewButtons = [];
+    const isCurrentView = () => !target.hidden && target.children?.[0] === wrap;
+
+    const refreshReviewed = () => {
+      const reviewedCount = review.checks.filter((item) =>
+        reviewedIds.has(item.id)
+      ).length;
+      reviewedProgress.textContent = snapshot
+        ? '保存済みの確認済み：' +
+          reviewedCount +
+          '/' +
+          review.checks.length +
+          '件'
+        : 'この画面だけの確認済み：' +
+          reviewedCount +
+          '/' +
+          review.checks.length +
+          '件（保存されません）';
+      for (const { button, id } of reviewButtons) {
+        const reviewed = reviewedIds.has(id);
+        button.disabled = saving;
+        button.setAttribute('aria-pressed', String(reviewed));
+        button.textContent = snapshot
+          ? reviewed
+            ? '確認済みを解除して保存'
+            : '確認済みとして保存'
+          : reviewed
+            ? '未確認に戻す（保存されません）'
+            : 'この画面で確認済みにする';
+      }
+    };
+
     for (const item of review.checks) {
       const row = create('div', 'novelight-ai-workspace-warning');
       row.appendChild(create('p', '', item.title + '：' + item.detail));
       const reviewedButton = create(
         'button',
         'novelight-ai-workspace-reviewed-button',
-        'この画面で確認済みにする'
+        ''
       );
       reviewedButton.type = 'button';
-      reviewedButton.setAttribute('aria-pressed', 'false');
-      let reviewed = false;
-      reviewedButton.addEventListener('click', () => {
-        reviewed = !reviewed;
-        reviewedCount += reviewed ? 1 : -1;
-        reviewedButton.setAttribute('aria-pressed', String(reviewed));
-        reviewedButton.textContent = reviewed
-          ? '未確認に戻す（保存されません）'
-          : 'この画面で確認済みにする';
-        reviewedProgress.textContent =
-          'この画面だけの確認済み：' +
-          reviewedCount +
-          '/' +
-          review.checks.length +
-          '件（保存されません）';
+      reviewButtons.push({ button: reviewedButton, id: item.id });
+      reviewedButton.addEventListener('click', async () => {
+        if (saving) return;
+        const next = new Set(reviewedIds);
+        if (next.has(item.id)) next.delete(item.id);
+        else next.add(item.id);
+        if (!snapshot) {
+          reviewedIds = next;
+          refreshReviewed();
+          return;
+        }
+        saving = true;
+        saveStatus.textContent = '確認状態を保存中…';
+        refreshReviewed();
+        try {
+          // Backend must independently check actor, work ownership, and
+          // expectedRevision (CAS). This UI is never an authorization grant.
+          const receipt = await saveReviewState({
+            novelId: snapshot.novelId,
+            expectedRevision: revision,
+            reviewedIds: [...next].sort()
+          });
+          const verified = parseReviewSnapshot(
+            receipt,
+            snapshot.novelId,
+            review.checks
+          );
+          if (
+            !verified ||
+            verified.revision <= revision ||
+            verified.reviewedIds.length !== next.size ||
+            verified.reviewedIds.some((id) => !next.has(id))
+          ) {
+            throw new Error('BAD_REVIEW_SAVE_RECEIPT');
+          }
+          if (!isCurrentView()) return;
+          reviewedIds = new Set(verified.reviewedIds);
+          revision = verified.revision;
+          saveStatus.textContent = '確認状態を保存しました。';
+        } catch {
+          if (isCurrentView()) {
+            saveStatus.textContent =
+              '保存に失敗しました。変更は反映していません。';
+          }
+        } finally {
+          saving = false;
+          if (isCurrentView()) refreshReviewed();
+        }
       });
       row.appendChild(reviewedButton);
       reviewSummary.appendChild(row);
@@ -535,6 +683,7 @@
         )
       );
     }
+    refreshReviewed();
     wrap.appendChild(reviewSummary);
 
     // Side-by-side inspection is intentionally local and read-only. A shared
@@ -1512,6 +1661,7 @@
     render,
     toSections,
     localReviewSummary,
+    parseReviewSnapshot,
     storyIndex,
     sortStoryEntries,
     joinStoryOutline

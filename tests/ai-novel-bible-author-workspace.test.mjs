@@ -1396,3 +1396,179 @@ test('chapter search is unavailable without trusted outline and invalid refresh 
   assert.equal(target.hidden, true);
   assert.equal(target.textContent, '');
 });
+
+test('review-state snapshots can resume saved acknowledgements without mutating the novel', async () => {
+  const payload = fixture();
+  payload.novelId = 17;
+  payload.characters.push({ name: '蒼', aliases: ['青い鍵の持ち主'] });
+  const original = JSON.stringify(payload);
+  const checks = localReviewSummary(payload).checks;
+  assert.equal(checks.length, 1);
+  assert.match(checks[0].id, /^rv1-[0-9a-f]{16}$/);
+  let saved = { version: 1, novelId: 17, revision: 3, reviewedIds: [] };
+  const target = new FakeElement('div', doc);
+  assert.equal(
+    render({
+      target,
+      payload,
+      reviewState: saved,
+      saveReviewState: async (change) => {
+        assert.deepEqual(change, {
+          novelId: 17,
+          expectedRevision: 3,
+          reviewedIds: [checks[0].id]
+        });
+        saved = {
+          version: 1,
+          novelId: 17,
+          revision: 4,
+          reviewedIds: change.reviewedIds
+        };
+        return saved;
+      }
+    }),
+    true
+  );
+  const button = nodes(target, 'button').find(
+    (node) => node.className === 'novelight-ai-workspace-reviewed-button'
+  );
+  assert.match(target.textContent, /保存済みの確認済み：0\/1件/);
+  await button.listeners.get('click')();
+  assert.match(target.textContent, /保存済みの確認済み：1\/1件/);
+  assert.match(target.textContent, /確認状態を保存しました/);
+  assert.equal(button.attributes['aria-pressed'], 'true');
+  const reloaded = new FakeElement('div', doc);
+  assert.equal(
+    render({
+      target: reloaded,
+      payload,
+      reviewState: saved,
+      saveReviewState: async () => {
+        throw new Error('unexpected write');
+      }
+    }),
+    true
+  );
+  assert.match(reloaded.textContent, /保存済みの確認済み：1\/1件/);
+  assert.equal(JSON.stringify(payload), original);
+});
+
+test('review-state IDs survive reordering, but altered checks cannot inherit prior review', () => {
+  const payload = fixture();
+  payload.novelId = 17;
+  payload.characters.push({ name: '蒼', aliases: ['青い鍵の持ち主'] });
+  payload.facts[1].suggestions.push({
+    payload: { summary: '別案', evidence: '根拠' }
+  });
+  const first = localReviewSummary(payload).checks;
+  payload.facts.reverse();
+  const second = localReviewSummary(payload).checks;
+  assert.deepEqual(
+    first.map((item) => item.id).sort(),
+    second.map((item) => item.id).sort()
+  );
+  const previous = {
+    version: 1,
+    novelId: 17,
+    revision: 5,
+    reviewedIds: [first[0].id]
+  };
+  payload.characters[1].aliases = ['別名が変更された'];
+  const changed = localReviewSummary(payload).checks;
+  const parsed = globalThis.NovelightAiBibleAuthorWorkspace.parseReviewSnapshot(
+    previous,
+    17,
+    changed
+  );
+  assert.deepEqual(parsed.reviewedIds, []);
+});
+
+test('wrong-work and malformed review-state snapshots clear private content', () => {
+  const payload = fixture();
+  payload.novelId = 17;
+  payload.characters.push({ name: '蒼', aliases: ['青い鍵の持ち主'] });
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  for (const invalid of [
+    { version: 1, novelId: 18, revision: 0, reviewedIds: [] },
+    { version: 1, novelId: 17, revision: -1, reviewedIds: [] },
+    { version: 1, novelId: 17, revision: 0, reviewedIds: ['not-a-check'] }
+  ]) {
+    assert.equal(
+      render({
+        target,
+        payload,
+        reviewState: invalid,
+        saveReviewState: async () => null
+      }),
+      false
+    );
+    assert.equal(target.textContent, '');
+    assert.equal(target.hidden, true);
+  }
+  assert.equal(
+    render({
+      target,
+      payload,
+      reviewState: {
+        version: 1,
+        novelId: 17,
+        revision: 0,
+        reviewedIds: []
+      }
+    }),
+    false
+  );
+});
+
+test('save conflicts and late responses never report a persisted confirmation', async () => {
+  const payload = fixture();
+  payload.novelId = 17;
+  payload.characters.push({ name: '蒼', aliases: ['青い鍵の持ち主'] });
+  const target = new FakeElement('div', doc);
+  const snapshot = { version: 1, novelId: 17, revision: 4, reviewedIds: [] };
+  assert.equal(
+    render({
+      target,
+      payload,
+      reviewState: snapshot,
+      saveReviewState: async () => snapshot
+    }),
+    true
+  );
+  let button = nodes(target, 'button').find(
+    (node) => node.className === 'novelight-ai-workspace-reviewed-button'
+  );
+  await button.listeners.get('click')();
+  assert.match(target.textContent, /保存に失敗しました/);
+  assert.match(target.textContent, /保存済みの確認済み：0\/1件/);
+  let resolveWrite;
+  const late = new Promise((resolve) => {
+    resolveWrite = resolve;
+  });
+  assert.equal(
+    render({
+      target,
+      payload,
+      reviewState: snapshot,
+      saveReviewState: async () => late
+    }),
+    true
+  );
+  button = nodes(target, 'button').find(
+    (node) => node.className === 'novelight-ai-workspace-reviewed-button'
+  );
+  const pending = button.listeners.get('click')();
+  assert.equal(button.disabled, true);
+  assert.match(target.textContent, /保存中/);
+  assert.equal(render({ target, payload }), true);
+  resolveWrite({
+    version: 1,
+    novelId: 17,
+    revision: 5,
+    reviewedIds: [localReviewSummary(payload).checks[0].id]
+  });
+  await pending;
+  assert.match(target.textContent, /この画面だけの確認済み：0\/1件/);
+  assert.doesNotMatch(target.textContent, /確認状態を保存しました/);
+});
