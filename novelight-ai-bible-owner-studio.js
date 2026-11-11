@@ -22,7 +22,9 @@
     doc = root.document,
     panel = root.NovelightAiBibleOwnerPanel,
     fetcher = root.fetch,
-    readOutline
+    readOutline,
+    readReviewState,
+    saveReviewState
   } = {}) {
     const host = doc?.getElementById?.('main-content');
     if (
@@ -39,7 +41,14 @@
         typeof fetcher !== 'function') ||
       (readOutline !== undefined &&
         (typeof readOutline !== 'function' ||
-          typeof panel?.createOfflineReader !== 'function'))
+          typeof panel?.createOfflineReader !== 'function')) ||
+      (readReviewState === undefined) !== (saveReviewState === undefined) ||
+      (readReviewState !== undefined &&
+        typeof readReviewState !== 'function') ||
+      (saveReviewState !== undefined &&
+        typeof saveReviewState !== 'function') ||
+      (readReviewState !== undefined &&
+        typeof panel?.createOfflineReader !== 'function')
     ) {
       return false;
     }
@@ -150,6 +159,70 @@
                   )
                     throw new Error('SESSION_CHANGED');
                   return rows;
+                },
+          // These optional callbacks remain absent from story-notes.html.
+          // The owner/session checks surround every injected read and write.
+          readReviewState:
+            readReviewState === undefined
+              ? undefined
+              : async ({ novelId: requestedNovelId, preview }) => {
+                  if (disposed) throw new Error('SESSION_ENDED');
+                  const before = await client.auth.getSession();
+                  if (
+                    before.error ||
+                    !sameOwner(
+                      before.data?.session,
+                      ownerId,
+                      session.access_token
+                    )
+                  )
+                    throw new Error('SESSION_CHANGED');
+                  const state = await readReviewState({
+                    novelId: requestedNovelId,
+                    preview
+                  });
+                  const after = await client.auth.getSession();
+                  if (
+                    disposed ||
+                    after.error ||
+                    !sameOwner(
+                      after.data?.session,
+                      ownerId,
+                      session.access_token
+                    )
+                  )
+                    throw new Error('SESSION_CHANGED');
+                  return state;
+                },
+          saveReviewState:
+            saveReviewState === undefined
+              ? undefined
+              : async (change) => {
+                  if (disposed || change?.novelId !== Number(novelId))
+                    throw new Error('REVIEW_WRITE_DENIED');
+                  const before = await client.auth.getSession();
+                  if (
+                    before.error ||
+                    !sameOwner(
+                      before.data?.session,
+                      ownerId,
+                      session.access_token
+                    )
+                  )
+                    throw new Error('SESSION_CHANGED');
+                  const receipt = await saveReviewState(change);
+                  const after = await client.auth.getSession();
+                  if (
+                    disposed ||
+                    after.error ||
+                    !sameOwner(
+                      after.data?.session,
+                      ownerId,
+                      session.access_token
+                    )
+                  )
+                    throw new Error('SESSION_CHANGED');
+                  return receipt;
                 }
         });
         allowed = reader ? await reader.reload() : false;
