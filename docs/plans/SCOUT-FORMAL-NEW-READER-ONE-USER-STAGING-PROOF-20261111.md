@@ -161,3 +161,29 @@ NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE {"confirmation":"STAGING APPROVED","mai
 このコメントで許可される操作は合成Auth1件作成、同IDで実JWT本人一致確認、Lv.1 / Wallet0の各1行を1トランザクションで初期化・SELECT検証まで。**データ削除、過去Pointの10倍、Point発行/消費、外部交換、有料AI、Preview、Productionの実行は一切含まれない**。
 
 今回の合成局所テストはOWNER・PR・main・人数・Staging・日時・単発利用・2 INSERTと履歴不変更の条件を検証する。`npm exec --offline ... prettier` によるWorkflow YAML構文解析も成功。実Workflow・実DB・実JWTを呼び出したテストではない。
+
+## 2026-11-11：限定main反映とVercel Production連動の事前確認（読み取り専用）
+
+対象：Draft PR #2762 の `656a264e9da862ef0385695ee150c39ad9ea28d5` で変更した次の4ファイル**だけ**。PR全体は絶対に統合しない。
+
+- `.github/workflows/staging-reader-point-tenfold-proof.yml`
+- `scripts/scout-formal-new-reader-staging-proof.mjs`
+- `tests/reader-reward-staging-new-reader-one-proof.test.mjs`
+- `docs/plans/SCOUT-FORMAL-NEW-READER-ONE-USER-STAGING-PROOF-20261111.md`（本書）
+
+### 実際のmain・Vercel
+
+- 読取時 `origin/main=95a443aa3d9c0e0d5f44bd8bae34b2487c5621b2`。Vercel `novelrise` の直近Production READYも同SHAのmainからデプロイされている。さらに直近4件もmainの別SHAからProduction READY。よってmainへのpushはProductionの自動ビルド／公開へ波及しうる。
+- mainの `vercel.json` は `git.deploymentEnabled={"**":false,"main":true}`、`ignoreCommand="node scripts/vercel-ignore-build.mjs"`。現行スクリプトはProduction/mainで変更ファイルが**全て** `.github/`・`docs/`・`tests/`等なら終了コード0でビルド抑止。一方、`scripts/`を1件でも変更すると終了コード1で**ビルド許可**。Git差分が取得できない場合もビルド許可（fail-open）。Vercel側の設定による上書き・実際の次回ビルド停止までは確認していない。
+- **決定的な依存関係**：現在のmainには、上記の対象Workflowと `scout-formal-new-reader-staging-proof.mjs` が**どちらも存在しない**。旧Point10倍側の `scout-point10x-staging-admission.mjs` および `scout-point10x-staging-fingerprint.sql` もmainにない。`resolve-staging-session-pooler.mjs`・`verify-staging-migration-target.mjs` と `package-lock.json` はmainにある。
+- このため**4ファイルをそのまま一括cherry-pickする案は不可**。確実に `scripts/` が変更されてVercelのbuild guardは「ビルドする」を返す。さらに元のPoint10倍ジョブもmainへ新規追加されるが、依存する一部スクリプトが欠けている。
+- `.github`のWorkflowだけをmainに移す案も**現状不可**。mainに実行スクリプトが存在しないため合成ユーザー1件の処理は失敗する。Secretを持つmain WorkflowからDraft PRのスクリプトを直接fetch／実行する方法は採用しない。
+
+### 次の正しい順序
+
+1. **PR内のみで事前修正（main変更は別承認）**：今回の4ファイルの範囲だけを編集し、新規読者の実行コードを、mainから参照できる既存の信頼済みスクリプトだけで動くように整理する。具体的には `scout-formal-new-reader-staging-proof.mjs` が含む処理を同じ `.github/workflows/staging-reader-point-tenfold-proof.yml` に安全に内包する案が最小。既存Point10倍側の起動条件は変えない。合成局所テストとYAML構文チェック後に既存PRへ保存。既存Point10倍ジョブをmainへ追加する影響も別途レビューする。
+2. **Productionビルドの抑止条件を限定事前確認**：最終的なmain用差分が `.github/`（必要なら `docs/`・`tests/`）だけになり、mainの `ignoreCommand` が0を返すことを、同じ親コミットでの局所テストで示す。変更に `scripts/`、`api/`、`vercel.json` 等が混ざる場合、抑止は成立しない。Gitの親コミットがVercelで取得できない場合もビルドしうるため、**本番無変更を厳密に保証するにはVercel側の追加確認・別承認が必要**。
+3. **その後でmain変更の個別OWNER承認**：新規読者1件の承認入口に必要な最小ファイルだけを、指定された最新main SHAを再照合して限定反映。PR #2762全体のmergeは禁止。反映後はGitHubとVercelを読み取り専用で確認する。**main反映承認は実Workflow起動・Secret使用・Auth作成・DB書込の承認にはならない。**
+4. **さらに別のOWNER承認**：Issue #294へ既存の専用プレフィックスで新規読者1件のStaging承認を投稿する操作、実Auth1件・JWT本人照合・LEVEL/Wallet各1行の書込み検証だけを対象別承認。旧Point1,604人は無変更。失敗時は自動再実行・削除をしない。
+
+**現時点の判定：main反映は承認依頼前に構成修正が必要。今回の調査はGitHub/Vercelの読取のみであり、main更新・本番デプロイ・Workflow実行・Auth/DB操作なし。**
