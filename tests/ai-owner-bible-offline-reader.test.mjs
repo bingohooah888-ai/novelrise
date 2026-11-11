@@ -308,3 +308,78 @@ test('invalid parameters cannot start an offline preview read', async () => {
     assert.equal(host.textContent, '');
   }
 });
+
+test('offline owner reader reconnects persisted review state only through explicit injected callbacks', async () => {
+  const host = target();
+  let saved = { version: 1, novelId: 17, revision: 0, reviewedIds: [] };
+  let reads = 0;
+  const reader = createOfflineReader({
+    target: host,
+    novelId: 17,
+    readPreview: async () => {
+      const payload = preview();
+      payload.characters.push({ name: '凛', aliases: [] });
+      return payload;
+    },
+    readReviewState: async ({ novelId, preview: payload }) => {
+      assert.equal(novelId, 17);
+      assert.equal(payload.novelId, 17);
+      reads += 1;
+      return saved;
+    },
+    saveReviewState: async (change) => {
+      assert.equal(change.novelId, 17);
+      assert.equal(change.expectedRevision, saved.revision);
+      saved = {
+        version: 1,
+        novelId: 17,
+        revision: saved.revision + 1,
+        reviewedIds: change.reviewedIds
+      };
+      return saved;
+    }
+  });
+  assert.ok(reader);
+  assert.equal(await reader.reload(), true);
+  const button = find(host, 'novelight-ai-workspace-reviewed-button');
+  assert.ok(button);
+  await button.listeners.get('click')();
+  assert.match(host.textContent, /保存済みの確認済み：1\/1件/);
+  assert.equal(await reader.reload(), true);
+  assert.equal(reads, 2);
+  assert.match(host.textContent, /保存済みの確認済み：1\/1件/);
+  reader.dispose();
+  assert.equal(host.textContent, '');
+});
+
+test('offline reader denies partial or mismatched persistence and retains no stale owner data', async () => {
+  const host = target();
+  assert.equal(
+    createOfflineReader({
+      target: host,
+      novelId: 17,
+      readPreview: async () => preview(),
+      readReviewState: async () => ({})
+    }),
+    null
+  );
+  const reader = createOfflineReader({
+    target: host,
+    novelId: 17,
+    readPreview: async () => preview(),
+    readReviewState: async () => ({
+      version: 1,
+      novelId: 999,
+      revision: 0,
+      reviewedIds: []
+    }),
+    saveReviewState: async () => null
+  });
+  assert.ok(reader);
+  assert.equal(await reader.reload(), false);
+  assert.equal(
+    find(host, 'novelight-ai-bible-private-content').textContent,
+    ''
+  );
+  assert.match(host.textContent, /読み込みに失敗しました/);
+});

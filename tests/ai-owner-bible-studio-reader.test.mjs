@@ -571,3 +571,53 @@ test('offline author opens Bible, reads scoped HTTP outline, selects chapter/epi
   assert.equal(f.main.textContent, '');
   assert.equal(f.unsubscribed, true);
 });
+
+test('author studio requires paired private review read and write callbacks', async () => {
+  const f = rig();
+  assert.equal(
+    await attach({
+      ...args(f),
+      readReviewState: async () => ({
+        version: 1,
+        novelId: 9,
+        revision: 0,
+        reviewedIds: []
+      })
+    }),
+    false
+  );
+  assert.equal(f.reads, 0);
+  assert.equal(f.main.children.length, 0);
+});
+
+test('author studio rechecks the same session around offline review reads', async () => {
+  const f = rig();
+  const reads = [];
+  const ok = await attach({
+    ...args(f),
+    readReviewState: async ({ novelId, preview: payload }) => {
+      reads.push([novelId, payload.novelId]);
+      return { version: 1, novelId: 9, revision: 0, reviewedIds: [] };
+    },
+    saveReviewState: async () => {
+      throw new Error('no review item to save');
+    }
+  });
+  assert.equal(ok, true);
+  assert.deepEqual(reads, [[9, 9]]);
+  f.revoke();
+  assert.equal(f.main.children[0].removed, true);
+  const swapped = rig();
+  assert.equal(
+    await attach({
+      ...args(swapped),
+      readReviewState: async () => {
+        swapped.switchOwner();
+        return { version: 1, novelId: 9, revision: 0, reviewedIds: [] };
+      },
+      saveReviewState: async () => null
+    }),
+    false
+  );
+  assert.equal(swapped.main.children.length, 0);
+});

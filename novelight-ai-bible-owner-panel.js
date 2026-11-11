@@ -178,7 +178,13 @@
     return true;
   }
 
-  function render({ target, payload, outlineRows }) {
+  function render({
+    target,
+    payload,
+    outlineRows,
+    reviewState,
+    saveReviewState
+  }) {
     // Reuse the author-ready offline UI only on an already authorized
     // preview surface. The server's existing admin-only gate is unchanged.
     const workspace = root.NovelightAiBibleAuthorWorkspace;
@@ -186,11 +192,22 @@
       typeof workspace?.render === 'function' &&
       typeof target?.appendChild === 'function'
     ) {
-      return workspace.render({ target, payload, outlineRows });
+      return workspace.render({
+        target,
+        payload,
+        outlineRows,
+        reviewState,
+        saveReviewState
+      });
     }
     // An injected private chapter outline must not fall back to a
     // text-only renderer that ignores its scope/consistency checks.
-    if (outlineRows !== undefined) return renderText(target, null);
+    if (
+      outlineRows !== undefined ||
+      reviewState !== undefined ||
+      saveReviewState !== undefined
+    )
+      return renderText(target, null);
     return renderText(target, previewText(payload));
   }
 
@@ -238,6 +255,8 @@
     novelId,
     readPreview,
     readOutline,
+    readReviewState,
+    saveReviewState,
     doc = target?.ownerDocument || root.document
   } = {}) {
     if (!target) return null;
@@ -248,6 +267,11 @@
       !id ||
       typeof readPreview !== 'function' ||
       (readOutline !== undefined && typeof readOutline !== 'function') ||
+      (readReviewState === undefined) !== (saveReviewState === undefined) ||
+      (readReviewState !== undefined &&
+        typeof readReviewState !== 'function') ||
+      (saveReviewState !== undefined &&
+        typeof saveReviewState !== 'function') ||
       typeof root.NovelightAiBibleAuthorWorkspace?.render !== 'function' ||
       typeof doc?.createElement !== 'function' ||
       typeof target.appendChild !== 'function'
@@ -306,7 +330,35 @@
           if (!Array.isArray(outlineRows)) throw new Error('BAD_OUTLINE');
         }
 
-        if (!render({ target: content, payload, outlineRows })) {
+        // Optional state is supplied only by a future authenticated owner
+        // repository. No browser storage, new HTTP route, or DB writer here.
+        let reviewState;
+        if (readReviewState) {
+          reviewState = await readReviewState({
+            novelId: id,
+            preview: payload
+          });
+          if (disposed || current !== requestVersion) return false;
+        }
+        const writer = saveReviewState
+          ? async (change) => {
+              if (disposed || current !== requestVersion)
+                throw new Error('REVIEW_READER_STALE');
+              const receipt = await saveReviewState(change);
+              if (disposed || current !== requestVersion)
+                throw new Error('REVIEW_READER_STALE');
+              return receipt;
+            }
+          : undefined;
+        if (
+          !render({
+            target: content,
+            payload,
+            outlineRows,
+            reviewState,
+            saveReviewState: writer
+          })
+        ) {
           throw new Error('BAD_RENDER');
         }
         status.textContent =
