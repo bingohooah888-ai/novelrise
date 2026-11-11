@@ -31,3 +31,27 @@
 ## 次の実務上の判断
 
 主要な機能のオフライン経路はつながった。次は不足する**実環境接続のための承認済み価格・事業者・Point引当順**を整理し、機能コードの不足がなくなった段階でMASTER指定の一括総合安全検証へ進む。実環境への変更や事業者接続は対象別OWNER承認まで禁止。
+
+## 2026-11-11 主要オフライン機能完成判定 → 総合安全・品質検証への移行
+
+**実装状態：主要オフライン機能は一通り接続済み（実環境未検証）。** βPoint10倍換算見積・初期ウォレット照合、Lv.100／30日XP、読書・コメント・レベル報酬、交換申請、管理者の照合、AIのPoint直接利用、取消・返金、オフラインAuth/API/読者・管理者UIを既存実装で再利用。新PR・Workflow・公開APIは作らない。
+
+### 今回解消した具体的な問題
+
+1. **GitHub Node tests 1件の失敗**：旧tests/scout-point10x-source-writer-inventory.test.mjsは、検出されたPoint DML参照を全てsupabase/migrations内と仮定していた。正式版用の未登録api/_lib/reader-reward/formal-usage-postgres-repository.jsにも将来用の書き込み候補SQLがあるため、テストを「スキャン対象の正規ルート内であること」と「API側の候補がUNREGISTERED_APPLICATION_POINT_WRITER_CANDIDATEとして引き続き報告され、判定はNO_GO_SOURCE_CODE_ONLY、実DB操作許可はfalse」を検証する形に変更。監査対象を除外したり安全ゲートを緩めたりしない。
+2. **読者UIのサーバー状態取得失敗**：assets/formal-scout-reward-ui.jsで空のレスポンスを受けた際に古い許可・残高を表示し続ける経路を閉じ、未検証／通信失敗では残高と操作を無効化。応答順序が逆転しても古い応答で再有効化しない。局所テストを追加。
+
+### 今回の検証
+
+- Windowsローカルの隔離worktreeでnpm test：**5,556 PASS、0 FAIL、9 SKIP、合計5,565件**。Linux GitHub CIとは実行環境・件数が異なり、GitHub CIや実環境の成功を示すものではない。
+- 変更対象のinventoryテスト／読者UIテスト：**48 PASS、0 FAIL**。
+- Prettier、ESLint、git diff --checkは変更分のみで確認する。
+- 前HEAD c9328006ではCodeQL SUCCESS、GitHub CI FAIL（merge-readiness OWNER承認ゲートとinventoryテスト1件）。新HEADのCI/CodeQLはPush後に再確認。統合承認ゲートを迂回しない。
+
+### 次に進む総合安全・品質検証
+
+**読み取り・オフラインのみで開始可能**：権限境界、未登録API、RLS設計、Point台帳の原子的整合、再試行・二重発行・返金、予算上限、停止・復旧の既存証拠を一括照合。不要な追加Watchdog・Runner・Workflowは作成しない。
+
+**別途のOWNER限定承認が必要**：Staging実JWT・実Postgresロック／RLS／移行リハーサル・Preview、10倍cutoverの実DB書込、実ギフト事業者、実AI価格と外部API費用、Production、main統合・公開。旧βPointと正式版PointのAI引当順、交換事業者・運営予算・返金条件は承認なしに仮決めしない。
+
+**公開可否：不可。** 本番／Staging DB変更、実Point移動、外部交換、実AI、main統合は未実施。

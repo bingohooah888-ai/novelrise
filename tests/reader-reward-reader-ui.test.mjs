@@ -211,3 +211,83 @@ test('unpublished preview stays a static local fixture with no live integration'
     /fetch\s*\(|service_role|supabase\.createClient|api\/reader-reward/
   );
 });
+
+test('empty or failed server snapshots immediately revoke UI exchange/AI action eligibility', async () => {
+  const root = new FakeElement('main');
+  const authorized = {
+    ...base,
+    formalEnabled: true,
+    exchangeEnabled: true,
+    giftProviderReady: true,
+    aiFeatures: [
+      { id: 'analysis', name: '架空の分析', approved: true, pricePoints: 120 }
+    ]
+  };
+  let next = authorized;
+  let calls = 0;
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => {
+      if (next instanceof Error) throw next;
+      return next;
+    },
+    onExchange: async () => {
+      calls++;
+    },
+    onAiUse: async () => {
+      calls++;
+    }
+  });
+  await panel.reload();
+  assert.equal(panel.getSnapshot().formalEnabled, true);
+  next = null;
+  await panel.reload();
+  assert.equal(panel.getSnapshot().formalEnabled, false);
+  assert.equal(panel.getSnapshot().available, null);
+  byTag(root, 'button')
+    .find((b) => b.textContent === 'デジタルギフト交換')
+    .fire('click');
+  assert.equal(byTag(root, 'form')[0].children.at(-1).disabled, true);
+  next = new Error('OFFLINE_AUTH_REVOKED');
+  await panel.reload();
+  assert.equal(panel.getSnapshot().exchangeEnabled, false);
+  byTag(root, 'button')
+    .find((b) => b.textContent === 'AIに使う')
+    .fire('click');
+  const aiAction = byTag(root, 'button').find(
+    (b) => b.textContent === '利用する'
+  );
+  assert.equal(aiAction, undefined);
+  assert.equal(calls, 0);
+});
+
+test('out-of-order snapshot responses cannot re-enable expired permissions', async () => {
+  const root = new FakeElement('main');
+  const authorized = {
+    ...base,
+    formalEnabled: true,
+    exchangeEnabled: true,
+    giftProviderReady: true
+  };
+  let resolveOld;
+  let count = 0;
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: () => {
+      count++;
+      if (count === 1) return Promise.resolve(null);
+      if (count === 2)
+        return new Promise((resolve) => {
+          resolveOld = resolve;
+        });
+      return Promise.resolve({ ...authorized, serverVerified: false });
+    },
+    onExchange: async () => {}
+  });
+  const old = panel.reload();
+  await panel.reload();
+  resolveOld(authorized);
+  await old;
+  assert.equal(panel.getSnapshot().formalEnabled, false);
+  assert.equal(panel.getSnapshot().available, null);
+});

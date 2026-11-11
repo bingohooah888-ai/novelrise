@@ -115,6 +115,7 @@
         'A real root and trusted snapshot loader are required'
       );
     let latest = normalizeSnapshot(null);
+    let lastReloadId = 0;
     let busy = false;
     let tab = 'history';
     const shell = el('section', 'rr-shell');
@@ -411,15 +412,18 @@
       }
     }
     async function reload() {
+      const requestId = ++lastReloadId;
       feedback.textContent = '';
-      let result;
+      let result = null;
       try {
         result = await fetchSnapshot();
       } catch {
-        latest = normalizeSnapshot(null);
-        feedback.textContent = '残高を取得できません。処理を停止しました。';
+        // Missing, rejected or unverified snapshots all fail closed below.
       }
-      if (result) latest = normalizeSnapshot(result);
+      if (requestId !== lastReloadId) return latest;
+      latest = normalizeSnapshot(result);
+      if (!latest.verified)
+        feedback.textContent = '残高を取得できません。処理を停止しました。';
       refreshMetrics();
       selectTab(tab);
       return latest;

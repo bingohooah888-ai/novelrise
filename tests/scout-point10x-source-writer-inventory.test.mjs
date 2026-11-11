@@ -171,17 +171,39 @@ test('all documented gap codes remain explicit', () => {
   for (const code of SOURCE_GAP_CODES)
     assert.ok(review.blockers.includes(code), code);
 });
-test('migrations list file and line but no actual data content', () => {
+test('source inventory reports both migration DML and future application writer candidates without data content', () => {
   assert.ok(Object.isFrozen(review));
   assert.ok(Object.isFrozen(review.classes));
   assert.ok(Object.isFrozen(review.mutationSites));
   assert.ok(Object.isFrozen(review.privileges));
   for (const row of review.mutationSites) {
-    assert.ok(row.path.startsWith('supabase/migrations/'));
+    assert.ok(
+      SOURCE_INVENTORY_ROOTS.some((root) => row.path.startsWith(root + '/')),
+      'Unexpected source location: ' + row.path
+    );
     assert.ok(Number.isSafeInteger(row.line) && row.line > 0);
-    assert.equal(row.type, 'source_sql_reference_not_runtime_call');
     assert.ok(PROTECTED_POINT_TABLES.includes(row.table));
+    assert.ok(
+      [
+        'source_sql_reference_not_runtime_call',
+        'potential_client_dml_source_not_real_db'
+      ].includes(row.type)
+    );
   }
+  const appSources = review.mutationSites.filter((x) =>
+    /^(?:api|src|supabase\/functions)\//u.test(x.path)
+  );
+  assert.ok(
+    appSources.some(
+      (x) =>
+        x.path === 'api/_lib/reader-reward/formal-usage-postgres-repository.js'
+    )
+  );
+  assert.ok(
+    review.blockers.includes('UNREGISTERED_APPLICATION_POINT_WRITER_CANDIDATE')
+  );
+  assert.equal(review.status, 'NO_GO_SOURCE_CODE_ONLY');
+  assert.equal(review.mayWriteDb, false);
 });
 for (const rule of SOURCE_WRITER_RULES.filter((x) => x.terms.length)) {
   test('missing source for writer path is fail-closed: ' + rule.kind, () => {
