@@ -3,11 +3,20 @@
 **最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: fe1f5fffaf738d3fea1ee78959bc07598fce207a
+source_main: 545042b9429d1023ea1488a15188c45b8497012c
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
 last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 NLO恒久機能追加（Supabase Stagingデプロイ履歴・失敗ログ診断／新Draft）
+
+- **基準**：main `545042b9429d1023ea1488a15188c45b8497012c`（PR #2850統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 不変。旧ボードの#2850未統合記述は履歴であり最新状態ではない。
+- **主要な実装**：NLO `tools/novelight-commander` の直接MCPとOWNER専用GitHub Bridgeへ `supabase_staging_actions` / `supabase_staging_action_logs` を追加。公式Management API `GET /v1/projects/{ref}/actions` / `GET /v1/projects/{ref}/actions/{run_id}/logs` の静的GETだけを利用。Staging `wmlzjgvxgoyrovdhbqbg` と既知Branch UUIDへ固定。Production `fiepaguycecrredwrcwx` は接続不可。ログ原文・SQL・個人情報・Secretは返さず、確定済みrunのステップ、エラー分類、SQLSTATE、Migration版番号だけを返す。
+- **資格と権限**：既存ローカルのManagement API用 `SUPABASE_ACCESS_TOKEN` が利用でき、`action_runs_read` 権限がある場合のみ。新しいtoken生成、GitHub PATやservice_roleの代用、資格値の出力、今回のSecret追加は不可。`NLO_SUPABASE_STAGING_READONLY_ENABLED` は既定false。別の実Staging読取承認とNLOローカル更新までOFF。
+- **試験／未実証**：現Draftは一切の実Management API・Staging DBを呼ばず合成応答で認証拒否、対象Branchのrun限定、他Branch/Production拒否、ログ漏洩、401/403/429、本文容量上限、API形状不一致を検証。実APIがStaging refを受け付けるか、資格がNLO稼働プロセスに存在するか、`action_runs_read` が承認されているか、現行Branchの実失敗ログが残っているかは**未確認**。
+- **継続**：このDraftはmain未統合・NLO未展開。PRのmain統合、Vercel Production自動デプロイ可能性、ローカルNLO更新、実API読取は別の承認境界。Preview新規作成、DBクエリ、Migration実行・repair、Secret変更、実JWT、有料AI、Watchdog/Runner実稼働禁止。AI正式Gate A〜E **0/5**。
+
 
 ## 2026-11-11 継続：確認状態Staging接続前の権限・Migration・rollback一括監査（Draft未統合）
 

@@ -1838,6 +1838,20 @@ async function actionPoint10xStage38Dispatch(request, config, sourceComment) {
   return JSON.stringify(result, null, 2);
 }
 
+async function actionSupabaseStagingNloReadOnly(request) {
+  const { runNloSupabaseStagingAction } = await import(
+    './supabase-staging-action-logs.js'
+  );
+  if (!new Set(['supabase_staging_actions', 'supabase_staging_action_logs'])
+    .has(request.action)) throw new Error('nlo_sb_bridge_action_denied');
+  // Only action summaries and sanitized diagnostic categories can cross
+  // the owner-only GitHub Bridge. Raw Management API logs are never posted.
+  const safe = await runNloSupabaseStagingAction({
+    action: request.action, args: request.args
+  });
+  return JSON.stringify(safe, null, 2);
+}
+
 async function actionCloudflareNloReadOnly(request) {
   const { runNloCloudflareAction } = await import('./cloudflare-readonly.js');
   const permitted = new Set([
@@ -1856,6 +1870,8 @@ async function actionCloudflareNloReadOnly(request) {
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
   ['nlo_health', actionNloHealth],
+  ['supabase_staging_actions', actionSupabaseStagingNloReadOnly],
+  ['supabase_staging_action_logs', actionSupabaseStagingNloReadOnly],
   ['point10x_stage38_dispatch', actionPoint10xStage38Dispatch],
   ['gsc_index_inspect', actionGscIndexInspect],
   ['cloudflare_account', actionCloudflareNloReadOnly],
