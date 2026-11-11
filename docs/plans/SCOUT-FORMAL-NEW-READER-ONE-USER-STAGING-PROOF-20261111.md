@@ -69,3 +69,46 @@ const app = createUnregisteredFormalApplication({
 - 実際のStaging Authユーザー作成、DB書込、PGログイン設定、秘密値取得、実JWT、報酬トリガー、実Point発行・消費、外部交換、AI、Preview、main、Productionは**実施していない**。
 - テスト基準日時、合成ユーザーUUID、Stagingの利用可能なPG接続方式、試験後の処理（残すか削除するか）は未確定。これらは実環境操作のOWNER承認に含めて固定すること。
 - 今回の読者／管理者画面・API・旧β移行機能を作り直さず、新規の検証モードを既存接続に追加するのみ。
+
+## 2026-11-11：既存構成での実行経路・一括承認境界（今回も未実行）
+
+### 確認済みの接続資産
+
+- Staging Supabase URLは `https://wmlzjgvxgoyrovdhbqbg.supabase.co`（本番は `fiepaguycecrredwrcwx`）。既存 `docs/STAGING-RUNBOOK.md` はGitHub `staging` Environmentの `STAGING_SUPABASE_SECRET_KEY` / `STAGING_SUPABASE_PUBLISHABLE_KEY` とRepository Variable `STAGING_SUPABASE_URL` を正本にする設計。ただし**既存Secretが実際に実行環境へ注入されているかは未確認**。Secretの値は取得・表示しない。
+- **Auth生成と実JWT取得の再利用元**：`tests/e2e/staging/follow-live-runner.mjs` の `createSyntheticUser` / `signIn`。Staging専用Secretを使うサーバーで `auth.admin.createUser({ email, password, email_confirm: true })` により1ユーザーを作成し、公開キーで `auth.signInWithPassword`、Staging `auth.getUser(access_token)` で本人一致を確認する。合成アカウントは `@example.invalid`、乱数生成したパスワードを実行環境内だけで扱い、出力しない。**同ファイル全体はPreviewブラウザ操作を含むため実行禁止**。必要なのは認証部分だけ。
+- 接続中のWindows作業PCでは `STAGING_SUPABASE_URL`、Secret、Publishable Key、PG接続情報の**環境変数が未設定**であり、作業用PR worktreeにはnode_modulesもない。GitHub Secretsの値をPCやチャットに持ち出さない。このPCからの実Auth試験は現状不可。
+- **DBへの最小実行経路**：既存Supabase管理接続の `execute_sql(project_id='wmlzjgvxgoyrovdhbqbg')` を使い、OWNER承認後に同一要求の単一PostgreSQL `DO`ブロック（例外時に全体中断）で対象ユーザー1件の `scout_level_state` / `scout_point_usage_wallets` 各1行を追加することは技術上可能。これは**DBスキーマと初期値の実証**であり、未公開JSの `pool.connect()`、HTTP、UIの実証ではない。各SQL要求を別々のツール呼び出しに分解し、1トランザクションであると偽らない。
+- 2026-11-11、読み取り専用で2テーブルの列を確認。Lv.1・進捗0・`review_anchor_at`・`revision=0` と、Walletの0 Point・交換適格0・予約0・保留0・revision0は既存列に一致。**正式サーバー用PGプール／LOGIN／`pg`直接依存は存在せず、JSの実HTTP初期化テストには別の接続手段が必要**。現行 `service_role` はPostgres LOGINではない。
+- ブラウザUIは既存コードでも未公開。Previewもmainも禁止中なので、現段階でUIクリック・実HTTPリクエストを実機で証明したとは扱わない。
+
+### 固定できる値・固定できない値
+
+| 項目                   | 一括承認時の指定                                                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB対象                 | Staging `wmlzjgvxgoyrovdhbqbg` のみ                                                                                                                  |
+| 一回限りの合成基準日時 | `2026-11-10T00:00:00.000Z`（**正式公開日ではない**、実際の合成登録時刻より前であることを確認）                                                       |
+| 合成ユーザーID         | `auth.admin.createUser` の**最初の成功応答で発行されたUUIDだけ**。事前にUUIDを想像して指定しない。IDが確定した瞬間に固定し、そのID以外の処理はしない |
+| 生成件数               | Auth1件、正式LEVEL1行、Wallet1行を上限                                                                                                               |
+| 付与金額・XP           | どちらも0、報酬付与なし                                                                                                                              |
+| 許可する検証           | 作成直後のAuthユーザー本人照合、Lv.1 / Wallet0のSELECT、合成ユーザーのJWT本人照合                                                                    |
+| 禁止する操作           | 旧ユーザー1,604人の変更、旧Pointの換算、報酬トリガー、AI、外部交換、既存のPreview依存runnerの実行、削除、Production、main、Preview                   |
+| 後片付け               | 承認なく自動削除しない。Auth生成によりprofiles等の既存トリガーで追加データが生じた場合も対象を事後に確認し、削除には別の明示承認                     |
+
+### 実行時の最小手順（OWNERの書き込み・実JWT承認が得られた場合のみ）
+
+1. 既存GitHub Stagingの認証Secretを**安全に利用できる実行環境**があることを値非表示で確認し、Previewを起動しない独立Auth呼出し経路を選ぶ。現時点では、既存Workflowの中にこの3操作だけを安全に実行する専用の動線があることは確認できていない。**実行環境の準備ができなければ開始しない**。
+2. 承認済み対象でAuthユーザーを**最大1件だけ**作成し、結果のUUIDをStagingの新規作成本人として固定。パスワード・JWTは秘密値として非表示。
+3. `auth.users.created_at` が合成基準日時以後で、本人の既存Point/XP/LEVEL/Wallet行が全0件であることを**SELECT**で確認。いずれか異なれば停止。
+4. **1つのatomic DB要求だけ**で、同一UUIDの正式LEVEL Lv.1・進捗0・`review_anchor_at=auth.users.created_at`、Wallet 0を追加し、読み取り専用で本人だけの2行が増えたことを確認。実際の `createUnregisteredFormalNewReaderOnboarding` の**コードパスの実行確認とは区別**する。
+5. 合成ユーザーのみに `signInWithPassword` でJWTを発行し、既存Supabase `auth.getUser(token)` で本人IDを確認。これも実HTTP/画面公開やPoint操作の証明ではない。
+6. Authユーザーと関連レコードは**削除せず保持**し、UUID・行数・結果（秘密値なし）を報告。途中失敗は無断再実行しない。
+
+### OWNER承認案を提示する条件
+
+**接続先と基準日時は確定したが、認証Secretを利用できる「Previewを伴わない実行経路」がまだ確定していない**。このため、現時点では実Auth生成・実JWTを含む「実行可能な完全一括承認」の条件を満たしていない。接続が確認できるまでは、書き込み・実JWT実行の承認を押し進めず、次の具体的な要件だけを提示する。
+
+- Staging専用Secretの**値の転送なし**で、既存GitHub `staging` 環境内の承認済み実行者が、独立した `createUser` / `signInWithPassword` / `getUser` のみを使えること。
+- その結果の唯一のUUIDを確定してから、Staging管理接続を使った1件のDB操作が原子的に実行できること。
+- 実JWTはStaging Authのユーザー本人一致まで。未公開サイトの読者・管理者APIやUI検証は実サーバー接続が整うまで別工程。
+
+**この手順書そのものは実DB操作の許可ではない。**
