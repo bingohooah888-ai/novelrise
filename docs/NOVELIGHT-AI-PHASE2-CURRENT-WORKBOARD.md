@@ -3,11 +3,34 @@
 **最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 4abbb30721ace3d7a74560e235d53d28b4273601
+source_main: 7c58b707270d1c7e1e29253e0fbc0c686dfb0563
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
 last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 継続：作品カルテ実GET＋章情報GETの接続部品をオフライン完成（新Draft・本番未mount）
+
+- **正本**：main `7c58b707270d1c7e1e29253e0fbc0c686dfb0563`（PR #2840統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`（不変）、mainのNOVELIGHT CI/CodeQL SUCCESS、Vercel Production同SHA READY。
+- **サーバー側の残接続**：新規 `api/_lib/ai/owner-bible-outline-offline-wiring.js` は既存 `createOwnerNovelBiblePreviewHandler` から本人認証・作品所有者検証済みプレビューを**サーバー内だけで**取得するReaderを合成し、PR #2838の未mount `createOfflineOwnerBibleOutlineApiHandler` へ渡す。既存 `owner-bible-offline-navigation`、`owner-outline-internal-adapter`、`owner-session-evidence`、`owner-private-session-reader` をそのまま再利用。`serviceClient.auth.getClaims(token)` と、**独立してサーバー側で許可されるべき** `lookupOneSession` (exact session ID + actor IDのboolean attestation) を注入する。新しい認証基盤／AuthDBアクセス／SQLは追加していない。
+- **作者HTTP境界**：新規 `novelight-ai-bible-owner-outline-offline-http.js` は必ず明示注入された `fetcher`＋`client.auth.getSession`＋`enabled=true` を要する任意のReader。固定Same Origin `GET /api/ai-owner-bible-outline?novel_id=...` を模擬環境のみで読取り、作品ID/返却列を検証し、途中で作者/トークンが変わればnullを返す。プレビューを作者が自己申告する権限grantには使わず、既存Studio/Panel/Workspaceの認可・表示を維持。本文や下書きタイトル・セッション内部情報を渡さない。
+- **実装・安全境界**：新ファイルはそれぞれ `api/_lib` と**本番HTMLからimportされない独立ブラウザモジュール**。公開 `api/*.js`、`story-notes.html`、`OwnerStudio`、`OwnerPanel`、Workflow、Migrationは変更なし。サーバー `enabled=false` が初期値で、OFFLINE PREFLIGHT ONLY維持。本番API有効化・実JWT/DB/通信接続なし。作者向け実利用は未提供。
+- **合成fixture検証**：既存preview handlerでの本人・所有権確認→ `getClaims` と `lookupOneSession`（合成）→作者RPC二重読取（合成）→サニタイズ済み章列をReaderのHTTPレスポンスとして受信→`OwnerStudio.attach`→既存の章・話UI→ログアウト/失効時旧データ消去までの一括オフライン導線を検証。初期無効、匿名/別作品、欠損能力、署名NG、セッション失効、異常レスポンス、トークン変更も検証。テスト結果は本DraftのCI/CodeQL証拠参照。
+- **未接続／未実証**：実環境の権限限定 `auth.sessions` boolean observerは**未実装**（本ファクトリーには注入口のみ）。実Supabase `auth.getClaims` の署名/発行者/時刻/失効証拠、StagingのRLSやRPC、実JWT、作者HTTPルート、実ブラウザ表示、有料AIは一切確認していない。正式Gate A〜E **0/5**。実公開の別承認が必要。
+- **Supabase Preview読み取り専用**：Staging-only `20261110080421`（SCOUT）、main-only `20261110172000`（作者閲覧維持）という既知のMigration不一致を記録するのみ。番号変更・history repair・Preview生成・DB変更なし。今回のDraft PRはmain統合禁止、Preview/Staging/Production/Secret/実JWT/有料AI/独立Watchdog操作禁止。
+
+
+
+## 2026-11-11 継続：作品カルテ→章→話→非公開設定のオフライン作者操作を完成（新Draft、未統合）
+
+- **最新正本**：main `b8a5f955eccefe1061132080c219af22abe814f3`（#2838統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`。mainのCI・CodeQL・Production Readiness SUCCESS、Vercel Production同SHA READY。今回の変更は隔離Draftのみ。
+- **機能実装**：既存 `novelight-ai-bible-author-workspace.js` の作者専用・閲覧専用UIに、既存の許可済み `episodeById` と `OwnerOutline.project` を利用した**章セレクト**を追加。作者は章→話数を順に選び、その章/話が実際の出典である確定設定と未確定候補だけを、既存の人物・世界観・伏線・出来事等のカードとして探せる。章位置は創作内時系列と混同せず、参照のないメモは章で勝手に紐づけない。章未設定の話も明示的に選べる。章切替時に古い話数選択を解除し、全文検索／作者確定状態／カテゴリー等と併用可能。既存の一括フィルター解除や各フォーカス操作が章セレクトを解除する。
+- **一連のオフライン動作検証**：`OwnerStudio.attach` → 既存の管理人プレビューGET模擬応答 → `readOutline` 注入 → PR #2838の `createOfflineOwnerBibleOutlineApiHandler` → 既存 `OwnerBibleNavigation`／作者限定RPC／セッション照合の模擬経路 → `OwnerPanel.createOfflineReader`／`AuthorWorkspace.render` → 章/話選択 → 非公開設定表示 → ログアウト消去を一つのテストで実証。すべて合成fixtureで、実Auth、実JWT、実DB、実RPC、外部通信、実課金はゼロ。追加で複数章、章未設定、別の章の情報非表示、リセット、元データ不変、欠損参照拒否も検証。
+- **境界**：本番の `story-notes.html`／`OwnerStudio`／`OwnerPanel`／public `api/*.js`／Workflowは変更しない。本番画面は `readOutline` を注入しておらず新APIは未mount・既定404。作者向け実利用はまだ不可。秘密原稿・JWT・セッション情報は外部出力しない。
+- **Supabase Preview（READのみ）**：Staging-only `20261110080421`（SCOUT）、local-only `20261110172000`（作者閲覧維持率）を維持。Migration repair/実行、Preview生成はしない。
+- **必須残工程とNO-GO**：実環境のサーバー専用プレビュー取得、署名・セッション存在チェック、作者専用HTTPルート、Browser接続、Staging実証・最終品質の承認が必要。MASTER方針に従って次も機能完成を優先しつつ、承認前に実接続しない。正式Gate A〜Eは**0/5**。main統合、Preview、Staging/Production操作、DB書込、Migration、Secret、実JWT・実Auth/DB・有料AI・独立Watchdogは引き続き禁止。
+
+
 
 ## 2026-11-11 継続：作者専用章情報HTTP境界をオフライン接続（本番未接続）
 

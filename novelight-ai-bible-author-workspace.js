@@ -392,7 +392,9 @@
             {
               episodeId: Number(row.episode_id),
               episodeNumber: Number(row.episode_number),
-              chapterTitle: row.chapter_title
+              chapterTitle: row.chapter_title,
+              chapterId: row.chapter_id,
+              chapterPosition: row.chapter_position
             }
           ])
         )
@@ -462,6 +464,7 @@
     categoryFilter.value = 'all';
     wrap.appendChild(categoryFilter);
     let episodeFilter = null;
+    let chapterFilter = null;
     let characterFilter = null;
     const reviewSummary = create('aside', 'novelight-ai-workspace-review');
     reviewSummary.setAttribute('aria-label', '作品カルテの確認ポイント');
@@ -753,6 +756,7 @@
           statusFilter.value = 'all';
           categoryFilter.value = 'characters';
           if (episodeFilter) episodeFilter.value = 'all';
+          if (chapterFilter) chapterFilter.value = 'all';
           if (characterFilter) characterFilter.value = String(profile.index);
           updateFilter();
         });
@@ -799,6 +803,7 @@
             statusFilter.value = 'all';
             categoryFilter.value = 'characters';
             if (episodeFilter) episodeFilter.value = 'all';
+            if (chapterFilter) chapterFilter.value = 'all';
             if (characterFilter) characterFilter.value = 'all';
             updateFilter();
           });
@@ -869,6 +874,7 @@
                   : 'plot';
             statusFilter.value = 'all';
             if (episodeFilter) episodeFilter.value = 'all';
+            if (chapterFilter) chapterFilter.value = 'all';
             if (characterFilter) characterFilter.value = 'all';
             updateFilter();
           });
@@ -917,6 +923,7 @@
         categoryFilter.value = 'foreshadowing';
         statusFilter.value = 'review';
         if (episodeFilter) episodeFilter.value = 'all';
+        if (chapterFilter) chapterFilter.value = 'all';
         if (characterFilter) characterFilter.value = 'all';
         updateFilter();
       });
@@ -1011,6 +1018,7 @@
             filter.value = entry.key;
             statusFilter.value = 'all';
             if (episodeFilter) episodeFilter.value = 'all';
+            if (chapterFilter) chapterFilter.value = 'all';
             if (characterFilter) characterFilter.value = 'all';
             categoryFilter.value =
               entry.kind === 'foreshadowing' ? 'foreshadowing' : 'events';
@@ -1135,6 +1143,7 @@
           categoryFilter.value = category;
           statusFilter.value = 'all';
           if (episodeFilter) episodeFilter.value = 'all';
+          if (chapterFilter) chapterFilter.value = 'all';
           if (characterFilter) characterFilter.value = 'all';
           updateFilter();
         });
@@ -1196,6 +1205,49 @@
       episodeFilter.value = 'all';
       episodeFilter.addEventListener('change', () => updateFilter());
       episodePanel.appendChild(episodeFilter);
+      // Chapters group only the exact server-authorized referenced episodes.
+      // They are navigation locations, never fictional chronology.
+      const chapters = new Map();
+      for (const episode of referencedEpisodes) {
+        if (episode.chapterId !== null) {
+          chapters.set(episode.chapterId, {
+            id: episode.chapterId,
+            title: episode.chapterTitle,
+            position: episode.chapterPosition
+          });
+        }
+      }
+      if (chapters.size) {
+        chapterFilter = create(
+          'select',
+          'novelight-ai-workspace-chapter-filter'
+        );
+        chapterFilter.setAttribute(
+          'aria-label',
+          '参照章で作品カルテを絞り込み'
+        );
+        const allChapters = create('option', '', 'すべての章');
+        allChapters.value = 'all';
+        chapterFilter.appendChild(allChapters);
+        for (const chapter of [...chapters.values()].sort(
+          (a, b) => a.position - b.position || a.id - b.id
+        )) {
+          const option = create('option', '', chapter.title);
+          option.value = String(chapter.id);
+          chapterFilter.appendChild(option);
+        }
+        if (referencedEpisodes.some((episode) => episode.chapterId === null)) {
+          const noChapter = create('option', '', '章未設定');
+          noChapter.value = 'none';
+          chapterFilter.appendChild(noChapter);
+        }
+        chapterFilter.value = 'all';
+        chapterFilter.addEventListener('change', () => {
+          if (episodeFilter) episodeFilter.value = 'all';
+          updateFilter();
+        });
+        episodePanel.appendChild(chapterFilter);
+      }
       if (!referencedEpisodes.length) {
         episodePanel.appendChild(
           create('p', '', '参照エピソードを持つ設定はまだありません。')
@@ -1237,6 +1289,7 @@
       statusFilter.value = 'all';
       categoryFilter.value = 'all';
       if (episodeFilter) episodeFilter.value = 'all';
+      if (chapterFilter) chapterFilter.value = 'all';
       if (characterFilter) characterFilter.value = 'all';
       updateFilter();
     });
@@ -1330,6 +1383,7 @@
         statusFilter.value !== 'all' ||
         categoryFilter.value !== 'all' ||
         (episodeFilter !== null && episodeFilter.value !== 'all') ||
+        (chapterFilter !== null && chapterFilter.value !== 'all') ||
         (characterFilter !== null && characterFilter.value !== 'all');
       for (const item of searchable) {
         const matchesQuery = !query || item.haystack.includes(query);
@@ -1340,6 +1394,17 @@
           episodeFilter === null ||
           episodeFilter.value === 'all' ||
           item.sourceEpisodeId === Number(episodeFilter.value);
+        const matchedEpisode =
+          item.sourceEpisodeId == null
+            ? null
+            : episodeById?.get(item.sourceEpisodeId);
+        const matchesChapter =
+          chapterFilter === null ||
+          chapterFilter.value === 'all' ||
+          (matchedEpisode &&
+            (chapterFilter.value === 'none'
+              ? matchedEpisode.chapterId === null
+              : matchedEpisode.chapterId === Number(chapterFilter.value)));
         const activeProfile =
           characterFilter !== null && characterFilter.value !== 'all'
             ? characterProfiles[Number(characterFilter.value)]
@@ -1359,6 +1424,7 @@
           matchesStatus &&
           matchesCategory &&
           matchesEpisode &&
+          matchesChapter &&
           matchesCharacter;
         item.element.hidden = !matches;
         if (matches) {
