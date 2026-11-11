@@ -165,7 +165,8 @@ export function createOfflineOwnerBibleReviewStateWorkflow({
     const row = verifiedRow(
       await repository.readSnapshot({
         actorId: scope.actorId,
-        novelId: scope.novelId
+        novelId: scope.novelId,
+        bearerToken: token
       }),
       scope.actorId,
       scope.novelId
@@ -196,7 +197,8 @@ export function createOfflineOwnerBibleReviewStateWorkflow({
     const previous = verifiedRow(
       await repository.readSnapshot({
         actorId: scope.actorId,
-        novelId: scope.novelId
+        novelId: scope.novelId,
+        bearerToken: token
       }),
       scope.actorId,
       scope.novelId
@@ -213,7 +215,8 @@ export function createOfflineOwnerBibleReviewStateWorkflow({
         actorId: scope.actorId,
         novelId: scope.novelId,
         expectedRevision,
-        reviewedIds: [...reviewedIds].sort()
+        reviewedIds: [...reviewedIds].sort(),
+        bearerToken: token
       });
     } catch {
       unavailable();
