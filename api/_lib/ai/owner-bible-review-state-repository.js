@@ -78,6 +78,30 @@ export function createSupabaseOwnerBibleReviewStateRepository({
     unavailable();
   }
 
+  async function ownerStillMatches(scope) {
+    // The service-role snapshot query bypasses RLS. Recheck ownership after
+    // reading it, since the workflow's earlier authorization may have raced
+    // with a novel transfer or deletion while the request was pending.
+    let response;
+    try {
+      response = await serviceClient
+        .from('novels')
+        .select('id,user_id')
+        .eq('id', scope.novelId)
+        .maybeSingle();
+    } catch {
+      unavailable();
+    }
+    if (
+      response?.error ||
+      Number(response?.data?.id) !== scope.novelId ||
+      typeof response?.data?.user_id !== 'string' ||
+      response.data.user_id.toLowerCase() !== scope.actorId
+    ) {
+      unavailable();
+    }
+  }
+
   async function signedSession(scope, bearerToken) {
     let proof;
     try {
@@ -120,6 +144,7 @@ export function createSupabaseOwnerBibleReviewStateRepository({
       // makes mid-flight revoked sessions fail closed.
       const again = await signedSession(scope, args.bearerToken);
       if (again !== binding) unavailable();
+      await ownerStillMatches(scope);
       return response.data
         ? convertRow(response.data, scope.actorId, scope.novelId)
         : null;

@@ -16,6 +16,29 @@ begin
 end
 $review_state_guard$;
 
+-- Refuse to create an unusable RPC while target role privileges remain
+-- unproven; this guard is evaluated at installation, not trusted from a PR.
+-- This proposal must remain UNAPPLIED until separately scoped approval.
+do $review_state_privilege_guard$
+declare
+  v_auth_sessions regclass := pg_catalog.to_regclass('auth.sessions');
+  v_novels regclass := pg_catalog.to_regclass('public.novels');
+begin
+  if v_auth_sessions is null or v_novels is null
+    or not pg_catalog.has_schema_privilege('service_role', 'auth', 'USAGE')
+    or not pg_catalog.has_column_privilege('service_role', v_auth_sessions, 'id', 'SELECT')
+    or not pg_catalog.has_column_privilege('service_role', v_auth_sessions, 'user_id', 'SELECT')
+    or not pg_catalog.has_any_column_privilege('service_role', v_auth_sessions, 'UPDATE')
+    or not pg_catalog.has_column_privilege('service_role', v_novels, 'id', 'SELECT')
+    or not pg_catalog.has_column_privilege('service_role', v_novels, 'user_id', 'SELECT')
+    or not pg_catalog.has_any_column_privilege('service_role', v_novels, 'UPDATE')
+  then
+    raise exception using errcode = '42501',
+      message = 'OWNER review CAS prerequisite privileges are not proven';
+  end if;
+end
+$review_state_privilege_guard$;
+
 create table public.novelight_ai_owner_review_states (
   actor_id uuid not null,
   novel_id bigint not null references public.novels(id) on delete cascade,
@@ -40,9 +63,13 @@ create index novelight_ai_owner_review_novel_fk_idx
 -- SECURITY INVOKER and explicit service-only EXECUTE grants avoid a
 -- publicly callable definer. The SQL itself verifies the current owner,
 -- signed session_id/actor tuple, and old revision within one transaction.
--- IMPORTANT: read access to auth.sessions for service_role must be proven
--- in an authorized Staging environment. Missing privilege MUST fail closed;
--- do not add a public auth.sessions query or privileged SECURITY DEFINER.
+-- IMPORTANT: FOR SHARE on auth.sessions requires both SELECT on id/user_id
+-- and UPDATE privilege on at least one column; service_role bypassing RLS
+-- does NOT establish these grants. NEVER grant UPDATE on auth.sessions as a
+-- quick fix, and do not add a public SECURITY DEFINER or exposed auth query.
+-- The read-only privilege proof must pass in explicitly approved Staging.
+-- If it fails, do not apply this proposal; redesign the session boundary
+-- with a separately reviewed least-privilege option before another approval.
 create function public.novelight_ai_owner_review_state_cas(
   p_actor_id uuid,
   p_novel_id bigint,
