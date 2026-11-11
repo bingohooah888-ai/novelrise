@@ -410,3 +410,164 @@ test('reloading an offline chapter view cannot retain private data after owner c
   assert.doesNotMatch(section.textContent, /初回の非公開メモ|第3話/);
   assert.match(section.textContent, /読み込みに失敗しました/);
 });
+
+test('offline author opens Bible, reads scoped HTTP outline, selects chapter/episode and signs out', async () => {
+  // Compose the actual existing owner Studio/Panel/Workspace with the new
+  // unmounted HTTP handler. Every capability below is a synthetic fixture.
+  const { createOfflineOwnerBibleOutlineApiHandler } =
+    await import('../api/_lib/ai/owner-bible-outline-offline-api.js');
+  const f = rig();
+  const actor = '11111111-1111-4111-8111-111111111111';
+  const sessionId = '33333333-3333-4333-8333-333333333333';
+  const now = 1800000000;
+  const calls = [];
+  const rows = [
+    {
+      episode_id: 100,
+      episode_number: 3,
+      episode_title: 'PRIVATE_DRAFT_EPISODE_TITLE',
+      episode_status: 'draft',
+      chapter_id: 5,
+      chapter_title: '第一章',
+      chapter_position: 1
+    }
+  ];
+  const readHandler = createOfflineOwnerBibleOutlineApiHandler({
+    enabled: true,
+    env: {
+      NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED: 'true',
+      NOVELIGHT_AI_OWNER_OUTLINE_ENABLED: 'true'
+    },
+    config: {
+      id: actor,
+      url: 'https://offline.supabase.co',
+      key: 'sb_publishable_offline_owner_flow_test'
+    },
+    readOwnerPreview: async ({ bearer, novelId }) => {
+      calls.push('preview');
+      assert.equal(bearer, 'Bearer ' + TOKEN);
+      assert.equal(novelId, 9);
+      return response(9);
+    },
+    serviceClient: {
+      auth: {
+        async getUser(token) {
+          calls.push('auth');
+          assert.equal(token, TOKEN);
+          return { data: { user: { id: actor } }, error: null };
+        }
+      },
+      from(table) {
+        assert.equal(table, 'novels');
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  async maybeSingle() {
+                    return { data: { id: 9, user_id: actor }, error: null };
+                  }
+                };
+              }
+            };
+          }
+        };
+      },
+      rpc() {
+        throw Error('service-role outline RPC must not run');
+      }
+    },
+    createAuthorClient(url, key, options) {
+      assert.equal(url, 'https://offline.supabase.co');
+      assert.equal(key, 'sb_publishable_offline_owner_flow_test');
+      assert.equal(options.global.headers.Authorization, 'Bearer ' + TOKEN);
+      return {
+        async rpc(name, params) {
+          calls.push('authorRpc');
+          assert.equal(name, 'novelight_novel_outline');
+          assert.deepEqual(params, { p_novel_id: 9 });
+          return { data: rows.map((row) => ({ ...row })), error: null };
+        }
+      };
+    },
+    verifySignedClaims: async () => ({
+      data: {
+        claims: {
+          sub: actor,
+          session_id: sessionId,
+          role: 'authenticated',
+          aud: 'authenticated',
+          iat: now - 10,
+          exp: now + 300,
+          is_anonymous: false
+        }
+      },
+      error: null
+    }),
+    lookupOneSession: async ({ sessionId: found, actorId }) => {
+      calls.push('session');
+      return found === sessionId && actorId === actor;
+    },
+    nowEpochSeconds: () => now
+  });
+  const readOutline = async ({ novelId, preview }) => {
+    assert.equal(preview.novelId, 9);
+    const res = {
+      statusCode: null,
+      headers: {},
+      setHeader(name, value) {
+        this.headers[name] = value;
+        return this;
+      },
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(value) {
+        this.body = value;
+        return this;
+      }
+    };
+    await readHandler(
+      {
+        method: 'GET',
+        headers: {
+          host: 'novelight.test',
+          origin: 'https://novelight.test',
+          authorization: 'Bearer ' + TOKEN
+        },
+        query: { novel_id: String(novelId) }
+      },
+      res
+    );
+    if (res.statusCode !== 200) return null;
+    assert.deepEqual(Object.keys(res.body), [
+      'novelId',
+      'aiGenerated',
+      'outlineRows'
+    ]);
+    assert.doesNotMatch(
+      JSON.stringify(res.body),
+      /PRIVATE_DRAFT_EPISODE_TITLE/
+    );
+    return res.body.outlineRows;
+  };
+  assert.equal(await attach({ ...args(f), readOutline }), true);
+  const chapter = find(f.main, 'novelight-ai-workspace-chapter-filter');
+  const episode = find(f.main, 'novelight-ai-workspace-episode-filter');
+  assert.ok(chapter);
+  assert.ok(episode);
+  assert.equal(chapter.children[1].value, '5');
+  chapter.value = '5';
+  chapter.listeners.get('change')();
+  episode.value = '100';
+  episode.listeners.get('change')();
+  assert.match(f.main.textContent, /第一章／第3話／参照エピソードID：100/);
+  assert.match(f.main.textContent, /朝の出発/);
+  assert.equal(calls.filter((name) => name === 'authorRpc').length, 2);
+  assert.equal(calls.filter((name) => name === 'session').length, 3);
+  assert.equal(f.requests.length, 1);
+  f.revoke();
+  assert.equal(f.main.textContent, '');
+  assert.equal(f.unsubscribed, true);
+});

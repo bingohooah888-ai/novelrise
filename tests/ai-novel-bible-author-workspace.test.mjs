@@ -1129,3 +1129,188 @@ test('pending foreshadowing review button never assumes a recovered clue', () =>
     0
   );
 });
+
+test('author selects chapter then episode to find only matching private settings', () => {
+  const payload = {
+    novelId: 23,
+    aiGenerated: false,
+    characters: [],
+    notes: [
+      { type: 'plot', title: '非公開構想', body: 'PRIVATE_UNSOURCED_NOTE' }
+    ],
+    facts: [
+      {
+        kind: 'event',
+        key: '第一章の事件',
+        confirmed: [
+          {
+            sourceEpisodeId: 100,
+            payload: { summary: 'PRIVATE_CHAPTER_A', evidence: '' }
+          }
+        ],
+        suggestions: []
+      },
+      {
+        kind: 'foreshadowing',
+        key: '第二章の鍵',
+        confirmed: [],
+        suggestions: [
+          {
+            sourceEpisodeId: 900,
+            payload: { summary: 'PRIVATE_CHAPTER_B', evidence: '' }
+          }
+        ]
+      },
+      {
+        kind: 'event',
+        key: '章未設定の出来事',
+        confirmed: [
+          {
+            sourceEpisodeId: 700,
+            payload: { summary: 'PRIVATE_NO_CHAPTER', evidence: '' }
+          }
+        ],
+        suggestions: []
+      }
+    ]
+  };
+  const snapshot = JSON.stringify(payload);
+  const outlineRows = [
+    {
+      episode_id: 900,
+      episode_number: 2,
+      episode_title: '下書き',
+      episode_status: 'draft',
+      chapter_id: 2,
+      chapter_title: '第二章',
+      chapter_position: 2
+    },
+    {
+      episode_id: 700,
+      episode_number: 4,
+      episode_title: '未分類',
+      episode_status: 'published',
+      chapter_id: null,
+      chapter_title: null,
+      chapter_position: null
+    },
+    {
+      episode_id: 100,
+      episode_number: 1,
+      episode_title: '第一話',
+      episode_status: 'published',
+      chapter_id: 1,
+      chapter_title: '第一章',
+      chapter_position: 1
+    }
+  ];
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload, outlineRows }), true);
+  const chapters = nodes(target, 'select').find(
+    (node) => node.className === 'novelight-ai-workspace-chapter-filter'
+  );
+  const episodes = nodes(target, 'select').find(
+    (node) => node.className === 'novelight-ai-workspace-episode-filter'
+  );
+  assert.ok(chapters);
+  assert.deepEqual(
+    chapters.children.map((node) => node.value),
+    ['all', '1', '2', 'none']
+  );
+  assert.match(chapters.textContent, /第一章/);
+  assert.match(chapters.textContent, /第二章/);
+  const cards = nodes(target, 'article');
+  const visible = () => cards.filter((card) => !card.hidden);
+  assert.equal(visible().length, 4);
+
+  chapters.value = '2';
+  chapters.listeners.get('change')();
+  assert.equal(visible().length, 1);
+  assert.match(visible()[0].textContent, /PRIVATE_CHAPTER_B/);
+  assert.doesNotMatch(
+    visible()[0].textContent,
+    /PRIVATE_CHAPTER_A|PRIVATE_UNSOURCED_NOTE/
+  );
+
+  episodes.value = '900';
+  episodes.listeners.get('change')();
+  assert.equal(visible().length, 1);
+  assert.match(visible()[0].textContent, /第二章／第2話/);
+
+  chapters.value = '1';
+  chapters.listeners.get('change')();
+  assert.equal(episodes.value, 'all');
+  assert.equal(visible().length, 1);
+  assert.match(visible()[0].textContent, /PRIVATE_CHAPTER_A/);
+
+  chapters.value = 'none';
+  chapters.listeners.get('change')();
+  assert.equal(visible().length, 1);
+  assert.match(visible()[0].textContent, /PRIVATE_NO_CHAPTER/);
+
+  const reset = nodes(target, 'button').find(
+    (button) => button.className === 'novelight-ai-workspace-clear-filters'
+  );
+  reset.listeners.get('click')();
+  assert.equal(chapters.value, 'all');
+  assert.equal(episodes.value, 'all');
+  assert.equal(visible().length, 4);
+  assert.equal(JSON.stringify(payload), snapshot);
+});
+
+test('chapter search is unavailable without trusted outline and invalid refresh clears private view', () => {
+  const payload = {
+    novelId: 23,
+    aiGenerated: false,
+    characters: [],
+    notes: [],
+    facts: [
+      {
+        kind: 'world',
+        key: '世界の秘密',
+        confirmed: [
+          {
+            sourceEpisodeId: 100,
+            payload: { summary: 'PRIVATE_WORLD_CANON', evidence: '' }
+          }
+        ],
+        suggestions: []
+      }
+    ]
+  };
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  assert.equal(
+    nodes(target, 'select').some(
+      (node) => node.className === 'novelight-ai-workspace-chapter-filter'
+    ),
+    false
+  );
+  assert.equal(
+    render({
+      target,
+      payload,
+      outlineRows: [
+        {
+          episode_id: 100,
+          episode_number: 1,
+          episode_title: '第一話',
+          episode_status: 'published',
+          chapter_id: 1,
+          chapter_title: '第一章',
+          chapter_position: 1
+        }
+      ]
+    }),
+    true
+  );
+  assert.equal(
+    nodes(target, 'select').some(
+      (node) => node.className === 'novelight-ai-workspace-chapter-filter'
+    ),
+    true
+  );
+  assert.equal(render({ target, payload, outlineRows: [] }), false);
+  assert.equal(target.hidden, true);
+  assert.equal(target.textContent, '');
+});
