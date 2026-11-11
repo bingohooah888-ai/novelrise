@@ -49,7 +49,7 @@ create table if not exists novelight_formal_private.scout_point_usage_operations
     novelight_formal_private.scout_point_usage_wallets(user_id),
   purpose text not null check (purpose in ('external_exchange','ai_direct_use')),
   amount_points bigint not null check (amount_points > 0),
-  phase text not null check (phase in ('reserved','committed','released')),
+  phase text not null check (phase in ('reserved','committed','released','refunded')),
   feature_id text,
   eligible_reserved_points bigint not null default 0
     check (eligible_reserved_points >= 0),
@@ -75,15 +75,18 @@ create index if not exists scout_usage_op_user
   (user_id,created_at desc);
 
 -- Every state transition is appended, never updated by the app.
--- A committed/released operation must not acquire a second incompatible
--- transition; service + row lock + operation revision enforce phase order.
+-- A committed/released/refunded operation must not acquire a second
+-- incompatible transition; service + row lock + revision enforce phase order.
+-- Canonical point usage debits and refunds are appended to public.scout_point_ledger
+-- within the same private transaction only after independently verified
+-- fulfillment or funds recovery. Reservation never creates a canonical debit.
 create table if not exists novelight_formal_private.scout_point_usage_events (
   event_id bigint generated always as identity primary key,
   operation_id uuid not null references
     novelight_formal_private.scout_point_usage_operations(operation_id),
   user_id uuid not null references auth.users(id) on delete restrict,
   purpose text not null check (purpose in ('external_exchange','ai_direct_use')),
-  phase text not null check (phase in ('reserved','committed','released')),
+  phase text not null check (phase in ('reserved','committed','released','refunded')),
   amount_points bigint not null check (amount_points > 0),
   feature_id text,
   created_at timestamptz not null default now(),
@@ -135,3 +138,84 @@ grant usage,select on sequence
 -- integration with the existing canonical Point ledger are still required
 -- BEFORE any approved live connection. This DRAFT must not be copied to
 -- a migration nor used to seed balances without a separate OWNER approval.
+
+
+-- One-time per-canonical-positive-entry mirror. Formal earning functions
+-- call this AFTER inserting a canonical row, in the SAME DB transaction.
+-- The private wallet is initialized from a separate OWNER-reviewed 10x
+-- cutover; this helper must never auto-seed or convert legacy balances.
+create table if not exists novelight_formal_private.scout_point_usage_credit_claims (
+  canonical_point_id uuid primary key references public.scout_point_ledger(id)
+    on delete restrict,
+  user_id uuid not null references auth.users(id) on delete restrict,
+  amount_points integer not null check (amount_points > 0),
+  credited_at timestamptz not null default now()
+);
+alter table novelight_formal_private.scout_point_usage_credit_claims
+  enable row level security;
+revoke all on novelight_formal_private.scout_point_usage_credit_claims
+  from public,anon,authenticated;
+grant select,insert on novelight_formal_private.scout_point_usage_credit_claims
+  to service_role;
+
+create or replace function novelight_formal_private.credit_confirmed_formal_point_draft(
+  p_canonical_point_id uuid, p_formal_release_at timestamptz
+) returns jsonb
+language plpgsql security definer set search_path=''
+as $formal_point_credit$
+declare
+  v_point public.scout_point_ledger%rowtype;
+  v_wallet novelight_formal_private.scout_point_usage_wallets%rowtype;
+  v_inserted uuid;
+begin
+  if p_canonical_point_id is null or p_formal_release_at is null
+     or p_formal_release_at > clock_timestamp() then
+    raise exception 'Trusted formal release and canonical Point required';
+  end if;
+  select * into v_point from public.scout_point_ledger
+    where id=p_canonical_point_id and status='confirmed' for update;
+  if not found or v_point.point_value <= 0 or
+     v_point.occurred_at < p_formal_release_at or
+     not (
+       v_point.point_kind in ('formal_read_reward','formal_comment_reward') or
+       (v_point.point_kind='level_up' and
+        v_point.metadata->>'rule_version'='formal-scout-level-100-owner-20261110')
+     ) then
+    raise exception 'Canonical Point is not an eligible formal issuance';
+  end if;
+  select * into v_wallet from novelight_formal_private.scout_point_usage_wallets
+    where user_id=v_point.user_id for update;
+  if not found then
+    raise exception 'Formal wallet cutover not initialized';
+  end if;
+  insert into novelight_formal_private.scout_point_usage_credit_claims(
+    canonical_point_id,user_id,amount_points
+  ) values(v_point.id,v_point.user_id,v_point.point_value)
+  on conflict(canonical_point_id) do nothing
+  returning canonical_point_id into v_inserted;
+  if v_inserted is null then
+    return jsonb_build_object('status','already_credited');
+  end if;
+  update novelight_formal_private.scout_point_usage_wallets
+    set available_points=available_points+v_point.point_value,
+        exchange_eligible_points=exchange_eligible_points+v_point.point_value,
+        revision=revision+1,
+        updated_at=now()
+    where user_id=v_point.user_id;
+  if not found then
+    raise exception 'Formal wallet credit not persisted';
+  end if;
+  return jsonb_build_object('status','credited','amount_points',v_point.point_value);
+end
+$formal_point_credit$;
+
+revoke all on function
+  novelight_formal_private.credit_confirmed_formal_point_draft(uuid,timestamptz)
+  from public,anon,authenticated;
+grant execute on function
+  novelight_formal_private.credit_confirmed_formal_point_draft(uuid,timestamptz)
+  to service_role;
+-- REQUIREMENT: the approved formal cutover must install this draft BEFORE
+-- installing formal earning functions and must reconcile the canonical
+-- confirmed Point sum with the private wallet opening balance.
+-- None of these SQL statements has been executed in any real environment.

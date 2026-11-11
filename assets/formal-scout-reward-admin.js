@@ -13,6 +13,7 @@
     root,
     authorized,
     loadQueue,
+    loadRefunds,
     onResolve
   } = {}) {
     if (!root || typeof root.replaceChildren !== 'function')
@@ -31,12 +32,14 @@
     const notice = node('p', 'rr-admin-message');
     notice.setAttribute('role', 'status');
     const list = node('div', 'rr-admin-list');
-    shell.append(title, caption, notice, list);
+    const refunds = node('div', 'rr-admin-list');
+    shell.append(title, caption, notice, list, refunds);
     root.replaceChildren(shell);
 
     async function refresh() {
       const requestId = ++latestRequest;
       list.replaceChildren();
+      refunds.replaceChildren();
       if (authorized !== true) {
         notice.textContent = '管理者の本人確認と正式版の利用開始が必要です。';
         return { status: 'admin_not_verified' };
@@ -122,6 +125,76 @@
         list.append(
           node('p', 'rr-admin-muted', '現在、未完了の交換申請はありません。')
         );
+      if (typeof loadRefunds === 'function') {
+        let candidates;
+        try {
+          candidates = await loadRefunds();
+        } catch {
+          candidates = null;
+        }
+        if (requestId !== latestRequest)
+          return { status: 'stale_queue_response' };
+        if (
+          candidates?.status === 'refund_candidates_ready' &&
+          Array.isArray(candidates.items)
+        ) {
+          refunds.append(node('h3', '', '確定済み取引の返金照合'));
+          for (const item of candidates.items) {
+            if (
+              !item ||
+              typeof item.operationId !== 'string' ||
+              typeof item.userId !== 'string' ||
+              !Number.isSafeInteger(item.amountPoints) ||
+              item.amountPoints <= 0 ||
+              item.phase !== 'committed'
+            )
+              continue;
+            const card = node('article', 'rr-admin-request');
+            const detail = node('div');
+            detail.append(
+              node('strong', '', fmt(item.amountPoints) + ' pt'),
+              node('p', 'rr-admin-muted', '受付ID：' + item.operationId),
+              node(
+                'p',
+                'rr-admin-muted',
+                item.purpose === 'ai_direct_use'
+                  ? 'AI直接利用'
+                  : 'デジタルギフト交換'
+              )
+            );
+            const button = node(
+              'button',
+              'rr-admin-action',
+              '返金・回収を照合'
+            );
+            button.type = 'button';
+            button.addEventListener('click', async () => {
+              if (inflight) return;
+              inflight = true;
+              button.disabled = true;
+              notice.textContent = '元の確定取引と返金証跡を確認しています。';
+              try {
+                const outcome = await onResolve({
+                  operationId: item.operationId,
+                  action: 'refund_recovered'
+                });
+                if (outcome?.status === 'refunded') await refresh();
+                else
+                  notice.textContent =
+                    '独立した返金・回収証跡が未確認のため、返金を実施していません。';
+              } catch {
+                notice.textContent =
+                  '返金の状態が確認できません。再度一覧を確認してください。';
+              } finally {
+                inflight = false;
+                button.disabled = false;
+              }
+            });
+            card.append(detail, button);
+            refunds.append(card);
+          }
+        }
+      }
       return result;
     }
     void refresh();
@@ -132,6 +205,7 @@
       throw new TypeError('Authenticated administrator transport required');
     return Object.freeze({
       loadQueue: () => request({ method: 'GET' }),
+      loadRefunds: () => request({ method: 'GET', query: { view: 'refunds' } }),
       onResolve: ({ operationId, action }) =>
         request({ method: 'POST', body: { operationId, action } })
     });

@@ -120,7 +120,18 @@ export function createOfflineFormalUsageRepository({
                 ? 'confirmed'
                 : operation.phase === 'released'
                   ? 'cancelled'
-                  : 'pending';
+                  : operation.phase === 'refunded'
+                    ? 'refunded'
+                    : 'pending';
+            if (operation.phase === 'refunded') {
+              user.history.unshift({
+                operationId: operation.operationId + ':refund',
+                kind: 'refund',
+                points: operation.amountPoints,
+                status: 'confirmed',
+                at: 'offline-development-only'
+              });
+            }
           }
         }
       };
@@ -160,6 +171,11 @@ export function createOfflineFormalUsageRepository({
         .filter(
           (op) => op.purpose === 'external_exchange' && op.phase === 'reserved'
         )
+        .map(copy);
+    },
+    async listRefundCandidates() {
+      return [...operations.values()]
+        .filter((op) => op.phase === 'committed')
         .map(copy);
     }
   });

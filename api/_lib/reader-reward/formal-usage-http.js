@@ -30,7 +30,9 @@ function mapResult(res, result) {
     'already_processed',
     'committed',
     'released',
-    'queue_ready'
+    'refunded',
+    'queue_ready',
+    'refund_candidates_ready'
   ]);
   if (allowed.has(status)) {
     return res.status(status === 'request_received' ? 202 : 200).json({
@@ -63,7 +65,9 @@ export function createFormalUsageHttpHandlers({
     'requestExchange',
     'requestAiUse',
     'listPendingExchanges',
-    'resolveExchange'
+    'listRefundCandidates',
+    'resolveExchange',
+    'refundCommitted'
   ]) {
     if (typeof service?.[method] !== 'function')
       throw new TypeError('Formal reward service method missing: ' + method);
@@ -155,15 +159,30 @@ export function createFormalUsageHttpHandlers({
     if (!reviewer) return;
     try {
       if (req.method === 'GET')
-        return mapResult(res, await service.listPendingExchanges());
+        return req.query?.view === 'refunds'
+          ? mapResult(res, await service.listRefundCandidates())
+          : mapResult(res, await service.listPendingExchanges());
       if (req.method !== 'POST') return stop(res, 405, 'METHOD_NOT_ALLOWED');
       if (!req.headers?.origin) return stop(res, 403, 'ORIGIN_REQUIRED');
       if (
         !fieldsAre(req.body, ['action', 'operationId']) ||
         !UUID.test(req.body.operationId || '') ||
-        !['confirm_fulfilled', 'release_unfulfilled'].includes(req.body.action)
+        ![
+          'confirm_fulfilled',
+          'release_unfulfilled',
+          'refund_recovered'
+        ].includes(req.body.action)
       )
         return stop(res, 400, 'INVALID_ADMIN_ACTION');
+      // Only an independently verified recovery can restore a committed debit.
+      if (req.body.action === 'refund_recovered')
+        return mapResult(
+          res,
+          await service.refundCommitted({
+            operationId: req.body.operationId,
+            reviewerId: reviewer.id
+          })
+        );
       // No browser-supplied reviewer ID or provider evidence: reviewerId is
       // taken from requireAdmin, and the provider is queried by the service.
       return mapResult(

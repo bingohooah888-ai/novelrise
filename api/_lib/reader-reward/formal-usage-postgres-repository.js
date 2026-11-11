@@ -5,7 +5,7 @@
 const TABLE = 'novelight_formal_private';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PURPOSES = new Set(['external_exchange', 'ai_direct_use']);
-const PHASES = new Set(['reserved', 'committed', 'released']);
+const PHASES = new Set(['reserved', 'committed', 'released', 'refunded']);
 const int = (value, name) => {
   const n =
     typeof value === 'string' && /^[0-9]+$/.test(value) ? Number(value) : value;
@@ -77,7 +77,8 @@ function requireOne(result, stage) {
 export function createFormalUsagePostgresRepository({
   pool,
   readFormalAccount,
-  readCanonicalPointHistory
+  readCanonicalPointHistory,
+  canonicalReader
 } = {}) {
   if (typeof pool?.connect !== 'function' || typeof pool?.query !== 'function')
     throw new TypeError('Injected pg-compatible pool required');
@@ -88,6 +89,10 @@ export function createFormalUsagePostgresRepository({
     throw new TypeError(
       'Approved account and canonical Point history readers required'
     );
+  if (typeof canonicalReader?.assertWalletCoherent !== 'function')
+    throw new TypeError(
+      'Authoritative canonical Point coherence reader required'
+    );
   async function transact(userId, callback) {
     if (!uuid(userId) || typeof callback !== 'function')
       throw new TypeError('Verified formal transaction user required');
@@ -96,8 +101,9 @@ export function createFormalUsagePostgresRepository({
     try {
       await client.query('BEGIN');
       begun = true;
-      // All transitions lock wallet first, purpose budget second, operation
-      // last. The operation primary key prevents cross-user UUID re-use.
+      // Lock wallet, then operation, then budget in a fixed order.
+      // All service transitions use this sequence, and the operation primary
+      // key prevents cross-user UUID re-use.
       let saved = false;
       const observed = { wallet: null, budget: null, operation: undefined };
       const tx = Object.freeze({
@@ -112,6 +118,12 @@ export function createFormalUsagePostgresRepository({
             [id]
           );
           observed.wallet = rowWallet(rows?.rows?.[0]);
+          if (observed.wallet)
+            await canonicalReader.assertWalletCoherent(
+              id,
+              observed.wallet,
+              client.query.bind(client)
+            );
           return observed.wallet ? { ...observed.wallet } : null;
         },
         async getBudget(purpose) {
@@ -253,6 +265,68 @@ export function createFormalUsagePostgresRepository({
             ),
             'HISTORY'
           );
+          // Canonical Point spending is recorded ONLY after fulfillment is
+          // independently verified. Reserve/release modify the private
+          // hold only. Both ledgers are in this one PostgreSQL transaction.
+          if (
+            operation.phase === 'committed' &&
+            previous?.phase === 'reserved'
+          ) {
+            if (operation.amountPoints > 1000000)
+              throw new Error('FORMAL_CANONICAL_LEDGER_ENTRY_LIMIT');
+            requireOne(
+              await client.query(
+                'insert into public.scout_point_ledger ' +
+                  '(user_id,point_kind,point_value,status,event_key) ' +
+                  "values ($1::uuid,$2::text,$3::integer,'confirmed',$4::text)",
+                [
+                  userId,
+                  operation.purpose === 'ai_direct_use'
+                    ? 'formal_ai_spend'
+                    : 'formal_external_exchange',
+                  -operation.amountPoints,
+                  'scout-formal-spend:' + operation.operationId
+                ]
+              ),
+              'CANONICAL_SPEND'
+            );
+          } else if (
+            operation.phase === 'refunded' &&
+            previous?.phase === 'committed'
+          ) {
+            if (operation.amountPoints > 1000000)
+              throw new Error('FORMAL_CANONICAL_LEDGER_ENTRY_LIMIT');
+            const source = await client.query(
+              'select id from public.scout_point_ledger ' +
+                'where user_id=$1::uuid and event_key=$2::text ' +
+                "and status='confirmed' and point_value=$3::integer " +
+                'for update',
+              [
+                userId,
+                'scout-formal-spend:' + operation.operationId,
+                -operation.amountPoints
+              ]
+            );
+            if (source?.rowCount !== 1 || !uuid(source.rows?.[0]?.id))
+              throw new Error('FORMAL_ORIGINAL_SETTLEMENT_NOT_FOUND');
+            requireOne(
+              await client.query(
+                'insert into public.scout_point_ledger ' +
+                  '(user_id,point_kind,point_value,status,event_key,reversal_of) ' +
+                  "values ($1::uuid,$2::text,$3::integer,'confirmed',$4::text,$5::uuid)",
+                [
+                  userId,
+                  operation.purpose === 'ai_direct_use'
+                    ? 'formal_ai_refund'
+                    : 'formal_external_exchange_refund',
+                  operation.amountPoints,
+                  'scout-formal-refund:' + operation.operationId,
+                  source.rows[0].id
+                ]
+              ),
+              'CANONICAL_REFUND'
+            );
+          }
           saved = true;
         }
       });
@@ -286,14 +360,43 @@ export function createFormalUsagePostgresRepository({
       );
       const wallet = rowWallet(result?.rows?.[0]);
       if (!wallet) return null;
-      const [account, history] = await Promise.all([
+      await canonicalReader.assertWalletCoherent(userId, wallet);
+      const [account, history, pending] = await Promise.all([
         readFormalAccount(userId),
-        readCanonicalPointHistory(userId)
+        readCanonicalPointHistory(userId),
+        pool.query(
+          'select operation_id,purpose,amount_points,phase,created_at ' +
+            'from ' +
+            TABLE +
+            '.scout_point_usage_operations ' +
+            "where user_id=$1::uuid and phase in ('reserved','released') " +
+            'order by created_at desc limit 40',
+          [userId]
+        )
       ]);
-      if (!account || !Array.isArray(history))
+      if (!account || !Array.isArray(history) || !Array.isArray(pending?.rows))
         throw new Error('FORMAL_REWARD_AUTHORITATIVE_READER_UNAVAILABLE');
+      const usageHistory = pending.rows.map((row) => {
+        if (
+          !uuid(row.operation_id) ||
+          !PURPOSES.has(row.purpose) ||
+          !['reserved', 'released'].includes(row.phase)
+        )
+          throw new Error('FORMAL_REWARD_OPERATION_HISTORY_INVALID');
+        return {
+          operationId: row.operation_id,
+          kind: row.purpose === 'ai_direct_use' ? 'ai' : 'exchange',
+          points: -int(row.amount_points, 'pending operation'),
+          status: row.phase === 'reserved' ? 'pending' : 'cancelled',
+          at: new Date(row.created_at).toISOString()
+        };
+      });
       wallet.heldPoints += wallet.reservedPoints;
-      return { wallet, account, history };
+      return {
+        wallet,
+        account,
+        history: [...usageHistory, ...history].slice(0, 80)
+      };
     },
     async findOperation(operationId) {
       if (!uuid(operationId)) return null;
@@ -314,6 +417,17 @@ export function createFormalUsagePostgresRepository({
           '.scout_point_usage_operations where purpose=$1::text and ' +
           'phase=$2::text order by created_at asc limit 100',
         ['external_exchange', 'reserved']
+      );
+      return (result.rows || []).map(rowOperation);
+    },
+    async listRefundCandidates() {
+      const result = await pool.query(
+        'select operation_id,user_id,purpose,amount_points,phase,feature_id,' +
+          'eligible_reserved_points,revision from ' +
+          TABLE +
+          '.scout_point_usage_operations where phase=$1::text ' +
+          'order by updated_at desc limit 100',
+        ['committed']
       );
       return (result.rows || []).map(rowOperation);
     }

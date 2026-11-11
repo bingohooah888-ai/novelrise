@@ -156,6 +156,8 @@ begin
     'rate_rule','formal-owner-20261110')
  ) on conflict(event_key) do nothing returning id into v_inserted;
  if v_inserted is null then return jsonb_build_object('status','already_recorded'); end if;
+ -- Canonical reward + private usable balance share the same transaction.
+ perform novelight_formal_private.credit_confirmed_formal_point_draft(v_inserted,p_release_at);
  return jsonb_build_object('status','recorded','points',v_points,'event_key',v_key);
 end
 $award_read$;
@@ -289,6 +291,7 @@ begin
     'rate_rule','formal-owner-20261110')
  ) on conflict(event_key) do nothing returning id into v_inserted;
  if v_inserted is null then return jsonb_build_object('status','already_recorded_for_episode'); end if;
+ perform novelight_formal_private.credit_confirmed_formal_point_draft(v_inserted,p_release_at);
  return jsonb_build_object('status','recorded','points',20,
    'month_count',v_count+1,'event_key',v_key);
 end

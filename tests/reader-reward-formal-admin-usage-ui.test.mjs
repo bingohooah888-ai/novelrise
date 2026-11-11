@@ -172,3 +172,39 @@ test('reader and admin preview mounts reuse the real draft UI-to-host binding co
   await adminPanel.refresh();
   assert.equal(match(admin, '30,000 pt（3,000円相当）').length, 1);
 });
+
+test('administrator can inspect committed gift refund candidates; no refund without server proof', async () => {
+  const root = new Element('main');
+  let candidates = [{ ...one, phase: 'committed' }];
+  let resolved = 0;
+  const panel =
+    globalThis.NovelightFormalRewardAdmin.createFormalRewardAdminPanel({
+      root,
+      authorized: true,
+      loadQueue: async () => ({ status: 'queue_ready', items: [] }),
+      loadRefunds: async () => ({
+        status: 'refund_candidates_ready',
+        items: candidates
+      }),
+      onResolve: async ({ operationId, action }) => {
+        assert.equal(operationId, one.operationId);
+        assert.equal(action, 'refund_recovered');
+        resolved++;
+        return { status: 'refund_evidence_missing' };
+      }
+    });
+  await panel.refresh();
+  assert.equal(match(root, '確定済み取引の返金照合').length, 1);
+  await match(root, '返金・回収を照合')[0].fire('click');
+  assert.equal(resolved, 1);
+  assert.equal(
+    match(
+      root,
+      '独立した返金・回収証跡が未確認のため、返金を実施していません。'
+    ).length,
+    1
+  );
+  candidates = [];
+  await panel.refresh();
+  assert.equal(match(root, '返金・回収を照合').length, 0);
+});

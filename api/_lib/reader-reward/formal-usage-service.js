@@ -28,7 +28,9 @@ export function createFormalRewardUsageService({
   policy = {},
   aiExecutor,
   verifyGiftReceipt,
-  verifyGiftNonFulfillment
+  verifyGiftNonFulfillment,
+  verifyGiftRefund,
+  verifyAiRefund
 } = {}) {
   if (
     typeof repository?.transact !== 'function' ||
@@ -91,7 +93,11 @@ export function createFormalRewardUsageService({
         aiPriceApproved: verification.aiPrice === true,
         fulfillmentVerified: verification.fulfillment === true,
         failureOrCancellationVerified: verification.failure === true,
-        noFulfillmentVerified: verification.noFulfillment === true
+        noFulfillmentVerified: verification.noFulfillment === true,
+        refundProofVerified: verification.refundProof === true,
+        originalSettlementVerified: verification.originalSettlement === true,
+        externalFundsRecoveryVerified:
+          verification.externalFundsRecovery === true
       }
     });
     if (proposal.status !== 'proposal_only') return response(proposal.status);
@@ -101,7 +107,8 @@ export function createFormalRewardUsageService({
     const oldAllocated = operation.eligibleReservedPoints ?? 0;
     let nextEligible = wallet.exchangeEligiblePoints;
     if (action === 'reserve') nextEligible -= eligibleAllocation;
-    if (action === 'release') nextEligible += oldAllocated;
+    if (action === 'release' || action === 'refund')
+      nextEligible += oldAllocated;
     if (
       !safe(nextEligible) ||
       nextEligible > proposal.nextWallet.availablePoints ||
@@ -255,7 +262,7 @@ export function createFormalRewardUsageService({
       const op = await tx.getOperation(operationId);
       if (!op || op.userId !== userId || op.purpose !== purpose)
         return response('operation_missing');
-      if (op.phase !== 'reserved')
+      if (op.phase !== (action === 'refund' ? 'committed' : 'reserved'))
         return response('already_processed', { phase: op.phase });
       const verification = {
         budget: true,
@@ -265,19 +272,26 @@ export function createFormalRewardUsageService({
         aiPrice: true,
         fulfillment: action === 'commit' && verified === 'success',
         failure: action === 'release' && verified === 'no_fulfillment',
-        noFulfillment: action === 'release' && verified === 'no_fulfillment'
+        noFulfillment: action === 'release' && verified === 'no_fulfillment',
+        refundProof: action === 'refund' && verified === 'recovered',
+        originalSettlement: action === 'refund' && verified === 'recovered',
+        externalFundsRecovery: action === 'refund' && verified === 'recovered'
       };
       if (
         (action === 'commit' && verified !== 'success') ||
-        (action === 'release' && verified !== 'no_fulfillment')
+        (action === 'release' && verified !== 'no_fulfillment') ||
+        (action === 'refund' && verified !== 'recovered')
       )
         return response('fulfillment_evidence_missing');
       const r = await applyTransition(tx, op, action, verification);
+      const finalPhase =
+        action === 'commit'
+          ? 'committed'
+          : action === 'refund'
+            ? 'refunded'
+            : 'released';
       return r.status === 'transition_recorded'
-        ? response(action === 'commit' ? 'committed' : 'released', {
-            operationId,
-            phase: action === 'commit' ? 'committed' : 'released'
-          })
+        ? response(finalPhase, { operationId, phase: finalPhase })
         : r;
     });
   }
@@ -422,11 +436,59 @@ export function createFormalRewardUsageService({
       verified: action === 'confirm_fulfilled' ? 'success' : 'no_fulfillment'
     });
   }
+  async function listRefundCandidates() {
+    if (!approved()) return response('formal_use_disabled');
+    if (typeof repository.listRefundCandidates !== 'function')
+      return response('refund_queue_unavailable');
+    const rows = await repository.listRefundCandidates();
+    return response('refund_candidates_ready', {
+      items: rows.map((op) => ({
+        operationId: op.operationId,
+        userId: op.userId,
+        amountPoints: op.amountPoints,
+        purpose: op.purpose,
+        phase: op.phase
+      }))
+    });
+  }
+
+  // An independently confirmed provider refund or verified AI credit reversal
+  // is required. No browser-provided receipt authorizes re-crediting a user.
+  async function refundCommitted({ operationId, reviewerId } = {}) {
+    if (!approved()) return response('formal_use_disabled');
+    if (!UUID.test(operationId || '') || !UUID.test(reviewerId || ''))
+      return response('invalid_request');
+    const op = await repository.findOperation(operationId);
+    if (!op || !['external_exchange', 'ai_direct_use'].includes(op.purpose))
+      return response('operation_missing');
+    if (op.phase !== 'committed')
+      return response('already_processed', { phase: op.phase });
+    let verified = false;
+    try {
+      verified =
+        op.purpose === 'external_exchange'
+          ? await verifyGiftRefund?.({ operation: op, reviewerId })
+          : await verifyAiRefund?.({ operation: op, reviewerId });
+    } catch {
+      verified = false;
+    }
+    if (verified !== true) return response('refund_evidence_missing');
+    return transitionExisting({
+      userId: op.userId,
+      operationId,
+      purpose: op.purpose,
+      action: 'refund',
+      verified: 'recovered'
+    });
+  }
+
   return frozen({
     requestExchange,
     requestAiUse,
     getReaderSnapshot,
     listPendingExchanges,
-    resolveExchange
+    listRefundCandidates,
+    resolveExchange,
+    refundCommitted
   });
 }

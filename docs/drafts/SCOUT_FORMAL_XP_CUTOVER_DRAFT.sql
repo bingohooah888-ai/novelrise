@@ -72,6 +72,7 @@ declare
   v_level smallint;
   v_required integer;
   v_promoted smallint;
+  v_point_id uuid;
 begin
   select * into v_xp from public.scout_xp_ledger where id=p_xp_id;
   if not found then raise exception 'source XP row not found'; end if;
@@ -119,6 +120,7 @@ begin
   -- A level can be regained after demotion, but the original first-time
   -- reward is never paid twice. Existing event_key UNIQUE is reused.
   for v_promoted in (v_state.current_level+1)..v_level loop
+    v_point_id:=null;
     insert into public.scout_point_ledger(
       user_id,source_xp_id,point_kind,point_value,status,event_key,occurred_at,metadata
     ) values (
@@ -126,7 +128,12 @@ begin
       'level_up:'||v_xp.user_id::text||':'||v_promoted::text,
       v_xp.occurred_at,
       jsonb_build_object('level',v_promoted,'rule_version','formal-scout-level-100-owner-20261110')
-    ) on conflict(event_key) do nothing;
+    ) on conflict(event_key) do nothing returning id into v_point_id;
+    if v_point_id is not null then
+      perform novelight_formal_private.credit_confirmed_formal_point_draft(
+        v_point_id,v_state.review_anchor_at
+      );
+    end if;
   end loop;
   insert into novelight_formal_private.scout_xp_claim(xp_id,user_id)
   values(p_xp_id,v_xp.user_id);

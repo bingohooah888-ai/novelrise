@@ -26,6 +26,8 @@ function fixture({
   providerReady = true,
   verifyReceipt = true,
   verifyNonFulfillment = true,
+  verifyGiftRefund = true,
+  verifyAiRefund = true,
   aiResult = { status: 'succeeded', costPoints: 120 },
   exchangeBudget = 100000,
   allocation = 0
@@ -95,6 +97,14 @@ function fixture({
     verifyGiftNonFulfillment: async () => {
       verificationCalls++;
       return verifyNonFulfillment;
+    },
+    verifyGiftRefund: async () => {
+      verificationCalls++;
+      return verifyGiftRefund;
+    },
+    verifyAiRefund: async () => {
+      verificationCalls++;
+      return verifyAiRefund;
     }
   });
   return {
@@ -610,4 +620,163 @@ test('reader retry after a lost response keeps original operation UUID and preve
   const snap = await f.service.getReaderSnapshot(first);
   assert.equal(snap.wallet.availablePoints, 20000);
   assert.equal((await f.service.listPendingExchanges()).items.length, 1);
+});
+
+test('confirmed gift refund restores original Point buckets once, without replenishing settlement budget', async () => {
+  const f = fixture();
+  await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  await f.service.resolveExchange({
+    operationId: op1,
+    action: 'confirm_fulfilled',
+    reviewerId: adminId
+  });
+  assert.equal((await f.service.listRefundCandidates()).items.length, 1);
+  const initial = await f.service.getReaderSnapshot(first);
+  assert.equal(initial.wallet.availablePoints, 20000);
+  const result = await f.service.refundCommitted({
+    operationId: op1,
+    reviewerId: adminId
+  });
+  assert.equal(result.status, 'refunded');
+  const restored = await f.service.getReaderSnapshot(first);
+  assert.equal(restored.wallet.availablePoints, 50000);
+  assert.equal(restored.wallet.exchangeEligiblePoints, 32000);
+  assert.equal(restored.history[0].points, 30000);
+  assert.equal(restored.history[0].kind, 'refund');
+  assert.equal((await f.service.listRefundCandidates()).items.length, 0);
+  assert.equal(
+    (
+      await f.service.refundCommitted({
+        operationId: op1,
+        reviewerId: adminId
+      })
+    ).status,
+    'already_processed'
+  );
+  // No new refund on a repeated admin request and no silent budget recycle.
+  assert.equal(
+    (
+      await f.service.requestExchange({
+        userId: first,
+        operationId: op2,
+        amountPoints: 30000
+      })
+    ).status,
+    'request_received'
+  );
+});
+
+test('gift refund refuses unverified money recovery, while AI refund requires independent usage reversal', async () => {
+  const blocked = fixture({ verifyGiftRefund: false });
+  await blocked.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  await blocked.service.resolveExchange({
+    operationId: op1,
+    action: 'confirm_fulfilled',
+    reviewerId: adminId
+  });
+  assert.equal(
+    (
+      await blocked.service.refundCommitted({
+        operationId: op1,
+        reviewerId: adminId
+      })
+    ).status,
+    'refund_evidence_missing'
+  );
+  assert.equal(
+    (await blocked.service.getReaderSnapshot(first)).wallet.availablePoints,
+    20000
+  );
+  const ai = fixture({ verifyAiRefund: true });
+  await ai.service.requestAiUse({
+    userId: first,
+    operationId: op2,
+    featureId: 'analysis'
+  });
+  assert.equal(
+    (
+      await ai.service.refundCommitted({
+        operationId: op2,
+        reviewerId: adminId
+      })
+    ).status,
+    'refunded'
+  );
+  assert.equal(
+    (await ai.service.getReaderSnapshot(first)).wallet.availablePoints,
+    50000
+  );
+  const aiBlocked = fixture({ verifyAiRefund: false });
+  await aiBlocked.service.requestAiUse({
+    userId: first,
+    operationId: op2,
+    featureId: 'analysis'
+  });
+  assert.equal(
+    (
+      await aiBlocked.service.refundCommitted({
+        operationId: op2,
+        reviewerId: adminId
+      })
+    ).status,
+    'refund_evidence_missing'
+  );
+});
+
+test('admin-only HTTP refund view and operation reject normal reader and forged reviewer ID', async () => {
+  const f = fixture();
+  const api = makeHttp(f);
+  await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  await f.service.resolveExchange({
+    operationId: op1,
+    action: 'confirm_fulfilled',
+    reviewerId: adminId
+  });
+  const normal = httpReq('user-1', 'GET');
+  normal.query = { view: 'refunds' };
+  assert.equal((await invoke(api.admin, normal)).statusCode, 403);
+  const adminReq = httpReq('admin', 'GET');
+  adminReq.query = { view: 'refunds' };
+  const queue = await invoke(api.admin, adminReq);
+  assert.equal(queue.statusCode, 200);
+  assert.equal(queue.result.status, 'refund_candidates_ready');
+  assert.equal(queue.result.items.length, 1);
+  const forged = await invoke(
+    api.admin,
+    httpReq('admin', 'POST', {
+      action: 'refund_recovered',
+      operationId: op1,
+      reviewerId: first
+    })
+  );
+  assert.equal(forged.statusCode, 400);
+  assert.equal(
+    (await f.service.getReaderSnapshot(first)).wallet.availablePoints,
+    20000
+  );
+  const verified = await invoke(
+    api.admin,
+    httpReq('admin', 'POST', {
+      action: 'refund_recovered',
+      operationId: op1
+    })
+  );
+  assert.equal(verified.statusCode, 200);
+  assert.equal(verified.result.status, 'refunded');
+  assert.equal(
+    (await f.service.getReaderSnapshot(first)).wallet.availablePoints,
+    50000
+  );
 });

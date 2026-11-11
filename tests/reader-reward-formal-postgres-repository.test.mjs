@@ -92,7 +92,14 @@ function repo(f) {
       progressXp: 100,
       requiredXp: 400
     }),
-    readCanonicalPointHistory: async () => [{ kind: 'read', points: 6 }]
+    readCanonicalPointHistory: async () => [{ kind: 'read', points: 6 }],
+    canonicalReader: {
+      async assertWalletCoherent(userId, wallet) {
+        if (wallet.userId !== userId)
+          throw new Error('AUTHORITATIVE_OWNER_MISMATCH');
+        return { status: 'coherent' };
+      }
+    }
   });
 }
 function service(repository) {
@@ -202,7 +209,10 @@ test('reader view requires server-side formal account and canonical ledger provi
   const lacking = createFormalUsagePostgresRepository({
     pool: f.pool,
     readFormalAccount: async () => null,
-    readCanonicalPointHistory: async () => []
+    readCanonicalPointHistory: async () => [],
+    canonicalReader: {
+      assertWalletCoherent: async () => ({ status: 'coherent' })
+    }
   });
   await assert.rejects(
     lacking.readReader(user),
@@ -245,4 +255,184 @@ test('Postgres host only constructs dormant reader/admin factories without conne
     'formal_use_disabled'
   );
   assert.equal(connects, 0);
+});
+
+function settlementFixture({
+  phase = 'reserved',
+  failOnCanonical = false
+} = {}) {
+  const calls = [];
+  const debitId = '00000000-0000-4000-8000-000000000555';
+  const prior = {
+    operation_id: operationId,
+    user_id: user,
+    purpose: 'external_exchange',
+    amount_points: '30000',
+    phase,
+    feature_id: null,
+    eligible_reserved_points: '30000',
+    revision: phase === 'reserved' ? '1' : '2'
+  };
+  const wallet = {
+    user_id: user,
+    available_points: '20000',
+    exchange_eligible_points: '2000',
+    reserved_points: phase === 'reserved' ? '30000' : '0',
+    held_points: '0',
+    revision: phase === 'reserved' ? '1' : '2'
+  };
+  const budget = {
+    scope_id: 'gift-development-only',
+    limit_points: '100000',
+    reserved_points: phase === 'reserved' ? '30000' : '0',
+    committed_points: phase === 'reserved' ? '0' : '30000',
+    revision: phase === 'reserved' ? '1' : '2'
+  };
+  const query = async (sql, values = []) => {
+    calls.push({ sql, values });
+    if (
+      failOnCanonical &&
+      sql.startsWith('insert into public.scout_point_ledger')
+    )
+      throw new Error('SYNTHETIC_CANONICAL_WRITE_FAILED');
+    if (
+      sql.includes('from public.scout_point_ledger') &&
+      sql.includes('for update')
+    )
+      return { rowCount: 1, rows: [{ id: debitId }] };
+    if (sql.startsWith('select') && sql.includes('.scout_point_usage_wallets'))
+      return { rowCount: 1, rows: [wallet] };
+    if (
+      sql.startsWith('select') &&
+      sql.includes('.scout_point_usage_operations')
+    )
+      return { rowCount: 1, rows: [prior] };
+    if (sql.startsWith('select') && sql.includes('.scout_point_usage_budgets'))
+      return { rowCount: 1, rows: [budget] };
+    if (sql.startsWith('update ') || sql.startsWith('insert into '))
+      return { rowCount: 1, rows: [] };
+    return { rowCount: 0, rows: [] };
+  };
+  const pool = { connect: async () => ({ query, release() {} }), query };
+  const repository = createFormalUsagePostgresRepository({
+    pool,
+    canonicalReader: {
+      assertWalletCoherent: async () => ({ status: 'coherent' })
+    },
+    readFormalAccount: async () => ({ level: 72 }),
+    readCanonicalPointHistory: async () => []
+  });
+  async function apply(phaseAfter) {
+    return repository.transact(user, async (tx) => {
+      const w = await tx.getWallet(user);
+      const o = await tx.getOperation(operationId);
+      const b = await tx.getBudget('external_exchange');
+      const finalWallet = {
+        ...w,
+        revision: w.revision + 1,
+        availablePoints: phaseAfter === 'refunded' ? 50000 : 20000,
+        exchangeEligiblePoints: phaseAfter === 'refunded' ? 32000 : 2000,
+        reservedPoints: 0
+      };
+      const finalBudget = {
+        ...b,
+        reservedPoints: 0,
+        committedPoints: 30000,
+        revision: phaseAfter === 'refunded' ? b.revision : b.revision + 1
+      };
+      const finalOperation = {
+        ...o,
+        phase: phaseAfter,
+        revision: o.revision + 1
+      };
+      await tx.save({
+        wallet: finalWallet,
+        budget: finalBudget,
+        operation: finalOperation
+      });
+      return 'ok';
+    });
+  }
+  return { calls, apply, debitId };
+}
+
+test('canonical ledger debit is in same PG transaction as approved commit', async () => {
+  const f = settlementFixture({ phase: 'reserved' });
+  assert.equal(await f.apply('committed'), 'ok');
+  const debit = f.calls.find((c) =>
+    c.sql.startsWith('insert into public.scout_point_ledger')
+  );
+  assert.ok(debit);
+  assert.equal(debit.values[2], -30000);
+  assert.equal(debit.values[3], 'scout-formal-spend:' + operationId);
+  assert.equal(f.calls.at(0).sql, 'BEGIN');
+  assert.equal(f.calls.at(-1).sql, 'COMMIT');
+});
+
+test('refund creates a positive linked canonical reversal without extra budget credit', async () => {
+  const f = settlementFixture({ phase: 'committed' });
+  await f.apply('refunded');
+  const source = f.calls.find(
+    (c) =>
+      c.sql.includes('from public.scout_point_ledger') &&
+      c.sql.includes('for update')
+  );
+  assert.deepEqual(source.values, [
+    user,
+    'scout-formal-spend:' + operationId,
+    -30000
+  ]);
+  const refund = f.calls.find((c) =>
+    c.sql.startsWith('insert into public.scout_point_ledger')
+  );
+  assert.equal(refund.values[2], 30000);
+  assert.equal(refund.values[3], 'scout-formal-refund:' + operationId);
+  assert.equal(refund.values[4], f.debitId);
+  assert.equal(f.calls.at(-1).sql, 'COMMIT');
+});
+
+test('canonical settlement insert failure rolls back private balances and operation too', async () => {
+  const f = settlementFixture({ phase: 'reserved', failOnCanonical: true });
+  await assert.rejects(
+    f.apply('committed'),
+    /SYNTHETIC_CANONICAL_WRITE_FAILED/
+  );
+  assert.equal(f.calls.at(-1).sql, 'ROLLBACK');
+  assert.equal(
+    f.calls.some((c) => c.sql === 'COMMIT'),
+    false
+  );
+});
+
+test('future draft wires formal read, comment, and Level-up credits in one transaction', () => {
+  const usage = readFileSync(
+    new URL(
+      '../docs/drafts/SCOUT-FORMAL-POINT-USAGE-PRIVATE-DRAFT.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const earn = readFileSync(
+    new URL(
+      '../docs/drafts/SCOUT_FORMAL_EARNINGS_ATOMIC_DRAFT.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  const xp = readFileSync(
+    new URL(
+      '../docs/drafts/SCOUT_FORMAL_XP_CUTOVER_DRAFT.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(usage, /credit_confirmed_formal_point_draft/);
+  assert.match(usage, /scout_point_usage_credit_claims/);
+  assert.match(usage, /formal_read_reward','formal_comment_reward/);
+  assert.match(
+    earn,
+    /credit_confirmed_formal_point_draft\(v_inserted,p_release_at\)/
+  );
+  assert.match(xp, /credit_confirmed_formal_point_draft\(/);
+  assert.match(usage, /on conflict\(canonical_point_id\) do nothing/);
 });

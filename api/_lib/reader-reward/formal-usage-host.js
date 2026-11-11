@@ -4,6 +4,7 @@
 import { createFormalRewardUsageService } from './formal-usage-service.js';
 import { createFormalUsageHttpHandlers } from './formal-usage-http.js';
 import { createFormalUsagePostgresRepository } from './formal-usage-postgres-repository.js';
+import { createFormalCanonicalReader } from './formal-canonical-reader.js';
 
 export function createUnregisteredFormalRewardHost({
   repository,
@@ -15,6 +16,8 @@ export function createUnregisteredFormalRewardHost({
   aiExecutor,
   verifyGiftReceipt,
   verifyGiftNonFulfillment,
+  verifyGiftRefund,
+  verifyAiRefund,
   env
 } = {}) {
   const service = createFormalRewardUsageService({
@@ -25,7 +28,9 @@ export function createUnregisteredFormalRewardHost({
     policy,
     aiExecutor,
     verifyGiftReceipt,
-    verifyGiftNonFulfillment
+    verifyGiftNonFulfillment,
+    verifyGiftRefund,
+    verifyAiRefund
   });
   const handlers = createFormalUsageHttpHandlers({
     service,
@@ -39,12 +44,23 @@ export function createUnregisteredFormalPostgresRewardHost({
   pool,
   readFormalAccount,
   readCanonicalPointHistory,
+  unitVerification,
+  now,
   ...host
 } = {}) {
+  if (typeof pool?.query !== 'function')
+    throw new TypeError('Trusted PostgreSQL query executor required');
+  const canonicalReader = createFormalCanonicalReader({
+    query: pool.query.bind(pool),
+    unitVerification,
+    now
+  });
   const repository = createFormalUsagePostgresRepository({
     pool,
-    readFormalAccount,
-    readCanonicalPointHistory
+    canonicalReader,
+    readFormalAccount: readFormalAccount || canonicalReader.readFormalAccount,
+    readCanonicalPointHistory:
+      readCanonicalPointHistory || canonicalReader.readCanonicalPointHistory
   });
   return createUnregisteredFormalRewardHost({ ...host, repository });
 }
