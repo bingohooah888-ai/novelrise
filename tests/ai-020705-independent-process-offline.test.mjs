@@ -66,7 +66,12 @@ test('independent watchdog survives SIGKILL of runner, stops separate model and 
       await sleep(350);
       assert.equal(existsSync(census), false, 'must not stop a healthy runner');
       assert.equal(alive(watchdog), true, 'independent watchdog is still alive');
+      const runnerExited = new Promise((resolve) => runner.once('exit', resolve));
       runner.kill('SIGKILL');
+      await runnerExited;
+      // Reproduce a partially written heartbeat left by an interrupted write.
+      // A previously verified heartbeat is sufficient only if runner is dead.
+      await writeFile(join(directory, 'runner-heartbeat.json'), '{');
       await until(() => existsSync(census), 'external recovery');
       await until(() => !alive(model), 'external model stop');
       assert.equal((await get(state)).aiEnabled, false);
