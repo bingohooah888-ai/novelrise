@@ -3,11 +3,24 @@
 **最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 7c58b707270d1c7e1e29253e0fbc0c686dfb0563
+source_main: 2df08620f917de3935eeda21f287f00bc994f80b
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
 last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 継続：作者が章→話数→出典記録へ絞り込む操作をオフライン改善（本番未接続・新Draft）
+
+- **正本**：main `2df08620f917de3935eeda21f287f00bc994f80b`（PR #2843は統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 変更なし、main CI/CodeQL SUCCESS。Vercel Productionは既存 `600b8855682b5ab562f57d1c26b102d4d7fb6ded` READY、test-only最新mainのビルドは既存ignore stepにより意図的CANCELED。
+- **機能ギャップと優先順位**：
+  1. **P0 本Draftで改善**：既存作者作品カルテでは話数選択欄が章選択より先に出ており、章を選択しても全章の話数が残る。既存 `AuthorWorkspace.render` のみ調整し、章→当該章の出典話数だけ表示、章未設定にも対応、章変更で古い選択を解除、フォーカスとクリアでも選択肢を同期。未参照の話は追加しない。
+  2. **P1 本Draftで改善**：出典別記録の「同じ見出しを検索」は残しつつ、検証済み章・話数が存在する記録には**出典話数限定のフォーカスボタン**を追加。同じ見出しの別話記録を混入させない。本文ページへの遷移や編集、保存はしない。
+  3. **P2 次回の判断**：画面だけのレビュー確認は現在非永続。確認結果を保存・再開する作者体験は別の永続化契約と実Auth/DB/RLS承認が必要。未承認なので新しい保存/SQLを推測で作らない。
+  4. **P3 公開直前の必須接続**：既存 `OwnerStudio`・`OwnerPanel`・owner-only GETと章情報HTTP offline readerは合成で連結済み。本番 `story-notes.html` の章情報Reader未mount、サーバー `lookupOneSession` 実capability欠如。実JWT・権限限定session lookup・RLS・作者HTTPルート・Staging確認と正式Gate A〜Eは未実証0/5。
+- **安全/範囲**： `novelight-ai-bible-author-workspace.js` と関連表示テストのみのUI変更。既存UIや作品カルテGETは作り直さない。 `story-notes.html`、`OwnerStudio`、`OwnerPanel`、公開API、AI Runner/Watchdog、Workflow、Migration、Secretを変更しない。章情報は既存のサーバー認可済み投影だけを使用し、候補の確定・原稿読取・課金・外部通信は行わない。既定OFF・OFFLINE preflight only。
+- **検証**：既存章の表示順、章ごとの話数候補、未設定章、出典別ショートカット、全解除、別章非表示、元データ不変を合成fixtureで確認。CI・CodeQLは本DraftのHEADを正本とする。Supabase Previewの既知Migration不一致はREAD ONLY。Preview生成、DB書込/修復、実JWT、Staging/Production、本番API有効化、main統合は承認なしに行わない。
+
+
 
 ## 2026-11-11 継続：作品カルテ実GET＋章情報GETの接続部品をオフライン完成（新Draft・本番未mount）
 
