@@ -11,6 +11,7 @@ import { createZip, extractZip, listZip, validateThumbnailPack } from "./archive
 import { appendBinaryChunk, beginBinaryWrite, cancelBinaryWrite, finishBinaryWrite, listBinaryWrites, readBinaryChunk } from "./binary-transfer.js";
 import { copyFile, deletePath, fileInfo, hashFile, inspectPng, makeDirectory, moveFile, searchFiles } from "./files.js";
 import { runNloCloudflareAction } from "./cloudflare-readonly.js";
+import { runNloSupabaseStagingAction } from "./supabase-staging-action-logs.js";
 import { getNovelCache, listNovelCache, readNovelCached } from "./novel-cache.js";
 import { readNovel } from "./novel.js";
 import { listSavedNovelSources, readSavedNovelChunk } from "./novel-saved-reading.js";
@@ -290,6 +291,11 @@ register("gh_pr_view", "Read PR metadata and status.", { cwd:z.string().default(
 register("gh_pr_create", "Create a pull request from the current feature branch.", { cwd:z.string().default("."), title:z.string().min(1).max(240), body:z.string().default(""), base:z.string().default("main") }, async a => runOnce("gh",["pr","create","--base",a.base,"--title",a.title,"--body",a.body],resolveAllowedPath(a.cwd,security),security,security.commandTimeoutMs));
 register("gh_run_list", "List recent GitHub Actions runs.", { cwd: z.string().default("."), limit: z.number().int().min(1).max(50).default(10) }, async a => runOnce("gh",["run","list","--limit",String(a.limit)],resolveAllowedPath(a.cwd,security),security,security.commandTimeoutMs));
 register("supabase_migration_list", "Read linked Supabase migration state.", { cwd: z.string().default(".") }, async a => runOnce("supabase",["migration","list"],resolveAllowedPath(a.cwd,security),security,security.commandTimeoutMs));
+register("supabase_staging_actions", "Read scoped Supabase Staging branch deployment actions. Local Management API read token and explicit opt-in required.", {},
+  async () => runNloSupabaseStagingAction({action:"supabase_staging_actions",args:{}}));
+register("supabase_staging_action_logs", "Read only structured, scrubbed error signals for a proven Staging branch deployment run; never raw logs.", {
+  runId:z.string().min(8).max(80)
+}, async args => runNloSupabaseStagingAction({action:"supabase_staging_action_logs",args}));
 register("vercel_list", "List Vercel deployments through the installed CLI.", { cwd: z.string().default(".") }, async a => runOnce("vercel",["ls"],resolveAllowedPath(a.cwd,security),security,security.commandTimeoutMs));
 // Cloudflare integration never takes a raw URL, token, script body or arbitrary API
 // command from MCP. No live mutations, Secrets, billing or Watchdog deployment.
