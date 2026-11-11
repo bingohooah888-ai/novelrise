@@ -13,7 +13,11 @@ const authorization = {
   approved: true,
   scope: 'staging_formal_new_reader_onboarding',
   projectRef: 'wmlzjgvxgoyrovdhbqbg',
-  trustedServerVerified: true
+  trustedServerVerified: true,
+  approvedUserId: USER,
+  maxReaders: 1,
+  referenceMode: 'formal_release_single_reader',
+  approvedReferenceAt: RELEASE
 };
 function fixture({
   authorized = false,
@@ -23,7 +27,9 @@ function fixture({
   levelRows = 0,
   walletRows = 0,
   failWallet = false,
-  authMissing = false
+  authMissing = false,
+  approval = authorization,
+  stagingProofReference = false
 } = {}) {
   const calls = [];
   let released = 0;
@@ -87,10 +93,12 @@ function fixture({
   };
   const client = createUnregisteredFormalNewReaderOnboarding({
     pool,
-    releaseAt: RELEASE,
+    ...(stagingProofReference
+      ? { stagingTestReferenceAt: RELEASE }
+      : { releaseAt: RELEASE }),
     now: () => CLOCK,
     releaseConfiguration: { formalNewReaderOnboardingEnabled: authorized },
-    trustedServerAuthorization: authorized ? authorization : {}
+    trustedServerAuthorization: authorized ? approval : {}
   });
   return {
     client,
@@ -351,4 +359,117 @@ test('browser transport binds explicit onboarding and admin overview, no automat
   });
   await admin.loadNewReaderSummary();
   assert.equal(calls[1].url, '/api/formal-reward-reader?view=new_readers');
+});
+
+test('one-user proof rejects a different user before opening any DB session', async () => {
+  const f = fixture({ authorized: true });
+  const other = '22222222-2222-4222-8222-222222222222';
+  const result = await f.client.initializeOne(other);
+  assert.equal(result.status, 'new_reader_initialization_disabled');
+  assert.equal(f.calls.length, 0);
+  assert.equal(f.released, 0);
+});
+
+test('Staging test reference is distinct from the unconfirmed formal release timestamp', async () => {
+  const stagingAuthorization = {
+    ...authorization,
+    referenceMode: 'staging_synthetic_one_reader_proof'
+  };
+  const staging = fixture({
+    authorized: true,
+    stagingProofReference: true,
+    approval: stagingAuthorization
+  });
+  const result = await staging.client.initializeOne(USER);
+  assert.equal(result.status, 'new_reader_initialized');
+  const summary = await staging.client.getAdminSummary();
+  assert.equal(summary.referenceMode, 'staging_synthetic_one_reader_proof');
+  assert.equal(summary.referenceAt, RELEASE);
+  assert.equal(staging.calls.filter((x) => x.sql === 'COMMIT').length, 1);
+});
+
+test('synthetic reference cannot be substituted by formal release authorization', async () => {
+  const f = fixture({ authorized: true, stagingProofReference: true });
+  assert.equal(
+    (await f.client.initializeOne(USER)).status,
+    'new_reader_initialization_disabled'
+  );
+  assert.equal(f.calls.length, 0);
+});
+
+test('approval must pin one account, one reference, and maxReaders=1', async () => {
+  for (const patch of [
+    { approvedUserId: undefined },
+    { maxReaders: 2 },
+    { approvedReferenceAt: '2027-03-01T00:00:00.000Z' },
+    { referenceMode: 'staging_synthetic_one_reader_proof' }
+  ]) {
+    const f = fixture({
+      authorized: true,
+      approval: { ...authorization, ...patch }
+    });
+    assert.equal(
+      (await f.client.initializeOne(USER)).status,
+      'new_reader_initialization_disabled'
+    );
+    assert.equal(f.calls.length, 0);
+  }
+});
+
+test('staging and formal timestamps cannot be supplied together', () => {
+  const f = fixture();
+  assert.throws(
+    () =>
+      createUnregisteredFormalNewReaderOnboarding({
+        pool: f.pool,
+        releaseAt: RELEASE,
+        stagingTestReferenceAt: RELEASE
+      }),
+    /must be separate/
+  );
+});
+
+test('unregistered application accepts an isolated synthetic Staging reference with release unset', async () => {
+  const f = fixture();
+  const app = createUnregisteredFormalApplication({
+    pool: f.pool,
+    supabase: {
+      auth: { getUser: async () => ({ data: { user: null }, error: null }) }
+    },
+    stagingTestReferenceAt: RELEASE,
+    releaseTimestampIso: undefined,
+    now: () => CLOCK,
+    stagingRef: 'wmlzjgvxgoyrovdhbqbg',
+    releaseConfiguration: {
+      formalNewReaderOnboardingEnabled: false,
+      formalRewardsEnabled: false,
+      formalEarningsEnabled: false,
+      productionCutoverApproved: false
+    },
+    trustedServerAuthorization: {},
+    unitVerification: {}
+  });
+  assert.equal(
+    (await app.initializeNewReader(USER)).status,
+    'new_reader_initialization_disabled'
+  );
+  assert.equal(f.calls.length, 0);
+});
+
+test('application refuses mixing official release with synthetic Staging proof', () => {
+  const f = fixture();
+  assert.throws(
+    () =>
+      createUnregisteredFormalApplication({
+        pool: f.pool,
+        supabase: { auth: { getUser: async () => ({ data: { user: null } }) } },
+        releaseTimestampIso: RELEASE,
+        stagingTestReferenceAt: RELEASE,
+        releaseConfiguration: { formalRewardsEnabled: false },
+        trustedServerAuthorization: {},
+        unitVerification: {}
+      }),
+    /must not mix/
+  );
+  assert.equal(f.calls.length, 0);
 });

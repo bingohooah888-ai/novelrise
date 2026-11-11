@@ -37,6 +37,7 @@ const frozen = (status, extra = {}) => Object.freeze({ status, ...extra });
 export function createUnregisteredFormalNewReaderOnboarding({
   pool,
   releaseAt,
+  stagingTestReferenceAt,
   now = Date.now,
   stagingRef = STAGING,
   releaseConfiguration,
@@ -44,22 +45,40 @@ export function createUnregisteredFormalNewReaderOnboarding({
 } = {}) {
   if (typeof pool?.connect !== 'function' || typeof pool?.query !== 'function')
     throw new TypeError('Trusted PostgreSQL pool required');
+  // A Staging synthetic time anchor is NOT the actual release timestamp.
+  // No caller may supply both or silently promote a test reference to release.
+  if (releaseAt !== undefined && stagingTestReferenceAt !== undefined)
+    throw new TypeError(
+      'Release and Staging proof references must be separate'
+    );
+  const testReference = stagingTestReferenceAt !== undefined;
+  const referenceAt = testReference ? stagingTestReferenceAt : releaseAt;
   if (
     typeof now !== 'function' ||
-    typeof releaseAt !== 'string' ||
-    !Number.isFinite(Date.parse(releaseAt))
+    typeof referenceAt !== 'string' ||
+    !Number.isFinite(Date.parse(referenceAt))
   )
-    throw new TypeError('Trusted release timestamp/clock required');
+    throw new TypeError(
+      'Trusted formal or Staging proof timestamp/clock required'
+    );
   if (stagingRef !== STAGING) throw new Error('FORMAL_NEW_READER_STAGING_ONLY');
-  const releaseMs = Date.parse(releaseAt);
+  const releaseMs = Date.parse(referenceAt);
   const releaseIso = new Date(releaseMs).toISOString();
-  const enabled = () =>
+  const referenceMode = testReference
+    ? 'staging_synthetic_one_reader_proof'
+    : 'formal_release_single_reader';
+  const enabled = (userId) =>
     releaseConfiguration?.formalNewReaderOnboardingEnabled === true &&
     trustedServerAuthorization?.approved === true &&
     trustedServerAuthorization?.scope ===
       'staging_formal_new_reader_onboarding' &&
     trustedServerAuthorization?.projectRef === STAGING &&
     trustedServerAuthorization?.trustedServerVerified === true &&
+    trustedServerAuthorization?.approvedUserId === userId &&
+    UUID.test(trustedServerAuthorization?.approvedUserId || '') &&
+    trustedServerAuthorization?.maxReaders === 1 &&
+    trustedServerAuthorization?.referenceMode === referenceMode &&
+    trustedServerAuthorization?.approvedReferenceAt === releaseIso &&
     now() >= releaseMs;
   async function inspect(query, userId, locked = false) {
     if (!UUID.test(userId || ''))
@@ -106,14 +125,15 @@ export function createUnregisteredFormalNewReaderOnboarding({
       totalRegistered: nonnegative(result.registered_post_release),
       initialized: nonnegative(result.ready),
       partial: nonnegative(result.partial),
-      releaseAt: releaseIso,
+      referenceAt: releaseIso,
+      referenceMode,
       legacyPointMigrationUnaffected: true
     });
   }
   async function initializeOne(userId) {
     if (!UUID.test(userId || ''))
       throw TypeError('Verified reader UUID required');
-    if (!enabled()) return frozen('new_reader_initialization_disabled');
+    if (!enabled(userId)) return frozen('new_reader_initialization_disabled');
     const client = await pool.connect();
     let begun = false;
     try {

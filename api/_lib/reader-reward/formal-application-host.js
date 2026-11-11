@@ -16,6 +16,7 @@ export function createUnregisteredFormalApplication({
   releaseConfiguration,
   trustedServerAuthorization,
   releaseTimestampIso,
+  stagingTestReferenceAt,
   verifyModeratorReceipt,
   stagingRef,
   env,
@@ -34,11 +35,28 @@ export function createUnregisteredFormalApplication({
   ) {
     throw new TypeError('Injected trusted PostgreSQL pool and Auth required');
   }
+  // The formal-release timestamp and synthetic proof anchor must never
+  // coexist in one application configuration.
+  if (stagingTestReferenceAt !== undefined && releaseTimestampIso !== undefined)
+    throw new TypeError(
+      'Formal release and synthetic Staging dates must not mix'
+    );
+  // A single synthetic-reader Staging proof cannot activate any reward path.
+  if (
+    stagingTestReferenceAt !== undefined &&
+    (releaseConfiguration?.formalRewardsEnabled === true ||
+      releaseConfiguration?.formalEarningsEnabled === true ||
+      releaseConfiguration?.productionCutoverApproved === true)
+  )
+    throw new TypeError('Staging synthetic proof must keep rewards disabled');
   // New post-release readers are independent from unresolved beta histories.
   // The registration/write gate remains OFF until explicit Staging approval.
   const newReader = createUnregisteredFormalNewReaderOnboarding({
     pool,
-    releaseAt: releaseTimestampIso,
+    // Never use the synthetic Staging test timestamp as the formal release.
+    releaseAt:
+      stagingTestReferenceAt === undefined ? releaseTimestampIso : undefined,
+    stagingTestReferenceAt,
     now,
     stagingRef,
     releaseConfiguration,
@@ -66,20 +84,42 @@ export function createUnregisteredFormalApplication({
   });
   // Formal read/comment earnings reuse the already implemented durable runner.
   // Its own launch gates remain disabled unless a future trusted host approves.
-  const earnings = createFormalEarningRunner({
-    postgresClient: pool,
-    releaseTimestampIso,
-    launchConfiguration: releaseConfiguration,
-    trustedServerAuthorization,
-    verifyModeratorReceipt
-  });
+  const earnings =
+    stagingTestReferenceAt !== undefined
+      ? Object.freeze({
+          submitModeration: async () => ({ status: 'formal_worker_disabled' }),
+          drainDue: async () => ({ status: 'formal_worker_disabled' }),
+          bindExistingScheduler: () => {
+            throw new Error('EARNING_WORKER_UNAVAILABLE_IN_STAGING_PROOF');
+          }
+        })
+      : createFormalEarningRunner({
+          postgresClient: pool,
+          releaseTimestampIso,
+          launchConfiguration: releaseConfiguration,
+          trustedServerAuthorization,
+          verifyModeratorReceipt
+        });
 
-  const opening = createUnregisteredFormalOpeningSync({
-    pool,
-    releaseAt: releaseTimestampIso,
-    unitVerification,
-    stagingRef
-  });
+  const opening =
+    stagingTestReferenceAt !== undefined
+      ? Object.freeze({
+          inspect: async () => ({
+            status: 'beta_opening_unavailable_in_staging_proof'
+          }),
+          inspectCohort: async () => ({
+            status: 'beta_opening_unavailable_in_staging_proof'
+          }),
+          initializeOne: async () => ({
+            status: 'beta_opening_unavailable_in_staging_proof'
+          })
+        })
+      : createUnregisteredFormalOpeningSync({
+          pool,
+          releaseAt: releaseTimestampIso,
+          unitVerification,
+          stagingRef
+        });
 
   return Object.freeze({
     // Explicitly unregistered: an approved host must mount these later.
