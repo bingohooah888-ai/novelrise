@@ -112,3 +112,28 @@ const app = createUnregisteredFormalApplication({
 - 実JWTはStaging Authのユーザー本人一致まで。未公開サイトの読者・管理者APIやUI検証は実サーバー接続が整うまで別工程。
 
 **この手順書そのものは実DB操作の許可ではない。**
+
+## 2026-11-11：既存GitHub Actions全82件の実行入口を照合（Previewなし・Secret転送なし）
+
+### 調査結果
+
+- `.github/workflows` のWorkflow 82件をファイル単位で確認。**`STAGING_SUPABASE_SECRET_KEY` を使用し、`workflow_dispatch` で手動起動できるWorkflowは0件**。同Secretと`STAGING_DATABASE_URL`を併用するWorkflowは6件あるが、いずれも`issue_comment`の**用途限定OWNER承認**が条件であり、新規読者検証を実行できる汎用入口ではない。
+- 既存 `.github/workflows/ai-020704-staging-review-jwt-proof.yml` の `stage` job は `environment: staging` から `STAGING_SUPABASE_SECRET_KEY`、`STAGING_SUPABASE_PUBLISHABLE_KEY`、`STAGING_DATABASE_URL` を取り込む。 `scripts/resolve-staging-session-pooler.mjs` がStaging refを検証し、TLS必須のSession pooler接続先をファイルモード0600で安全に受け渡す。この**接続方式は既存機能として再利用可能**。ただしWorkflowそのものはAI審査を行い、合成ユーザー等の削除を含むので、今回の目的には**起動してはいけない**。
+- `staging-smoke.yml` は既存のAuthユーザー作成と実ログイン機能を持つがPreview検証を行うため、今回の「Preview禁止」には一致しない。 `follow-stage-jwt-preview-proof.yml` も同様。
+- 既存 `.github/workflows/staging-reader-point-tenfold-proof.yml` は同じ読者Point領域の `issue_comment` 起動とStaging管理DB接続を持つため、**将来の機能限定入口を追記する先として最も自然**。ただし現時点ではAuth Secretを使う新規読者限定入口がない。そのまま流用して旧Point10倍操作を実行するのは不可。
+- 接続したWindowsの作業環境には `gh` コマンドがなく、Staging Secret/DB接続の環境変数もない。GitHub Environment Secretの**設定名をWorkflow定義から確認しただけ**で、Secretが実際に登録済み・現在有効であることまでは証明していない。秘密値の表示・復号・転送はしていない。
+
+### 既存機能だけで達成するための最小変更案（未実装・実行承認前）
+
+1. **新しいWorkflowファイルは作らず**、既存 `staging-reader-point-tenfold-proof.yml` の別用途を妨げない**独立した、明示OWNER承認1件専用の実行分岐**を後日追加する。既存の旧Point10倍ジョブとは起動条件・業務SQL・対象を分離し、旧Pointの移行処理を決して同時起動しない。新規Issue・監査用データベースは作らない。
+2. その分岐では既存の `environment: staging` を使用。先行する非Secretステップで、最新の承認対象PR HEAD・Staging ref・OWNER・一回限りの対象スコープを固定する。Secretはその後にだけ受け取り、値を出力しない。`scripts/resolve-staging-session-pooler.mjs` を再利用する。
+3. 合成基準日時は `2026-11-10T00:00:00.000Z`、正式公開日とは別。既存 `tests/e2e/staging/follow-live-runner.mjs` のAuth管理API作成とパスワードログイン/本人JWT照合の**処理部分のみ**を再利用する。元のPreview用runnerは起動しない。Auth作成は最大1件で、成功応答に含まれるUUIDを以降の処理対象として固定する。
+4. `scout_point_ledger` / `scout_xp_ledger` / `scout_level_state` / `scout_point_usage_wallets` にそのUUIDの既存行が0であることを確認後、既存Staging DB接続で**1トランザクションだけ**LEVEL Lv.1、XP0、Wallet0を新規作成する。件数・対象ID・初期値を読み取り確認し、実JWT本人一致までを実証。**旧Point1,604人、報酬関数、旧Point10倍SQL、トリガー、Previewには触れない**。
+5. 検証専用Auth ID・LEVEL・Walletの試験後の扱いは**保持**。認証・関連状態を自動で削除する既存AI runnerは流用しない。削除は後続のOWNER承認を要する。
+6. **GitHubの`issue_comment` Workflowはデフォルトブランチにある定義から実行される。** 既存Workflowの新規読者専用分岐をPRへ追加するだけでは現時点で起動できない。実行可能にするには、別途**既存Workflowの改修承認とmain反映承認**が必要。今回両方とも未承認なので、**Staging Auth作成・DB初期化・実JWTを一括で実行可能な条件はまだ満たさない**。
+
+### 次の承認の対象は「実行」ではなく「既存Workflowの限定改修準備」
+
+許される次工程は、**既存Workflowに対する未公開・未実行の差分と、合成読者1件専用の処理コード**を今のDraft PR #2762に準備し、合成データの局所テストを行うことだけ。Secretの実在確認、main反映、実Auth作成、JWT、DB書き込み、削除は含めない。その差分と実行入口が準備され、mainへの別承認が与えられた段階で、Staging実操作のOWNER一括承認を求める。
+
+**今回の調査では、Previewなし・Secret転送なし・main変更なしで即実行可能な既存Workflow入口は存在しなかった。これは調査上の未解決事項ではなく、現在のWorkflow起動条件に起因する制約である。**
