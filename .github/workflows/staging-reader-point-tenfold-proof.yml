@@ -299,3 +299,149 @@ jobs:
           gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
             -f body="NOVELIGHT_STAGING_READER_POINT10X_CONSUMED $payload" >/dev/null
           echo 'Owner Staging approval consumed exactly once; never retry automatically.'
+
+
+  # Independent branch: one synthetic new reader, not the legacy Point10x job.
+  admit_new_reader:
+    name: Admit one new-reader synthetic proof (OWNER only)
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE ')
+    concurrency:
+      group: novelight-reader-one-admit-issue294
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      main_sha: ${{ steps.verify.outputs.main_sha }}
+      request_id: ${{ steps.verify.outputs.request_id }}
+      reference_at: ${{ steps.verify.outputs.reference_at }}
+    steps:
+      - name: Checkout trusted main, never PR code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Bind exact OWNER scope, main and unused Issue 294 approval
+        id: verify
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/reader-one-main.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/reader-one-ledger.json
+          node scripts/scout-formal-new-reader-staging-proof.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/reader-one-main.json /tmp/reader-one-ledger.json > /tmp/reader-one-decision.json
+          main="$(jq -er '.mainSha' /tmp/reader-one-decision.json)"
+          test "$(git rev-parse HEAD)" = "$main"
+          {
+            echo "main_sha=$main"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/reader-one-decision.json)"
+            echo "reference_at=$(jq -er '.referenceAt' /tmp/reader-one-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Claim this OWNER approval before access to Staging secrets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.verify.outputs.main_sha }}
+          REQUEST_ID: ${{ steps.verify.outputs.request_id }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" --arg mainSha "$MAIN" --arg runId "$GITHUB_RUN_ID" '{requestCommentId:$requestCommentId,mainSha:$mainSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" -f body="NOVELIGHT_STAGING_NEW_READER_ONE_CLAIMED $payload" >/dev/null
+
+  stage_new_reader:
+    name: Staging one reader JWT and Level1 Wallet0 (no Preview)
+    needs: admit_new_reader
+    if: needs.admit_new_reader.result == 'success'
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit_new_reader.outputs.main_sha }}
+      STAGING_REQUEST_COMMENT_ID: ${{ needs.admit_new_reader.outputs.request_id }}
+      STAGING_TEST_REFERENCE: ${{ needs.admit_new_reader.outputs.reference_at }}
+      STAGING_PROJECT_REF: wmlzjgvxgoyrovdhbqbg
+      NOVELIGHT_ONE_READER_ADMITTED: '1'
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-one-reader-staging-url
+      PGSSLMODE: require
+    steps:
+      - name: Checkout exact OWNER-approved trusted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit_new_reader.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Check main and exact Staging scope before interacting with secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test "$STAGING_TEST_REFERENCE" = '2026-11-10T00:00:00.000Z'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+          test -n "$STAGING_SUPABASE_SECRET_KEY"
+          test -n "$STAGING_SUPABASE_PUBLISHABLE_KEY"
+      - name: Reuse verified Staging-only TLS Session pooler
+        shell: bash
+        run: node scripts/resolve-staging-session-pooler.mjs
+      - name: Install existing locked dependencies, no lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund --quiet
+      - name: One synthetic Auth user, JWT proof and one atomic Level/Wallet setup
+        shell: bash
+        run: node scripts/scout-formal-new-reader-staging-proof.mjs run
+      - name: Remove ephemeral Staging DB URL (do not delete the user or data)
+        if: always()
+        shell: bash
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
+
+  record_new_reader:
+    name: Consume exactly one new-reader approval, including failure
+    needs: [admit_new_reader, stage_new_reader]
+    if: always() && needs.admit_new_reader.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Record consumed result on existing Issue 294
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit_new_reader.outputs.main_sha }}
+          REQUEST_ID: ${{ needs.admit_new_reader.outputs.request_id }}
+          RESULT: ${{ needs.stage_new_reader.result }}
+        run: |
+          set -euo pipefail
+          case "$RESULT" in success|failure|cancelled|skipped) ;; *) exit 1;; esac
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" --arg mainSha "$MAIN" --arg runId "$GITHUB_RUN_ID" --arg result "$RESULT" '{requestCommentId:$requestCommentId,mainSha:$mainSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" -f body="NOVELIGHT_STAGING_NEW_READER_ONE_CONSUMED $payload" >/dev/null
+          echo 'New reader approval consumed: never retry automatically.'

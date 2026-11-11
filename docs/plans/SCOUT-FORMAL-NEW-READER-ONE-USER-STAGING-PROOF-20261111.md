@@ -137,3 +137,27 @@ const app = createUnregisteredFormalApplication({
 許される次工程は、**既存Workflowに対する未公開・未実行の差分と、合成読者1件専用の処理コード**を今のDraft PR #2762に準備し、合成データの局所テストを行うことだけ。Secretの実在確認、main反映、実Auth作成、JWT、DB書き込み、削除は含めない。その差分と実行入口が準備され、mainへの別承認が与えられた段階で、Staging実操作のOWNER一括承認を求める。
 
 **今回の調査では、Previewなし・Secret転送なし・main変更なしで即実行可能な既存Workflow入口は存在しなかった。これは調査上の未解決事項ではなく、現在のWorkflow起動条件に起因する制約である。**
+
+## 2026-11-11：既存Point10x Workflowに独立した1件専用実行分岐を実装（未公開・未実行）
+
+### ファイルと実行入口
+
+- **変更は既存Workflow 1件だけ**：`.github/workflows/staging-reader-point-tenfold-proof.yml`。既存 `admit` / `stage` / `record` のPoint10x用の起動条件・処理コードは変更せず、`admit_new_reader` / `stage_new_reader` / `record_new_reader` を独立追加。新規Workflowファイルはない。
+- 新規の専用実行処理は `scripts/scout-formal-new-reader-staging-proof.mjs`。既存 `scripts/resolve-staging-session-pooler.mjs` と、`tests/e2e/staging/follow-live-runner.mjs` の `createUser` / `signInWithPassword` / `getUser` の実行方式を再利用し、**元のPreview runnerは呼ばない**。
+- 起動条件は既存Issue #294のOWNER本人が**別承認した新規コメント**のみ。旧Point10x用の `NOVELIGHT_STAGING_READER_POINT10X_APPROVE` とは別の `NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE` プレフィックス。main SHA / スコープ / Staging ref / 固定基準日時 / 人数1を厳密に照合してから既存Issueに一度だけCLAIMを記録。実行成否にかかわらずCONSUMEDを記録し自動再試行しない。
+- 対象Stagingは `wmlzjgvxgoyrovdhbqbg` だけ、テスト日時 `2026-11-10T00:00:00.000Z`、最大Auth1件、正式LEVEL Lv.1とWallet0が各1行。既存のStaging TLS Session poolerを秘密値非表示の一時ファイル経由で使用する。JWTはStaging Authの本人一致のみ。旧Point、既存XP、報酬トリガーに書き込まない。検証終了後のユーザー・作成行は削除せず保持する。
+- このrunnerは**実アプリHTTP/UIの動作を証明するものではない**。既存の初期化仕様と同じ2テーブルへのatomic SQLと実Auth本人確認を証明するだけ。既存 `formal-new-reader-onboarding.js` をWeb経由で起動・公開するわけではない。
+- 対象ユーザーのUUIDはAuth作成APIの最初の成功応答だけを採用し、以後そのID1件に固定。失敗・競合・Partial時に自動再試行・削除はしない。生成UUIDと成否だけをジョブログへ記録し、メール、パスワード、JWT、DB URLを出力しない。
+
+### 将来の別OWNER承認を要する有効化
+
+1. **mainへの反映（別承認）**：GitHubの `issue_comment` はデフォルトブランチ上のWorkflowから実行されるため、Draft PR #2762のコードを保存しただけでは起動できない。PR全体には他の未公開開発が含まれるので、**今回のWorkflow変更だけをmainに反映する必要がある場合は範囲を固定した個別承認**を取る。今回はmain変更なし。
+2. **Stagingの実Auth・実JWT・DB書き込み（さらに別承認）**：mainに入口が存在し、Staging環境の各Secretが利用可能であることを**存在有無のみ**確認後、OWNERはIssue #294に下記形式の独立した承認を行う。現在は**承認を与えていない／コメントを投稿していない**。
+
+```text
+NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE {"confirmation":"STAGING APPROVED","mainSha":"＜その時点で個別承認したtrusted mainの40桁SHA＞","maxReaders":1,"pr":2762,"referenceAt":"2026-11-10T00:00:00.000Z","scope":"formal-new-reader-one-staging-proof","stagingRef":"wmlzjgvxgoyrovdhbqbg"}
+```
+
+このコメントで許可される操作は合成Auth1件作成、同IDで実JWT本人一致確認、Lv.1 / Wallet0の各1行を1トランザクションで初期化・SELECT検証まで。**データ削除、過去Pointの10倍、Point発行/消費、外部交換、有料AI、Preview、Productionの実行は一切含まれない**。
+
+今回の合成局所テストはOWNER・PR・main・人数・Staging・日時・単発利用・2 INSERTと履歴不変更の条件を検証する。`npm exec --offline ... prettier` によるWorkflow YAML構文解析も成功。実Workflow・実DB・実JWTを呼び出したテストではない。
