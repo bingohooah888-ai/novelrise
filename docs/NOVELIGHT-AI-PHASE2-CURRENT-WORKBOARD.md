@@ -3,11 +3,20 @@
 **最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 2df08620f917de3935eeda21f287f00bc994f80b
+source_main: 1d3f3f3cae61cbe0e06682ff06e6aeed8f4ca882
 source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
 last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 継続：作者チェックリストの再開契約と保存失敗時表示を一括オフライン接続（本Draftのみ）
+
+- **起点**：main `1d3f3f3cae61cbe0e06682ff06e6aeed8f4ca882`（PR #2844統合済み）。MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 不変。隔離ブランチで実装し、main/Production・Preview・Stagingは変更しない。
+- **機能**：既存の確認ポイントへ安定したopaque UI IDを割り当て、作者の確認済みID・作品ID・revisionを検証する。元データが変化して古い確認ポイントが消えた場合、無関係な確認済みを転用しない。独立して認可される外部保存Reader/Writerを明示注入したときだけ保存・再開・CAS receiptの検証を行う。保存失敗・版競合・セッション変更時に保存成功や確認状態を偽表示しない。注入なしでは従来どおり「画面だけの確認済み（保存されません）」。
+- **接続範囲**：既存AuthorWorkspace→OwnerPanel.createOfflineReader→OwnerStudio.attachの注入契約を再利用。studio側で毎回本人と同一セッションを確認し、作者画面・本番HTMLには注入しない。AI抽出候補の自動確定・本文変更はしない。既存章ナビ・owner preview・offline HTTP・認証基盤の作り直しなし。
+- **未実装・未実証**：実保存repository、サーバーCAS書込、DB/RLS、実JWT/session capability、新owner review HTTP route、story-notes.html mount、実Staging browserは別途実装・承認が必要。本Draftは外部実接続・有料AI・Production変更なし。正式Gate A〜Eは0/5、Supabase Preview既知Migration不一致はREAD ONLY維持。
+- **テスト**：snapshotの所有作品一致、ID安定性、古い項目除外、保存成功・失敗・revision競合、reload/dispose、別Owner切替、非永続モード回帰、機密を返さないことを合成fixtureで局所検証。CI/CodeQLは新Draft HEADの実際の結果を正本とする。
+
 
 ## 2026-11-11 継続：作者が章→話数→出典記録へ絞り込む操作をオフライン改善（本番未接続・新Draft）
 
