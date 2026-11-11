@@ -82,6 +82,7 @@ export function createUnregisteredFormalApplication({
         adminPath
       }),
     inspectFormalOpening: opening.inspect,
+    inspectFormalOpeningCohort: opening.inspectCohort,
     initializeFormalOpening: opening.initializeOne,
     getReaderSnapshot: usage.service.getReaderSnapshot,
     submitModeration: earnings.submitModeration,

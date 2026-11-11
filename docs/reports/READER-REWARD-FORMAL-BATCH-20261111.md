@@ -27,3 +27,28 @@
 - ブラウザ画面は既存 `formal-scout-reward-page.js` の注入式 reader/adminマウントを使用。実装ファイルに本番HTMLからのscript読み込み、実API URL、実JWT取得、公開ルート登録は追加しない。
 - 残る実環境の工程は、**①未公開10関数のみのStaging適用・読み取り専用確認**、②正式切替に伴うトリガー有効化、③専用権限／実データ同期／実JWT限定検証。②③は今回未承認であり、①の承認に含めない。Production・main・Preview・Point発行／消費・AI／外部交換は禁止のまま。
 - 今回は既存開発の再実装や総合監査を行わず、追加接続とSQL分離だけの局所テストを行う。
+
+## 2026-11-11：Staging実データ接続の読み取り専用確認と同期ゲート
+
+### 現物確認（Supabase Staging `wmlzjgvxgoyrovdhbqbg`、SQL SELECTのみ）
+
+- `public.scout_point_ledger`: 3,581行、1,605ユーザー、confirmed 3,581行、合計3,581 Point。全行 `point_value=1`、`point_kind='badge'`、未確定・負値・formal付与は0件。
+- `auth.users`: 17件。Point台帳ユーザーとの一致は**1人／3行／合計3 Point**、一致しないのは**1,604人／3,578行**。XP台帳は2,749行、1,683ユーザーのうち認証と一致は1人。
+- `scout_level_state`・`scout_point_usage_wallets`・credit claim: 全0件。
+- `scout_point_future_rewards_10x` Migration記録は存在するが、既存Pointの10倍換算実証ではない。3,581行の値がすべて1であり、`unitVerification.cutoverVerifiedByTrustedServer` や `canonicalLedgerReconciled` を自動的にtrueにしてはならない。
+- PostgreSQL role: `service_role` はNOLOGIN、`postgres` と `authenticator` はLOGIN。Supabase管理SQLの `current_user` は `postgres`。既存アプリはPostgreSQL poolを注入する未登録ファクトリーのみで、正式Webサーバー用DBログイン・最低権限接続の実配線は確認されていない。パスワード・接続文字列は収集しない。
+
+### 今回のコード
+
+- `formal-opening-sync.js` に **`inspectCohort()`** を追加。正規台帳とStaging認証ユーザーの集合差、未確定・負値、既存正式LEVEL/wallet数を、ユーザーIDを出さずに読み取り専用で返す。
+- 認証台帳に存在しないPoint保有者、未確定・負値、途中初期化、10倍単位未証明のいずれかがあれば `opening_cohort_blocked` として初期同期を停止。すでにある `initializeOne()` の明示Staging承認ゲートの後、同じDBトランザクション内でcohort判定を要求する。ブロック時はROLLBACKして、LEVEL初期化・ウォレットINSERTへ進まない。
+- 既存 `formal-application-host.js` に `inspectFormalOpeningCohort` を公開せず注入式メソッドとして追加。APIルート登録・実JWT・DB接続作成はしない。
+- 初期同期の局所テストで、実測に似た1,604件不一致がある場合に書き込み0件／ROLLBACKとなることを確認。**本当のStaging初期化は実行していない**。
+
+### 次回にまとめて必要なもの
+
+1. Stagingの `auth.users` と正規Point/XP台帳の対応原因を確認し、承認されたデータ整合化方針とPoint 10倍単位の移行実証を得る。Migration名だけでは不可。
+2. 正式アプリ接続のPostgreSQLログインロールを既存の接続方式で確認し、必要な限定GRANTだけを別途承認。秘密値をログやチャットに出さない。
+3. 不一致を解消してコホート判定が通った**後**、初期LEVEL／walletの実Staging書き込みと限定的な実JWT動作確認を対象と回数を指定して別途OWNER承認。トリガー有効化、実Point、外部交換・AI、main/Production/Previewはさらに別承認。
+
+この段階でデータ修正、仮の10倍換算、強制的なStaging初期化、migrationやworkflowの追加は行わない。

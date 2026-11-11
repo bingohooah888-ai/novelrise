@@ -19,7 +19,8 @@ function harness({
   unresolved = 0,
   post = 0,
   already = false,
-  walletError = false
+  walletError = false,
+  orphanUsers = 0
 } = {}) {
   const calls = [];
   let releases = 0;
@@ -33,6 +34,24 @@ function harness({
         sql.startsWith('SET TRANSACTION')
       )
         return { rows: [] };
+      if (sql.includes('as auth_users'))
+        return {
+          rows: [
+            {
+              auth_users: '17',
+              existing_formal_levels: '0',
+              existing_wallets: '0',
+              ledger_rows: String(orphanUsers + 1),
+              ledger_users: String(orphanUsers + 1),
+              matched_ledger_users: '1',
+              orphan_ledger_users: String(orphanUsers),
+              orphan_ledger_rows: String(orphanUsers),
+              unsettled_rows: '0',
+              negative_rows: '0',
+              single_point_rows: String(orphanUsers + 1)
+            }
+          ]
+        };
       if (sql.includes('from auth.users'))
         return { rows: [{ id: USER, created_at: '2026-10-01T00:00:00.000Z' }] };
       if (sql.includes('from public.scout_point_ledger'))
@@ -115,6 +134,27 @@ test('initial beta opening preview reads canonical already-converted balance wit
     h.calls.every((sql) => /^select /i.test(sql) && !/for update/i.test(sql))
   );
   assert.equal(h.releases, 1);
+});
+
+test('Staging cohort readiness is aggregate-only and orphan users block opening even with injected approval', async () => {
+  const h = harness({ orphanUsers: 1604 });
+  const summary = await h.sync.inspectCohort();
+  assert.equal(summary.readyForOpening, false);
+  assert.equal(summary.status, 'opening_cohort_blocked');
+  assert.equal(summary.totals.orphanLedgerUsers, 1604);
+  assert.equal(summary.totals.matchedLedgerUsers, 1);
+  assert.equal(summary.totals.singlePointRows, 1605);
+  assert.ok(summary.blockers.includes('canonical_point_user_not_in_auth'));
+  assert.ok(h.calls.every((sql) => /^select /i.test(sql)));
+  const outcome = await h.sync.initializeOne(USER, authorization);
+  assert.equal(outcome.status, 'opening_cohort_blocked');
+  assert.equal(h.calls.filter((sql) => sql === 'ROLLBACK').length, 1);
+  assert.equal(h.calls.filter((sql) => sql === 'COMMIT').length, 0);
+  assert.equal(
+    h.calls.filter((sql) => /insert into novelight_formal_private/.test(sql))
+      .length,
+    0
+  );
 });
 
 test('without explicit Staging approval, no DB query or transaction is run', async () => {

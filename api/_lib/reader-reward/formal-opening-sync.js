@@ -46,6 +46,23 @@ const SEED_WALLET_SQL =
   '(user_id,available_points,exchange_eligible_points,reserved_points,held_points,revision) ' +
   'values($1::uuid,$2::bigint,0,0,0,0) returning user_id,available_points,exchange_eligible_points';
 
+// A read-only aggregate of the real canonical sources. Never infer 10x
+// conversion from a migration name or the size of a Point entry.
+const COHORT_SQL =
+  'select ' +
+  '(select count(*)::text from auth.users) as auth_users, ' +
+  '(select count(*)::text from novelight_formal_private.scout_level_state) as existing_formal_levels, ' +
+  '(select count(*)::text from novelight_formal_private.scout_point_usage_wallets) as existing_wallets, ' +
+  'count(*)::text as ledger_rows, ' +
+  'count(distinct p.user_id)::text as ledger_users, ' +
+  'count(distinct p.user_id) filter (where u.id is not null)::text as matched_ledger_users, ' +
+  'count(distinct p.user_id) filter (where u.id is null)::text as orphan_ledger_users, ' +
+  'count(*) filter (where u.id is null)::text as orphan_ledger_rows, ' +
+  "count(*) filter (where p.status <> 'confirmed')::text as unsettled_rows, " +
+  'count(*) filter (where p.point_value < 0)::text as negative_rows, ' +
+  'count(*) filter (where p.point_value = 1)::text as single_point_rows ' +
+  'from public.scout_point_ledger p left join auth.users u on u.id=p.user_id';
+
 export function createUnregisteredFormalOpeningSync({
   pool,
   releaseAt,
@@ -57,6 +74,59 @@ export function createUnregisteredFormalOpeningSync({
   const cutoff = timestamp(releaseAt);
   if (stagingRef !== STAGING_REF)
     throw new Error('FORMAL_OPENING_STAGING_ONLY');
+
+  async function readCohort(query) {
+    const source = (await query(COHORT_SQL))?.rows;
+    if (!Array.isArray(source) || source.length !== 1)
+      throw new Error('FORMAL_OPENING_COHORT_UNAVAILABLE');
+    const row = source[0];
+    const count = (key) => pointInt(row[key]);
+    const totals = Object.freeze({
+      authUsers: count('auth_users'),
+      ledgerRows: count('ledger_rows'),
+      ledgerUsers: count('ledger_users'),
+      matchedLedgerUsers: count('matched_ledger_users'),
+      orphanLedgerUsers: count('orphan_ledger_users'),
+      orphanLedgerRows: count('orphan_ledger_rows'),
+      unsettledRows: count('unsettled_rows'),
+      negativeRows: count('negative_rows'),
+      singlePointRows: count('single_point_rows'),
+      existingFormalLevels: count('existing_formal_levels'),
+      existingWallets: count('existing_wallets')
+    });
+    if (
+      totals.matchedLedgerUsers + totals.orphanLedgerUsers !==
+        totals.ledgerUsers ||
+      totals.orphanLedgerRows > totals.ledgerRows ||
+      totals.singlePointRows > totals.ledgerRows ||
+      totals.matchedLedgerUsers > totals.authUsers
+    )
+      throw new Error('FORMAL_OPENING_COHORT_INCONSISTENT');
+    const blockers = [];
+    if (!acceptedUnit(unitVerification, cutoff))
+      blockers.push('point_unit_cutover_unverified');
+    if (totals.orphanLedgerUsers !== 0)
+      blockers.push('canonical_point_user_not_in_auth');
+    if (totals.unsettledRows || totals.negativeRows)
+      blockers.push('canonical_point_unsettled_or_negative');
+    if (totals.existingFormalLevels || totals.existingWallets)
+      blockers.push('formal_opening_already_started');
+    return Object.freeze({
+      status: blockers.length
+        ? 'opening_cohort_blocked'
+        : 'opening_cohort_ready',
+      readyForOpening: blockers.length === 0,
+      blockers: Object.freeze(blockers),
+      totals,
+      // One-Point entries are reported, not treated as proof of either unit.
+      mayWriteDb: false
+    });
+  }
+
+  async function inspectCohort() {
+    // Queries the existing Staging canonical tables, never opens a transaction.
+    return readCohort(pool.query.bind(pool));
+  }
 
   async function readCandidate(query, userId, lock = false) {
     const user = (await query(USER_SQL + (lock ? ' for update' : ''), [userId]))
@@ -128,6 +198,12 @@ export function createUnregisteredFormalOpeningSync({
       await client.query('BEGIN');
       inTransaction = true;
       await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE');
+      const cohort = await readCohort(client.query.bind(client));
+      if (!cohort.readyForOpening) {
+        await client.query('ROLLBACK');
+        inTransaction = false;
+        return cohort;
+      }
       const proposed = await readCandidate(
         client.query.bind(client),
         userId,
@@ -178,5 +254,5 @@ export function createUnregisteredFormalOpeningSync({
     }
   }
 
-  return Object.freeze({ inspect, initializeOne });
+  return Object.freeze({ inspect, inspectCohort, initializeOne });
 }
