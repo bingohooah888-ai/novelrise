@@ -187,3 +187,24 @@ NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE {"confirmation":"STAGING APPROVED","mai
 4. **さらに別のOWNER承認**：Issue #294へ既存の専用プレフィックスで新規読者1件のStaging承認を投稿する操作、実Auth1件・JWT本人照合・LEVEL/Wallet各1行の書込み検証だけを対象別承認。旧Point1,604人は無変更。失敗時は自動再実行・削除をしない。
 
 **現時点の判定：main反映は承認依頼前に構成修正が必要。今回の調査はGitHub/Vercelの読取のみであり、main更新・本番デプロイ・Workflow実行・Auth/DB操作なし。**
+
+## 2026-11-11：OWNER限定4ファイル制約に関する最終判定（mainへは未反映）
+
+**結論：指定4ファイルだけでは、新規Workflowなし・旧Point10倍ジョブをmainへ追加なし・Productionビルド対象外の3条件を同時に満たして、実行可能な専用入口をmainへ配置できない。** そのため今回の4ファイルに対する無理な再配置・main反映はしない。
+
+- 実際の最新`origin/main=95a443aa3d9c0e0d5f44bd8bae34b2487c5621b2`、Draft PR `3ba0bfd13bee239fee0af52b8aa041c6d7536097`。指定4ファイルは**mainにすべて存在しない**。
+- PR内の`.github/workflows/staging-reader-point-tenfold-proof.yml`には旧Point10倍用`admit / stage / record`、新規読者用`admit_new_reader / stage_new_reader / record_new_reader`が共存。Workflowファイルをそのままmainへ置けば旧Point10倍ジョブまで追加される。旧ジョブの起動条件の変更・削除も今回の許可範囲外。
+- 新規読者の`scripts/scout-formal-new-reader-staging-proof.mjs`はmainに存在せず、mainへ追加するとVercelの既存`ignoreCommand`でProductionビルド抑止対象にならない。Workflowだけ置いてもスクリプトがないため機能しない。
+- `origin/main:scripts/vercel-ignore-build.mjs`とPR側のファイルblobはともに`09130fa99c9b7ff03611b1827a33ed9ea8d3dca1`で同一。実コードの局所試験で、変更パスが`.github/workflows/supabase-staging-sync-request.yml`**だけ**なら`shouldIgnoreProductionBuild`が`true`、上記4ファイル一括では`false`を返すことを確認した。ただし実Vercelの差分取得失敗時はfail-openでビルドするため、main push時にProduction側が絶対に動かない保証ではない。
+
+### 次の最小限の追加OWNER承認を求める対象
+
+**5番目の編集対象として、既にmainに存在する`.github/workflows/supabase-staging-sync-request.yml`の1ファイルだけを新たに許可する。** このWorkflowには既存のIssue #294 OWNER承認付き`issue_comment`経路がある。
+
+承認後は、既存のmigration-sync用`request / sync / record`ジョブと起動条件を**一切変更せず**、新規読者専用プレフィックスを検証する別ジョブだけを同Workflow内に追加する。PR未信頼コードをSecret付きで`checkout`しない。既存Staging Session pooler / Staging Auth呼出しの正本を踏まえて、必要な安全な検証コードを**その既存Workflowの信頼済みmainコンテンツ内に閉じる**方式を検討する。追加の`scripts/`、新規Workflow・PR・基盤は作らない。
+
+実装・局所テスト・Workflow YAML確認をまず既存Draft PR #2762へ保存する段階と、**指定されたmain用のWorkflow単一ファイル差分だけを別OWNER承認で反映する段階**を分離する。後者でもGitHubのProduction向け自動ビルド開始が100%抑止されるとは保証できず、既存ignoreCommandの実行結果およびVercelの実際の運用上の抑止条件を別途確認・OWNER判断する。
+
+その後で、さらに別OWNER承認によりStaging合成Auth1件・実JWT本人照合・正式LEVEL Lv.1／Wallet 0各1行だけを実行する。旧ID1,604人と旧Point、旧XP、報酬トリガー、Production、Previewは対象外。失敗時の無断再実行や合成Authユーザー削除も禁止。
+
+**今回の承認は上記5番目のファイルの編集を認めない。** 現段階では追加実装をせず、この不成立の根拠と追加承認範囲を記録するだけとする。
