@@ -466,6 +466,7 @@
     let episodeFilter = null;
     let chapterFilter = null;
     let characterFilter = null;
+    let syncEpisodeOptions = () => {};
     const reviewSummary = create('aside', 'novelight-ai-workspace-review');
     reviewSummary.setAttribute('aria-label', '作品カルテの確認ポイント');
     reviewSummary.appendChild(create('h3', '', '設定の確認ポイント'));
@@ -1148,6 +1149,35 @@
           updateFilter();
         });
         details.appendChild(focus);
+        // A source-specific shortcut stays inside the private workspace.
+        // It never navigates to an unpublished chapter or episode page.
+        const linkedEpisodeIds = new Set();
+        for (const { record } of records) {
+          const id = record.sourceEpisodeId;
+          const episode = id != null ? episodeById?.get(id) : null;
+          if (!episode || linkedEpisodeIds.has(id)) continue;
+          linkedEpisodeIds.add(id);
+          const focusEpisode = create(
+            'button',
+            'novelight-ai-workspace-source-episode-focus',
+            '第' + episode.episodeNumber + '話の「' + group.key + '」を表示'
+          );
+          focusEpisode.type = 'button';
+          focusEpisode.addEventListener('click', () => {
+            filter.value = group.key;
+            categoryFilter.value = category;
+            statusFilter.value = 'all';
+            if (characterFilter) characterFilter.value = 'all';
+            if (chapterFilter) {
+              chapterFilter.value =
+                episode.chapterId === null ? 'none' : String(episode.chapterId);
+            }
+            syncEpisodeOptions();
+            if (episodeFilter) episodeFilter.value = String(id);
+            updateFilter();
+          });
+          details.appendChild(focusEpisode);
+        }
         historyPanel.appendChild(details);
       }
       wrap.appendChild(historyPanel);
@@ -1185,26 +1215,7 @@
         'aria-label',
         '参照話数で作品カルテを絞り込み'
       );
-      const allEpisodes = create('option', '', 'すべての話数');
-      allEpisodes.value = 'all';
-      episodeFilter.appendChild(allEpisodes);
-      for (const episode of referencedEpisodes) {
-        const option = create(
-          'option',
-          '',
-          (episode.chapterTitle ? episode.chapterTitle + '／' : '') +
-            '第' +
-            episode.episodeNumber +
-            '話（ID：' +
-            episode.episodeId +
-            '）'
-        );
-        option.value = String(episode.episodeId);
-        episodeFilter.appendChild(option);
-      }
-      episodeFilter.value = 'all';
-      episodeFilter.addEventListener('change', () => updateFilter());
-      episodePanel.appendChild(episodeFilter);
+
       // Chapters group only the exact server-authorized referenced episodes.
       // They are navigation locations, never fictional chronology.
       const chapters = new Map();
@@ -1243,11 +1254,55 @@
         }
         chapterFilter.value = 'all';
         chapterFilter.addEventListener('change', () => {
-          if (episodeFilter) episodeFilter.value = 'all';
+          episodeFilter.value = 'all';
           updateFilter();
         });
         episodePanel.appendChild(chapterFilter);
       }
+
+      // Chapter-first navigation: only offer episodes actually sourced by
+      // settings in the selected server-authorized chapter. Refresh when a
+      // focus/clear action changes the chapter back to 'all' as well.
+      let optionChapter = null;
+      syncEpisodeOptions = () => {
+        const currentChapter = chapterFilter?.value ?? 'all';
+        if (currentChapter === optionChapter) return;
+        const previousEpisode = episodeFilter.value;
+        episodeFilter.textContent = '';
+        const allEpisodes = create('option', '', 'すべての話数');
+        allEpisodes.value = 'all';
+        episodeFilter.appendChild(allEpisodes);
+        const available = referencedEpisodes.filter(
+          (episode) =>
+            currentChapter === 'all' ||
+            (currentChapter === 'none'
+              ? episode.chapterId === null
+              : episode.chapterId === Number(currentChapter))
+        );
+        for (const episode of available) {
+          const option = create(
+            'option',
+            '',
+            (episode.chapterTitle ? episode.chapterTitle + '／' : '') +
+              '第' +
+              episode.episodeNumber +
+              '話（ID：' +
+              episode.episodeId +
+              '）'
+          );
+          option.value = String(episode.episodeId);
+          episodeFilter.appendChild(option);
+        }
+        episodeFilter.value = available.some(
+          (episode) => String(episode.episodeId) === previousEpisode
+        )
+          ? previousEpisode
+          : 'all';
+        optionChapter = currentChapter;
+      };
+      syncEpisodeOptions();
+      episodeFilter.addEventListener('change', () => updateFilter());
+      episodePanel.appendChild(episodeFilter);
       if (!referencedEpisodes.length) {
         episodePanel.appendChild(
           create('p', '', '参照エピソードを持つ設定はまだありません。')
@@ -1372,6 +1427,7 @@
     }
 
     const updateFilter = () => {
+      syncEpisodeOptions();
       const query = String(filter.value ?? '')
         .trim()
         .slice(0, 80)

@@ -690,7 +690,9 @@ test('private owner outline enables chapter-based reverse lookup for all fact ki
   assert.match(target.textContent, /話数から設定を探す/);
   assert.match(target.textContent, /プロローグ／第2話／参照エピソードID：900/);
   assert.match(target.textContent, /第一章／第7話／参照エピソードID：100/);
-  const episodes = nodes(target, 'select')[3];
+  const episodes = nodes(target, 'select').find(
+    (item) => item.className === 'novelight-ai-workspace-episode-filter'
+  );
   assert.equal(episodes.children.length, 3);
   assert.equal(episodes.children[1].value, '900');
   episodes.value = '900';
@@ -997,6 +999,61 @@ test('source records group same headings by episode origin without claiming revi
     nodes(target, 'article').filter((item) => !item.hidden).length,
     2
   );
+
+  // One shortcut per authorized source episode, after the existing
+  // heading-wide search. No draft title or manuscript navigation is exposed.
+  const sourceActions = nodes(history, 'button').filter(
+    (button) =>
+      button.className === 'novelight-ai-workspace-source-episode-focus'
+  );
+  assert.equal(sourceActions.length, 2);
+  const chapters = nodes(target, 'select').find(
+    (node) => node.className === 'novelight-ai-workspace-chapter-filter'
+  );
+  const episodes = nodes(target, 'select').find(
+    (node) => node.className === 'novelight-ai-workspace-episode-filter'
+  );
+  assert.ok(chapters);
+  assert.ok(episodes);
+  sourceActions[0].listeners.get('click')();
+  assert.equal(chapters.value, '1');
+  assert.equal(episodes.value, '100');
+  assert.deepEqual(
+    episodes.children.map((node) => node.value),
+    ['all', '100']
+  );
+  assert.equal(
+    nodes(target, 'article').filter((item) => !item.hidden).length,
+    1
+  );
+  assert.match(
+    nodes(target, 'article').find((item) => !item.hidden).textContent,
+    /AI抽出候補・未確定/
+  );
+  sourceActions[1].listeners.get('click')();
+  assert.equal(chapters.value, '2');
+  assert.equal(episodes.value, '900');
+  assert.deepEqual(
+    episodes.children.map((node) => node.value),
+    ['all', '900']
+  );
+  assert.equal(
+    nodes(target, 'article').filter((item) => !item.hidden).length,
+    1
+  );
+  assert.match(
+    nodes(target, 'article').find((item) => !item.hidden).textContent,
+    /作者が確定した設定/
+  );
+  // The original heading-wide search still resets chapter and episode.
+  focus.listeners.get('click')();
+  assert.equal(chapters.value, 'all');
+  assert.equal(episodes.value, 'all');
+  assert.equal(episodes.children.length, 3);
+  assert.equal(
+    nodes(target, 'article').filter((item) => !item.hidden).length,
+    2
+  );
   assert.equal(JSON.stringify(payload), before);
 });
 
@@ -1213,9 +1270,18 @@ test('author selects chapter then episode to find only matching private settings
     (node) => node.className === 'novelight-ai-workspace-episode-filter'
   );
   assert.ok(chapters);
+  assert.ok(
+    nodes(target, 'select').indexOf(chapters) <
+      nodes(target, 'select').indexOf(episodes),
+    'chapter selector must precede its dependent episode selector'
+  );
   assert.deepEqual(
     chapters.children.map((node) => node.value),
     ['all', '1', '2', 'none']
+  );
+  assert.deepEqual(
+    episodes.children.map((node) => node.value),
+    ['all', '100', '900', '700']
   );
   assert.match(chapters.textContent, /第一章/);
   assert.match(chapters.textContent, /第二章/);
@@ -1225,6 +1291,10 @@ test('author selects chapter then episode to find only matching private settings
 
   chapters.value = '2';
   chapters.listeners.get('change')();
+  assert.deepEqual(
+    episodes.children.map((node) => node.value),
+    ['all', '900']
+  );
   assert.equal(visible().length, 1);
   assert.match(visible()[0].textContent, /PRIVATE_CHAPTER_B/);
   assert.doesNotMatch(
@@ -1240,11 +1310,19 @@ test('author selects chapter then episode to find only matching private settings
   chapters.value = '1';
   chapters.listeners.get('change')();
   assert.equal(episodes.value, 'all');
+  assert.deepEqual(
+    episodes.children.map((node) => node.value),
+    ['all', '100']
+  );
   assert.equal(visible().length, 1);
   assert.match(visible()[0].textContent, /PRIVATE_CHAPTER_A/);
 
   chapters.value = 'none';
   chapters.listeners.get('change')();
+  assert.deepEqual(
+    episodes.children.map((node) => node.value),
+    ['all', '700']
+  );
   assert.equal(visible().length, 1);
   assert.match(visible()[0].textContent, /PRIVATE_NO_CHAPTER/);
 
@@ -1254,6 +1332,10 @@ test('author selects chapter then episode to find only matching private settings
   reset.listeners.get('click')();
   assert.equal(chapters.value, 'all');
   assert.equal(episodes.value, 'all');
+  assert.deepEqual(
+    episodes.children.map((node) => node.value),
+    ['all', '100', '900', '700']
+  );
   assert.equal(visible().length, 4);
   assert.equal(JSON.stringify(payload), snapshot);
 });
