@@ -20,7 +20,8 @@ function harness({
   post = 0,
   already = false,
   walletError = false,
-  orphanUsers = 0
+  orphanUsers = 0,
+  legacyBadgeRows = 0
 } = {}) {
   const calls = [];
   let releases = 0;
@@ -48,7 +49,8 @@ function harness({
               orphan_ledger_rows: String(orphanUsers),
               unsettled_rows: '0',
               negative_rows: '0',
-              single_point_rows: String(orphanUsers + 1)
+              single_point_rows: String(orphanUsers + 1),
+              legacy_badge_rows: String(legacyBadgeRows)
             }
           ]
         };
@@ -152,6 +154,24 @@ test('Staging cohort readiness is aggregate-only and orphan users block opening 
   assert.equal(h.calls.filter((sql) => sql === 'COMMIT').length, 0);
   assert.equal(
     h.calls.filter((sql) => /insert into novelight_formal_private/.test(sql))
+      .length,
+    0
+  );
+});
+
+test('legacy badge 1-Point units block wallet seeding even if trusted release flags are injected', async () => {
+  const h = harness({ legacyBadgeRows: 1 });
+  const snapshot = await h.sync.inspectCohort();
+  assert.equal(snapshot.readyForOpening, false);
+  assert.equal(snapshot.totals.legacyBadgeRows, 1);
+  assert.ok(
+    snapshot.blockers.includes('historical_badge_points_not_tenfold_converted')
+  );
+  const result = await h.sync.initializeOne(USER, authorization);
+  assert.equal(result.status, 'opening_cohort_blocked');
+  assert.equal(h.calls.filter((s) => s === 'ROLLBACK').length, 1);
+  assert.equal(
+    h.calls.filter((s) => /insert into novelight_formal_private/.test(s))
       .length,
     0
   );

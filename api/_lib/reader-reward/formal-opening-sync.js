@@ -1,5 +1,6 @@
 // Formal opening sync for pre-release beta readers. Dormant, unregistered.
-// Reads the already-10x-converted canonical ledger; NEVER multiplies by ten.
+// Reads canonical Point; blocks when old 1-Point badge units remain.
+// Never multiplies by ten here; historical conversion is a separate cutover.
 // The existing initialize_beta_level() remains the only Level seed writer.
 // No app route or scheduled job invokes this module.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -60,7 +61,8 @@ const COHORT_SQL =
   'count(*) filter (where u.id is null)::text as orphan_ledger_rows, ' +
   "count(*) filter (where p.status <> 'confirmed')::text as unsettled_rows, " +
   'count(*) filter (where p.point_value < 0)::text as negative_rows, ' +
-  'count(*) filter (where p.point_value = 1)::text as single_point_rows ' +
+  'count(*) filter (where p.point_value = 1)::text as single_point_rows, ' +
+  "count(*) filter (where p.point_kind = 'badge' and p.point_value = 1)::text as legacy_badge_rows " +
   'from public.scout_point_ledger p left join auth.users u on u.id=p.user_id';
 
 export function createUnregisteredFormalOpeningSync({
@@ -91,6 +93,7 @@ export function createUnregisteredFormalOpeningSync({
       unsettledRows: count('unsettled_rows'),
       negativeRows: count('negative_rows'),
       singlePointRows: count('single_point_rows'),
+      legacyBadgeRows: count('legacy_badge_rows'),
       existingFormalLevels: count('existing_formal_levels'),
       existingWallets: count('existing_wallets')
     });
@@ -99,6 +102,7 @@ export function createUnregisteredFormalOpeningSync({
         totals.ledgerUsers ||
       totals.orphanLedgerRows > totals.ledgerRows ||
       totals.singlePointRows > totals.ledgerRows ||
+      totals.legacyBadgeRows > totals.singlePointRows ||
       totals.matchedLedgerUsers > totals.authUsers
     )
       throw new Error('FORMAL_OPENING_COHORT_INCONSISTENT');
@@ -107,6 +111,10 @@ export function createUnregisteredFormalOpeningSync({
       blockers.push('point_unit_cutover_unverified');
     if (totals.orphanLedgerUsers !== 0)
       blockers.push('canonical_point_user_not_in_auth');
+    // The confirmed 20261109 10x migration changed FUTURE awards only.
+    // Existing badge rows at the prior 1-Point unit must not seed wallets.
+    if (totals.legacyBadgeRows !== 0)
+      blockers.push('historical_badge_points_not_tenfold_converted');
     if (totals.unsettledRows || totals.negativeRows)
       blockers.push('canonical_point_unsettled_or_negative');
     if (totals.existingFormalLevels || totals.existingWallets)
@@ -118,7 +126,8 @@ export function createUnregisteredFormalOpeningSync({
       readyForOpening: blockers.length === 0,
       blockers: Object.freeze(blockers),
       totals,
-      // One-Point entries are reported, not treated as proof of either unit.
+      // Existing badge 1-Point entries are positive evidence of legacy units.
+      // No Migration name or externally supplied Boolean can override this.
       mayWriteDb: false
     });
   }

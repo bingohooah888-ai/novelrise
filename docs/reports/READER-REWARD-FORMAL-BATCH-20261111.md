@@ -52,3 +52,29 @@
 3. 不一致を解消してコホート判定が通った**後**、初期LEVEL／walletの実Staging書き込みと限定的な実JWT動作確認を対象と回数を指定して別途OWNER承認。トリガー有効化、実Point、外部交換・AI、main/Production/Previewはさらに別承認。
 
 この段階でデータ修正、仮の10倍換算、強制的なStaging初期化、migrationやworkflowの追加は行わない。
+
+## 2026-11-11：Point台帳のユーザー不一致・10倍移行・DB接続ロールの原因確認
+
+**すべてStaging `wmlzjgvxgoyrovdhbqbg` の読み取り専用調査。Production・実ユーザー書き込みなし。**
+
+### 実測と原因
+
+- 旧 `scout_point_ledger` は3,581行・1,605人で全行 `point_kind='badge'`、`point_value=1`、2026-09-21〜09-30の記録。対応する `auth.users` は**1人／3行**だけ。残り1,604人／3,578行は対応しない。 `public.profiles` は2件で旧Point台帳ユーザーとの一致0人。`user_scout_badges` は916,548行・6,500人で、認証ユーザー一致は5人。
+- `scout_point_ledger.user_id` には `auth.users` 外部キーがない。したがって認証ユーザーがStagingに存在しなくても履歴が残る仕組み。**Stagingへの複製・データ投入時に認証ユーザーが欠落したかは、現証拠では確定しない。** 旧IDを削除・付替え・架空のauthユーザーを生成してはならない。
+- Supabase migration `20261109173000 scout_point_future_rewards_10x` の `statements` を確認。内容は **将来付与のみ** の `scout_badge_definitions.point_reward *= 10`（readerカテゴリ）と `novelight_award_level_up_points` の新付与額5→50。過去3,581行のPoint換算は含まれない。
+- 既存の `beta-point-tenfold-plan.js`、`formal-cutover-offline.js` に、旧単位`beta_one_point_per_yen`から新単位`beta_ten_points_per_yen`へ**一回限りに換算する非実行見積り**がある。対象台帳と認証ユーザーの対応、全量スナップショット、変更対象のbadge定義・各Point利用指標・書込経路が一致することが先決。単純な再`UPDATE`やMigration名だけでの「完了」扱いはしない。
+- DBロールの現物確認：`service_role`は`NOLOGIN`。`postgres`、`authenticator`は`LOGIN`。専用のNOVELIGHT・formal・stagingアプリLOGINロールは確認されず、正式アプリコードは `pool` を外部注入する未登録ファクトリーで、直接PostgreSQL接続の本番ルートは存在しない。**実際に接続する正式サーバーDBログインは未確定。** 既存`postgres`の高権限ログインを勝手に本番アプリへ配線しない。秘密情報は取得しない。
+
+### 今回の最小コード修正
+
+- `formal-opening-sync.js`の既存コホート判定に `legacyBadgeRows` の集計を追加。確認済みの旧単位`badge`・1 Pointが残れば、たとえ呼び出し元が10倍換算済みフラグを指定しても `historical_badge_points_not_tenfold_converted` で初期ウォレット作成前に停止。既存のauth不一致ゲートも維持する。
+- 局所テストに過去未換算Pointが残ると実DBに書き込まない模擬例を追加。migration/DB/実JWT/実Point操作なし。
+
+### 最短の次アクション（OWNER判断待ち）
+
+1. **認証ユーザー照合方針を確定**：Stagingに履歴だけ残る1,604人が、認証データの欠落なのか、Staging専用の不整合データなのかを、既存Stagingバックアップ・既存登録データの出所から確認。出所不明のまま自動除外／復元／消去しない。
+2. **旧Pointの一度きりの10倍移行方針を確定**：既存offline quoteとPoint10x計画を再利用。履歴3,581行の現在値合計3,581→変換後期待値35,810を非書込の見積りとして使用。対象ユーザー・単位・既存付与経路・badge定義・利用指標を同じ移行単位に揃え、実行対象SQLと対象件数を固定してからStaging書込み承認を依頼。
+3. **正式サーバーの接続を特定**：既存のPostgreSQL接続方式でStaging専用LOGINと必要なprivate権限だけを選定し、既存未登録アプリへinject。資格情報のログ表示・チャット転送なし。Supabase AuthはJWT検証に再利用。
+4. 上記に実証が揃った場合のみ**Staging限定の10倍換算＋コホート整合後の初期LEVEL/wallet同期＋最小限の実JWT検証**の実行承認を、操作・対象ユーザー・回数を固定して一括提示する。未知データを仮に修正して実証を捏造しない。トリガー、実Point発行、外部交換、AI、Production、main、Previewは別判断。
+
+今回の確認は既存の台帳とMigrationを対象とする限定調査で、新しい安全基盤・Workflow・PRを作っていない。
