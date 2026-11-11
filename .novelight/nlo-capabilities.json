@@ -191,6 +191,35 @@
       "version": "0.1.0",
       "status": "enabled",
       "provenance": "2026-11-08 owner-requested NLO safe Stage 3.8 dispatch implementation; only after separately approved main merge and local NLO rollout; each dispatch requires fresh distinct Staging approval"
+    },
+    {
+      "id": "nlo.supabase.staging-action-logs-readonly",
+      "description": "Read-only Supabase Management API action-run list and sanitized migration error signals for the existing NOVELIGHT Staging branch only; never return raw logs, secrets, production events, or SQL contents.",
+      "intents": [
+        "inspect NOVELIGHT Staging migration failures",
+        "read Supabase Staging deployment actions",
+        "NLOでSupabaseの失敗ログを診断"
+      ],
+      "aliases": [
+        "Supabase Branch action runs",
+        "Supabase staging log diagnosis"
+      ],
+      "adapter": "tools/novelight-commander/src/supabase-staging-action-logs.js",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "existing_local_SUPABASE_ACCESS_TOKEN_management_api_action_runs_read",
+        "explicit_NLO_SUPABASE_STAGING_READONLY_ENABLED",
+        "fixed_branch_ref_wmlzjgvxgoyrovdhbqbg",
+        "fixed_branch_id_4ea5dd93_4032_4d53_8b4f_46bef5cb50d2",
+        "no_production_db_or_preview_or_migration_write",
+        "separate_owner_approval_before_real_staging_access"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-supabase-staging-action-logs.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "2026-11-11 OWNER request; Supabase official action runs and logs Management API; offline mock tests only, no live action runs queried"
     }
   ]
 }
