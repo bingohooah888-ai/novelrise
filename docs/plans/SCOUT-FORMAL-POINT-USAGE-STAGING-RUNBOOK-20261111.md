@@ -23,9 +23,48 @@
 
 **合格条件**：5/5テーブルが意図どおり存在、5/5 RLS有効、想定インデックス／制約存在、対象テーブル空、禁止ロールDMLなし、既存LEVEL等無変更。未実証：実接続・取引原子性・RLSの実JWT動作・外部provider・Production。
 
+### 適用直後に実行する最小のread-only確認SQL
+
+```sql
+select c.relname as table_name, c.relrowsecurity as rls_enabled,
+       has_table_privilege('anon',c.oid,'SELECT,INSERT,UPDATE,DELETE') as anon_dml,
+       has_table_privilege('authenticated',c.oid,'SELECT,INSERT,UPDATE,DELETE') as user_dml,
+       has_table_privilege('service_role',c.oid,'SELECT,INSERT,UPDATE,DELETE') as service_dml
+from pg_class c join pg_namespace n on n.oid=c.relnamespace
+where n.nspname='novelight_formal_private' and c.relkind in ('r','p')
+  and c.relname in (
+    'scout_point_usage_wallets','scout_point_usage_budgets',
+    'scout_point_usage_operations','scout_point_usage_events',
+    'scout_point_usage_credit_claims')
+order by c.relname;
+-- exactly 5 rows; all rls_enabled=true, all *_dml=false.
+
+select tablename,indexname from pg_indexes
+where schemaname='novelight_formal_private'
+  and tablename like 'scout_point_usage_%'
+order by tablename,indexname;
+-- Confirm PK/UNIQUE and usage secondary indexes; check FK/CHECK in pg_constraint.
+
+select 'wallets' as name,count(*) from novelight_formal_private.scout_point_usage_wallets
+union all select 'budgets',count(*) from novelight_formal_private.scout_point_usage_budgets
+union all select 'operations',count(*) from novelight_formal_private.scout_point_usage_operations
+union all select 'events',count(*) from novelight_formal_private.scout_point_usage_events
+union all select 'credit_claims',count(*) from novelight_formal_private.scout_point_usage_credit_claims;
+-- exactly 5 rows; all count=0. Existing LEVEL objects remain unchanged.
+```
+
+
 ## 逆操作・復旧（該当5テーブルのみ）
 
-- **データ未投入かつ依存物が未作成**であると確認できた場合に限り、復旧承認範囲の中で順序どおり `DROP TABLE novelight_formal_private.scout_point_usage_credit_claims;` → `...scout_point_usage_events;` → `...scout_point_usage_operations;` → `...scout_point_usage_budgets;` → `...scout_point_usage_wallets;` を実行する。**CASCADEは使用しない、共有schema・既存LEVEL資産をDROPしない**。DB変更の逆操作も既存のOWNER承認境界を守る。
+- **データ未投入かつ依存物が未作成**であると確認できた場合に限り、復旧承認範囲の中で以下の順序で逆操作する。**CASCADEは使用しない。共有schema・既存LEVEL資産をDROPしない**。DB変更の逆操作も既存のOWNER承認境界を守る。
+
+```sql
+drop table novelight_formal_private.scout_point_usage_credit_claims;
+drop table novelight_formal_private.scout_point_usage_events;
+drop table novelight_formal_private.scout_point_usage_operations;
+drop table novelight_formal_private.scout_point_usage_budgets;
+drop table novelight_formal_private.scout_point_usage_wallets;
+```
 - 既にデータや依存がある場合、盲目的DROPや再適用をせず、事前に検証した既存バックアップからの復元計画に切り替える。バックアップ/復元の確認なしにSQLを実行しない。
 
 ## 禁止・完了境界
