@@ -18,3 +18,12 @@
 ## 安全対策の範囲
 
 新規PR、Workflow、監査基盤、DB変更、実JWT、実Point操作、公開設定変更、Preview作成なし。新規局所テストだけを追加し、合格済み既存テストの再監査はしない。SQLは一括でStaging反映できるよう準備し、追加の安全基盤は作らない。
+
+## 2026-11-11：正式報酬の未公開接続を追加
+
+- `docs/plans/SCOUT-FORMAL-EARNINGS-FUNCTIONS-PENDING-20261111.sql`：既存2原案から、Point同期関数＋読書／コメント報酬・審査・キュー等の既存10関数だけを整理。新規トリガーなし。service_role / anon / authenticated / PUBLIC へのEXECUTEを付与せず、再承認まで未適用。
+- `docs/plans/SCOUT-FORMAL-EARNINGS-TRIGGERS-PENDING-20261111.sql`：既存読書・コメントテーブルのトリガー2件と、正式リリース後に必要なservice_role EXECUTEを別ファイルへ隔離。**β稼働中に適用禁止**。正式切替・初期ウォレット全件作成・既存書き込みとの衝突回避等が個別に承認された後だけ検討。
+- `api/_lib/reader-reward/formal-application-host.js`：すでに作成済みの未登録アプリファクトリーへ、既存のStaging専用初期LEVEL／wallet同期と認証付きreader/admin APIルータを合成。コンストラクターのDBアクセスなし。
+- ブラウザ画面は既存 `formal-scout-reward-page.js` の注入式 reader/adminマウントを使用。実装ファイルに本番HTMLからのscript読み込み、実API URL、実JWT取得、公開ルート登録は追加しない。
+- 残る実環境の工程は、**①未公開10関数のみのStaging適用・読み取り専用確認**、②正式切替に伴うトリガー有効化、③専用権限／実データ同期／実JWT限定検証。②③は今回未承認であり、①の承認に含めない。Production・main・Preview・Point発行／消費・AI／外部交換は禁止のまま。
+- 今回は既存開発の再実装や総合監査を行わず、追加接続とSQL分離だけの局所テストを行う。

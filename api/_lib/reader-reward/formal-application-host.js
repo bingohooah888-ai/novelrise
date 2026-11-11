@@ -4,6 +4,8 @@
 // This module creates no connection, migration, job, endpoint, or feature flag.
 import { createUnregisteredFormalPostgresRewardHost } from './formal-usage-host.js';
 import { createFormalEarningRunner } from './formal-earning-runner.js';
+import { createUnregisteredFormalOpeningSync } from './formal-opening-sync.js';
+import { createUnregisteredFormalApiDispatch } from './formal-api-dispatch.js';
 
 export function createUnregisteredFormalApplication({
   pool,
@@ -14,6 +16,7 @@ export function createUnregisteredFormalApplication({
   trustedServerAuthorization,
   releaseTimestampIso,
   verifyModeratorReceipt,
+  stagingRef,
   env,
   catalog,
   policy,
@@ -58,10 +61,28 @@ export function createUnregisteredFormalApplication({
     verifyModeratorReceipt
   });
 
+  const opening = createUnregisteredFormalOpeningSync({
+    pool,
+    releaseAt: releaseTimestampIso,
+    unitVerification,
+    stagingRef
+  });
+
   return Object.freeze({
     // Explicitly unregistered: an approved host must mount these later.
     readerHttp: usage.handlers.reader,
     adminHttp: usage.handlers.admin,
+    createApiDispatch: ({ readerPath, adminPath } = {}) =>
+      createUnregisteredFormalApiDispatch({
+        application: {
+          readerHttp: usage.handlers.reader,
+          adminHttp: usage.handlers.admin
+        },
+        readerPath,
+        adminPath
+      }),
+    inspectFormalOpening: opening.inspect,
+    initializeFormalOpening: opening.initializeOne,
     getReaderSnapshot: usage.service.getReaderSnapshot,
     submitModeration: earnings.submitModeration,
     drainDueEarnings: earnings.drainDue,
