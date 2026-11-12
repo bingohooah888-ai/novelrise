@@ -112,6 +112,52 @@ test('durable claim runs canonical read pipeline, then finalizes with same lease
     'already_recorded'
   ]);
 });
+test('durable retry never advertises a completed new award even after a recorded delivery', async () => {
+  const db = {
+    query: async (sql) => {
+      if (sql.includes('claim_earning_draft'))
+        return {
+          rows: [
+            {
+              result: {
+                status: 'leased',
+                event_type: 'valid_read_qualified',
+                event_id: uid,
+                lease_token: token
+              }
+            }
+          ]
+        };
+      if (sql.includes('from public.valid_read_events'))
+        return {
+          rows: [
+            {
+              id: uid,
+              reader_id: uid,
+              episode_id_snapshot: 9,
+              qualified_at: '2027-02-01T00:00:00Z'
+            }
+          ]
+        };
+      if (sql.includes('award_read_points_draft'))
+        return { rows: [{ result: { status: 'recorded' } }] };
+      if (sql.includes('finish_earning_draft'))
+        return { rows: [{ result: { status: 'retry' } }] };
+      throw new Error('Unexpected SQL');
+    }
+  };
+  const d = createFormalDurableDelivery({
+    postgresClient: db,
+    releaseTimestampIso: release,
+    launchConfiguration: config,
+    trustedServerAuthorization: auth
+  });
+  const outcome = await d.processNext();
+  assert.equal(outcome.deliveryStatus, 'recorded');
+  assert.equal(outcome.status, 'retry');
+  assert.equal(outcome.mayIssuePoints, false);
+});
+
 test('reviewed ineligible comment may be delivered without credit and persisted as final', async () => {
   const comment = {
     id: uid,

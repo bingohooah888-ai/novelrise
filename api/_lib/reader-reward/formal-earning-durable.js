@@ -122,7 +122,12 @@ export function createFormalDurableDelivery({
       return Object.freeze({
         status: final.status,
         deliveryStatus: outcome.status,
-        mayIssuePoints: outcome?.mayIssuePoints === true
+        // Finalizing a leased event must not report a confirmed new award
+        // when durable completion or the underlying delivery is uncertain.
+        mayIssuePoints:
+          final.status === 'completed' &&
+          outcome?.status === 'recorded' &&
+          outcome?.mayIssuePoints === true
       });
     }
   });

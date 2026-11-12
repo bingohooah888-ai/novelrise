@@ -105,6 +105,28 @@ test('delivery is explicitly internal; comment moderation hold cannot call DB ha
   assert.equal(calls, 0);
   assert.equal(result.results[0].status, 'semantic_review_required');
 });
+test('inconsistent successful flag on held, failed or unknown delivery is not reported as issued', async () => {
+  for (const databaseStatus of [
+    'read_time_level_unverified',
+    'private_rpc_failed',
+    'unknown'
+  ]) {
+    const result = await deliverFormalRewardBatch({
+      events: [evt],
+      maxAttempts: 1,
+      internalHandler: {
+        handleCommittedEvent: async () => ({
+          status: 'private_rpc_completed',
+          databaseStatus,
+          mayIssuePoints: true
+        })
+      }
+    });
+    assert.equal(result.results[0].status, databaseStatus);
+    assert.equal(result.results[0].mayIssuePoints, false);
+  }
+});
+
 test('bounded retry reuses identical idempotent event and handles success', async () => {
   let calls = 0,
     keys = [];

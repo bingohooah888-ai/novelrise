@@ -108,7 +108,10 @@ export async function deliverFormalRewardBatch({
         // A retryable outcome must be explicitly retained by the future
         // caller. This function itself is stateless and never queues jobs.
         needsReplay: RETRYABLE.has(status),
-        mayIssuePoints: outcome?.mayIssuePoints === true
+        // Do not advertise a Point award for a retry/held/unknown result,
+        // even if an injected handler returns an inconsistent success flag.
+        mayIssuePoints:
+          status === 'recorded' && outcome?.mayIssuePoints === true
       })
     );
   }
