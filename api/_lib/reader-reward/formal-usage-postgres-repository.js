@@ -391,7 +391,13 @@ export function createFormalUsagePostgresRepository({
           at: new Date(row.created_at).toISOString()
         };
       });
-      wallet.heldPoints += wallet.reservedPoints;
+      // The DB bigint fields are parsed as safe integers individually, but
+      // their combined display value can still overflow JavaScript integers.
+      // Never return a rounded Point balance to a reader.
+      const totalHeld = wallet.heldPoints + wallet.reservedPoints;
+      if (!Number.isSafeInteger(totalHeld))
+        throw new RangeError('FORMAL_REWARD_HELD_SUM_OVERFLOW');
+      wallet.heldPoints = totalHeld;
       return {
         wallet,
         account,

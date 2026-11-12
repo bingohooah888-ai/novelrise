@@ -15,15 +15,20 @@ const allow = Object.freeze({
   channel: true,
   aiPrice: true
 });
-function fakePg({ failOn, invalidWallet = false } = {}) {
+function fakePg({
+  failOn,
+  invalidWallet = false,
+  heldPoints = '0',
+  reservedPoints = '0'
+} = {}) {
   const calls = [];
   let released = false;
   const walletRow = {
     user_id: user,
     available_points: invalidWallet ? 'abc' : '50000',
     exchange_eligible_points: '32000',
-    reserved_points: '0',
-    held_points: '0',
+    reserved_points: reservedPoints,
+    held_points: heldPoints,
     revision: '0'
   };
   const budgetRow = {
@@ -220,6 +225,20 @@ test('reader view requires server-side formal account and canonical ledger provi
   );
 });
 
+test('Postgres reader refuses an unsafe rounded sum of reserved and held Points', async () => {
+  const f = fakePg({
+    heldPoints: String(Number.MAX_SAFE_INTEGER),
+    reservedPoints: '1'
+  });
+  await assert.rejects(
+    repo(f).readReader(user),
+    /FORMAL_REWARD_HELD_SUM_OVERFLOW/
+  );
+  assert.equal(
+    f.calls.some(({ sql }) => /^(?:insert|update|delete)/i.test(sql)),
+    false
+  );
+});
 test('Postgres host only constructs dormant reader/admin factories without connecting', async () => {
   let connects = 0;
   const f = fakePg();
