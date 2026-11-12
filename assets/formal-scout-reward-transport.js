@@ -33,7 +33,7 @@
         if (
           !query ||
           Object.keys(query).length !== 1 ||
-          !['refunds', 'new_readers'].includes(query.view)
+          !['refunds', 'new_readers', 'reward_overview'].includes(query.view)
         )
           throw new TypeError('Formal reward query rejected');
         params.set('view', query.view);

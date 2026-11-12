@@ -165,3 +165,56 @@ test('trusted admin auth is reused without creating a registered API or workflow
   assert.match(draft, /FORMAL-RELEASE DRAFT ONLY\. NOT A MIGRATION/);
   assert.doesNotMatch(draft, /create\s+or\s+replace\s+function\s+public\./i);
 });
+
+test('post-award reversal is private, evidence-bound, unique and wallet-atomic only in SQL draft', () => {
+  assert.match(
+    draft,
+    /create table novelight_formal_private\.scout_comment_post_award_review/
+  );
+  assert.match(draft, /original_award_id uuid not null unique/);
+  assert.match(draft, /independent_violation_id uuid not null/);
+  assert.match(draft, /reviewer_user_id uuid not null/);
+  assert.match(
+    draft,
+    /alter table novelight_formal_private\.scout_comment_post_award_review\s+enable row level security/
+  );
+  assert.match(
+    draft,
+    /revoke all on novelight_formal_private\.scout_comment_post_award_review\s+from public,anon,authenticated,service_role/
+  );
+  const body = sqlBody('post_award_reverse');
+  assert.match(body, /where evidence_id=p_evidence_id for update/);
+  assert.match(body, /approved_for_reversal is distinct from true/);
+  assert.match(
+    body,
+    /from public\.novel_comments\s+where id=v_proof\.comment_id for update/
+  );
+  assert.match(
+    body,
+    /from novelight_formal_private\.scout_point_usage_wallets\s+where user_id=v_comment\.user_id for update/
+  );
+  assert.match(body, /where id=v_proof\.original_award_id for update/);
+  assert.match(body, /v_award\.point_kind <> 'formal_comment_reward'/);
+  assert.match(body, /v_award\.point_value <> 20/);
+  assert.match(body, /v_award\.metadata->>'comment_id'/);
+  assert.match(body, /where reversal_of=v_award\.id/);
+  assert.match(body, /already_reversed/);
+  assert.match(body, /insufficient_unspent_points_hold/);
+  assert.match(body, /'formal_comment_reward_reversal',-20,'confirmed'/);
+  assert.match(body, /'formal-comment-reversal:'\|\|v_award\.id::text/);
+  assert.match(body, /available_points=available_points-20/);
+  assert.match(body, /exchange_eligible_points=exchange_eligible_points-20/);
+  assert.match(body, /FORMAL_COMMENT_REVERSAL_ATOMIC_CONFLICT/);
+  assert.match(
+    draft,
+    /revoke all on function novelight_formal_private\.reverse_formal_comment_points_draft\(uuid\)\s+from public,anon,authenticated,service_role/
+  );
+  assert.doesNotMatch(
+    draft,
+    /grant execute on function novelight_formal_private\.reverse_formal_comment_points_draft/i
+  );
+  assert.doesNotMatch(
+    draft,
+    /create\s+or\s+replace\s+function\s+public\.reverse/i
+  );
+});

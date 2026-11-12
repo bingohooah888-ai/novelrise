@@ -61,7 +61,9 @@ test('formal XP pathway is gated to future service role and uses one locked stat
     /if exists\(select 1 from novelight_formal_private\.scout_xp_claim/i
   );
   assert.match(sql, /v_required := 400/i);
-  assert.match(sql, /level_100_surplus_policy_pending/i);
+  assert.doesNotMatch(sql, /level_100_surplus_policy_pending/i);
+  assert.match(sql, /if v_level=100 then v_progress:=0; end if/i);
+  assert.match(sql, /level_100_progress_invalid/i);
   assert.match(sql, /revision=revision\+1/i);
   assert.match(sql, /light_seed_discovery/i);
 });

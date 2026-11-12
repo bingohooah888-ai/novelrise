@@ -80,11 +80,17 @@ test('admin queue and refund view share injected authenticated transport', async
   });
   await admin.loadQueue();
   await admin.loadRefunds();
+  await admin.loadRewardOverview();
   await admin.onResolve({ operationId: UUID, action: 'release_unfulfilled' });
   assert.equal(calls[1].url, '/api/formal-reward-admin?view=refunds');
-  assert.equal(JSON.parse(calls[2].options.body).operationId, UUID);
+  assert.equal(calls[2].url, '/api/formal-reward-admin?view=reward_overview');
   assert.equal(
     calls[2].options.headers.Authorization,
+    'Bearer operator-session'
+  );
+  assert.equal(JSON.parse(calls[3].options.body).operationId, UUID);
+  assert.equal(
+    calls[3].options.headers.Authorization,
     'Bearer operator-session'
   );
 });
@@ -113,4 +119,45 @@ test('invalid URL, expired session, unsupported method never fetch', async () =>
   await assert.rejects(request({ method: 'GET' }), /SESSION_MISSING/);
   await assert.rejects(request({ method: 'DELETE' }), /method rejected/);
   assert.equal(invoked, 0);
+});
+
+test('admin monitoring query traverses existing same-origin authenticated transport', async () => {
+  const g = browser();
+  const urls = [];
+  const request = g.NovelightFormalRewardTransport.createFormalRewardTransport({
+    endpoint: '/api/formal-reward-admin',
+    getAccessToken: async () => 'operator-session',
+    fetchImpl: async (url, options) => {
+      urls.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          status: 'reward_overview_ready',
+          pointsPerYen: 10,
+          issuedMonth: 0,
+          issuedTotal: 0,
+          recent: []
+        })
+      };
+    }
+  });
+  const bindings = g.NovelightFormalRewardAdmin.createFormalAdminBindings({
+    request
+  });
+  const report = await bindings.loadRewardOverview();
+  assert.equal(report.status, 'reward_overview_ready');
+  assert.equal(urls.length, 1);
+  assert.equal(urls[0].url, '/api/formal-reward-admin?view=reward_overview');
+  assert.equal(urls[0].options.method, 'GET');
+  assert.equal(urls[0].options.credentials, 'same-origin');
+  assert.equal(
+    urls[0].options.headers.Authorization,
+    'Bearer operator-session'
+  );
+  await assert.rejects(
+    request({ method: 'GET', query: { view: 'unregistered_private_audit' } }),
+    /query rejected/
+  );
+  assert.equal(urls.length, 1);
 });

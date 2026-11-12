@@ -625,4 +625,129 @@ grant execute on function novelight_formal_private.claim_earning_draft()
 grant execute on function novelight_formal_private.finish_earning_draft(text,uuid,uuid,text)
  to service_role;
 
+-- POST-AWARD COMMENT REVERSAL: FUTURE-ONLY DRAFT, NOT EXECUTABLE IN BETA.
+-- This single private proof record is the minimum independent review witness;
+-- it reuses the canonical Point ledger and existing formal wallet. The proof
+-- writer, fraud determination and API route are intentionally NOT enabled.
+-- Editing/deleting a settled comment does not itself create such a proof.
+create table novelight_formal_private.scout_comment_post_award_review (
+  evidence_id uuid primary key,
+  comment_id uuid not null references public.novel_comments(id) on delete restrict,
+  original_award_id uuid not null unique references public.scout_point_ledger(id)
+    on delete restrict,
+  reviewer_user_id uuid not null references auth.users(id) on delete restrict,
+  independent_violation_id uuid not null,
+  violation_rule text not null check (char_length(violation_rule) between 1 and 120),
+  approved_for_reversal boolean not null,
+  reviewed_at timestamptz not null default clock_timestamp(),
+  unique(comment_id,original_award_id)
+);
+alter table novelight_formal_private.scout_comment_post_award_review
+  enable row level security;
+revoke all on novelight_formal_private.scout_comment_post_award_review
+  from public,anon,authenticated,service_role;
+
+-- No role receives EXECUTE. Future trusted admin service must first verify
+-- reviewer identity and independent violation, then record durable proof
+-- using a separately reviewed privileged path. This private function never
+-- treats a comment edit/delete alone as authorization.
+create or replace function novelight_formal_private.reverse_formal_comment_points_draft(
+  p_evidence_id uuid
+) returns jsonb
+language plpgsql security definer set search_path=''
+as $post_award_reverse$
+declare
+ v_proof novelight_formal_private.scout_comment_post_award_review%rowtype;
+ v_comment public.novel_comments%rowtype;
+ v_award public.scout_point_ledger%rowtype;
+ v_wallet novelight_formal_private.scout_point_usage_wallets%rowtype;
+ v_original uuid;
+begin
+ if p_evidence_id is null then
+   return jsonb_build_object('status','independent_evidence_missing');
+ end if;
+ select * into v_proof
+ from novelight_formal_private.scout_comment_post_award_review
+ where evidence_id=p_evidence_id for update;
+ if not found or v_proof.approved_for_reversal is distinct from true then
+   return jsonb_build_object('status','independent_evidence_missing');
+ end if;
+ if v_proof.independent_violation_id is null or
+    v_proof.reviewer_user_id is null or
+    char_length(v_proof.violation_rule) not between 1 and 120 then
+   return jsonb_build_object('status','independent_evidence_missing');
+ end if;
+ select * into v_comment from public.novel_comments
+ where id=v_proof.comment_id for update;
+ if not found then
+   return jsonb_build_object('status','canonical_comment_missing');
+ end if;
+ -- First read the identity to determine the wallet lock. Source is rechecked
+ -- under its own row lock AFTER the wallet lock, matching Point spending order.
+ select id into v_original from public.scout_point_ledger
+ where id=v_proof.original_award_id;
+ if v_original is null then
+   return jsonb_build_object('status','original_award_missing');
+ end if;
+ select * into v_wallet from novelight_formal_private.scout_point_usage_wallets
+ where user_id=v_comment.user_id for update;
+ if not found then
+   return jsonb_build_object('status','wallet_unavailable_hold');
+ end if;
+ select * into v_award from public.scout_point_ledger
+ where id=v_proof.original_award_id for update;
+ if not found or v_award.user_id is distinct from v_comment.user_id or
+    v_award.point_kind <> 'formal_comment_reward' or
+    v_award.point_value <> 20 or v_award.status <> 'confirmed' or
+    v_award.reversal_of is not null or
+    v_award.metadata->>'comment_id' is distinct from v_comment.id::text then
+   return jsonb_build_object('status','original_award_mismatch');
+ end if;
+ if exists(
+   select 1 from public.scout_point_ledger
+   where reversal_of=v_award.id
+ ) then
+   return jsonb_build_object('status','already_reversed');
+ end if;
+ -- Never create negative available or exchange-eligible balances. A settled
+ -- Point already consumed or reserved requires a separate OWNER debt decision.
+ if v_wallet.available_points < 20 or
+    v_wallet.exchange_eligible_points < 20 then
+   return jsonb_build_object('status','insufficient_unspent_points_hold');
+ end if;
+ insert into public.scout_point_ledger (
+   user_id,point_kind,point_value,status,event_key,reversal_of,metadata
+ ) values (
+   v_award.user_id,'formal_comment_reward_reversal',-20,'confirmed',
+   'formal-comment-reversal:'||v_award.id::text,v_award.id,
+   pg_catalog.jsonb_build_object(
+     'comment_id',v_comment.id,
+     'review_evidence_id',v_proof.evidence_id,
+     'independent_violation_id',v_proof.independent_violation_id,
+     'reviewer_user_id',v_proof.reviewer_user_id,
+     'rule',v_proof.violation_rule
+   )
+ );
+ update novelight_formal_private.scout_point_usage_wallets set
+   available_points=available_points-20,
+   exchange_eligible_points=exchange_eligible_points-20,
+   revision=revision+1,updated_at=now()
+ where user_id=v_award.user_id
+   and revision=v_wallet.revision
+   and available_points>=20
+   and exchange_eligible_points>=20;
+ if not found then
+   raise exception 'FORMAL_COMMENT_REVERSAL_ATOMIC_CONFLICT';
+ end if;
+ return jsonb_build_object(
+   'status','reversed',
+   'original_award_id',v_award.id,
+   'reversed_points',20
+ );
+end
+$post_award_reverse$;
+
+revoke all on function novelight_formal_private.reverse_formal_comment_points_draft(uuid)
+  from public,anon,authenticated,service_role;
+-- Deliberately NO GRANT EXECUTE to service_role and NO web route.
 commit;

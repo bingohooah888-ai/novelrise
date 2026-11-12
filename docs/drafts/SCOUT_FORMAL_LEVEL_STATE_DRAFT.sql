@@ -123,8 +123,8 @@ begin
                                + interval '30 days' then
     return jsonb_build_object('status','review_due_first');
   end if;
-  if v_state.current_level = 100 then
-    return jsonb_build_object('status','level_100_surplus_policy_pending');
+  if v_state.current_level = 100 and v_state.level_progress_xp <> 0 then
+    return jsonb_build_object('status','level_100_progress_invalid');
   end if;
   v_level := v_state.current_level;
   v_progress := v_state.level_progress_xp + v_xp.xp_value;
@@ -145,9 +145,10 @@ begin
     v_progress := v_progress - v_required;
     v_level := v_level+1;
   end loop;
-  if v_level=100 and v_progress>0 then
-    return jsonb_build_object('status','level_100_surplus_policy_pending');
-  end if;
+  -- OWNER: at Lv.100 all surplus is excluded from progression, but the
+  -- original verified scout_xp_ledger row remains for 30-day maintenance.
+  -- The xp_id claim is still inserted to prevent applying the source twice.
+  if v_level=100 then v_progress:=0; end if;
   insert into novelight_formal_private.scout_xp_claim(xp_id,user_id)
     values(p_xp_id,v_xp.user_id);
   update novelight_formal_private.scout_level_state set
@@ -159,6 +160,11 @@ begin
   return jsonb_build_object('status','applied','level',v_level,'progress',v_progress);
 end $$;
 
+-- Each authorized invocation reviews ONLY the oldest unreviewed 30-day
+-- interval. Repeated calls catch up one interval at a time; the row lock and
+-- UNIQUE(user_id,window_end_at) prevent skipped or duplicate checkpoints.
+-- Signed XP adjustments HOLD; source completeness still requires later real
+-- Staging verification before this DRAFT may ever be used.
 create or replace function novelight_formal_private.review_scout_30_days(
   p_user_id uuid,
   p_as_of timestamptz
