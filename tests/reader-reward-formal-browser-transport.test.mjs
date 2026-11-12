@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { URL, URLSearchParams } from 'node:url';
 import { runInNewContext } from 'node:vm';
 
 const UUID = '33333333-3333-4333-8333-333333333333';

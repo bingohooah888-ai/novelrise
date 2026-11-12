@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { URL, URLSearchParams } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { createUnregisteredFormalNewReaderOnboarding } from '../api/_lib/reader-reward/formal-new-reader-onboarding.js';
 import { createFormalUsageHttpHandlers } from '../api/_lib/reader-reward/formal-usage-http.js';

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 import { createUnregisteredFormalApplication } from '../api/_lib/reader-reward/formal-application-host.js';
 
 const root = new URL('../docs/plans/', import.meta.url);
