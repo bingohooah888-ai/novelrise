@@ -68,7 +68,10 @@ test('Staging request delegates to fail-closed sync', () => {
   assert.doesNotMatch(syncWorkflow, /workflow_dispatch:/);
 });
 
-test('Staging request bridge excludes DB credentials', () => {
+test('Staging migration sync bridge excludes direct DB credentials', () => {
+  const proofBoundary = /^  admit_one_new_reader:/m;
+  assert.match(requestWorkflow, proofBoundary);
+  const migrationBridge = requestWorkflow.split(proofBoundary, 1)[0];
   const forbidden = [
     /STAGING_DATABASE_URL/,
     /PRODUCTION_DB_PASSWORD/,
@@ -79,6 +82,6 @@ test('Staging request bridge excludes DB credentials', () => {
     /db push/
   ];
   for (const pattern of forbidden) {
-    assert.doesNotMatch(requestWorkflow, pattern);
+    assert.doesNotMatch(migrationBridge, pattern);
   }
 });

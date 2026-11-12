@@ -300,7 +300,6 @@ jobs:
             -f body="NOVELIGHT_STAGING_READER_POINT10X_CONSUMED $payload" >/dev/null
           echo 'Owner Staging approval consumed exactly once; never retry automatically.'
 
-
   # Independent branch: one synthetic new reader, not the legacy Point10x job.
   admit_new_reader:
     name: Admit one new-reader synthetic proof (OWNER only)
