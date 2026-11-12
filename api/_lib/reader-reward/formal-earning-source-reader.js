@@ -10,6 +10,24 @@ const QUERIES = Object.freeze({
     'select id,user_id,episode_id,body from public.novel_comments where user_id=$1::uuid and id<>$2::uuid and created_at<=$3::timestamptz order by created_at desc,id desc limit 201'
 });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function hasQualifiedReadEvidence(row) {
+  // A matching event ID alone is insufficient to confirm a paid read.
+  if (!row || typeof row.reader_id !== 'string' || !UUID.test(row.reader_id))
+    return false;
+  const episodeId =
+    typeof row.episode_id_snapshot === 'string' &&
+    /^[1-9]\d*$/.test(row.episode_id_snapshot)
+      ? Number(row.episode_id_snapshot)
+      : row.episode_id_snapshot;
+  if (!Number.isSafeInteger(episodeId) || episodeId < 1) return false;
+  const qualifiedAt =
+    row.qualified_at instanceof Date
+      ? row.qualified_at.getTime()
+      : typeof row.qualified_at === 'string'
+        ? Date.parse(row.qualified_at)
+        : NaN;
+  return Number.isFinite(qualifiedAt);
+}
 export function createFormalCanonicalSourceReader({ postgresClient }) {
   if (typeof postgresClient?.query !== 'function')
     throw new TypeError('Trusted database reader required');
@@ -29,6 +47,8 @@ export function createFormalCanonicalSourceReader({ postgresClient }) {
         if (rows.length !== 1 || rows[0].id !== eventId) {
           return Object.freeze({ status: 'canonical_source_missing' });
         }
+        if (!hasQualifiedReadEvidence(rows[0]))
+          return Object.freeze({ status: 'canonical_source_invalid' });
         return Object.freeze({
           status: 'canonical_source_verified',
           eventType,

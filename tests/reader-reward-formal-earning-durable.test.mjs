@@ -78,7 +78,16 @@ test('durable claim runs canonical read pipeline, then finalizes with same lease
           ]
         };
       if (sql.includes('from public.valid_read_events'))
-        return { rows: [{ id: uid }] };
+        return {
+          rows: [
+            {
+              id: uid,
+              reader_id: uid,
+              episode_id_snapshot: 9,
+              qualified_at: '2027-02-01T00:00:00Z'
+            }
+          ]
+        };
       if (sql.includes('award_read_points_draft'))
         return { rows: [{ result: { status: 'already_recorded' } }] };
       if (sql.includes('finish_earning_draft'))
@@ -176,7 +185,16 @@ test('retryable failure retained for future manual invocation', async () => {
           ]
         };
       if (sql.includes('from public.valid_read_events'))
-        return { rows: [{ id: uid }] };
+        return {
+          rows: [
+            {
+              id: uid,
+              reader_id: uid,
+              episode_id_snapshot: 9,
+              qualified_at: '2027-02-01T00:00:00Z'
+            }
+          ]
+        };
       if (sql.includes('award_read_points_draft'))
         throw Error('temporary provider outage');
       if (sql.includes('finish_earning_draft')) {

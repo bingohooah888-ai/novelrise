@@ -15,7 +15,11 @@ test('canonical source reader uses fixed bound SQL for read events', async () =>
     postgresClient: {
       query: async (sql, params) => {
         calls.push([sql, params]);
-        return { rows: [{ id }] };
+        return {
+          rows: [
+            { id, reader_id: user, episode_id_snapshot: 22, qualified_at: time }
+          ]
+        };
       }
     }
   });
@@ -25,6 +29,40 @@ test('canonical source reader uses fixed bound SQL for read events', async () =>
   assert.match(
     calls[0][0],
     /from public\.valid_read_events where id=\$1::uuid/
+  );
+});
+
+test('read reward source fails closed when canonical qualification fields are absent or invalid', async () => {
+  const valid = {
+    id,
+    reader_id: user,
+    episode_id_snapshot: '22',
+    qualified_at: new Date(time)
+  };
+  for (const bad of [
+    { id },
+    { ...valid, reader_id: null },
+    { ...valid, reader_id: 'not-a-reader-uuid' },
+    { ...valid, episode_id_snapshot: null },
+    { ...valid, episode_id_snapshot: '9007199254740992' },
+    { ...valid, episode_id_snapshot: 0 },
+    { ...valid, qualified_at: null },
+    { ...valid, qualified_at: 'invalid-date' }
+  ]) {
+    const reader = createFormalCanonicalSourceReader({
+      postgresClient: { query: async () => ({ rows: [bad] }) }
+    });
+    assert.equal(
+      (await reader.load('valid_read_qualified', id)).status,
+      'canonical_source_invalid'
+    );
+  }
+  const reader = createFormalCanonicalSourceReader({
+    postgresClient: { query: async () => ({ rows: [valid] }) }
+  });
+  assert.equal(
+    (await reader.load('valid_read_qualified', id)).status,
+    'canonical_source_verified'
   );
 });
 test('read comment and previous same-user comments only from canonical server DB', async () => {

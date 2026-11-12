@@ -352,7 +352,16 @@ test('admin read-only proof verifies read/comment source without exposing conten
     async query(sql, args) {
       queries.push({ sql, args });
       if (sql.includes('from public.valid_read_events')) {
-        return { rows: [{ id: READ, reader_id: USER }] };
+        return {
+          rows: [
+            {
+              id: READ,
+              reader_id: USER,
+              episode_id_snapshot: 7,
+              qualified_at: '2026-11-12T00:00:00.000Z'
+            }
+          ]
+        };
       }
       if (
         sql.includes('from public.novel_comments') &&

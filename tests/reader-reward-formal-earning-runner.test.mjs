@@ -263,7 +263,16 @@ test('bounded due cycle drains existing durable claims without creating timers',
         };
       }
       if (sql.includes('from public.valid_read_events'))
-        return { rows: [{ id: readId }] };
+        return {
+          rows: [
+            {
+              id: readId,
+              reader_id: userId,
+              episode_id_snapshot: 9,
+              qualified_at: '2027-02-01T00:00:00Z'
+            }
+          ]
+        };
       if (sql.includes('award_read_points_draft'))
         return { rows: [{ result: { status: 'already_recorded' } }] };
       if (sql.includes('finish_earning_draft'))
@@ -378,7 +387,16 @@ test('new runner instance can replay a previously persisted retry claim', async 
         };
       }
       if (sql.includes('from public.valid_read_events'))
-        return { rows: [{ id: readId }] };
+        return {
+          rows: [
+            {
+              id: readId,
+              reader_id: userId,
+              episode_id_snapshot: 9,
+              qualified_at: '2027-02-01T00:00:00Z'
+            }
+          ]
+        };
       if (sql.includes('award_read_points_draft')) {
         awards++;
         if (awards <= 2) throw Error('simulated outage');
