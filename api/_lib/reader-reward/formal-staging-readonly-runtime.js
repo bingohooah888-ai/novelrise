@@ -40,6 +40,48 @@ export function verifyStagingReadOnlyDatabaseTarget(env) {
   return value;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SELECT_ONLY = /^\s*select\s/i;
+
+// Each verified reader is scoped to ONE PostgreSQL transaction. SET LOCAL
+// cannot persist across requests or leak when the pool reuses a connection.
+// This guards accidental cross-reader access; DB-role secret compromise must
+// still be treated as critical, because custom GUCs are not tamper-proof.
+export async function withStagingVerifiedReaderQuery(pgPool, userId, run) {
+  if (!UUID.test(userId || '') || typeof run !== 'function')
+    throw new TypeError('Verified reader and scoped query callback required');
+  const connection = await pgPool.connect();
+  let started = false;
+  try {
+    await connection.query('BEGIN READ ONLY');
+    started = true;
+    await connection.query(
+      "select set_config('novelight.formal_reader_id', $1, true)",
+      [userId]
+    );
+    const query = (sql, params) => {
+      if (typeof sql !== 'string' || !SELECT_ONLY.test(sql))
+        throw new Error('FORMAL_STAGING_READ_ONLY_QUERY_REQUIRED');
+      return connection.query(sql, params);
+    };
+    const result = await run(query);
+    await connection.query('COMMIT');
+    started = false;
+    return result;
+  } catch (error) {
+    if (started) {
+      try {
+        await connection.query('ROLLBACK');
+      } catch {
+        // Original exception takes precedence; never echo DB secrets.
+      }
+    }
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 export function stagingReadOnlyGate(env = process.env) {
   return (
     env.VERCEL_ENV === 'preview' &&
@@ -75,10 +117,13 @@ export function createStagingReadOnlyFormalApplication(env = process.env) {
     // The request paths below use SELECT-only queries. Do not expose a
     // write-capable pg client or a transaction/connection handle.
     query(sql, params) {
-      if (typeof sql !== 'string' || !/^\s*select\s/i.test(sql)) {
+      if (typeof sql !== 'string' || !SELECT_ONLY.test(sql)) {
         throw new Error('FORMAL_STAGING_READ_ONLY_QUERY_REQUIRED');
       }
       return client.query(sql, params);
+    },
+    withVerifiedReaderQuery(userId, run) {
+      return withStagingVerifiedReaderQuery(client, userId, run);
     },
     connect() {
       throw new Error('FORMAL_STAGING_TRANSACTIONS_DISABLED');

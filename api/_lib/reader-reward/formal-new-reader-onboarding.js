@@ -88,7 +88,10 @@ export function createUnregisteredFormalNewReaderOnboarding({
     )?.rows?.[0];
     if (!user || user.id !== userId)
       return frozen('new_reader_auth_missing_hold');
-    const created = Date.parse(user.created_at);
+    return inspectFromAuthCreatedAt(query, userId, user.created_at);
+  }
+  async function inspectFromAuthCreatedAt(query, userId, createdAt) {
+    const created = Date.parse(createdAt);
     if (!Number.isFinite(created) || created < releaseMs || created > now())
       return frozen('not_post_release_reader_hold');
     const row = (await query(COUNTS_SQL, [userId]))?.rows?.[0];
@@ -116,6 +119,28 @@ export function createUnregisteredFormalNewReaderOnboarding({
     });
   }
   const inspectOne = (userId) => inspect(pool.query.bind(pool), userId);
+
+  // Synthetic Staging read-only proof: the server's already verified
+  // Supabase Auth getUser(token) result is the identity + creation source.
+  // Never query auth.users through the constrained SQL reader.
+  async function inspectVerifiedOne(user) {
+    if (!testReference) return frozen('new_reader_verified_staging_only_hold');
+    if (
+      !UUID.test(user?.id || '') ||
+      typeof user.created_at !== 'string' ||
+      !Number.isFinite(Date.parse(user.created_at))
+    )
+      return frozen('new_reader_auth_proof_unavailable_hold');
+    const created = Date.parse(user.created_at);
+    if (created < releaseMs || created > now())
+      return frozen('not_post_release_reader_hold');
+    if (typeof pool.withVerifiedReaderQuery !== 'function')
+      return frozen('new_reader_read_scope_unavailable_hold');
+    return pool.withVerifiedReaderQuery(user.id, (query) =>
+      inspectFromAuthCreatedAt(query, user.id, user.created_at)
+    );
+  }
+
   async function getAdminSummary() {
     // Aggregated post-release Auth-only status; no legacy population is skipped
     // or modified by this read-only report.
@@ -175,5 +200,10 @@ export function createUnregisteredFormalNewReaderOnboarding({
       client.release();
     }
   }
-  return Object.freeze({ inspectOne, getAdminSummary, initializeOne });
+  return Object.freeze({
+    inspectOne,
+    inspectVerifiedOne,
+    getAdminSummary,
+    initializeOne
+  });
 }

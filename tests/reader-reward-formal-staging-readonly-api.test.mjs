@@ -6,6 +6,7 @@ import { URL } from 'node:url';
 import {
   createFormalStagingReadOnlyHandler,
   createStagingReadOnlyFormalApplication,
+  withStagingVerifiedReaderQuery,
   stagingReadOnlyGate
 } from '../api/_lib/reader-reward/formal-staging-readonly-runtime.js';
 import { createUnregisteredFormalApplication } from '../api/_lib/reader-reward/formal-application-host.js';
@@ -127,24 +128,30 @@ test('Staging database connection refuses a Production Postgres target before op
   );
 });
 
-test('authenticated reader can only inspect owned Staging Level/Wallet setup, not initialize', async () => {
+test('verified Auth reader inspects only their canonical Point/XP and Level/Wallet, never auth.users', async () => {
   const queries = [];
   const pool = {
-    async query(sql, args) {
-      queries.push({ sql, args });
-      if (sql.includes('from auth.users')) {
-        return {
-          rows: [{ id: USER, created_at: '2026-11-11T00:00:00.000Z' }]
-        };
-      }
-      if (sql.includes(' as point_rows')) {
-        return {
-          rows: [
-            { point_rows: '0', xp_rows: '0', level_rows: '0', wallet_rows: '0' }
-          ]
-        };
-      }
-      throw Error('UNEXPECTED_QUERY');
+    async query() {
+      throw Error('UNSCOPED_READER_QUERY');
+    },
+    async withVerifiedReaderQuery(userId, run) {
+      assert.equal(userId, USER);
+      return run(async (sql, args) => {
+        queries.push({ sql, args });
+        if (sql.includes(' as point_rows')) {
+          return {
+            rows: [
+              {
+                point_rows: '0',
+                xp_rows: '0',
+                level_rows: '0',
+                wallet_rows: '0'
+              }
+            ]
+          };
+        }
+        throw Error('UNEXPECTED_QUERY');
+      });
     },
     async connect() {
       throw Error('WRITE_PATH_CALLED');
@@ -153,7 +160,13 @@ test('authenticated reader can only inspect owned Staging Level/Wallet setup, no
   const application = createUnregisteredFormalApplication({
     pool,
     supabase: {
-      auth: { getUser: async () => ({ data: { user: { id: USER } } }) }
+      auth: {
+        getUser: async () => ({
+          data: {
+            user: { id: USER, created_at: '2026-11-11T00:00:00.000Z' }
+          }
+        })
+      }
     },
     now: () => Date.parse('2026-11-12T00:00:00.000Z'),
     stagingTestReferenceAt: '2026-11-10T00:00:00.000Z',
@@ -173,18 +186,118 @@ test('authenticated reader can only inspect owned Staging Level/Wallet setup, no
   assert.equal(res.body.status, 'new_reader_ready_for_initialization');
   assert.equal(res.body.initialLevel, 1);
   assert.equal(res.body.initialAvailablePoints, 0);
+  assert.equal(queries.length, 1);
   assert.deepEqual(
     queries.map((q) => q.args),
-    [[USER], [USER]]
+    [[USER]]
   );
+  assert.equal(
+    queries.some((q) => q.sql.includes('auth.users')),
+    false
+  );
+  assert.equal(application.getNewReaderSummary, undefined);
   const earnings = await application.drainDueEarnings();
   assert.equal(earnings.status, 'formal_worker_disabled');
   const write = response();
   await handler(request('new_reader', 'POST'), write);
   assert.equal(write.code, 405);
-  assert.equal(queries.length, 2);
+  assert.equal(queries.length, 1);
+
+  const admin = createFormalStagingReadOnlyHandler({
+    role: 'admin',
+    env: ACTIVE,
+    build: () => application
+  });
+  const summary = response();
+  await admin(request('new_readers'), summary);
+  assert.equal(summary.code, 503);
+  assert.equal(summary.body.error, 'FORMAL_NEW_READER_UNAVAILABLE');
+  assert.equal(queries.length, 1);
 });
 
+test('missing Auth created_at fails closed without any DB read', async () => {
+  let queried = 0;
+  const app = createUnregisteredFormalApplication({
+    pool: {
+      query() {
+        queried++;
+        throw Error('UNSCOPED_READ');
+      },
+      withVerifiedReaderQuery() {
+        queried++;
+        throw Error('SHOULD_NOT_RUN');
+      },
+      connect() {
+        throw Error('UNAPPROVED_WRITE');
+      }
+    },
+    supabase: {
+      auth: { getUser: async () => ({ data: { user: { id: USER } } }) }
+    },
+    stagingTestReferenceAt: '2026-11-10T00:00:00.000Z',
+    stagingRef: STAGING_REF,
+    releaseConfiguration: {},
+    trustedServerAuthorization: {},
+    env: ACTIVE
+  });
+  const route = createFormalStagingReadOnlyHandler({
+    role: 'reader',
+    env: ACTIVE,
+    build: () => app
+  });
+  const res = response();
+  await route(request('new_reader'), res);
+  assert.equal(res.code, 503);
+  assert.equal(res.body.error, 'FORMAL_NEW_READER_UNAVAILABLE');
+  assert.equal(queried, 0);
+});
+
+test('scoped SQL uses transaction-local verified ID and clears it on commit or rollback', async () => {
+  const calls = [];
+  let released = 0;
+  const connection = {
+    async query(sql, args) {
+      calls.push({ sql, args });
+      if (sql.includes(' from public.scout_point_ledger')) {
+        return { rows: [{ point_rows: '0' }] };
+      }
+      return { rows: [] };
+    },
+    release() {
+      released++;
+    }
+  };
+  const pool = { connect: async () => connection };
+  const result = await withStagingVerifiedReaderQuery(pool, USER, (query) =>
+    query(
+      'select count(*) from public.scout_point_ledger where user_id=$1::uuid',
+      [USER]
+    )
+  );
+  assert.equal(result.rows[0].point_rows, '0');
+  assert.equal(calls[0].sql, 'BEGIN READ ONLY');
+  assert.match(
+    calls[1].sql,
+    /set_config\('novelight.formal_reader_id', \$1, true\)/
+  );
+  assert.deepEqual(calls[1].args, [USER]);
+  assert.equal(calls.at(-1).sql, 'COMMIT');
+  assert.equal(released, 1);
+  calls.length = 0;
+  await assert.rejects(
+    withStagingVerifiedReaderQuery(pool, USER, (query) =>
+      query('update public.scout_point_ledger set point_value=1', [])
+    ),
+    /READ_ONLY_QUERY_REQUIRED/
+  );
+  assert.equal(calls.at(-1).sql, 'ROLLBACK');
+  assert.equal(released, 2);
+  await assert.rejects(
+    withStagingVerifiedReaderQuery(pool, 'not-a-user', () => {}),
+    /Verified reader/
+  );
+  assert.equal(released, 2);
+});
 test('admin read-only proof verifies read/comment source without exposing content', async () => {
   const queries = [];
   const pool = {
@@ -304,44 +417,27 @@ const stagingRoleReviewSql = readFileSync(
 );
 const activeRoleReviewSql = stagingRoleReviewSql.replace(/^--.*$/gm, '');
 
-test('Staging role review SQL is non-applied, NOLOGIN, owner-scoped and privilege-minimal', () => {
+test('Staging role draft grants only the 6 required table column sets, without auth.users', () => {
   assert.match(stagingRoleReviewSql, /NOT A MIGRATION/);
   assert.match(stagingRoleReviewSql, /wmlzjgvxgoyrovdhbqbg/);
-  assert.match(stagingRoleReviewSql, /supabase_auth_admin/);
+  assert.match(stagingRoleReviewSql, /server-side[\s\S]*getUser/);
   assert.match(
     activeRoleReviewSql,
     /CREATE ROLE novelight_formal_reader_ro WITH[\s\S]*?NOLOGIN/
   );
   assert.match(activeRoleReviewSql, /\bNOBYPASSRLS\b/);
   assert.match(activeRoleReviewSql, /default_transaction_read_only = on/);
-  assert.match(
-    activeRoleReviewSql,
-    /GRANT SELECT \(id, created_at\) ON auth\.users/
-  );
-  assert.match(
-    activeRoleReviewSql,
-    /GRANT SELECT \(user_id\)[\s\S]*?scout_point_ledger/
-  );
-  assert.match(
-    activeRoleReviewSql,
-    /GRANT SELECT \(id, reader_id, episode_id_snapshot, qualified_at\)/
-  );
-  assert.match(
-    activeRoleReviewSql,
-    /GRANT SELECT \([\s\S]*?body, deleted_at, author_hidden_at, created_at/
-  );
-  assert.equal(
-    (
-      activeRoleReviewSql.match(
-        /\bCREATE POLICY novelight_formal_ro_post_reference/g
-      ) || []
-    ).length,
-    7
-  );
   assert.equal(
     (activeRoleReviewSql.match(/\bGRANT SELECT \(/g) || []).length,
-    7
+    6
   );
+  assert.equal(
+    (activeRoleReviewSql.match(/\bCREATE POLICY novelight_formal_ro_/g) || [])
+      .length,
+    6
+  );
+  assert.doesNotMatch(activeRoleReviewSql, /\bauth\.users\b/i);
+  assert.doesNotMatch(activeRoleReviewSql, /\bON SCHEMA auth\b/i);
   assert.doesNotMatch(
     activeRoleReviewSql,
     /\bGRANT\s+(?:ALL|INSERT|UPDATE|DELETE|TRUNCATE|EXECUTE)\b/i
@@ -354,30 +450,28 @@ test('Staging role review SQL is non-applied, NOLOGIN, owner-scoped and privileg
   assert.doesNotMatch(activeRoleReviewSql, /\b(?:PASSWORD|LOGIN)\s+'[^']+'/i);
 });
 
-test('Staging RLS proposal allows post-reference synthetic cohort only', () => {
-  assert.equal(
-    (activeRoleReviewSql.match(/TO novelight_formal_reader_ro/g) || [])
-      .length >= 14,
-    true
-  );
+test('Staging RLS read scope uses transaction-local verified reader and post-reference events', () => {
   assert.equal(
     (
       activeRoleReviewSql.match(
-        /created_at >= timestamptz '2026-11-10T00:00:00Z'/g
+        /current_setting\('novelight.formal_reader_id', true\)/g
       ) || []
     ).length,
-    8
+    4
   );
+  assert.equal((activeRoleReviewSql.match(/\bnullif\(/g) || []).length, 4);
   assert.match(
     activeRoleReviewSql,
     /qualified_at >= timestamptz '2026-11-10T00:00:00Z'/
   );
   assert.match(
     activeRoleReviewSql,
-    /ON auth\.users FOR SELECT\s+TO novelight_formal_reader_ro/
+    /created_at >= timestamptz '2026-11-10T00:00:00Z'/
   );
   assert.doesNotMatch(
     activeRoleReviewSql,
     /\bFOR (?:INSERT|UPDATE|DELETE|ALL)\b/i
   );
+  assert.match(stagingRoleReviewSql, /admin GET \?view=new_readers: DISABLED/);
+  assert.match(stagingRoleReviewSql, /Custom GUC values are/);
 });

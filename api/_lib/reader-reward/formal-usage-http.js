@@ -113,7 +113,12 @@ export function createFormalUsageHttpHandlers({
         if (req.query?.view === 'new_reader') {
           if (typeof inspectNewReader !== 'function')
             return stop(res, 503, 'FORMAL_NEW_READER_UNAVAILABLE');
-          const report = await inspectNewReader(user.id);
+          const report = await inspectNewReader(user);
+          if (
+            report.status === 'new_reader_auth_proof_unavailable_hold' ||
+            report.status === 'new_reader_read_scope_unavailable_hold'
+          )
+            return stop(res, 503, 'FORMAL_NEW_READER_UNAVAILABLE');
           return res.status(200).json({
             ok: true,
             status: report.status,

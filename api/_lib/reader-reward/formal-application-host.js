@@ -70,9 +70,16 @@ export function createUnregisteredFormalApplication({
   // existing canonical Point ledger. No second source of truth is introduced.
   const usage = createUnregisteredFormalPostgresRewardHost({
     initializeNewReader: newReader.initializeOne,
-    inspectNewReader: newReader.inspectOne,
+    inspectNewReader:
+      stagingTestReferenceAt !== undefined
+        ? newReader.inspectVerifiedOne
+        : (user) => newReader.inspectOne(user.id),
     inspectEarningSource: earningSourceReader.load,
-    getNewReaderSummary: newReader.getAdminSummary,
+    // A single verified Auth user cannot prove cohort totals.
+    getNewReaderSummary:
+      stagingTestReferenceAt === undefined
+        ? newReader.getAdminSummary
+        : undefined,
     pool,
     supabase,
     unitVerification,
@@ -143,10 +150,19 @@ export function createUnregisteredFormalApplication({
     inspectFormalOpening: opening.inspect,
     inspectFormalOpeningCohort: opening.inspectCohort,
     initializeFormalOpening: opening.initializeOne,
-    inspectNewReader: newReader.inspectOne,
-    getNewReaderSummary: newReader.getAdminSummary,
+    inspectNewReader:
+      stagingTestReferenceAt !== undefined
+        ? newReader.inspectVerifiedOne
+        : newReader.inspectOne,
+    getNewReaderSummary:
+      stagingTestReferenceAt === undefined
+        ? newReader.getAdminSummary
+        : undefined,
     initializeNewReader: newReader.initializeOne,
-    inspectNewReader: newReader.inspectOne,
+    inspectNewReader:
+      stagingTestReferenceAt !== undefined
+        ? newReader.inspectVerifiedOne
+        : newReader.inspectOne,
     inspectEarningSource: earningSourceReader.load,
     getReaderSnapshot: usage.service.getReaderSnapshot,
     submitModeration: earnings.submitModeration,
