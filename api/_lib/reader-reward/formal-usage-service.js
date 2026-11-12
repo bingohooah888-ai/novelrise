@@ -202,30 +202,19 @@ export function createFormalRewardUsageService({
           return response('insufficient_exchange_eligible_points');
         allocation = amountPoints;
       } else if (purpose === 'ai_direct_use') {
-        // Pool allocation is not an OWNER-decided policy. Host must supply an
-        // approved strategy; never silently assume beta-first or formal-first.
-        try {
-          allocation = await policy.allocateAiEligiblePoints?.({
-            userId,
-            amountPoints,
-            availablePoints: wallet.availablePoints,
-            exchangeEligiblePoints: wallet.exchangeEligiblePoints
-          });
-        } catch {
-          allocation = undefined;
-        }
-        const minimum = Math.max(
-          0,
-          amountPoints -
-            (wallet.availablePoints - wallet.exchangeEligiblePoints)
-        );
+        // OWNER decision: consume nonexchangeable beta Points first.
+        // Only the shortfall is allocated to formal exchange-eligible Points.
+        // Persist this exact allocation for cancellation/refund replay.
+        const betaPoints =
+          wallet.availablePoints - wallet.exchangeEligiblePoints;
+        if (!safe(betaPoints)) return response('wallet_invalid');
+        allocation = Math.max(0, amountPoints - betaPoints);
         if (
           !safe(allocation) ||
-          allocation < minimum ||
           allocation > wallet.exchangeEligiblePoints ||
           allocation > amountPoints
         )
-          return response('ai_pool_allocation_pending');
+          return response('insufficient_points');
       } else {
         return response('unsupported_purpose');
       }

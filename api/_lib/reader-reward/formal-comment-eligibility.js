@@ -131,3 +131,64 @@ export function reviewFormalEpisodeComment({
     verifiedModerationRule: reviewerRule
   });
 }
+
+/**
+ * OWNER-approved post-award policy, draft quotation only. Editing, hiding or
+ * deleting a previously rewarded comment NEVER revokes Points automatically.
+ * A verified human decision with separate violation/reversal evidence is
+ * required before a future trusted atomic ledger reversal may be proposed.
+ * Flags are NOT independently trusted proof, and this function does not write.
+ */
+export function quoteFormalPostAwardCommentReview({
+  commentId,
+  originalAwardLedgerId,
+  changeKind,
+  canonicalChangeVerified,
+  originalAwardVerified,
+  reversalHistoryVerified,
+  reversalAlreadyExists,
+  independentViolationEvidenceVerified,
+  verifiedReviewerId,
+  verifiedEvidenceId,
+  reviewerDecision
+} = {}) {
+  const held = Object.freeze({
+    status: 'post_award_evidence_pending',
+    mayReversePoints: false
+  });
+  if (
+    !UUID.test(commentId || '') ||
+    !UUID.test(originalAwardLedgerId || '') ||
+    !['edited', 'deleted', 'hidden'].includes(changeKind) ||
+    canonicalChangeVerified !== true ||
+    originalAwardVerified !== true ||
+    reversalHistoryVerified !== true ||
+    typeof reversalAlreadyExists !== 'boolean'
+  )
+    return held;
+  if (reversalAlreadyExists)
+    return Object.freeze({
+      status: 'already_reversed',
+      mayReversePoints: false
+    });
+  if (
+    independentViolationEvidenceVerified !== true ||
+    reviewerDecision !== 'reverse' ||
+    !UUID.test(verifiedReviewerId || '') ||
+    !UUID.test(verifiedEvidenceId || '')
+  )
+    return Object.freeze({
+      status: 'manual_review_required',
+      mayReversePoints: false
+    });
+  // A future writer must independently authenticate the reviewer, verify
+  // evidence + original award, lock the wallet and enforce a unique reversal.
+  return Object.freeze({
+    status: 'reversal_quote_only',
+    commentId,
+    originalAwardLedgerId,
+    verifiedReviewerId,
+    verifiedEvidenceId,
+    mayReversePoints: false
+  });
+}

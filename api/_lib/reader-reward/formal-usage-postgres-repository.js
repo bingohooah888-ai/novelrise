@@ -41,9 +41,11 @@ function rowBudget(row) {
     reservedPoints: int(row.reserved_points, 'budget reserved'),
     revision: int(row.revision, 'budget revision')
   };
+  const tracked = out.committedPoints + out.reservedPoints;
   if (
     typeof out.scopeId !== 'string' ||
-    out.committedPoints + out.reservedPoints > out.limitPoints
+    !Number.isSafeInteger(tracked) ||
+    (out.limitPoints !== null && tracked > out.limitPoints)
   )
     throw new TypeError('Invalid formal budget snapshot');
   return out;

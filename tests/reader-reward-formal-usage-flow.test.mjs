@@ -31,7 +31,7 @@ function fixture({
   aiResult = { status: 'succeeded', costPoints: 120 },
   exchangeBudget = 100000,
   budgetApproved = true,
-  allocation = 0
+  aiPricePoints = 120
 } = {}) {
   const repository = createOfflineFormalUsageRepository({
     readers: [
@@ -68,23 +68,14 @@ function fixture({
       serviceRoleVerified: true,
       verifiedByTrustedServer: true
     },
-    catalog,
+    catalog: catalog.map((feature) => ({
+      ...feature,
+      pricePoints: aiPricePoints
+    })),
     policy: {
       giftProviderReady: providerReady,
       verifyExchange: async () => ({ ...approval, budget: budgetApproved }),
-      verifyAi: async () => ({ ...approval, budget: budgetApproved }),
-      allocateAiEligiblePoints: async ({
-        amountPoints,
-        availablePoints,
-        exchangeEligiblePoints
-      }) => {
-        // Fixture-only, never a production allocation policy.
-        const min = Math.max(
-          0,
-          amountPoints - (availablePoints - exchangeEligiblePoints)
-        );
-        return Math.max(min, allocation);
-      }
+      verifyAi: async () => ({ ...approval, budget: budgetApproved })
     },
     aiExecutor: async () => {
       aiCalls++;
@@ -277,6 +268,39 @@ test('AI is charged directly in approved Point units below gift minimum; no sepa
   assert.equal('aiCredits' in current.wallet, false);
 });
 
+test('AI spends beta Points first and only the shortfall uses exchange-eligible formal Points', async () => {
+  const f = fixture({
+    aiPricePoints: 19000,
+    aiResult: { status: 'succeeded', costPoints: 19000 }
+  });
+  const firstUse = await f.service.requestAiUse({
+    userId: first,
+    operationId: op2,
+    featureId: 'analysis'
+  });
+  assert.equal(firstUse.status, 'started');
+  const after = await f.service.getReaderSnapshot(first);
+  // 18,000 beta Points are spent; the 1,000 Point shortfall comes from formal.
+  assert.equal(after.wallet.availablePoints, 31000);
+  assert.equal(after.wallet.exchangeEligiblePoints, 31000);
+  assert.equal(after.history[0].points, -19000);
+  const duplicate = await f.service.requestAiUse({
+    userId: first,
+    operationId: op2,
+    featureId: 'analysis'
+  });
+  assert.equal(duplicate.status, 'already_processed');
+  assert.equal(f.aiCalls, 1);
+  // Formal Point availability is still enough for a 30,000 Point exchange.
+  const exchange = await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  assert.equal(exchange.status, 'request_received');
+  const remaining = await f.service.getReaderSnapshot(first);
+  assert.equal(remaining.wallet.exchangeEligiblePoints, 1000);
+});
 test('AI explicit no-execution refunds reservation; unknown outcome stays held for reconciliation', async () => {
   const failed = fixture({ aiResult: { status: 'not_executed' } });
   assert.equal(

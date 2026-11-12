@@ -20,7 +20,8 @@ function createFixture({
   release = approved,
   reviewedAt = null,
   now = nowMs,
-  badRevision = false
+  badRevision = false,
+  invalidCapProgress = false
 } = {}) {
   const calls = [];
   const query = async (sql, values = []) => {
@@ -34,7 +35,8 @@ function createFixture({
             user_id: user,
             current_level: String(level),
             highest_level: String(level),
-            level_progress_xp: '220',
+            level_progress_xp:
+              level === 100 && !invalidCapProgress ? '0' : '220',
             review_anchor_at: anchor,
             last_review_end_at: reviewedAt,
             revision: badRevision ? '-1' : '3'
@@ -111,6 +113,14 @@ test('Lv100 remains capped and does not request a nonexistent Lv101 threshold', 
   const s = await createFixture({ level: 100 }).reader.readFormalAccount(user);
   assert.equal(s.level, 100);
   assert.equal(s.requiredXp, null);
+  assert.equal(s.progressXp, 0);
+  await assert.rejects(
+    createFixture({
+      level: 100,
+      invalidCapProgress: true
+    }).reader.readFormalAccount(user),
+    /FORMAL_LEVEL_PROGRESS_INVALID/
+  );
 });
 
 test('wallet uses canonical confirmed net minus current reservations, no points without cutover witness', async () => {

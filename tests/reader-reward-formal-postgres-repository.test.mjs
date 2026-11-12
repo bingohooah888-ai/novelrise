@@ -20,7 +20,9 @@ function fakePg({
   invalidWallet = false,
   heldPoints = '0',
   reservedPoints = '0',
-  noFixedBudget = false
+  noFixedBudget = false,
+  budgetCommittedPoints = '0',
+  budgetReservedPoints = '0'
 } = {}) {
   const calls = [];
   let released = false;
@@ -36,8 +38,8 @@ function fakePg({
     purpose: 'external_exchange',
     scope_id: 'gift-development-only',
     limit_points: noFixedBudget ? null : '100000',
-    committed_points: '0',
-    reserved_points: '0',
+    committed_points: budgetCommittedPoints,
+    reserved_points: budgetReservedPoints,
     revision: '0'
   };
   const query = async (sql, values = []) => {
@@ -177,7 +179,11 @@ test('Postgres adapter performs wallet/budget/operation/event writes in one priv
 });
 
 test('Postgres mocked accounting scope has no required fixed monthly amount', async () => {
-  const f = fakePg({ noFixedBudget: true });
+  const f = fakePg({
+    noFixedBudget: true,
+    budgetCommittedPoints: '500',
+    budgetReservedPoints: '50'
+  });
   const result = await service(repo(f)).requestExchange({
     userId: user,
     operationId,

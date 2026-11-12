@@ -269,7 +269,7 @@ test('before-release and review-due events are held, not silently processed', ()
   assert.equal(Object.hasOwn(due, 'nextState'), false);
 });
 
-test('reaching Lv.100 exactly is allowed but surplus/at-cap XP remains undecided', () => {
+test('Lv.100 surplus never carries to level progress but its ledger XP stays auditable', () => {
   const nearly = state({
     currentLevel: 99,
     highestLevel: 99,
@@ -293,8 +293,10 @@ test('reaching Lv.100 exactly is allowed but surplus/at-cap XP remains undecided
       requiredXpByLevel: { 99: 50 }
     })
   );
-  assert.equal(surplus.status, 'level_cap_policy_pending');
-  assert.equal(Object.hasOwn(surplus, 'nextState'), false);
+  assert.equal(surplus.status, 'proposal_only');
+  assert.equal(surplus.nextState.currentLevel, 100);
+  assert.equal(surplus.nextState.levelProgressXp, 0);
+  assert.equal(surplus.quotedEarnedXp, 51);
   const capped = quoteScoutXpLevelUp(
     xp({
       stateSnapshot: state({
@@ -304,7 +306,28 @@ test('reaching Lv.100 exactly is allowed but surplus/at-cap XP remains undecided
       })
     })
   );
-  assert.equal(capped.status, 'level_cap_policy_pending');
+  assert.equal(capped.status, 'proposal_only');
+  assert.equal(capped.nextState.currentLevel, 100);
+  assert.equal(capped.nextState.levelProgressXp, 0);
+  assert.equal(capped.quotedEarnedXp, grant().earnedXp);
+  assert.equal(
+    recheckScoutXpLevelUp({
+      proposal: capped,
+      currentStateSnapshot: capped.expectedState,
+      grantKeyAlreadyCommitted: true
+    }).status,
+    'already_applied'
+  );
+  const invalidCap = quoteScoutXpLevelUp(
+    xp({
+      stateSnapshot: state({
+        currentLevel: 100,
+        highestLevel: 100,
+        levelProgressXp: 1
+      })
+    })
+  );
+  assert.equal(invalidCap.status, 'state_progress_inconsistent');
 });
 
 test('a 200 XP level-up still counts as 200 earned XP for the SAME review', () => {

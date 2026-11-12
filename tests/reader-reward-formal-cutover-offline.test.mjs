@@ -193,7 +193,7 @@ function demo() {
         approved: true
       }
     ],
-    mockAiAllocation: async () => 0,
+
     syntheticPostReleasePoints: [
       {
         eventId: 'offline-formal:batch-synthetic',
@@ -298,7 +298,7 @@ test('existing reader binding works with offline handler transport, without real
   assert.equal((await admin.loadRefunds()).items.length, 1);
 });
 
-test('mock adapter fails closed when a real approved allocation policy was not supplied', async () => {
+test('offline AI allocation follows approved beta-first rule without optional strategy', async () => {
   const args = {
     handoff: quote(),
     betaThresholdRows,
@@ -316,12 +316,14 @@ test('mock adapter fails closed when a real approved allocation policy was not s
     method: 'POST',
     body: { action: 'ai_use', operationId: aiId, featureId: 'analysis' }
   });
-  assert.equal(ai.statusCode, 409);
-  assert.equal(ai.body.error, 'ai_pool_allocation_pending');
-  assert.equal(sandbox.mockAiInvocations, 0);
+  assert.equal(ai.statusCode, 200);
+  assert.equal(ai.body.status, 'started');
+  assert.equal(sandbox.mockAiInvocations, 1);
+  const readerAfter = await sandbox.readerRequest(reader, { method: 'GET' });
+  assert.equal(readerAfter.body.wallet.exchangeEligiblePoints, 0);
 });
 
-test('old beta-only points remain exchange-ineligible but can be used for synthetic AI when mock allocation allows', async () => {
+test('old beta-only Points stay exchange-ineligible but are spent first for AI', async () => {
   const sandbox = demo();
   const exchange = await sandbox.readerRequest(second, {
     method: 'POST',

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { reviewFormalEpisodeComment } from '../api/_lib/reader-reward/formal-comment-eligibility.js';
+import {
+  reviewFormalEpisodeComment,
+  quoteFormalPostAwardCommentReview
+} from '../api/_lib/reader-reward/formal-comment-eligibility.js';
 import { deliverFormalRewardBatch } from '../api/_lib/reader-reward/formal-earning-delivery.js';
 
 const uid = '00000000-0000-4000-8000-000000000031';
@@ -258,4 +261,54 @@ test('temporarily missing formal state is retryable rather than forgotten', asyn
   assert.equal(attempts, 2);
   assert.equal(result.results[0].needsReplay, true);
   assert.equal(result.results[0].mayIssuePoints, false);
+});
+
+test('post-award edits and deletion never automatically revoke confirmed Points', () => {
+  const base = {
+    commentId: cid,
+    originalAwardLedgerId: uid,
+    canonicalChangeVerified: true,
+    originalAwardVerified: true,
+    reversalHistoryVerified: true,
+    reversalAlreadyExists: false
+  };
+  for (const changeKind of ['edited', 'deleted', 'hidden']) {
+    const outcome = quoteFormalPostAwardCommentReview({ ...base, changeKind });
+    assert.equal(outcome.status, 'manual_review_required');
+    assert.equal(outcome.mayReversePoints, false);
+    assert.equal(Object.hasOwn(outcome, 'originalAwardLedgerId'), false);
+  }
+  const verified = {
+    ...base,
+    changeKind: 'deleted',
+    independentViolationEvidenceVerified: true,
+    verifiedReviewerId: cid,
+    verifiedEvidenceId: '00000000-0000-4000-8000-000000000033',
+    reviewerDecision: 'reverse'
+  };
+  assert.equal(
+    quoteFormalPostAwardCommentReview({
+      ...verified,
+      independentViolationEvidenceVerified: false
+    }).status,
+    'manual_review_required'
+  );
+  assert.equal(
+    quoteFormalPostAwardCommentReview({
+      ...verified,
+      reversalHistoryVerified: false
+    }).status,
+    'post_award_evidence_pending'
+  );
+  assert.equal(
+    quoteFormalPostAwardCommentReview({
+      ...verified,
+      reversalAlreadyExists: true
+    }).status,
+    'already_reversed'
+  );
+  const quote = quoteFormalPostAwardCommentReview(verified);
+  assert.equal(quote.status, 'reversal_quote_only');
+  assert.equal(quote.mayReversePoints, false);
+  assert.equal(quote.originalAwardLedgerId, uid);
 });

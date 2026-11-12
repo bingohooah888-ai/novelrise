@@ -134,7 +134,10 @@ export function createFormalCanonicalReader({
     if (integer(summary.negative_rows, 'signed XP rows') > 0)
       throw new Error('FORMAL_XP_ADJUSTMENT_REVIEW_PENDING');
     const earnedXpInPeriod = integer(summary.earned_xp, '30-day credited XP');
-    if (level < 100 && progressXp >= threshold)
+    if (
+      (level < 100 && progressXp >= threshold) ||
+      (level === 100 && progressXp !== 0)
+    )
       throw new Error('FORMAL_LEVEL_PROGRESS_INVALID');
     return Object.freeze({
       level,

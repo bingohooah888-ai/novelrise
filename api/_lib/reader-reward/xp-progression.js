@@ -48,9 +48,10 @@ function sameState(expected, current) {
  * SERVER-APPROVED required-XP table. No official Lv.31-100 XP numbers live
  * here. The approval/completeness flags DO NOT prove trust by themselves.
  *
- * An XP grant can raise multiple levels. Once reaching Lv.100 with surplus,
- * or when a needed next-level XP threshold is absent, return a HOLD status
- * without making a partial state proposal. No lifetime XP counter is used.
+ * An XP grant can raise multiple levels. At Lv.100, any excess is NOT
+ * carried as progression XP; the verified XP event remains in the ledger for
+ * 30-day maintenance and audit. Missing thresholds still HOLD. No lifetime
+ * XP counter is used.
  *
  * The XP ledger remains the source for the 30-day 200 XP maintenance tally:
  * spending XP on a level does not change earned XP in that ledger.
@@ -120,7 +121,28 @@ export function quoteScoutXpLevelUp({
   }
 
   if (state.currentLevel === 100) {
-    return Object.freeze({ status: 'level_cap_policy_pending', ...context });
+    if (state.levelProgressXp !== 0)
+      return Object.freeze({
+        status: 'state_progress_inconsistent',
+        ...context
+      });
+    // At the cap, still commit a unique event claim and revision increment.
+    // Do not carry progression XP; the independent XP ledger counts the full
+    // award for the current 30-day maintenance window.
+    return Object.freeze({
+      status: 'proposal_only',
+      grantKey,
+      quotedSourceEventId: sourceEventId,
+      quotedXpKind: kind,
+      quotedEarnedXp: earnedXp,
+      expectedState: state,
+      nextState: Object.freeze({
+        ...state,
+        levelProgressXp: 0,
+        revision: state.revision + 1
+      }),
+      levelsGained: Object.freeze([])
+    });
   }
   if (
     thresholdsApproved !== true ||
@@ -166,8 +188,9 @@ export function quoteScoutXpLevelUp({
     level += 1;
     levelsGained.push(level);
   }
-  if (level === 100 && remaining > 0) {
-    return Object.freeze({ status: 'level_cap_policy_pending', ...context });
+  if (level === 100) {
+    // Final progression cap: discard surplus for leveling only.
+    remaining = 0;
   }
   const nextState = Object.freeze({
     ...state,

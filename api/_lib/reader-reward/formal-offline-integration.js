@@ -23,7 +23,6 @@ export function createFormalOfflineIntegration({
   operatorId,
   mockBudgets,
   mockAiCatalog = [],
-  mockAiAllocation,
   syntheticPostReleasePoints = []
 } = {}) {
   const openingCheck =
@@ -160,8 +159,7 @@ export function createFormalOfflineIntegration({
     policy: {
       giftProviderReady: true,
       verifyExchange: async () => policyApproved,
-      verifyAi: async () => policyApproved,
-      allocateAiEligiblePoints: mockAiAllocation
+      verifyAi: async () => policyApproved
     },
     aiExecutor: aiUse,
     verifyGiftReceipt: async ({ operation }) => {
