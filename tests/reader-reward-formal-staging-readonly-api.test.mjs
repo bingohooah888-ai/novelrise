@@ -83,6 +83,54 @@ test('new staging route exports are callable but default-disabled', async () => 
   );
 });
 
+test('existing Staging-only Preview aliases are accepted without weakening project pin', () => {
+  const alias = {
+    ...ACTIVE,
+    STAGING_SUPABASE_URL: undefined,
+    NOVELIGHT_STAGING_SUPABASE_URL: ACTIVE.STAGING_SUPABASE_URL,
+    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
+    PGSSLMODE: 'require',
+    STAGING_FORMAL_RO_DATABASE_URL:
+      'postgresql://novelight_formal_reader_ro:nonsecret@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres'
+  };
+  assert.equal(stagingReadOnlyGate(alias), true);
+  const app = createStagingReadOnlyFormalApplication(alias);
+  assert.equal(typeof app.readerHttp, 'function');
+  assert.equal(typeof app.adminHttp, 'function');
+  assert.equal(
+    stagingReadOnlyGate({
+      ...alias,
+      NOVELIGHT_STAGING_SUPABASE_URL: 'https://fiepaguycecrredwrcwx.supabase.co'
+    }),
+    false
+  );
+  assert.equal(
+    stagingReadOnlyGate({
+      ...alias,
+      STAGING_SUPABASE_URL: 'https://fiepaguycecrredwrcwx.supabase.co'
+    }),
+    false
+  );
+  assert.equal(
+    stagingReadOnlyGate({
+      ...alias,
+      NOVELIGHT_SCOUT_FORMAL_STAGING_PROBE: undefined
+    }),
+    false
+  );
+  assert.equal(
+    stagingReadOnlyGate({ ...alias, VERCEL_ENV: 'production' }),
+    false
+  );
+  assert.throws(
+    () =>
+      createStagingReadOnlyFormalApplication({
+        ...alias,
+        STAGING_SUPABASE_PUBLISHABLE_KEY: 'wrong-key'
+      }),
+    /FORMAL_STAGING_AUTH_NOT_CONFIGURED/
+  );
+});
 test('read-only gate rejects every write and unrelated reward view before DB access', async () => {
   let created = 0;
   const handler = createFormalStagingReadOnlyHandler({

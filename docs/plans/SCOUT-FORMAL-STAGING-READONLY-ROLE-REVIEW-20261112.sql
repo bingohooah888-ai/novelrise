@@ -25,10 +25,12 @@
 -- Required runtime config after SEPARATE approval:
 --   VERCEL_ENV=preview (staging branch only),
 --   NOVELIGHT_SCOUT_FORMAL_STAGING_PROBE=read-only,
---   STAGING_SUPABASE_URL=https://wmlzjgvxgoyrovdhbqbg.supabase.co,
+--   STAGING_SUPABASE_URL or existing NOVELIGHT_STAGING_SUPABASE_URL
+--     (must exactly match https://wmlzjgvxgoyrovdhbqbg.supabase.co),
 --   STAGING_PROJECT_REF=wmlzjgvxgoyrovdhbqbg,
 --   PGSSLMODE=require,
---   STAGING_SUPABASE_PUBLISHABLE_KEY (server-only Auth verification),
+--   STAGING_SUPABASE_PUBLISHABLE_KEY or existing
+--     NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY (server-only Auth),
 --   STAGING_FORMAL_RO_DATABASE_URL (server-only credential).
 -- No values for these are created or modified here.
 -- Never reuse the privileged STAGING_DATABASE_URL / postgres credentials.

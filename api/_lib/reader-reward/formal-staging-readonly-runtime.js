@@ -83,10 +83,15 @@ export async function withStagingVerifiedReaderQuery(pgPool, userId, run) {
 }
 
 export function stagingReadOnlyGate(env = process.env) {
+  // Reuse the existing Staging-only Preview alias when the dedicated
+  // formal-proof name is unset. Never fall back to generic SUPABASE_URL,
+  // which may point at Production.
+  const stagedUrl =
+    env.STAGING_SUPABASE_URL ?? env.NOVELIGHT_STAGING_SUPABASE_URL;
   return (
     env.VERCEL_ENV === 'preview' &&
     env.NOVELIGHT_SCOUT_FORMAL_STAGING_PROBE === 'read-only' &&
-    env.STAGING_SUPABASE_URL === STAGING_URL &&
+    stagedUrl === STAGING_URL &&
     env.STAGING_PROJECT_REF === STAGING_REF
   );
 }
@@ -97,9 +102,12 @@ export function createStagingReadOnlyFormalApplication(env = process.env) {
   }
   // Never reuse migration sync's privileged postgres credentials in an HTTP route.
   const readOnlyDatabaseUrl = verifyStagingReadOnlyDatabaseTarget(env);
+  const publishableKey =
+    env.STAGING_SUPABASE_PUBLISHABLE_KEY ??
+    env.NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY;
   if (
-    typeof env.STAGING_SUPABASE_PUBLISHABLE_KEY !== 'string' ||
-    !env.STAGING_SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_')
+    typeof publishableKey !== 'string' ||
+    !publishableKey.startsWith('sb_publishable_')
   ) {
     throw new Error('FORMAL_STAGING_AUTH_NOT_CONFIGURED');
   }
@@ -129,11 +137,9 @@ export function createStagingReadOnlyFormalApplication(env = process.env) {
       throw new Error('FORMAL_STAGING_TRANSACTIONS_DISABLED');
     }
   });
-  const supabase = createClient(
-    STAGING_URL,
-    env.STAGING_SUPABASE_PUBLISHABLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  const supabase = createClient(STAGING_URL, publishableKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
   return createUnregisteredFormalApplication({
     pool,
     supabase,
