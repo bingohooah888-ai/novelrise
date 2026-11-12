@@ -137,9 +137,11 @@ test('Author Studio preserves its gold logo and dark header', () => {
   assert.match(studio, /src="assets\/novelight-header-logo\.webp"/u);
 });
 
-test('Home and search header actions reserve independent login and signup widths', () => {
+test('Home and search keep action labels on one line', () => {
   const css = read('shared/header/public-header.css');
-  assert.ok(css.includes('body:is(.novelight-page-index, .novelight-page-search)'));
-  assert.ok(css.includes('.login-action {\n    width: auto !important;\n    flex: 0 0 auto !important;'));
-  assert.ok(css.includes('.signup-action {\n    width: auto !important;\n    flex: 0 0 auto !important;\n    white-space: nowrap !important;'));
+  const selector = 'body:is(.novelight-page-index, .novelight-page-search)';
+  assert.ok(css.includes(selector));
+  const scoped = css.slice(css.indexOf('/* Home and search use'));
+  assert.match(scoped, /login-action[\\s\\S]*?width: auto !important/u);
+  assert.match(scoped, /signup-action[\\s\\S]*?white-space: nowrap !important/u);
 });
