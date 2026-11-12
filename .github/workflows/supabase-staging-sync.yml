@@ -249,7 +249,7 @@ jobs:
             psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 --single-transaction -f "$postcheck"
           done < /tmp/staging-migration-artifacts.txt
 
-      - name: Verify strict Production-track plus four Staging-only migration parity
+      - name: Verify exact repository and Staging migration parity
         id: parity
         env:
           PGSSLMODE: require

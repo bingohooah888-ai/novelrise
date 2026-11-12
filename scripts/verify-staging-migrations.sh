@@ -202,7 +202,7 @@ case "$mode" in
     fi
     bash scripts/extract-supabase-remote.sh "$output_file" > /tmp/staging-remote-migrations.txt
     if ! diff -u /tmp/staging-local-migrations.txt /tmp/staging-remote-migrations.txt; then
-      echo 'Staging migration parity blocked: history differs from Production-track plus four approved Staging-only versions.'
+      echo 'Staging migration parity blocked: remote history does not exactly match the repository (Production-track plus four approved Staging-only versions).'
       exit 1
     fi
     echo "Verified strict Staging migration parity: $(wc -l < /tmp/staging-local-migrations.txt | tr -d ' ') approved migrations."

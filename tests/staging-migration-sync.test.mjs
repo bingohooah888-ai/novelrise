@@ -84,6 +84,7 @@ SH
         ...process.env,
         EXPECTED_MIGRATIONS: '20260831210000',
         STAGING_DATABASE_URL: STAGING_DB,
+        STAGING_SUPABASE_URL: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
         PGSSLMODE: 'require'
       }
     }

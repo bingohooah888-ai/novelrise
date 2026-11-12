@@ -22,7 +22,10 @@ async function fixture(t) {
   const stagingMigrationDir = join(root, 'supabase/staging-migrations');
   await mkdir(migrationDir, { recursive: true });
   await mkdir(stagingMigrationDir, { recursive: true });
-  await writeFile(join(migrationDir, productionVersion + '_main.sql'), 'select 42;\n');
+  await writeFile(
+    join(migrationDir, productionVersion + '_main.sql'),
+    'select 42;\n'
+  );
   const rows = [{ version: productionVersion }];
   for (const filename of STAGING_ONLY_SCOUT_FILES) {
     const sql = '-- example\nselect 42;\n';
@@ -48,7 +51,11 @@ function fetchFor(rows, sink = {}) {
 function verify(f, rows, fetchImpl, url = stagingUrl) {
   return verifyStagingMigrationParity(
     { STAGING_SUPABASE_URL: url, SUPABASE_ACCESS_TOKEN: 'test-access-token' },
-    { migrationDir: f.migrationDir, stagingMigrationDir: f.stagingMigrationDir, fetchImpl }
+    {
+      migrationDir: f.migrationDir,
+      stagingMigrationDir: f.stagingMigrationDir,
+      fetchImpl
+    }
   );
 }
 
@@ -59,13 +66,14 @@ test('Production and unknown Staging project refs are refused', async (t) => {
   );
   const f = await fixture(t);
   await assert.rejects(
-    verify(f, f.rows, fetchFor(f.rows), 'https://abcdefghijklmnopqrst.supabase.co'),
+    verify(f, f.rows, fetchFor(f.rows), 'https://other.supabase.co'),
     /requires the dedicated Staging project/
   );
 });
 
-test('strict Production-track + four fixed Staging-only SQL hashes pass read-only', async (t) => {
-  const f = await fixture(t), sink = {};
+test('strict Staging SQL hash checks use read-only query', async (t) => {
+  const f = await fixture(t);
+  const sink = {};
   const result = await verify(f, f.rows, fetchFor(f.rows, sink));
   assert.deepEqual(result.versions, [productionVersion]);
   assert.equal(result.projectRef, 'wmlzjgvxgoyrovdhbqbg');
@@ -79,22 +87,31 @@ test('strict Production-track + four fixed Staging-only SQL hashes pass read-onl
 test('missing Production-track migration is blocked', async (t) => {
   const f = await fixture(t);
   const rows = f.rows.filter((r) => r.version !== productionVersion);
-  await assert.rejects(verify(f, rows, fetchFor(rows)), /missing on Staging: 20261110172000/);
+  await assert.rejects(
+    verify(f, rows, fetchFor(rows)),
+    /missing on Staging: 20261110172000/
+  );
 });
 
-test('missing one approved Staging-only migration is blocked', async (t) => {
+test('rejects a missing fixed Staging migration', async (t) => {
   const f = await fixture(t);
   const rows = f.rows.filter((r) => r.version !== '20261110080421');
-  await assert.rejects(verify(f, rows, fetchFor(rows)), /missing approved Staging-only: 20261110080421/);
+  await assert.rejects(
+    verify(f, rows, fetchFor(rows)),
+    /missing approved Staging-only: 20261110080421/
+  );
 });
 
 test('unknown extra remote migration is blocked', async (t) => {
   const f = await fixture(t);
   const rows = [...f.rows, { version: '20991231235959' }];
-  await assert.rejects(verify(f, rows, fetchFor(rows)), /unexpected on Staging: 20991231235959/);
+  await assert.rejects(
+    verify(f, rows, fetchFor(rows)),
+    /unexpected on Staging: 20991231235959/
+  );
 });
 
-test('name, statement count, SHA256, and byte length drift are each blocked', async (t) => {
+test('rejects name, count, SHA-256 and byte drift', async (t) => {
   const f = await fixture(t);
   const row = f.rows.find((r) => r.version === '20261110080421');
   for (const mutation of [
@@ -103,7 +120,9 @@ test('name, statement count, SHA256, and byte length drift are each blocked', as
     { statement_sha256: '0'.repeat(64) },
     { statement_bytes: row.statement_bytes + 1 }
   ]) {
-    const rows = f.rows.map((r) => r === row ? { ...r, ...mutation } : r);
+    const rows = f.rows.map((r) =>
+      r === row ? { ...r, ...mutation } : r
+    );
     await assert.rejects(verify(f, rows, fetchFor(rows)), /SQL\/name drift/);
   }
 });
@@ -111,28 +130,44 @@ test('name, statement count, SHA256, and byte length drift are each blocked', as
 test('duplicate remote versions are blocked', async (t) => {
   const f = await fixture(t);
   const rows = [...f.rows, f.rows[0]];
-  await assert.rejects(verify(f, rows, fetchFor(rows)), /duplicate migration versions/);
+  await assert.rejects(
+    verify(f, rows, fetchFor(rows)),
+    /duplicate migration versions/
+  );
 });
 
 test('unexpected Staging-only SQL file is blocked', async (t) => {
   const f = await fixture(t);
   await writeFile(join(f.stagingMigrationDir, 'unexpected.sql'), 'select 0;');
-  await assert.rejects(verify(f, f.rows, fetchFor(f.rows)), /four approved filenames/);
+  await assert.rejects(
+    verify(f, f.rows, fetchFor(f.rows)),
+    /four approved filenames/
+  );
 });
 
-test('Staging-only file wrongly placed in Production folder is blocked', async (t) => {
-  const f = await fixture(t), name = STAGING_ONLY_SCOUT_FILES[0];
-  await writeFile(join(f.migrationDir, name), await readFile(join(f.stagingMigrationDir, name)));
-  await assert.rejects(verify(f, f.rows, fetchFor(f.rows)), /entered the Production migration directory/);
+test('blocks SCOUT SQL in Production migrations', async (t) => {
+  const f = await fixture(t);
+  const name = STAGING_ONLY_SCOUT_FILES[0];
+  await writeFile(
+    join(f.migrationDir, name),
+    await readFile(join(f.stagingMigrationDir, name))
+  );
+  await assert.rejects(
+    verify(f, f.rows, fetchFor(f.rows)),
+    /entered the Production migration directory/
+  );
 });
 
 test('a local Staging-only SQL modification is blocked', async (t) => {
   const f = await fixture(t);
-  await writeFile(join(f.stagingMigrationDir, STAGING_ONLY_SCOUT_FILES[2]), 'select false;');
+  await writeFile(
+    join(f.stagingMigrationDir, STAGING_ONLY_SCOUT_FILES[2]),
+    'select false;'
+  );
   await assert.rejects(verify(f, f.rows, fetchFor(f.rows)), /SQL\/name drift/);
 });
 
-test('existing read-only recovery audit still receives version-only rows', async () => {
+test('recovery audit retains version-only rows', async () => {
   const versions = ['20261110080421'];
   assert.deepEqual(
     await readRemoteMigrationVersions({
@@ -148,7 +183,10 @@ test('a failed query does not expose its access token', async (t) => {
   const f = await fixture(t);
   await assert.rejects(
     verifyStagingMigrationParity(
-      { STAGING_SUPABASE_URL: stagingUrl, SUPABASE_ACCESS_TOKEN: 'sensitive-token-value' },
+      {
+        STAGING_SUPABASE_URL: stagingUrl,
+        SUPABASE_ACCESS_TOKEN: 'sensitive-token-value'
+      },
       {
         migrationDir: f.migrationDir,
         stagingMigrationDir: f.stagingMigrationDir,
