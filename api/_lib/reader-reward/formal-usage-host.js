@@ -20,6 +20,8 @@ export function createUnregisteredFormalRewardHost({
   verifyAiRefund,
   env,
   initializeNewReader,
+  inspectNewReader,
+  inspectEarningSource,
   getNewReaderSummary
 } = {}) {
   const service = createFormalRewardUsageService({
@@ -39,6 +41,8 @@ export function createUnregisteredFormalRewardHost({
     supabase,
     env,
     initializeNewReader,
+    inspectNewReader,
+    inspectEarningSource,
     getNewReaderSummary
   });
   return Object.freeze({ service, handlers });

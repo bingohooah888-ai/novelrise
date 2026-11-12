@@ -7,6 +7,7 @@ import { createFormalEarningRunner } from './formal-earning-runner.js';
 import { createUnregisteredFormalOpeningSync } from './formal-opening-sync.js';
 import { createUnregisteredFormalNewReaderOnboarding } from './formal-new-reader-onboarding.js';
 import { createUnregisteredFormalApiDispatch } from './formal-api-dispatch.js';
+import { createFormalCanonicalSourceReader } from './formal-earning-source-reader.js';
 
 export function createUnregisteredFormalApplication({
   pool,
@@ -62,10 +63,15 @@ export function createUnregisteredFormalApplication({
     releaseConfiguration,
     trustedServerAuthorization
   });
+  const earningSourceReader = createFormalCanonicalSourceReader({
+    postgresClient: pool
+  });
   // Read Level from scout_level_state and XP ledger; reconcile wallet to the
   // existing canonical Point ledger. No second source of truth is introduced.
   const usage = createUnregisteredFormalPostgresRewardHost({
     initializeNewReader: newReader.initializeOne,
+    inspectNewReader: newReader.inspectOne,
+    inspectEarningSource: earningSourceReader.load,
     getNewReaderSummary: newReader.getAdminSummary,
     pool,
     supabase,
@@ -140,6 +146,8 @@ export function createUnregisteredFormalApplication({
     inspectNewReader: newReader.inspectOne,
     getNewReaderSummary: newReader.getAdminSummary,
     initializeNewReader: newReader.initializeOne,
+    inspectNewReader: newReader.inspectOne,
+    inspectEarningSource: earningSourceReader.load,
     getReaderSnapshot: usage.service.getReaderSnapshot,
     submitModeration: earnings.submitModeration,
     drainDueEarnings: earnings.drainDue,

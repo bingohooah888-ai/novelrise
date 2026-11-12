@@ -58,6 +58,8 @@ export function createFormalUsageHttpHandlers({
   service,
   env = process.env,
   initializeNewReader,
+  inspectNewReader,
+  inspectEarningSource,
   getNewReaderSummary
 } = {}) {
   if (typeof supabase?.auth?.getUser !== 'function')
@@ -108,6 +110,18 @@ export function createFormalUsageHttpHandlers({
     if (!user) return;
     try {
       if (req.method === 'GET') {
+        if (req.query?.view === 'new_reader') {
+          if (typeof inspectNewReader !== 'function')
+            return stop(res, 503, 'FORMAL_NEW_READER_UNAVAILABLE');
+          const report = await inspectNewReader(user.id);
+          return res.status(200).json({
+            ok: true,
+            status: report.status,
+            counts: report.counts ?? null,
+            initialLevel: report.initialLevel ?? null,
+            initialAvailablePoints: report.initialAvailablePoints ?? null
+          });
+        }
         const snapshot = await service.getReaderSnapshot(user.id);
         return snapshot.serverVerified
           ? res.status(200).json(snapshot)
@@ -178,6 +192,29 @@ export function createFormalUsageHttpHandlers({
     if (!reviewer) return;
     try {
       if (req.method === 'GET') {
+        if (req.query?.view === 'earning_source') {
+          if (typeof inspectEarningSource !== 'function')
+            return stop(res, 503, 'FORMAL_EARNING_SOURCE_UNAVAILABLE');
+          const { eventType, eventId } = req.query;
+          if (
+            ![
+              'valid_read_qualified',
+              'novel_episode_comment_reviewed'
+            ].includes(eventType) ||
+            typeof eventId !== 'string' ||
+            !UUID.test(eventId)
+          )
+            return stop(res, 400, 'INVALID_EARNING_SOURCE');
+          const report = await inspectEarningSource(eventType, eventId);
+          // No comment body, reader identity, review verdict, or raw SQL
+          // data is sent to the browser.
+          return res.status(200).json({
+            ok: true,
+            eventType,
+            status: report.status,
+            mayIssuePoints: false
+          });
+        }
         if (req.query?.view === 'new_readers') {
           if (typeof getNewReaderSummary !== 'function')
             return stop(res, 503, 'FORMAL_NEW_READER_UNAVAILABLE');
