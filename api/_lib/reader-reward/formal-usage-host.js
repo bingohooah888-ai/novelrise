@@ -22,7 +22,8 @@ export function createUnregisteredFormalRewardHost({
   initializeNewReader,
   inspectNewReader,
   inspectEarningSource,
-  getNewReaderSummary
+  getNewReaderSummary,
+  getAdminRewardOverview
 } = {}) {
   const service = createFormalRewardUsageService({
     repository,
@@ -43,7 +44,8 @@ export function createUnregisteredFormalRewardHost({
     initializeNewReader,
     inspectNewReader,
     inspectEarningSource,
-    getNewReaderSummary
+    getNewReaderSummary,
+    getAdminRewardOverview
   });
   return Object.freeze({ service, handlers });
 }
@@ -70,5 +72,9 @@ export function createUnregisteredFormalPostgresRewardHost({
     readCanonicalPointHistory:
       readCanonicalPointHistory || canonicalReader.readCanonicalPointHistory
   });
-  return createUnregisteredFormalRewardHost({ ...host, repository });
+  return createUnregisteredFormalRewardHost({
+    ...host,
+    repository,
+    getAdminRewardOverview: repository.getAdminRewardOverview
+  });
 }

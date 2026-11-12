@@ -54,10 +54,38 @@
         window.NovelightFormalRewardMount.mountFormalRewardAdmin({
           root: document.getElementById('preview'),
           authorized: true,
-          request: async ({ method }) =>
-            method === 'GET'
-              ? { status: 'queue_ready', items: example }
-              : { status: 'fulfillment_evidence_missing' }
+          request: async ({ method, query }) => {
+            if (method !== 'GET')
+              return { status: 'fulfillment_evidence_missing' };
+            if (query?.view === 'reward_overview')
+              return {
+                status: 'reward_overview_ready',
+                pointsPerYen: 10,
+                issuedMonth: 420,
+                issuedTotal: 1400,
+                readMonth: 320,
+                commentMonth: 100,
+                giftSpentNet: 0,
+                aiSpentNet: 120,
+                eligibleAvailable: 1200,
+                eligibleReserved: 30000,
+                pendingExchangePoints: 30000,
+                pendingExchangeCount: 1,
+                recent: [
+                  {
+                    eventId: '00000000-0000-4000-8000-000000000231',
+                    userId: '00000000-0000-4000-8000-000000000232',
+                    kind: 'formal_read_reward',
+                    points: 5,
+                    status: 'confirmed',
+                    occurredAt: '2026-11-12T00:00:00.000Z'
+                  }
+                ]
+              };
+            if (query?.view === 'refunds')
+              return { status: 'refund_candidates_ready', items: [] };
+            return { status: 'queue_ready', items: example };
+          }
         });
       })();
     </script>

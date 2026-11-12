@@ -115,6 +115,78 @@ test('admin panel does not claim a settlement without verified provider response
   assert.equal(match(root, '事業者への引渡しを照合').length, 1);
 });
 
+test('authorized operator can inspect formal Point totals and audited records without a budget cap', async () => {
+  const root = new Element('main');
+  let reads = 0;
+  const panel =
+    globalThis.NovelightFormalRewardAdmin.createFormalRewardAdminPanel({
+      root,
+      authorized: true,
+      loadQueue: async () => ({ status: 'queue_ready', items: [] }),
+      loadRewardOverview: async () => {
+        reads++;
+        return {
+          status: 'reward_overview_ready',
+          pointsPerYen: 10,
+          issuedMonth: 250,
+          issuedTotal: 1400,
+          readMonth: 150,
+          commentMonth: 100,
+          giftSpentNet: 300,
+          aiSpentNet: 20,
+          eligibleAvailable: 1200,
+          eligibleReserved: 0,
+          pendingExchangePoints: 0,
+          pendingExchangeCount: 0,
+          recent: [
+            {
+              eventId: one.operationId,
+              userId: one.userId,
+              kind: 'formal_read_reward',
+              points: 5,
+              status: 'confirmed',
+              occurredAt: '2026-11-12T00:00:00.000Z'
+            }
+          ]
+        };
+      },
+      onResolve: async () => {
+        throw Error('VIEW_MUST_NOT_WRITE');
+      }
+    });
+  await panel.refresh();
+  assert.ok(reads >= 1);
+  assert.equal(match(root, 'SCOUT REWARD / 発行・利用記録').length, 1);
+  assert.equal(match(root, '今月の新規発行').length, 1);
+  assert.equal(match(root, '250 pt（25円相当）').length, 1);
+  assert.equal(
+    match(root, '月次固定予算は設定しません。今月は日本時間の暦月です。')
+      .length,
+    1
+  );
+  assert.equal(match(root, 'formal_read_reward：5 pt').length, 1);
+  assert.equal(match(root, 'ユーザーID：' + one.userId).length, 1);
+  const hidden = new Element('main');
+  let unsafeLoads = 0;
+  const closed =
+    globalThis.NovelightFormalRewardAdmin.createFormalRewardAdminPanel({
+      root: hidden,
+      authorized: false,
+      loadQueue: async () => {
+        unsafeLoads++;
+        return { status: 'queue_ready', items: [] };
+      },
+      loadRewardOverview: async () => {
+        unsafeLoads++;
+        throw Error('DENIED');
+      },
+      onResolve: async () => {}
+    });
+  await closed.refresh();
+  assert.equal(unsafeLoads, 0);
+  assert.equal(match(hidden, '今月の新規発行').length, 0);
+});
+
 test('admin preview remains isolated from actual site and payment systems', () => {
   const html = readFileSync(
     new URL('../docs/drafts/SCOUT-REWARD-ADMIN-PREVIEW.html', import.meta.url),

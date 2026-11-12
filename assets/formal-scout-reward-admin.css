@@ -37,6 +37,11 @@
   display: grid;
   gap: 12px;
 }
+.rr-admin-metrics {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
 .rr-admin-request {
   display: flex;
   flex-wrap: wrap;

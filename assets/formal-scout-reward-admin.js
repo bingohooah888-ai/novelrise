@@ -14,6 +14,8 @@
     authorized,
     loadQueue,
     loadRefunds,
+    loadNewReaderSummary,
+    loadRewardOverview,
     onResolve
   } = {}) {
     if (!root || typeof root.replaceChildren !== 'function')
@@ -31,20 +33,148 @@
     );
     const notice = node('p', 'rr-admin-message');
     notice.setAttribute('role', 'status');
+    const records = node('div', 'rr-admin-list');
     const list = node('div', 'rr-admin-list');
     const refunds = node('div', 'rr-admin-list');
     const newReaders = node('div', 'rr-admin-list');
-    shell.append(title, caption, notice, newReaders, list, refunds);
+    shell.append(title, caption, notice, records, newReaders, list, refunds);
     root.replaceChildren(shell);
 
     async function refresh() {
       const requestId = ++latestRequest;
+      records.replaceChildren();
       list.replaceChildren();
       refunds.replaceChildren();
       newReaders.replaceChildren();
       if (authorized !== true) {
         notice.textContent = '管理者の本人確認と正式版の利用開始が必要です。';
         return { status: 'admin_not_verified' };
+      }
+      // The operator can inspect cost and obligations even when a gift
+      // provider or the separate exchange queue is unavailable.
+      if (typeof loadRewardOverview === 'function') {
+        let overview;
+        try {
+          overview = await loadRewardOverview();
+        } catch {
+          overview = null;
+        }
+        if (requestId !== latestRequest)
+          return { status: 'stale_queue_response' };
+        const keys = [
+          'issuedMonth',
+          'issuedTotal',
+          'readMonth',
+          'commentMonth',
+          'giftSpentNet',
+          'aiSpentNet',
+          'eligibleAvailable',
+          'eligibleReserved',
+          'pendingExchangePoints',
+          'pendingExchangeCount'
+        ];
+        if (
+          overview?.status === 'reward_overview_ready' &&
+          overview.pointsPerYen === 10 &&
+          keys.every(
+            (key) => Number.isSafeInteger(overview[key]) && overview[key] >= 0
+          ) &&
+          Array.isArray(overview.recent) &&
+          overview.recent.length <= 30
+        ) {
+          const money = (value) =>
+            fmt(value) +
+            ' pt（' +
+            (value / 10).toLocaleString('ja-JP', {
+              maximumFractionDigits: 1
+            }) +
+            '円相当）';
+          records.append(
+            node('h3', '', 'SCOUT REWARD / 発行・利用記録'),
+            node(
+              'p',
+              'rr-admin-muted',
+              '月次固定予算は設定しません。今月は日本時間の暦月です。'
+            )
+          );
+          const metricCards = node('div', 'rr-admin-metrics');
+          for (const [label, key] of [
+            ['今月の新規発行', 'issuedMonth'],
+            ['今月の読書報酬', 'readMonth'],
+            ['今月のコメント報酬', 'commentMonth'],
+            ['累計新規発行', 'issuedTotal'],
+            ['外部交換・純利用', 'giftSpentNet'],
+            ['AI機能・純利用', 'aiSpentNet'],
+            ['現在の交換適格残高', 'eligibleAvailable'],
+            ['交換申請で拘束中の適格残高', 'eligibleReserved'],
+            ['未完了の交換申請総額', 'pendingExchangePoints']
+          ]) {
+            const card = node('article', 'rr-admin-request');
+            card.append(
+              node('strong', '', label),
+              node('p', 'rr-admin-muted', money(overview[key]))
+            );
+            metricCards.append(card);
+          }
+          records.append(metricCards);
+          records.append(
+            node(
+              'p',
+              'rr-admin-muted',
+              '未完了の交換申請：' + fmt(overview.pendingExchangeCount) + '件'
+            ),
+            node('h3', '', '最近のPoint台帳（最大30件）')
+          );
+          if (!overview.recent.length)
+            records.append(
+              node('p', 'rr-admin-muted', '正式版のPoint記録はまだありません。')
+            );
+          for (const event of overview.recent) {
+            if (
+              !event ||
+              typeof event.userId !== 'string' ||
+              typeof event.eventId !== 'string' ||
+              typeof event.kind !== 'string' ||
+              !event.kind.startsWith('formal_') ||
+              !Number.isSafeInteger(event.points) ||
+              !['confirmed', 'pending', 'frozen', 'cancelled'].includes(
+                event.status
+              ) ||
+              typeof event.occurredAt !== 'string' ||
+              !Number.isFinite(Date.parse(event.occurredAt))
+            ) {
+              records.replaceChildren(
+                node(
+                  'p',
+                  'rr-admin-muted',
+                  'Point台帳の取得内容を確認できません。'
+                )
+              );
+              break;
+            }
+            const item = node('article', 'rr-admin-request');
+            item.append(
+              node('strong', '', event.kind + '：' + fmt(event.points) + ' pt'),
+              node('p', 'rr-admin-muted', '状態：' + event.status),
+              node('p', 'rr-admin-muted', 'ユーザーID：' + event.userId),
+              node('p', 'rr-admin-muted', '記録日時：' + event.occurredAt),
+              node('p', 'rr-admin-muted', '記録ID：' + event.eventId)
+            );
+            records.append(item);
+          }
+        } else {
+          records.append(
+            node(
+              'p',
+              'rr-admin-muted',
+              '報酬発行・利用記録はまだ確認できません。'
+            )
+          );
+        }
+      } else {
+        records.append(
+          node('p', 'rr-admin-muted', '報酬発行・利用記録の取得は未接続です。')
+        );
       }
       let result;
       try {
@@ -247,6 +377,8 @@
       loadRefunds: () => request({ method: 'GET', query: { view: 'refunds' } }),
       loadNewReaderSummary: () =>
         request({ method: 'GET', query: { view: 'new_readers' } }),
+      loadRewardOverview: () =>
+        request({ method: 'GET', query: { view: 'reward_overview' } }),
       onResolve: ({ operationId, action }) =>
         request({ method: 'POST', body: { operationId, action } })
     });

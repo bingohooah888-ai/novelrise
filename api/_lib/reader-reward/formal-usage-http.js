@@ -60,7 +60,8 @@ export function createFormalUsageHttpHandlers({
   initializeNewReader,
   inspectNewReader,
   inspectEarningSource,
-  getNewReaderSummary
+  getNewReaderSummary,
+  getAdminRewardOverview
 } = {}) {
   if (typeof supabase?.auth?.getUser !== 'function')
     throw new TypeError('Trusted existing Supabase Auth client required');
@@ -197,6 +198,15 @@ export function createFormalUsageHttpHandlers({
     if (!reviewer) return;
     try {
       if (req.method === 'GET') {
+        if (req.query?.view === 'reward_overview') {
+          if (typeof getAdminRewardOverview !== 'function')
+            return stop(res, 503, 'FORMAL_ADMIN_OVERVIEW_UNAVAILABLE');
+          // Accessible only after requireAdmin; the underlying query is read-only.
+          const overview = await getAdminRewardOverview();
+          if (overview?.status !== 'reward_overview_ready')
+            return stop(res, 503, 'FORMAL_ADMIN_OVERVIEW_UNAVAILABLE');
+          return res.status(200).json({ ok: true, ...overview });
+        }
         if (req.query?.view === 'earning_source') {
           if (typeof inspectEarningSource !== 'function')
             return stop(res, 503, 'FORMAL_EARNING_SOURCE_UNAVAILABLE');

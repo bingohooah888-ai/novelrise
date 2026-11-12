@@ -239,6 +239,133 @@ test('Postgres reader refuses an unsafe rounded sum of reserved and held Points'
     false
   );
 });
+test('admin overview reads formal issuance, usage, holds and recent ledger without writes', async () => {
+  const f = fakePg();
+  const calls = [];
+  let released = false;
+  f.pool.connect = async () => ({
+    query: async (sql, values) => {
+      calls.push({ sql, values });
+      if (sql.startsWith('BEGIN') || sql === 'COMMIT')
+        return { rows: [], rowCount: null };
+      if (sql.includes('as issued_total'))
+        return {
+          rows: [
+            {
+              issued_total: '1250',
+              issued_month: '250',
+              read_month: '150',
+              comment_month: '100',
+              gift_spent: '30000',
+              gift_refunded: '0',
+              ai_spent: '150',
+              ai_refunded: '20'
+            }
+          ]
+        };
+      if (sql.includes('as eligible_available'))
+        return { rows: [{ eligible_available: '5000' }] };
+      if (sql.includes('as pending_count'))
+        return {
+          rows: [
+            {
+              pending_count: '1',
+              pending_points: '30000',
+              eligible_reserved: '30000'
+            }
+          ]
+        };
+      if (sql.includes('order by occurred_at desc,id desc limit 30'))
+        return {
+          rows: [
+            {
+              id: operationId,
+              user_id: user,
+              point_kind: 'formal_read_reward',
+              point_value: '5',
+              status: 'confirmed',
+              occurred_at: '2026-11-12T00:00:00Z'
+            }
+          ]
+        };
+      throw new Error('UNEXPECTED_SQL');
+    },
+    release() {
+      released = true;
+    }
+  });
+  const result = await repo(f).getAdminRewardOverview();
+  assert.equal(result.status, 'reward_overview_ready');
+  assert.equal(result.issuedMonth, 250);
+  assert.equal(result.issuedTotal, 1250);
+  assert.equal(result.readMonth, 150);
+  assert.equal(result.commentMonth, 100);
+  assert.equal(result.giftSpentNet, 30000);
+  assert.equal(result.aiSpentNet, 130);
+  assert.equal(result.eligibleAvailable, 5000);
+  assert.equal(result.eligibleReserved, 30000);
+  assert.equal(result.pendingExchangeCount, 1);
+  assert.equal(result.recent[0].userId, user);
+  assert.equal(result.recent[0].points, 5);
+  assert.equal(released, true);
+  assert.equal(calls[0].sql, 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  assert.equal(calls.at(-1).sql, 'COMMIT');
+  assert.ok(
+    calls.every(({ sql }) => !/^(?:insert|update|delete|alter|drop)/i.test(sql))
+  );
+  assert.ok(
+    calls.some(({ sql }) => sql.includes("left(point_kind,7)='formal_'"))
+  );
+  assert.ok(calls.some(({ sql }) => sql.includes("time zone 'Asia/Tokyo'")));
+});
+
+test('admin overview rejects unsafe DB accounting totals and rolls back', async () => {
+  const f = fakePg();
+  const calls = [];
+  f.pool.connect = async () => ({
+    query: async (sql) => {
+      calls.push(sql);
+      if (sql.startsWith('BEGIN') || sql === 'ROLLBACK') return { rows: [] };
+      if (sql.includes('as issued_total'))
+        return {
+          rows: [
+            {
+              issued_total: '9007199254740992',
+              issued_month: '0',
+              read_month: '0',
+              comment_month: '0',
+              gift_spent: '0',
+              gift_refunded: '0',
+              ai_spent: '0',
+              ai_refunded: '0'
+            }
+          ]
+        };
+      if (sql.includes('as eligible_available'))
+        return { rows: [{ eligible_available: '0' }] };
+      if (sql.includes('as pending_count'))
+        return {
+          rows: [
+            {
+              pending_count: '0',
+              pending_points: '0',
+              eligible_reserved: '0'
+            }
+          ]
+        };
+      if (sql.includes('order by occurred_at desc,id desc limit 30'))
+        return { rows: [] };
+      throw new Error('UNEXPECTED_SQL');
+    },
+    release() {}
+  });
+  await assert.rejects(
+    repo(f).getAdminRewardOverview(),
+    /Invalid formal Point integer/
+  );
+  assert.equal(calls.at(-1), 'ROLLBACK');
+});
+
 test('Postgres host only constructs dormant reader/admin factories without connecting', async () => {
   let connects = 0;
   const f = fakePg();

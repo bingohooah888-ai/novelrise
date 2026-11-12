@@ -347,8 +347,122 @@ export function createFormalUsagePostgresRepository({
       client.release();
     }
   }
+  // Unregistered, read-only administrator accounting view. No budget cap
+  // is imposed here, and beta-era Points are never treated as formal earnings.
+  async function getAdminRewardOverview() {
+    const client = await pool.connect();
+    let begun = false;
+    try {
+      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      begun = true;
+      const ledger = await client.query(
+        'select ' +
+          "coalesce(sum(point_value) filter (where status='confirmed' and left(point_kind,7)='formal_' and right(point_kind,7)<>'_refund' and point_value>0),0)::text as issued_total, " +
+          "coalesce(sum(point_value) filter (where status='confirmed' and left(point_kind,7)='formal_' and right(point_kind,7)<>'_refund' and point_value>0 and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as issued_month, " +
+          "coalesce(sum(point_value) filter (where status='confirmed' and point_kind='formal_read_reward' and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as read_month, " +
+          "coalesce(sum(point_value) filter (where status='confirmed' and point_kind='formal_comment_reward' and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as comment_month, " +
+          "coalesce(sum(-point_value) filter (where status='confirmed' and point_kind='formal_external_exchange'),0)::text as gift_spent, " +
+          "coalesce(sum(point_value) filter (where status='confirmed' and point_kind='formal_external_exchange_refund'),0)::text as gift_refunded, " +
+          "coalesce(sum(-point_value) filter (where status='confirmed' and point_kind='formal_ai_spend'),0)::text as ai_spent, " +
+          "coalesce(sum(point_value) filter (where status='confirmed' and point_kind='formal_ai_refund'),0)::text as ai_refunded " +
+          'from public.scout_point_ledger'
+      );
+      const wallets = await client.query(
+        'select coalesce(sum(exchange_eligible_points),0)::text as eligible_available ' +
+          'from ' +
+          TABLE +
+          '.scout_point_usage_wallets'
+      );
+      const operations = await client.query(
+        'select count(*)::text as pending_count, ' +
+          'coalesce(sum(amount_points),0)::text as pending_points, ' +
+          'coalesce(sum(eligible_reserved_points),0)::text as eligible_reserved ' +
+          'from ' +
+          TABLE +
+          '.scout_point_usage_operations ' +
+          "where purpose='external_exchange' and phase='reserved'"
+      );
+      const activity = await client.query(
+        'select id,user_id,point_kind,point_value,status,occurred_at ' +
+          'from public.scout_point_ledger where left(point_kind,7)=$1::text ' +
+          'order by occurred_at desc,id desc limit 30',
+        ['formal_']
+      );
+      const l = ledger?.rows?.[0];
+      const w = wallets?.rows?.[0];
+      const o = operations?.rows?.[0];
+      if (!l || !w || !o || !Array.isArray(activity?.rows))
+        throw new Error('FORMAL_ADMIN_OVERVIEW_UNAVAILABLE');
+      const net = (spent, refunded) => {
+        const value =
+          int(spent, 'formal spending') - int(refunded, 'formal refunded');
+        if (!Number.isSafeInteger(value) || value < 0)
+          throw new Error('FORMAL_ADMIN_NET_SPENDING_INVALID');
+        return value;
+      };
+      const recent = activity.rows.map((row) => {
+        const points =
+          typeof row.point_value === 'string' && /^-?\d+$/.test(row.point_value)
+            ? Number(row.point_value)
+            : row.point_value;
+        const at = new Date(row.occurred_at);
+        if (
+          !uuid(row.id) ||
+          !uuid(row.user_id) ||
+          typeof row.point_kind !== 'string' ||
+          !row.point_kind.startsWith('formal_') ||
+          !['confirmed', 'pending', 'frozen', 'cancelled'].includes(
+            row.status
+          ) ||
+          !Number.isSafeInteger(points) ||
+          Math.abs(points) > 1000000 ||
+          !Number.isFinite(at.getTime())
+        )
+          throw new Error('FORMAL_ADMIN_LEDGER_ROW_INVALID');
+        return {
+          eventId: row.id,
+          userId: row.user_id,
+          kind: row.point_kind,
+          points,
+          status: row.status,
+          occurredAt: at.toISOString()
+        };
+      });
+      const summary = Object.freeze({
+        status: 'reward_overview_ready',
+        period: 'current_jst_calendar_month',
+        pointsPerYen: 10,
+        issuedMonth: int(l.issued_month, 'issued month'),
+        issuedTotal: int(l.issued_total, 'issued total'),
+        readMonth: int(l.read_month, 'read month'),
+        commentMonth: int(l.comment_month, 'comment month'),
+        giftSpentNet: net(l.gift_spent, l.gift_refunded),
+        aiSpentNet: net(l.ai_spent, l.ai_refunded),
+        eligibleAvailable: int(w.eligible_available, 'eligible available'),
+        eligibleReserved: int(o.eligible_reserved, 'eligible reserved'),
+        pendingExchangePoints: int(o.pending_points, 'pending exchange'),
+        pendingExchangeCount: int(o.pending_count, 'pending count'),
+        recent
+      });
+      await client.query('COMMIT');
+      begun = false;
+      return summary;
+    } catch (error) {
+      if (begun) {
+        try {
+          await client.query('ROLLBACK');
+        } catch {
+          // Keep the original read-only failure.
+        }
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
   return Object.freeze({
     transact,
+    getAdminRewardOverview,
     async readReader(userId) {
       if (!uuid(userId)) return null;
       const result = await pool.query(

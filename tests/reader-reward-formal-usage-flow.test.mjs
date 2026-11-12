@@ -395,7 +395,7 @@ test('formal release disabled, no gift provider and no AI price do not reserve o
   assert.equal(noProvider.aiCalls, 0);
 });
 
-function makeHttp(f) {
+function makeHttp(f, getAdminRewardOverview) {
   const supabase = {
     auth: {
       async getUser(token) {
@@ -417,7 +417,8 @@ function makeHttp(f) {
   return createFormalUsageHttpHandlers({
     supabase,
     service: f.service,
-    env: { NOVELIGHT_ADMIN_USER_IDS: adminId }
+    env: { NOVELIGHT_ADMIN_USER_IDS: adminId },
+    getAdminRewardOverview
   });
 }
 function httpReq(token, method = 'GET', body, origin = 'https://novelight.jp') {
@@ -529,6 +530,43 @@ test('admin queue requires existing admin allowlist and provider receipt is not 
   );
   assert.equal(done.statusCode, 200);
   assert.equal(done.result.status, 'committed');
+});
+
+test('only authorized administrator can read formal reward accounting overview', async () => {
+  const f = fixture();
+  let reads = 0;
+  const api = makeHttp(f, async () => {
+    reads++;
+    return {
+      status: 'reward_overview_ready',
+      pointsPerYen: 10,
+      issuedMonth: 50,
+      issuedTotal: 200,
+      readMonth: 30,
+      commentMonth: 20,
+      giftSpentNet: 0,
+      aiSpentNet: 0,
+      eligibleAvailable: 150,
+      eligibleReserved: 0,
+      pendingExchangePoints: 0,
+      pendingExchangeCount: 0,
+      recent: []
+    };
+  });
+  const readerReq = httpReq('user-1');
+  readerReq.query = { view: 'reward_overview' };
+  assert.equal((await invoke(api.admin, readerReq)).statusCode, 403);
+  const noAuthReq = httpReq('invalid');
+  noAuthReq.query = { view: 'reward_overview' };
+  assert.notEqual((await invoke(api.admin, noAuthReq)).statusCode, 200);
+  assert.equal(reads, 0);
+  const adminReq = httpReq('admin');
+  adminReq.query = { view: 'reward_overview' };
+  const response = await invoke(api.admin, adminReq);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.result.issuedMonth, 50);
+  assert.equal(response.result.status, 'reward_overview_ready');
+  assert.equal(reads, 1);
 });
 
 test('existing reader UI binding talks to authenticated unregistered HTTP handler', async () => {
