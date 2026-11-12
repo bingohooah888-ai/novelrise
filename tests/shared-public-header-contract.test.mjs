@@ -139,7 +139,7 @@ test('Author Studio preserves its gold logo and dark header', () => {
 
 test('Home and search header actions reserve independent login and signup widths', () => {
   const css = read('shared/header/public-header.css');
-  assert.match(css, /body:is\\(\\.novelight-page-index, \\.novelight-page-search\\)/u);
-  assert.match(css, /\\.login-action \\{\\s*width: auto !important;\\s*flex: 0 0 auto !important;/u);
-  assert.match(css, /\\.signup-action \\{\\s*width: auto !important;\\s*flex: 0 0 auto !important;\\s*white-space: nowrap !important;/u);
+  assert.ok(css.includes('body:is(.novelight-page-index, .novelight-page-search)'));
+  assert.ok(css.includes('.login-action {\n    width: auto !important;\n    flex: 0 0 auto !important;'));
+  assert.ok(css.includes('.signup-action {\n    width: auto !important;\n    flex: 0 0 auto !important;\n    white-space: nowrap !important;'));
 });
