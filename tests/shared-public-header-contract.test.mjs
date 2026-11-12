@@ -142,6 +142,8 @@ test('Home and search keep action labels on one line', () => {
   const selector = 'body:is(.novelight-page-index, .novelight-page-search)';
   assert.ok(css.includes(selector));
   const scoped = css.slice(css.indexOf('/* Home and search use'));
-  assert.match(scoped, /login-action[\\s\\S]*?width: auto !important/u);
-  assert.match(scoped, /signup-action[\\s\\S]*?white-space: nowrap !important/u);
+  assert.ok(scoped.includes('.login-action {'));
+  assert.ok(scoped.includes('.signup-action {'));
+  assert.ok(scoped.includes('width: auto !important;'));
+  assert.ok(scoped.includes('white-space: nowrap !important;'));
 });
