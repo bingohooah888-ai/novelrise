@@ -57,10 +57,11 @@ test('search tips and official tags are next to search inputs', () => {
   assert.match(searchSource, /<summary>公式タグで絞り込む<\/summary>/u);
 });
 
-test('search does not spin forever when discovery or startup stalls', () => {
-  assert.ok(searchSource.includes('const watchdog=window.setTimeout('));
-  assert.ok(searchSource.includes("count.textContent='読み込みタイムアウト'"));
-  assert.ok(searchSource.includes('window.clearTimeout(watchdog)'));
-  assert.ok(searchSource.includes("console.error('search startup failed'"));
-  assert.ok(searchSource.includes("client.rpc('novelight_trusted_discovery_feed'"));
+test('search startup and discovery stop indefinite loading', () => {
+  const source = searchSource;
+  assert.ok(source.includes('const watchdog=window.setTimeout('));
+  assert.ok(source.includes("count.textContent='読み込みタイムアウト'"));
+  assert.ok(source.includes('window.clearTimeout(watchdog)'));
+  assert.ok(source.includes("console.error('search startup failed'"));
+  assert.ok(source.includes("client.rpc('novelight_trusted_discovery_feed'"));
 });
