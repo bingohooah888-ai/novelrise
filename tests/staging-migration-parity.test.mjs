@@ -120,9 +120,7 @@ test('rejects name, count, SHA-256 and byte drift', async (t) => {
     { statement_sha256: '0'.repeat(64) },
     { statement_bytes: row.statement_bytes + 1 }
   ]) {
-    const rows = f.rows.map((r) =>
-      r === row ? { ...r, ...mutation } : r
-    );
+    const rows = f.rows.map((r) => r === row ? { ...r, ...mutation } : r);
     await assert.rejects(verify(f, rows, fetchFor(rows)), /SQL\/name drift/);
   }
 });
