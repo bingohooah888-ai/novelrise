@@ -1,6 +1,8 @@
 import { verifyStagingReadOnlyDatabaseTarget } from '../api/_lib/reader-reward/formal-staging-readonly-runtime.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 import {
   createFormalStagingReadOnlyHandler,
   createStagingReadOnlyFormalApplication,
@@ -291,5 +293,91 @@ test('read-only connection requires dedicated Staging role (never postgres)', ()
         PGSSLMODE: 'disable'
       }),
     /FORMAL_STAGING_READER_DB_INVALID/
+  );
+});
+const stagingRoleReviewSql = readFileSync(
+  new URL(
+    '../docs/plans/SCOUT-FORMAL-STAGING-READONLY-ROLE-REVIEW-20261112.sql',
+    import.meta.url
+  ),
+  'utf8'
+);
+const activeRoleReviewSql = stagingRoleReviewSql.replace(/^--.*$/gm, '');
+
+test('Staging role review SQL is non-applied, NOLOGIN, owner-scoped and privilege-minimal', () => {
+  assert.match(stagingRoleReviewSql, /NOT A MIGRATION/);
+  assert.match(stagingRoleReviewSql, /wmlzjgvxgoyrovdhbqbg/);
+  assert.match(stagingRoleReviewSql, /supabase_auth_admin/);
+  assert.match(
+    activeRoleReviewSql,
+    /CREATE ROLE novelight_formal_reader_ro WITH[\s\S]*?NOLOGIN/
+  );
+  assert.match(activeRoleReviewSql, /\bNOBYPASSRLS\b/);
+  assert.match(activeRoleReviewSql, /default_transaction_read_only = on/);
+  assert.match(
+    activeRoleReviewSql,
+    /GRANT SELECT \(id, created_at\) ON auth\.users/
+  );
+  assert.match(
+    activeRoleReviewSql,
+    /GRANT SELECT \(user_id\)[\s\S]*?scout_point_ledger/
+  );
+  assert.match(
+    activeRoleReviewSql,
+    /GRANT SELECT \(id, reader_id, episode_id_snapshot, qualified_at\)/
+  );
+  assert.match(
+    activeRoleReviewSql,
+    /GRANT SELECT \([\s\S]*?body, deleted_at, author_hidden_at, created_at/
+  );
+  assert.equal(
+    (
+      activeRoleReviewSql.match(
+        /\bCREATE POLICY novelight_formal_ro_post_reference/g
+      ) || []
+    ).length,
+    7
+  );
+  assert.equal(
+    (activeRoleReviewSql.match(/\bGRANT SELECT \(/g) || []).length,
+    7
+  );
+  assert.doesNotMatch(
+    activeRoleReviewSql,
+    /\bGRANT\s+(?:ALL|INSERT|UPDATE|DELETE|TRUNCATE|EXECUTE)\b/i
+  );
+  assert.doesNotMatch(activeRoleReviewSql, /\bGRANT\s+SELECT\s+ON\b/i);
+  assert.doesNotMatch(
+    activeRoleReviewSql,
+    /\b(?:INSERT INTO|UPDATE|DELETE FROM|DROP TABLE|ALTER TABLE|CREATE TRIGGER|CREATE FUNCTION)\b/i
+  );
+  assert.doesNotMatch(activeRoleReviewSql, /\b(?:PASSWORD|LOGIN)\s+'[^']+'/i);
+});
+
+test('Staging RLS proposal allows post-reference synthetic cohort only', () => {
+  assert.equal(
+    (activeRoleReviewSql.match(/TO novelight_formal_reader_ro/g) || [])
+      .length >= 14,
+    true
+  );
+  assert.equal(
+    (
+      activeRoleReviewSql.match(
+        /created_at >= timestamptz '2026-11-10T00:00:00Z'/g
+      ) || []
+    ).length,
+    8
+  );
+  assert.match(
+    activeRoleReviewSql,
+    /qualified_at >= timestamptz '2026-11-10T00:00:00Z'/
+  );
+  assert.match(
+    activeRoleReviewSql,
+    /ON auth\.users FOR SELECT\s+TO novelight_formal_reader_ro/
+  );
+  assert.doesNotMatch(
+    activeRoleReviewSql,
+    /\bFOR (?:INSERT|UPDATE|DELETE|ALL)\b/i
   );
 });
