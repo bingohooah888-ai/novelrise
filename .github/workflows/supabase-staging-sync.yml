@@ -153,6 +153,17 @@ jobs:
           export STAGING_DATABASE_URL
           node scripts/verify-staging-migration-target.mjs
 
+      - name: Verify and materialize four Staging-only migration histories
+        env:
+          PGSSLMODE: require
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          bash scripts/verify-staging-migrations.sh prepare-staging-only
+
       - name: Require exact Staging pending migrations
         env:
           PGSSLMODE: require
@@ -186,7 +197,7 @@ jobs:
           set -euo pipefail
           STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
           export STAGING_DATABASE_URL
-          supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
+          supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run --include-all
 
       - name: Re-bind target and pending set immediately before mutation
         env:
@@ -209,7 +220,7 @@ jobs:
 
           node scripts/verify-staging-migration-target.mjs
           bash scripts/verify-staging-migrations.sh pending /tmp/staging-pending-before-apply.txt
-          supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run
+          supabase db push --db-url "$STAGING_DATABASE_URL" --dry-run --include-all
 
       - name: Apply exact pending migrations to dedicated Staging
         id: apply
@@ -220,7 +231,7 @@ jobs:
           set -euo pipefail
           STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
           export STAGING_DATABASE_URL
-          supabase db push --db-url "$STAGING_DATABASE_URL" --yes
+          supabase db push --db-url "$STAGING_DATABASE_URL" --yes --include-all
 
       - name: Run Staging migration postchecks
         id: postchecks
@@ -261,7 +272,7 @@ jobs:
 
           if [ "$APPLY_OUTCOME" = 'success' ]; then
             if [ "$POSTCHECK_OUTCOME" = 'success' ] && [ "$PARITY_OUTCOME" = 'success' ]; then
-              echo 'Staging migration sync completed with precheck, postcheck, and exact migration parity.'
+              echo 'Staging migration sync completed with precheck, postcheck, four SQL digest proofs, and strict approved Staging parity.'
               echo 'Rollback artifacts were verified before mutation but are never executed automatically.'
             else
               echo 'STAGING_MIGRATION_RECOVERY_REQUIRED: db push completed but post-apply verification did not fully succeed.'
