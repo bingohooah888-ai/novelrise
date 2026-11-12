@@ -45,8 +45,8 @@ export function createOfflineFormalUsageRepository({
     if (
       !row ||
       typeof row.scopeId !== 'string' ||
-      !Number.isSafeInteger(row.limitPoints) ||
-      row.limitPoints < 0
+      (row.limitPoints !== null &&
+        (!Number.isSafeInteger(row.limitPoints) || row.limitPoints < 0))
     )
       throw new TypeError('Approved offline budget fixture required');
     budgetMap.set(purpose, {

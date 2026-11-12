@@ -30,6 +30,7 @@ function fixture({
   verifyAiRefund = true,
   aiResult = { status: 'succeeded', costPoints: 120 },
   exchangeBudget = 100000,
+  budgetApproved = true,
   allocation = 0
 } = {}) {
   const repository = createOfflineFormalUsageRepository({
@@ -70,8 +71,8 @@ function fixture({
     catalog,
     policy: {
       giftProviderReady: providerReady,
-      verifyExchange: async () => approval,
-      verifyAi: async () => approval,
+      verifyExchange: async () => ({ ...approval, budget: budgetApproved }),
+      verifyAi: async () => ({ ...approval, budget: budgetApproved }),
       allocateAiEligiblePoints: async ({
         amountPoints,
         availablePoints,
@@ -119,6 +120,23 @@ function fixture({
   };
 }
 
+test('no monthly business budget permits reservations while enforcing duplicate claims', async () => {
+  const f = fixture({ exchangeBudget: null, budgetApproved: false });
+  const request = (userId, operationId) =>
+    f.service.requestExchange({ userId, operationId, amountPoints: 30000 });
+  assert.equal((await request(first, op1)).status, 'request_received');
+  assert.equal((await request(second, op2)).status, 'request_received');
+  assert.equal((await request(first, op1)).status, 'already_processed');
+  assert.equal((await f.service.listPendingExchanges()).items.length, 2);
+  assert.equal(
+    (await f.service.getReaderSnapshot(first)).wallet.availablePoints,
+    20000
+  );
+  assert.equal(
+    (await f.service.getReaderSnapshot(second)).wallet.availablePoints,
+    2000
+  );
+});
 test('reader exchange: 30000pt reserve reduces both balances and is idempotent', async () => {
   const f = fixture();
   assert.equal(

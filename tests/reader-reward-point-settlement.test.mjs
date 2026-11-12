@@ -288,7 +288,6 @@ test('concurrent external redemption and AI use cannot both reuse old snapshot',
 test('unapproved budget and any risk or eligibility doubt block reservations', () => {
   for (const key of [
     'authoritativeStateVerified',
-    'budgetPolicyApproved',
     'pointEligibilityVerified',
     'riskAndControlsCleared',
     'operationUniquenessVerified'
@@ -435,7 +434,7 @@ test('wallet transition cannot be rechecked without a unique claim observation',
   );
 });
 
-test('reward issuance has its own approved budget distinct from redemption', () => {
+test('separate issuance accounting can still quote an optional capped scenario', () => {
   const result = quoteScoutPointGrantBudget({
     pointsToIssue: 50,
     fundingBudgetSnapshot: budget({
@@ -467,7 +466,7 @@ test('reward issuance has its own approved budget distinct from redemption', () 
   assert.equal(tooMuch.status, 'funding_budget_exceeded');
 });
 
-test('missing issuance budget approval and previously issued level/badge refuse payout', () => {
+test('missing unique award evidence and previously issued Level/badge refuse payout', () => {
   const normal = {
     pointsToIssue: 50,
     fundingBudgetSnapshot: budget(),
@@ -475,13 +474,7 @@ test('missing issuance budget approval and previously issued level/badge refuse 
     awardEventUniqueVerified: true,
     awardEventPreviouslyIssued: false
   };
-  assert.equal(
-    quoteScoutPointGrantBudget({
-      ...normal,
-      fundingBudgetVerified: false
-    }).status,
-    'funding_evidence_incomplete'
-  );
+
   assert.equal(
     quoteScoutPointGrantBudget({
       ...normal,
@@ -498,6 +491,69 @@ test('missing issuance budget approval and previously issued level/badge refuse 
   );
 });
 
+test('monitor-only issuance tracks commitments without a fixed amount cap', () => {
+  const input = {
+    pointsToIssue: 60,
+    fundingBudgetSnapshot: budget({
+      scopeId: 'formal-awards-monitor-only',
+      limitPoints: null,
+      committedPoints: 250000,
+      reservedPoints: 1500
+    }),
+    awardEventUniqueVerified: true,
+    awardEventPreviouslyIssued: false
+  };
+  const result = quoteScoutPointGrantBudget(input);
+  assert.equal(result.status, 'grant_budget_quote_only');
+  assert.equal(result.proposedBudget.committedPoints, 250060);
+  assert.equal(result.proposedBudget.limitPoints, null);
+  assert.equal(result.mayIssuePoints, false);
+  assert.equal(
+    quoteScoutPointGrantBudget({
+      ...input,
+      awardEventPreviouslyIssued: true
+    }).status,
+    'already_awarded'
+  );
+  assert.equal(
+    quoteScoutPointGrantBudget({
+      ...input,
+      awardEventUniqueVerified: false
+    }).status,
+    'funding_evidence_incomplete'
+  );
+});
+
+test('monitor-only Point usage keeps wallet/claim/CAS without a fixed budget approval', () => {
+  const starting = budget({
+    scopeId: 'formal-usage-monitor-only',
+    limitPoints: null,
+    committedPoints: 500000,
+    reservedPoints: 120000
+  });
+  const reserved = quote('reserve', {
+    budgetSnapshot: starting,
+    evidence: evidence({ budgetPolicyApproved: false })
+  });
+  assert.equal(reserved.status, 'proposal_only');
+  assert.equal(reserved.nextBudget.limitPoints, null);
+  assert.equal(reserved.nextBudget.reservedPoints, 150000);
+  assert.equal(reserved.nextWallet.availablePoints, 20000);
+  const rechecked = recheckScoutPointOperation({
+    proposal: reserved,
+    currentWalletSnapshot: wallet(),
+    currentBudgetSnapshot: starting,
+    currentOperationSnapshot: operation(),
+    duplicateOperationClaimVerified: true,
+    duplicateOperationClaimExists: false
+  });
+  assert.equal(rechecked.status, 'preconditions_match_only');
+  const commit = stage('commit', reserved);
+  assert.equal(commit.status, 'proposal_only');
+  assert.equal(commit.nextBudget.committedPoints, 530000);
+  assert.equal(commit.nextBudget.reservedPoints, 120000);
+  assert.equal(stage('commit', commit).status, 'invalid_phase');
+});
 test('refund does not restore a consumed period budget without owner approval', () => {
   const reserved = quote('reserve');
   const committed = stage('commit', reserved);

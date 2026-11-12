@@ -88,7 +88,7 @@ export function createFormalRewardUsageService({
       operationSnapshot: operation,
       evidence: {
         authoritativeStateVerified: true,
-        budgetPolicyApproved: verification.budget === true,
+
         pointEligibilityVerified: verification.eligibility === true,
         riskAndControlsCleared: verification.risk === true,
         operationUniquenessVerified: true,
@@ -190,7 +190,6 @@ export function createFormalRewardUsageService({
       }
       if (
         !approvedPolicy ||
-        approvedPolicy.budget !== true ||
         approvedPolicy.eligibility !== true ||
         approvedPolicy.risk !== true ||
         approvedPolicy.channel !== true ||
@@ -272,7 +271,6 @@ export function createFormalRewardUsageService({
       if (op.phase !== (action === 'refund' ? 'committed' : 'reserved'))
         return response('already_processed', { phase: op.phase });
       const verification = {
-        budget: true,
         eligibility: true,
         risk: true,
         channel: true,

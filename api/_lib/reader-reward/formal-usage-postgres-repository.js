@@ -35,7 +35,8 @@ function rowBudget(row) {
   if (!row) return null;
   const out = {
     scopeId: row.scope_id,
-    limitPoints: int(row.limit_points, 'budget limit'),
+    limitPoints:
+      row.limit_points === null ? null : int(row.limit_points, 'budget limit'),
     committedPoints: int(row.committed_points, 'budget committed'),
     reservedPoints: int(row.reserved_points, 'budget reserved'),
     revision: int(row.revision, 'budget revision')

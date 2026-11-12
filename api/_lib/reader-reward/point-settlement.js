@@ -57,13 +57,19 @@ function verifiedBudget(budget) {
   if (typeof scopeId !== 'string' || !/^[a-zA-Z0-9:_-]{1,120}$/.test(scopeId)) {
     throw new TypeError('Approved budget scope must be identified');
   }
-  const limitPoints = safeInt(budget.limitPoints, 'Budget limit');
+  // null is the OWNER-approved monitoring-only mode: no financial cap.
+  // Missing or malformed fields still fail closed.
+  const limitPoints =
+    budget.limitPoints === null
+      ? null
+      : safeInt(budget.limitPoints, 'Budget limit');
   const committedPoints = safeInt(budget.committedPoints, 'Budget committed');
   const reservedPoints = safeInt(budget.reservedPoints, 'Budget reserved');
   const revision = safeInt(budget.revision, 'Budget revision');
   if (revision === Number.MAX_SAFE_INTEGER)
     throw new RangeError('Budget revision overflow');
-  if (safeSum(committedPoints, reservedPoints) > limitPoints) {
+  const trackedPoints = safeSum(committedPoints, reservedPoints);
+  if (limitPoints !== null && trackedPoints > limitPoints) {
     throw new RangeError('Budget exceeds its approved maximum');
   }
   return Object.freeze({
@@ -153,7 +159,6 @@ export function quoteScoutPointOperation({
   if (
     !plain(evidence) ||
     evidence.authoritativeStateVerified !== true ||
-    evidence.budgetPolicyApproved !== true ||
     evidence.pointEligibilityVerified !== true ||
     evidence.riskAndControlsCleared !== true ||
     evidence.operationUniquenessVerified !== true
@@ -194,10 +199,11 @@ export function quoteScoutPointOperation({
         operationKey
       });
     }
-    if (
-      safeSum(safeSum(budget.committedPoints, budget.reservedPoints), amount) >
-      budget.limitPoints
-    ) {
+    const trackedPoints = safeSum(
+      safeSum(budget.committedPoints, budget.reservedPoints),
+      amount
+    );
+    if (budget.limitPoints !== null && trackedPoints > budget.limitPoints) {
       return Object.freeze({ status: 'budget_exceeded', operationKey });
     }
     nextWallet.availablePoints = subtract(wallet.availablePoints, amount);
@@ -324,21 +330,21 @@ export function recheckScoutPointOperation({
 }
 
 /**
- * Standalone, non-executable issuance budget guard. Issuance funding must
- * NEVER be mixed with the separate redemption/AI consumption budget.
+ * Standalone, non-executable issuance accounting quote. A null limit
+ * records funding without imposing an OWNER financial amount ceiling.
+ * Issuance accounting is separate from redemption/AI consumption counters.
  * The requested reward amount must already have a verified unique grant key.
  */
 export function quoteScoutPointGrantBudget({
   pointsToIssue,
   fundingBudgetSnapshot,
-  fundingBudgetVerified,
+
   awardEventUniqueVerified,
   awardEventPreviouslyIssued
 }) {
   const points = positive(pointsToIssue, 'Reward points');
   const budget = verifiedBudget(fundingBudgetSnapshot);
   if (
-    fundingBudgetVerified !== true ||
     awardEventUniqueVerified !== true ||
     typeof awardEventPreviouslyIssued !== 'boolean'
   ) {
@@ -346,10 +352,11 @@ export function quoteScoutPointGrantBudget({
   }
   if (awardEventPreviouslyIssued)
     return Object.freeze({ status: 'already_awarded' });
-  if (
-    safeSum(safeSum(budget.committedPoints, budget.reservedPoints), points) >
-    budget.limitPoints
-  ) {
+  const trackedPoints = safeSum(
+    safeSum(budget.committedPoints, budget.reservedPoints),
+    points
+  );
+  if (budget.limitPoints !== null && trackedPoints > budget.limitPoints) {
     return Object.freeze({ status: 'funding_budget_exceeded' });
   }
   return Object.freeze({

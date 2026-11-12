@@ -19,7 +19,8 @@ function fakePg({
   failOn,
   invalidWallet = false,
   heldPoints = '0',
-  reservedPoints = '0'
+  reservedPoints = '0',
+  noFixedBudget = false
 } = {}) {
   const calls = [];
   let released = false;
@@ -34,7 +35,7 @@ function fakePg({
   const budgetRow = {
     purpose: 'external_exchange',
     scope_id: 'gift-development-only',
-    limit_points: '100000',
+    limit_points: noFixedBudget ? null : '100000',
     committed_points: '0',
     reserved_points: '0',
     revision: '0'
@@ -130,6 +131,8 @@ test('formal SQL draft is not migration; RLS/private ACL and append-only events 
   const sql = readFileSync(path, 'utf8');
   assert.match(sql, /NOT A SUPABASE MIGRATION/);
   assert.match(sql, /enable row level security/g);
+  assert.match(sql, /limit_points bigint check \(limit_points >= 0\)/);
+  assert.match(sql, /limit_points is null or/);
   assert.match(
     sql,
     /revoke all on schema novelight_formal_private from public, anon, authenticated/i
@@ -171,6 +174,23 @@ test('Postgres adapter performs wallet/budget/operation/event writes in one priv
     f.calls.every((c) => !c.sql.includes(user) && !c.sql.includes(operationId))
   );
   assert.ok(f.calls.some((c) => c.values.includes(operationId)));
+});
+
+test('Postgres mocked accounting scope has no required fixed monthly amount', async () => {
+  const f = fakePg({ noFixedBudget: true });
+  const result = await service(repo(f)).requestExchange({
+    userId: user,
+    operationId,
+    amountPoints: 30000
+  });
+  assert.equal(result.status, 'request_received');
+  assert.equal(f.calls.at(-1).sql, 'COMMIT');
+  assert.ok(
+    f.calls.some(
+      ({ sql }) =>
+        sql.includes('.scout_point_usage_budgets') && sql.startsWith('update ')
+    )
+  );
 });
 
 test('DB failure rolls back reservation, never returns a successful approval', async () => {

@@ -32,15 +32,17 @@ create table if not exists novelight_formal_private.scout_point_usage_budgets (
   purpose text primary key
     check (purpose in ('external_exchange', 'ai_direct_use')),
   scope_id text not null unique,
-  limit_points bigint not null check (limit_points >= 0),
+  -- NULL means tracking-only: no OWNER monthly financial amount cap.
+  -- Still requires wallet/budget operation locks, ledger and proof checks.
+  limit_points bigint check (limit_points >= 0),
   committed_points bigint not null default 0 check (committed_points >= 0),
   reserved_points bigint not null default 0 check (reserved_points >= 0),
   revision bigint not null default 0 check (revision >= 0),
   updated_at timestamptz not null default now(),
   constraint scout_usage_budget_bound
-    check (committed_points + reserved_points <= limit_points),
+    check (limit_points is null or committed_points + reserved_points <= limit_points),
   constraint scout_usage_budget_safe
-    check (limit_points <= 9007199254740991)
+    check (limit_points is null or limit_points <= 9007199254740991)
 );
 
 create table if not exists novelight_formal_private.scout_point_usage_operations (
