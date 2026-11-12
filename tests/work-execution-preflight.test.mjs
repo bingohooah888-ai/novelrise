@@ -366,7 +366,11 @@ test('Preview and Staging are default-deny and approval-only', async () => {
   const thumbnail = await read(STAGING_THUMBNAIL_PATH);
   const vercel = JSON.parse(await read(VERCEL_PATH));
 
-  assert.deepEqual(vercel.git?.deploymentEnabled, { '**': false, main: true });
+  // Both automatic-main and OWNER-paused-main are valid, but Preview is not.
+  const deployments = vercel.git?.deploymentEnabled || {};
+  assert.deepEqual(Object.keys(deployments).sort(), ['**', 'main']);
+  assert.equal(deployments['**'], false);
+  assert.equal(typeof deployments.main, 'boolean');
 
   for (const source of [master, agents, automation, preflight, policy]) {
     assertIncludesAll(source, ['ステージング承認', 'Default-Deny']);

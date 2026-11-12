@@ -19,10 +19,15 @@ const shouldSkip = (changedPaths, overrides = {}) =>
     ...overrides
   });
 
-test('Vercel retains main-only deployments and uses the guard', () => {
+test('Vercel disables non-main deployment and retains an explicit main guard', () => {
   const configPath = new URL('../vercel.json', import.meta.url);
   const config = JSON.parse(readFileSync(configPath, 'utf8'));
-  assert.deepEqual(config.git.deploymentEnabled, { '**': false, main: true });
+  // main can be explicitly paused by the OWNER without enabling Preview.
+  // CI tests the PR merged with the latest main, not just the feature HEAD.
+  const deployment = config.git.deploymentEnabled;
+  assert.deepEqual(Object.keys(deployment).sort(), ['**', 'main']);
+  assert.equal(deployment['**'], false);
+  assert.equal(typeof deployment.main, 'boolean');
   assert.equal(config.ignoreCommand, 'node scripts/vercel-ignore-build.mjs');
 });
 
