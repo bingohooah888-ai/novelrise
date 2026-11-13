@@ -15,8 +15,17 @@ const authorization = {
   verifiedByTrustedServer: true
 };
 function make(client, extra = {}) {
+  // Existing test clients simulate a future verified trusted SQL session.
+  // Privilege denial is exercised separately using an unwrapped client.
+  const verifiedClient = {
+    query(sql, params) {
+      if (sql.startsWith('select (has_schema_privilege(current_user'))
+        return Promise.resolve({ rows: [{ ready: true }] });
+      return client.query(sql, params);
+    }
+  };
   return createUnregisteredFormalMaintenanceRunner({
-    postgresClient: client,
+    postgresClient: verifiedClient,
     launchConfiguration: flags,
     trustedServerAuthorization: authorization,
     now: () => new Date(CLOCK),
@@ -76,6 +85,50 @@ test('independent launch flags and trusted service role are mandatory before any
   }
   assert.equal(queries, 0);
   assert.equal(registrations, 0);
+});
+
+test('read-only privilege preflight blocks review before any due-user query or private RPC', async () => {
+  const calls = [];
+  const deniedDb = {
+    async query(sql) {
+      calls.push(sql);
+      return { rows: [{ ready: false }] };
+    }
+  };
+  const runner = make(deniedDb, { postgresClient: deniedDb });
+  assert.deepEqual(await runner.inspectConnectionReadiness(), {
+    status: 'maintenance_connection_unready'
+  });
+  assert.equal(
+    (await runner.reviewDue()).status,
+    'maintenance_connection_unready'
+  );
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((sql) => sql.includes('row_security_active(')));
+  assert.ok(
+    calls.every((sql) => sql.startsWith('select (has_schema_privilege('))
+  );
+  assert.ok(
+    calls.every(
+      (sql) => !sql.includes('from novelight_formal_private.scout_level_state')
+    )
+  );
+
+  const missingDb = { query: async () => ({ rows: [{ ready: 'true' }] }) };
+  assert.equal(
+    (await make(missingDb, { postgresClient: missingDb }).reviewDue()).status,
+    'maintenance_connection_unavailable'
+  );
+  const brokenDb = {
+    query: async () => {
+      throw Error('private DB password');
+    }
+  };
+  const failure = await make(brokenDb, {
+    postgresClient: brokenDb
+  }).reviewDue();
+  assert.equal(failure.status, 'maintenance_connection_unavailable');
+  assert.equal(JSON.stringify(failure).includes('password'), false);
 });
 
 test('bounded due list invokes installed private review once per verified user', async () => {

@@ -121,6 +121,9 @@ export function createUnregisteredFormalApplication({
   const maintenance =
     stagingTestReferenceAt !== undefined
       ? Object.freeze({
+          inspectConnectionReadiness: async () => ({
+            status: 'formal_maintenance_disabled'
+          }),
           reviewDue: async () => ({ status: 'formal_maintenance_disabled' }),
           bindExistingScheduler: () => ({
             status: 'formal_maintenance_disabled'
@@ -186,6 +189,8 @@ export function createUnregisteredFormalApplication({
     submitModeration: earnings.submitModeration,
     drainDueEarnings: earnings.drainDue,
     bindExistingScheduler: earnings.bindExistingScheduler,
+    inspectMaintenanceConnectionReadiness:
+      maintenance.inspectConnectionReadiness,
     reviewDueMaintenance: maintenance.reviewDue,
     bindExistingMaintenanceScheduler: maintenance.bindExistingScheduler
   });

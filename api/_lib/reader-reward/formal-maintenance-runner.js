@@ -9,6 +9,14 @@ const DUE_SQL =
   'order by coalesce(last_review_end_at,review_anchor_at),user_id limit $2::integer';
 const REVIEW_SQL =
   'select novelight_formal_private.review_scout_30_days($1::uuid,$2::timestamptz) as result';
+// Fail closed before selecting due users or calling the mutating review RPC.
+// In Staging, service_role has EXECUTE but lacks SELECT on scout_level_state.
+// This read-only check uses the actual injected PostgreSQL session role.
+const ACCESS_SQL =
+  "select (has_schema_privilege(current_user,'novelight_formal_private','USAGE') " +
+  "and has_table_privilege(current_user,'novelight_formal_private.scout_level_state','SELECT') " +
+  "and not row_security_active('novelight_formal_private.scout_level_state'::regclass) " +
+  "and has_function_privilege(current_user,'novelight_formal_private.review_scout_30_days(uuid,timestamptz)','EXECUTE')) as ready";
 
 function validLimit(value) {
   return Number.isSafeInteger(value) && value >= 1 && value <= MAX_PER_TICK;
@@ -31,6 +39,26 @@ export function createUnregisteredFormalMaintenanceRunner({
     trustedServerAuthorization?.serviceRoleVerified === true &&
     trustedServerAuthorization?.verifiedByTrustedServer === true;
   let running = false;
+
+  // Read-only preflight: no privilege changes and no review invocation.
+  async function inspectConnectionReadiness() {
+    try {
+      const result = await postgresClient.query(ACCESS_SQL);
+      if (
+        !Array.isArray(result?.rows) ||
+        result.rows.length !== 1 ||
+        typeof result.rows[0]?.ready !== 'boolean'
+      )
+        return Object.freeze({ status: 'maintenance_connection_unavailable' });
+      return Object.freeze({
+        status: result.rows[0].ready
+          ? 'maintenance_connection_ready'
+          : 'maintenance_connection_unready'
+      });
+    } catch {
+      return Object.freeze({ status: 'maintenance_connection_unavailable' });
+    }
+  }
 
   async function reviewDue({ limit = 10 } = {}) {
     const counts = { reviewed: 0, alreadyReviewed: 0, held: 0 };
@@ -58,6 +86,9 @@ export function createUnregisteredFormalMaintenanceRunner({
     running = true;
     try {
       const asOf = instant.toISOString();
+      const readiness = await inspectConnectionReadiness();
+      if (readiness.status !== 'maintenance_connection_ready')
+        return Object.freeze({ status: readiness.status, ...counts });
       const due = await postgresClient.query(DUE_SQL, [asOf, limit]);
       if (!Array.isArray(due?.rows) || due.rows.length > limit)
         return Object.freeze({ status: 'review_source_invalid', ...counts });
@@ -115,5 +146,9 @@ export function createUnregisteredFormalMaintenanceRunner({
     });
   }
 
-  return Object.freeze({ reviewDue, bindExistingScheduler });
+  return Object.freeze({
+    inspectConnectionReadiness,
+    reviewDue,
+    bindExistingScheduler
+  });
 }
