@@ -91,7 +91,7 @@ function fixture({
             {
               id: commentId,
               user_id: ownerId,
-              episode_id: 17,
+              episode_id: '17', // pg returns bigint (int8) as text
               body: commentBody,
               created_at: '2027-02-01T00:00:00Z',
               deleted_at: null,

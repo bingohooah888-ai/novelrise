@@ -10,16 +10,20 @@ const QUERIES = Object.freeze({
     'select id,user_id,episode_id,body from public.novel_comments where user_id=$1::uuid and id<>$2::uuid and created_at<=$3::timestamptz order by created_at desc,id desc limit 201'
 });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// pg returns PostgreSQL bigint (int8) columns as decimal strings by default.
+// Only exactly representable, positive episode IDs may enter JS moderation.
+function positiveSafeEpisodeId(value) {
+  const episodeId =
+    typeof value === 'string' && /^[1-9]\d*$/.test(value)
+      ? Number(value)
+      : value;
+  return Number.isSafeInteger(episodeId) && episodeId > 0 ? episodeId : null;
+}
 function hasQualifiedReadEvidence(row) {
   // A matching event ID alone is insufficient to confirm a paid read.
   if (!row || typeof row.reader_id !== 'string' || !UUID.test(row.reader_id))
     return false;
-  const episodeId =
-    typeof row.episode_id_snapshot === 'string' &&
-    /^[1-9]\d*$/.test(row.episode_id_snapshot)
-      ? Number(row.episode_id_snapshot)
-      : row.episode_id_snapshot;
-  if (!Number.isSafeInteger(episodeId) || episodeId < 1) return false;
+  if (positiveSafeEpisodeId(row.episode_id_snapshot) === null) return false;
   const qualifiedAt =
     row.qualified_at instanceof Date
       ? row.qualified_at.getTime()
@@ -60,10 +64,8 @@ export function createFormalCanonicalSourceReader({ postgresClient }) {
         if (rows.length !== 1 || rows[0].id !== eventId)
           return Object.freeze({ status: 'canonical_source_missing' });
         const comment = rows[0];
-        if (
-          !UUID.test(comment.user_id) ||
-          !Number.isSafeInteger(comment.episode_id)
-        ) {
+        const episodeId = positiveSafeEpisodeId(comment.episode_id);
+        if (!UUID.test(comment.user_id || '') || episodeId === null) {
           return Object.freeze({ status: 'canonical_source_invalid' });
         }
         const prior = await read(QUERIES.prior, [
@@ -73,12 +75,19 @@ export function createFormalCanonicalSourceReader({ postgresClient }) {
         ]);
         if (prior.length > 200)
           return Object.freeze({ status: 'history_limit_requires_review' });
+        const normalizedPrior = [];
+        for (const previous of prior) {
+          const previousEpisodeId = positiveSafeEpisodeId(previous?.episode_id);
+          if (previousEpisodeId === null)
+            return Object.freeze({ status: 'canonical_source_invalid' });
+          normalizedPrior.push({ ...previous, episode_id: previousEpisodeId });
+        }
         return Object.freeze({
           status: 'canonical_source_verified',
           eventType,
           eventId,
-          verifiedComment: comment,
-          verifiedPriorUserComments: prior
+          verifiedComment: { ...comment, episode_id: episodeId },
+          verifiedPriorUserComments: normalizedPrior
         });
       }
       return Object.freeze({ status: 'unsupported_source_event' });

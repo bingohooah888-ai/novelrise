@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createFormalCanonicalSourceReader } from '../api/_lib/reader-reward/formal-earning-source-reader.js';
+import { reviewFormalEpisodeComment } from '../api/_lib/reader-reward/formal-comment-eligibility.js';
 import { createFormalEarningInternalHandler } from '../api/_lib/reader-reward/formal-earning-server-connection.js';
 import {
   deliverFormalRewardBatch,
@@ -93,6 +94,57 @@ test('read comment and previous same-user comments only from canonical server DB
     /from public\.novel_comments where user_id=\$1::uuid/
   );
 });
+test('PostgreSQL bigint comment episode IDs support canonical moderation', async () => {
+  const comment = {
+    id, user_id: user, episode_id: '22', body: '結末が良かった',
+    deleted_at: null, author_hidden_at: null, created_at: new Date(time)
+  };
+  const previous = {
+    id: '00000000-0000-4000-8000-000000000093',
+    user_id: user, episode_id: '21', body: '以前の感想'
+  };
+  let queries = 0;
+  const reader = createFormalCanonicalSourceReader({
+    postgresClient: { query: async () => ({ rows: ++queries === 1 ? [comment] : [previous] }) }
+  });
+  const result = await reader.load('novel_episode_comment_reviewed', id);
+  assert.equal(result.status, 'canonical_source_verified');
+  assert.equal(result.verifiedComment.episode_id, 22);
+  assert.equal(result.verifiedPriorUserComments[0].episode_id, 21);
+  assert.equal(
+    reviewFormalEpisodeComment({
+      comment: result.verifiedComment,
+      priorUserComments: result.verifiedPriorUserComments,
+      trustedSourceVerified: true,
+      reviewerDecision: 'eligible',
+      reviewerRule: 'human-v1'
+    }).status,
+    'reviewed_eligible'
+  );
+});
+
+test('malformed or unsafe PostgreSQL bigint episode IDs fail closed', async () => {
+  for (const episodeId of ['9007199254740993', '0', '-1', '02', 'bad', null]) {
+    let queries = 0;
+    const reader = createFormalCanonicalSourceReader({
+      postgresClient: {
+        query: async () => {
+          queries++;
+          return { rows: [{
+            id, user_id: user, episode_id: episodeId, body: '内容',
+            created_at: new Date(time), deleted_at: null, author_hidden_at: null
+          }] };
+        }
+      }
+    });
+    assert.equal(
+      (await reader.load('novel_episode_comment_reviewed', id)).status,
+      'canonical_source_invalid'
+    );
+    assert.equal(queries, 1, 'invalid event must not query history');
+  }
+});
+
 test('canonical source reader rejects absent rows and history truncation', async () => {
   const absent = createFormalCanonicalSourceReader({
     postgresClient: { query: async () => ({ rows: [] }) }
