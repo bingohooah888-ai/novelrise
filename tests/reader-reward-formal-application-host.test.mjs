@@ -188,5 +188,11 @@ test('composition requires injected trusted pool and Auth; never registers a rou
   assert.equal(typeof application.readerHttp, 'function');
   assert.equal(typeof application.adminHttp, 'function');
   assert.equal(typeof application.bindExistingScheduler, 'function');
+  assert.equal(typeof application.bindExistingMaintenanceScheduler, 'function');
+  assert.equal(typeof application.reviewDueMaintenance, 'function');
+  assert.equal(
+    application.bindExistingMaintenanceScheduler({}).status,
+    'formal_maintenance_disabled'
+  );
   assert.equal(Object.hasOwn(application, 'registerApiRoute'), false);
 });

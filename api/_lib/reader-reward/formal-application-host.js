@@ -4,6 +4,7 @@
 // This module creates no connection, migration, job, endpoint, or feature flag.
 import { createUnregisteredFormalPostgresRewardHost } from './formal-usage-host.js';
 import { createFormalEarningRunner } from './formal-earning-runner.js';
+import { createUnregisteredFormalMaintenanceRunner } from './formal-maintenance-runner.js';
 import { createUnregisteredFormalOpeningSync } from './formal-opening-sync.js';
 import { createUnregisteredFormalNewReaderOnboarding } from './formal-new-reader-onboarding.js';
 import { createUnregisteredFormalApiDispatch } from './formal-api-dispatch.js';
@@ -114,6 +115,23 @@ export function createUnregisteredFormalApplication({
           verifyModeratorReceipt
         });
 
+  // Do not allow the single-reader Staging proof to bind a maintenance writer.
+  // Normal formal mode is still disabled until two independent review flags
+  // and the trusted-server cutover gate are approved by a future host.
+  const maintenance =
+    stagingTestReferenceAt !== undefined
+      ? Object.freeze({
+          reviewDue: async () => ({ status: 'formal_maintenance_disabled' }),
+          bindExistingScheduler: () => ({
+            status: 'formal_maintenance_disabled'
+          })
+        })
+      : createUnregisteredFormalMaintenanceRunner({
+          postgresClient: pool,
+          launchConfiguration: releaseConfiguration,
+          trustedServerAuthorization
+        });
+
   const opening =
     stagingTestReferenceAt !== undefined
       ? Object.freeze({
@@ -167,6 +185,8 @@ export function createUnregisteredFormalApplication({
     getReaderSnapshot: usage.service.getReaderSnapshot,
     submitModeration: earnings.submitModeration,
     drainDueEarnings: earnings.drainDue,
-    bindExistingScheduler: earnings.bindExistingScheduler
+    bindExistingScheduler: earnings.bindExistingScheduler,
+    reviewDueMaintenance: maintenance.reviewDue,
+    bindExistingMaintenanceScheduler: maintenance.bindExistingScheduler
   });
 }
