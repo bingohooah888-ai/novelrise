@@ -34,7 +34,6 @@ test('relay is owner-only and exact-head bound', () => {
   assert.match(workflow, /approval challenge does not match the exact PR head/);
 });
 
-
 test('relay grants CI-only least-privilege permissions', () => {
   assert.match(workflow, /actions: write/);
   assert.match(workflow, /contents: read/);
@@ -52,7 +51,6 @@ test('relay checks out trusted main without credentials', () => {
   assert.match(workflow, /ref: main/);
 });
 
-
 test('owner approval must not release Draft or mutate PR review state', () => {
   assert.match(workflow, /Validate owner approval and re-run CI only/);
   assert.doesNotMatch(workflow, /Mark approved draft PR ready for review/);
@@ -61,7 +59,6 @@ test('owner approval must not release Draft or mutate PR review state', () => {
   assert.doesNotMatch(workflow, /gh pr ready/);
   assert.doesNotMatch(workflow, /pr-ready-mutation\.json/);
 });
-
 
 test('owner approval retains exact PR identity and fails closed on mismatches', () => {
   assert.match(workflow, /Validate exact PR head and one-time challenge/);
@@ -77,7 +74,6 @@ test('owner approval retains exact PR identity and fails closed on mismatches', 
   );
   assert.doesNotMatch(workflow, /\.draft == false/);
 });
-
 
 test('CI rerun follows exact owner and SHA validation without Draft transition', () => {
   const approvalIndex = workflow.indexOf(
@@ -98,7 +94,6 @@ test('CI rerun follows exact owner and SHA validation without Draft transition',
   assert.match(workflow, /\.head_sha == \$sha/);
   assert.match(workflow, /NOVELIGHT CI completed with conclusion \$conclusion/);
 });
-
 
 test('owner approval never queues or performs a merge', () => {
   assert.doesNotMatch(workflow, /gh pr merge/);
