@@ -19,7 +19,6 @@ jobs:
   dispatch-readiness:
     name: Dispatch Production Readiness after guarded high-risk merge
     if: >-
-      github.event.workflow_run.conclusion == 'success' ||
       github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -43,7 +42,12 @@ jobs:
               "repos/$GITHUB_REPOSITORY/git/ref/heads/main" \
               --jq '.object.sha'
           )"
-          recovery_reason='successful high-risk approval relay'
+          # A successful owner approval is CI-only, never a Production Readiness trigger.
+          if [ "$RELAY_CONCLUSION" != 'failure' ]; then
+            echo 'Owner approval is CI-only; Production readiness requires a separate merge.'
+            exit 0
+          fi
+          recovery_reason='verified merged high-risk PR after failed relay'
 
           if [ "$RELAY_CONCLUSION" = 'failure' ]; then
             gh api \
