@@ -71,7 +71,10 @@ test('owner approval retains exact PR identity and fails closed on mismatches', 
   );
   assert.match(workflow, /approval PR number does not match this pull request/);
   assert.match(workflow, /approval challenge does not match the exact PR head/);
-  assert.match(workflow, /PR is closed, targets another base, or head SHA changed/);
+  assert.match(
+    workflow,
+    /PR is closed, targets another base, or head SHA changed/
+  );
   assert.doesNotMatch(workflow, /\.draft == false/);
 });
 
@@ -83,7 +86,9 @@ test('CI rerun follows exact owner and SHA validation without Draft transition',
   const rerunIndex = workflow.indexOf(
     'Re-run failed NOVELIGHT CI automatically'
   );
-  const waitIndex = workflow.indexOf('Wait for approved-head NOVELIGHT CI success');
+  const waitIndex = workflow.indexOf(
+    'Wait for approved-head NOVELIGHT CI success'
+  );
 
   assert.ok(approvalIndex >= 0);
   assert.ok(rerunIndex > approvalIndex);
