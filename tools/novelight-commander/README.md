@@ -185,3 +185,32 @@ NLOはOpenAI Secure MCP TunnelとGitHub Bridgeの複数経路を持ちます。�
 ## NOVELIGHT引継ぎ・ゲート読込
 
 `novelight_context_bundle` でMASTERと主要ゲート文書を一括読込できます。`novelight_handoff_report` ではbranch / HEAD / origin/main / working tree / recent commits / 任意PR状態を1回で取得し、新しいチャットへの引継ぎ材料を作れます。
+
+## AI Phase ② Gate B: DPAPI synthetic handoff (offline only, 2026-11-06)
+
+The `scripts/nlo-ai-020705-dpapi-synthetic-handoff.mjs` adapter is
+registered in `.novelight/nlo-capabilities.json` as **Tier C / testing**.
+It invokes only the SHA-256-pinned
+`tools/novelight-commander/gateb-dpapi-synthetic-handoff.ps1`.
+
+- Opt-in is exactly `{mode: 'OFFLINE_SYNTHETIC_ONLY'}`. Any additional key,
+  PAT, URL, command, or live mode is rejected. There is **no live entrypoint**.
+- The native script creates a random **synthetic** marker, applies an explicit
+  current-Windows-user/SYSTEM directory ACL, encrypts with the existing
+  Windows-user-bound `ConvertFrom-SecureString` DPAPI pattern, decrypts
+  locally, rejects a corrupted ciphertext, and removes its temporary folder.
+  It reports success **only after cleanup**, without logging credentials.
+- Node receives a single fixed success/deny marker. Neither script calls
+  GitHub, Supabase, Vercel, Cloudflare, network APIs, clipboard, nor prompt.
+- Test from repository root:
+  `node --test tests/nlo-ai-020705-dpapi-synthetic-handoff.test.mjs`.
+- **Not an authorization or trust proof:** DPAPI user binding does not
+  prevent another process running as the same OS user from using that
+  user's keys. Existing NLO GitHub bridge ACL inherits permissions and
+  allows owner FullControl; a durable approval ledger and an independently
+  protected host/witness still need separate design, actual attestation,
+  review, and OWNER approval. Never issue or store a live Supabase PAT
+  through this mock.
+
+Gate B remains **NO-GO**. No scoped PAT, credential read, GitHub Issue write,
+Supabase/Vercel/Cloudflare mutation, Preview or Production action is permitted.
