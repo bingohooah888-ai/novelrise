@@ -4,7 +4,10 @@ import test from 'node:test';
 
 import productionEnvironmentHandler from '../api/public-production-environment.js';
 
-const source = readFileSync(new URL('../novelight-client.js', import.meta.url), 'utf8');
+const source = readFileSync(
+  new URL('../novelight-client.js', import.meta.url),
+  'utf8'
+);
 const start = source.indexOf('  let verifiedProductionDeploymentHost = null;');
 const end = source.indexOf('  function validateStagingBrowserConfig', start);
 
