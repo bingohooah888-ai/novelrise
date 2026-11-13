@@ -74,15 +74,18 @@ test('Vercel Preview rewrites the follow-list client to Staging only', () => {
   assert.equal(runtime.calls[0][0], staging);
   assert.equal(runtime.calls[0][1], 'sb_publishable_testonly');
   assert.equal(runtime.calls[0][2].auth.persistSession, true);
-  assert.equal(runtime.requests.length, 1);
+  assert.equal(runtime.requests.length, 2);
   assert.equal(runtime.requests[0].method, 'GET');
-  assert.equal(runtime.requests[0].path, '/api/staging-browser-config');
+  assert.equal(runtime.requests[0].path, '/api/public-production-environment');
   assert.equal(runtime.requests[0].async, false);
+  assert.equal(runtime.requests[1].method, 'GET');
+  assert.equal(runtime.requests[1].path, '/api/staging-browser-config');
+  assert.equal(runtime.requests[1].async, false);
 
   // Subsequent calls reuse the verified Staging config, not the Production URL.
   runtime.window.supabase.createClient(prodUrl, 'sb_publishable_other');
   assert.equal(runtime.calls[1][0], staging);
-  assert.equal(runtime.requests.length, 1);
+  assert.equal(runtime.requests.length, 2);
 });
 
 test('invalid/missing Preview config fails closed before creating any client', () => {
