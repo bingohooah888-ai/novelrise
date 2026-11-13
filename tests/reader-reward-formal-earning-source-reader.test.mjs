@@ -96,16 +96,25 @@ test('read comment and previous same-user comments only from canonical server DB
 });
 test('PostgreSQL bigint comment episode IDs support canonical moderation', async () => {
   const comment = {
-    id, user_id: user, episode_id: '22', body: '結末が良かった',
-    deleted_at: null, author_hidden_at: null, created_at: new Date(time)
+    id,
+    user_id: user,
+    episode_id: '22',
+    body: '結末が良かった',
+    deleted_at: null,
+    author_hidden_at: null,
+    created_at: new Date(time)
   };
   const previous = {
     id: '00000000-0000-4000-8000-000000000093',
-    user_id: user, episode_id: '21', body: '以前の感想'
+    user_id: user,
+    episode_id: '21',
+    body: '以前の感想'
   };
   let queries = 0;
   const reader = createFormalCanonicalSourceReader({
-    postgresClient: { query: async () => ({ rows: ++queries === 1 ? [comment] : [previous] }) }
+    postgresClient: {
+      query: async () => ({ rows: ++queries === 1 ? [comment] : [previous] })
+    }
   });
   const result = await reader.load('novel_episode_comment_reviewed', id);
   assert.equal(result.status, 'canonical_source_verified');
@@ -130,10 +139,19 @@ test('malformed or unsafe PostgreSQL bigint episode IDs fail closed', async () =
       postgresClient: {
         query: async () => {
           queries++;
-          return { rows: [{
-            id, user_id: user, episode_id: episodeId, body: '内容',
-            created_at: new Date(time), deleted_at: null, author_hidden_at: null
-          }] };
+          return {
+            rows: [
+              {
+                id,
+                user_id: user,
+                episode_id: episodeId,
+                body: '内容',
+                created_at: new Date(time),
+                deleted_at: null,
+                author_hidden_at: null
+              }
+            ]
+          };
         }
       }
     });
