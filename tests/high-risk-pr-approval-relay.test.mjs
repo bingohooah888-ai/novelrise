@@ -34,11 +34,14 @@ test('relay is owner-only and exact-head bound', () => {
   assert.match(workflow, /approval challenge does not match the exact PR head/);
 });
 
-test('relay grants required ready-transition permissions', () => {
+
+test('relay grants CI-only least-privilege permissions', () => {
   assert.match(workflow, /actions: write/);
-  assert.match(workflow, /contents: write/);
+  assert.match(workflow, /contents: read/);
   assert.match(workflow, /issues: read/);
-  assert.match(workflow, /pull-requests: write/);
+  assert.match(workflow, /pull-requests: read/);
+  assert.doesNotMatch(workflow, /contents: write/);
+  assert.doesNotMatch(workflow, /pull-requests: write/);
   assert.match(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
   assert.doesNotMatch(workflow, /secrets\.[A-Z0-9_]*TOKEN/);
 });
@@ -49,76 +52,67 @@ test('relay checks out trusted main without credentials', () => {
   assert.match(workflow, /ref: main/);
 });
 
-test('ready transition validates explicit GraphQL result', () => {
-  assert.match(workflow, /pr_node_id=.*\.node_id/);
-  assert.match(workflow, /graphql_query=/);
-  assert.match(workflow, /gh api graphql/);
-  assert.match(workflow, /markPullRequestReadyForReview/);
-  assert.match(workflow, /pullRequestId:/);
-  assert.match(workflow, /pullRequest \{ number isDraft headRefOid \}/);
-  assert.match(
-    workflow,
-    /\.data\.markPullRequestReadyForReview\.pullRequest\.number == \$pr/
-  );
-  assert.match(
-    workflow,
-    /\.data\.markPullRequestReadyForReview\.pullRequest\.isDraft == false/
-  );
-  assert.match(
-    workflow,
-    /\.data\.markPullRequestReadyForReview\.pullRequest\.headRefOid == \$sha/
-  );
+
+test('owner approval must not release Draft or mutate PR review state', () => {
+  assert.match(workflow, /Validate owner approval and re-run CI only/);
+  assert.doesNotMatch(workflow, /Mark approved draft PR ready for review/);
+  assert.doesNotMatch(workflow, /markPullRequestReadyForReview/);
+  assert.doesNotMatch(workflow, /gh api graphql/);
   assert.doesNotMatch(workflow, /gh pr ready/);
+  assert.doesNotMatch(workflow, /pr-ready-mutation\.json/);
 });
 
-test('ready transition re-fetches and fails closed', () => {
-  assert.match(workflow, /pr-ready-after\.json/);
-  assert.match(workflow, /\.head\.sha == \$sha and \.draft == false/);
+
+test('owner approval retains exact PR identity and fails closed on mismatches', () => {
+  assert.match(workflow, /Validate exact PR head and one-time challenge/);
   assert.match(
     workflow,
-    /ready-for-review transition failed or PR head changed/
+    /\.state == "open" and \.base\.ref == "main" and \.head\.repo\.full_name == \$repo and \.head\.sha == \$sha/
   );
-  assert.match(
-    workflow,
-    /ready-for-review mutation returned an unexpected PR state/
-  );
+  assert.match(workflow, /approval PR number does not match this pull request/);
+  assert.match(workflow, /approval challenge does not match the exact PR head/);
+  assert.match(workflow, /PR is closed, targets another base, or head SHA changed/);
+  assert.doesNotMatch(workflow, /\.draft == false/);
 });
 
-test('CI rerun follows ready transition', () => {
-  const readyIndex = workflow.indexOf(
-    'Mark approved draft PR ready for review'
+
+test('CI rerun follows exact owner and SHA validation without Draft transition', () => {
+  const approvalIndex = workflow.indexOf(
+    'Validate exact PR head and one-time challenge'
   );
   const rerunIndex = workflow.indexOf(
     'Re-run failed NOVELIGHT CI automatically'
   );
+  const waitIndex = workflow.indexOf('Wait for approved-head NOVELIGHT CI success');
 
-  assert.notEqual(readyIndex, -1);
-  assert.notEqual(rerunIndex, -1);
-  assert.ok(readyIndex < rerunIndex);
+  assert.ok(approvalIndex >= 0);
+  assert.ok(rerunIndex > approvalIndex);
+  assert.ok(waitIndex > rerunIndex);
   assert.match(workflow, /rerun-failed-jobs/);
+  assert.match(workflow, /approved-ci\.json/);
+  assert.match(workflow, /\.head_sha == \$sha/);
+  assert.match(workflow, /NOVELIGHT CI completed with conclusion \$conclusion/);
 });
 
-test('final merge tolerates only an exact approved queued auto-merge race', () => {
-  assert.match(workflow, /if gh pr merge "\$PR_NUMBER"/);
-  assert.match(workflow, /pr-after-merge-attempt\.json/);
-  assert.match(workflow, /\.merged == true and \.merged_at != null/);
-  assert.match(
-    workflow,
-    /\.head\.repo\.full_name == \$repo and \.head\.sha == \$sha/
-  );
-  assert.match(workflow, /\.merge_commit_sha/);
-  assert.match(workflow, /reported merge commit could not be verified/);
-  assert.match(
-    workflow,
-    /Queued auto-merge completed exact approved PR #\$PR_NUMBER at head \$HEAD_SHA/
-  );
-  assert.match(
-    workflow,
-    /merge command failed and the exact approved PR is not confirmed merged/
-  );
+
+test('owner approval never queues or performs a merge', () => {
+  assert.doesNotMatch(workflow, /gh pr merge/);
+  assert.doesNotMatch(workflow, /Queue squash auto-merge/);
+  assert.doesNotMatch(workflow, /Finalize guarded squash merge/);
+  assert.doesNotMatch(workflow, /--match-head-commit/);
+  assert.doesNotMatch(workflow, /pr-after-merge-attempt\.json/);
+  assert.match(workflow, /Wait for approved-head NOVELIGHT CI success/);
 });
 
 test('readiness bridge recovers only a merged exact-owner-approved current main', () => {
+  assert.doesNotMatch(
+    readinessBridgeWorkflow,
+    /github\.event\.workflow_run\.conclusion == 'success'/
+  );
+  assert.match(
+    readinessBridgeWorkflow,
+    /if \[ "\$RELAY_CONCLUSION" != 'failure' \]; then/
+  );
   assert.match(
     readinessBridgeWorkflow,
     /github\.event\.workflow_run\.conclusion == 'failure'/
