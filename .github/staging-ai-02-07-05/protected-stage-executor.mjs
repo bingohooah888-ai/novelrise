@@ -38,6 +38,8 @@ export function create020705ProtectedStageExecutor({
   authAdmin,
   guardedProvider,
   request,
+  invokeModel,
+  reviewResponse,
   readComments,
   writeComment,
   disableTrialEnvironment,
@@ -210,6 +212,8 @@ export function create020705ProtectedStageExecutor({
         now,
         guardedProvider,
         request,
+        invokeModel,
+        reviewResponse,
         stop: callbacks.stop,
         cleanup: callbacks.cleanup,
         finalCensus: callbacks.finalCensus
