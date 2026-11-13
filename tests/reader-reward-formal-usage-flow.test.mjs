@@ -1,0 +1,958 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createFormalRewardUsageService } from '../api/_lib/reader-reward/formal-usage-service.js';
+import { createOfflineFormalUsageRepository } from '../api/_lib/reader-reward/formal-usage-offline-repository.js';
+import { createFormalUsageHttpHandlers } from '../api/_lib/reader-reward/formal-usage-http.js';
+await import('../assets/formal-scout-reward-client.js');
+
+const first = '00000000-0000-4000-8000-000000000301';
+const second = '00000000-0000-4000-8000-000000000302';
+const adminId = '00000000-0000-4000-8000-000000000303';
+const op1 = '00000000-0000-4000-8000-000000000311';
+const op2 = '00000000-0000-4000-8000-000000000312';
+const op3 = '00000000-0000-4000-8000-000000000313';
+const approval = Object.freeze({
+  budget: true,
+  eligibility: true,
+  risk: true,
+  channel: true,
+  aiPrice: true
+});
+const catalog = [
+  { id: 'analysis', name: '作品分析', pricePoints: 120, approved: true }
+];
+function fixture({
+  enabled = true,
+  providerReady = true,
+  verifyReceipt = true,
+  verifyNonFulfillment = true,
+  verifyGiftRefund = true,
+  verifyAiRefund = true,
+  aiResult = { status: 'succeeded', costPoints: 120 },
+  exchangeBudget = 100000,
+  budgetApproved = true,
+  aiPricePoints = 120
+} = {}) {
+  const repository = createOfflineFormalUsageRepository({
+    readers: [
+      {
+        userId: first,
+        availablePoints: 50000,
+        exchangeEligiblePoints: 32000,
+        account: {
+          level: 75,
+          progressXp: 33,
+          requiredXp: 400,
+          earnedXpInPeriod: 155
+        }
+      },
+      { userId: second, availablePoints: 32000, exchangeEligiblePoints: 32000 }
+    ],
+    budgets: {
+      external_exchange: {
+        scopeId: 'offline-gift',
+        limitPoints: exchangeBudget
+      },
+      ai_direct_use: { scopeId: 'offline-ai', limitPoints: 100000 }
+    }
+  });
+  let aiCalls = 0;
+  let verificationCalls = 0;
+  const service = createFormalRewardUsageService({
+    repository,
+    releaseConfiguration: {
+      formalRewardsEnabled: enabled,
+      productionCutoverApproved: enabled
+    },
+    trustedServerAuthorization: {
+      serviceRoleVerified: true,
+      verifiedByTrustedServer: true
+    },
+    catalog: catalog.map((feature) => ({
+      ...feature,
+      pricePoints: aiPricePoints
+    })),
+    policy: {
+      giftProviderReady: providerReady,
+      verifyExchange: async () => ({ ...approval, budget: budgetApproved }),
+      verifyAi: async () => ({ ...approval, budget: budgetApproved })
+    },
+    aiExecutor: async () => {
+      aiCalls++;
+      if (aiResult instanceof Error) throw aiResult;
+      return aiResult;
+    },
+    verifyGiftReceipt: async () => {
+      verificationCalls++;
+      return verifyReceipt;
+    },
+    verifyGiftNonFulfillment: async () => {
+      verificationCalls++;
+      return verifyNonFulfillment;
+    },
+    verifyGiftRefund: async () => {
+      verificationCalls++;
+      return verifyGiftRefund;
+    },
+    verifyAiRefund: async () => {
+      verificationCalls++;
+      return verifyAiRefund;
+    }
+  });
+  return {
+    service,
+    repository,
+    get aiCalls() {
+      return aiCalls;
+    },
+    get verificationCalls() {
+      return verificationCalls;
+    }
+  };
+}
+
+test('no monthly business budget permits reservations while enforcing duplicate claims', async () => {
+  const f = fixture({ exchangeBudget: null, budgetApproved: false });
+  const request = (userId, operationId) =>
+    f.service.requestExchange({ userId, operationId, amountPoints: 30000 });
+  assert.equal((await request(first, op1)).status, 'request_received');
+  assert.equal((await request(second, op2)).status, 'request_received');
+  assert.equal((await request(first, op1)).status, 'already_processed');
+  assert.equal((await f.service.listPendingExchanges()).items.length, 2);
+  assert.equal(
+    (await f.service.getReaderSnapshot(first)).wallet.availablePoints,
+    20000
+  );
+  assert.equal(
+    (await f.service.getReaderSnapshot(second)).wallet.availablePoints,
+    2000
+  );
+});
+test('reader exchange: 30000pt reserve reduces both balances and is idempotent', async () => {
+  const f = fixture();
+  assert.equal(
+    (
+      await f.service.requestExchange({
+        userId: first,
+        operationId: op1,
+        amountPoints: 29999
+      })
+    ).status,
+    'below_exchange_minimum'
+  );
+  assert.equal(
+    (
+      await f.service.requestExchange({
+        userId: first,
+        operationId: op1,
+        amountPoints: 30000
+      })
+    ).status,
+    'request_received'
+  );
+  const state = await f.service.getReaderSnapshot(first);
+  assert.deepEqual(state.wallet, {
+    availablePoints: 20000,
+    exchangeEligiblePoints: 2000,
+    heldPoints: 30000
+  });
+  assert.equal(state.history[0].points, -30000);
+  assert.equal(state.history[0].status, 'pending');
+  const again = await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  assert.equal(again.status, 'already_processed');
+  assert.deepEqual(
+    (await f.service.getReaderSnapshot(first)).wallet,
+    state.wallet
+  );
+  assert.equal((await f.service.listPendingExchanges()).items.length, 1);
+});
+
+test('owner-only confirmed provider receipt commits a reserved gift without any real provider', async () => {
+  const f = fixture();
+  await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  assert.equal(
+    (
+      await f.service.resolveExchange({
+        operationId: op1,
+        action: 'confirm_fulfilled',
+        reviewerId: adminId
+      })
+    ).status,
+    'committed'
+  );
+  assert.equal((await f.service.listPendingExchanges()).items.length, 0);
+  const s = await f.service.getReaderSnapshot(first);
+  assert.equal(s.wallet.heldPoints, 0);
+  assert.equal(s.wallet.availablePoints, 20000);
+  assert.equal(s.wallet.exchangeEligiblePoints, 2000);
+  assert.equal(s.history[0].status, 'confirmed');
+  assert.equal(
+    (
+      await f.service.resolveExchange({
+        operationId: op1,
+        action: 'confirm_fulfilled',
+        reviewerId: adminId
+      })
+    ).status,
+    'already_processed'
+  );
+});
+
+test('failed or unverified gift proof holds a request; confirmed non-fulfillment releases it', async () => {
+  const f = fixture({ verifyReceipt: false });
+  await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  assert.equal(
+    (
+      await f.service.resolveExchange({
+        operationId: op1,
+        action: 'confirm_fulfilled',
+        reviewerId: adminId
+      })
+    ).status,
+    'fulfillment_evidence_missing'
+  );
+  assert.equal((await f.service.listPendingExchanges()).items.length, 1);
+  assert.equal(
+    (
+      await f.service.resolveExchange({
+        operationId: op1,
+        action: 'release_unfulfilled',
+        reviewerId: adminId
+      })
+    ).status,
+    'released'
+  );
+  const restored = await f.service.getReaderSnapshot(first);
+  assert.equal(restored.wallet.availablePoints, 50000);
+  assert.equal(restored.wallet.exchangeEligiblePoints, 32000);
+  assert.equal(restored.history[0].status, 'cancelled');
+});
+
+test('AI is charged directly in approved Point units below gift minimum; no separate AI Credit', async () => {
+  const f = fixture();
+  const s = await f.service.requestAiUse({
+    userId: first,
+    operationId: op2,
+    featureId: 'analysis'
+  });
+  assert.equal(s.status, 'started');
+  assert.equal(f.aiCalls, 1);
+  const current = await f.service.getReaderSnapshot(first);
+  assert.equal(current.wallet.availablePoints, 49880);
+  assert.equal(current.wallet.exchangeEligiblePoints, 32000);
+  assert.equal(current.history[0].points, -120);
+  assert.equal(current.history[0].status, 'confirmed');
+  assert.equal(
+    (
+      await f.service.requestAiUse({
+        userId: first,
+        operationId: op2,
+        featureId: 'analysis'
+      })
+    ).status,
+    'already_processed'
+  );
+  assert.equal(f.aiCalls, 1);
+  assert.equal('aiCredits' in current.wallet, false);
+});
+
+test('AI spends beta Points first and only the shortfall uses exchange-eligible formal Points', async () => {
+  const f = fixture({
+    aiPricePoints: 19000,
+    aiResult: { status: 'succeeded', costPoints: 19000 }
+  });
+  const firstUse = await f.service.requestAiUse({
+    userId: first,
+    operationId: op2,
+    featureId: 'analysis'
+  });
+  assert.equal(firstUse.status, 'started');
+  const after = await f.service.getReaderSnapshot(first);
+  // 18,000 beta Points are spent; the 1,000 Point shortfall comes from formal.
+  assert.equal(after.wallet.availablePoints, 31000);
+  assert.equal(after.wallet.exchangeEligiblePoints, 31000);
+  assert.equal(after.history[0].points, -19000);
+  const duplicate = await f.service.requestAiUse({
+    userId: first,
+    operationId: op2,
+    featureId: 'analysis'
+  });
+  assert.equal(duplicate.status, 'already_processed');
+  assert.equal(f.aiCalls, 1);
+  // Formal Point availability is still enough for a 30,000 Point exchange.
+  const exchange = await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  assert.equal(exchange.status, 'request_received');
+  const remaining = await f.service.getReaderSnapshot(first);
+  assert.equal(remaining.wallet.exchangeEligiblePoints, 1000);
+});
+test('AI explicit no-execution refunds reservation; unknown outcome stays held for reconciliation', async () => {
+  const failed = fixture({ aiResult: { status: 'not_executed' } });
+  assert.equal(
+    (
+      await failed.service.requestAiUse({
+        userId: first,
+        operationId: op2,
+        featureId: 'analysis'
+      })
+    ).status,
+    'released'
+  );
+  assert.equal(
+    (await failed.service.getReaderSnapshot(first)).wallet.availablePoints,
+    50000
+  );
+  const unknown = fixture({ aiResult: new Error('synthetic interruption') });
+  assert.equal(
+    (
+      await unknown.service.requestAiUse({
+        userId: first,
+        operationId: op2,
+        featureId: 'analysis'
+      })
+    ).status,
+    'ai_execution_uncertain_held'
+  );
+  assert.equal(
+    (await unknown.service.getReaderSnapshot(first)).wallet.heldPoints,
+    120
+  );
+  assert.equal(
+    (
+      await unknown.service.requestAiUse({
+        userId: first,
+        operationId: op2,
+        featureId: 'analysis'
+      })
+    ).status,
+    'already_processed'
+  );
+  assert.equal(unknown.aiCalls, 1);
+});
+
+test('shared wallet blocks an exchange after AI allocation consumes too many formal Points', async () => {
+  const f = fixture();
+  await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  const used = await f.service.requestAiUse({
+    userId: first,
+    operationId: op2,
+    featureId: 'analysis'
+  });
+  assert.equal(used.status, 'started');
+  assert.equal(
+    (
+      await f.service.requestExchange({
+        userId: first,
+        operationId: op3,
+        amountPoints: 30000
+      })
+    ).status,
+    'insufficient_exchange_eligible_points'
+  );
+});
+
+test('two readers share one globally serialized budget without oversubscription', async () => {
+  const f = fixture({ exchangeBudget: 30000 });
+  const outcomes = await Promise.all([
+    f.service.requestExchange({
+      userId: first,
+      operationId: op1,
+      amountPoints: 30000
+    }),
+    f.service.requestExchange({
+      userId: second,
+      operationId: op2,
+      amountPoints: 30000
+    })
+  ]);
+  assert.deepEqual(outcomes.map((o) => o.status).sort(), [
+    'budget_exceeded',
+    'request_received'
+  ]);
+  assert.equal((await f.service.listPendingExchanges()).items.length, 1);
+});
+
+test('formal release disabled, no gift provider and no AI price do not reserve or invoke a provider', async () => {
+  const off = fixture({ enabled: false });
+  assert.equal(
+    (
+      await off.service.requestExchange({
+        userId: first,
+        operationId: op1,
+        amountPoints: 30000
+      })
+    ).status,
+    'formal_use_disabled'
+  );
+  assert.equal(
+    (
+      await off.service.requestAiUse({
+        userId: first,
+        operationId: op2,
+        featureId: 'analysis'
+      })
+    ).status,
+    'formal_use_disabled'
+  );
+  const noProvider = fixture({ providerReady: false });
+  assert.equal(
+    (
+      await noProvider.service.requestExchange({
+        userId: first,
+        operationId: op1,
+        amountPoints: 30000
+      })
+    ).status,
+    'gift_provider_unavailable'
+  );
+  assert.equal(
+    (
+      await noProvider.service.requestAiUse({
+        userId: first,
+        operationId: op2,
+        featureId: 'unknown'
+      })
+    ).status,
+    'ai_price_or_feature_unapproved'
+  );
+  assert.equal(noProvider.aiCalls, 0);
+});
+
+function makeHttp(f, getAdminRewardOverview) {
+  const supabase = {
+    auth: {
+      async getUser(token) {
+        const id =
+          token === 'user-1'
+            ? first
+            : token === 'user-2'
+              ? second
+              : token === 'admin'
+                ? adminId
+                : null;
+        return {
+          data: { user: id ? { id, email: 'verified@example.test' } : null },
+          error: id ? null : new Error('Unauthorized')
+        };
+      }
+    }
+  };
+  return createFormalUsageHttpHandlers({
+    supabase,
+    service: f.service,
+    env: { NOVELIGHT_ADMIN_USER_IDS: adminId },
+    getAdminRewardOverview
+  });
+}
+function httpReq(token, method = 'GET', body, origin = 'https://novelight.jp') {
+  return {
+    method,
+    body,
+    headers: {
+      authorization: 'Bearer ' + token,
+      origin,
+      host: 'novelight.jp',
+      'sec-fetch-site': 'same-origin',
+      'x-forwarded-proto': 'https'
+    }
+  };
+}
+function res() {
+  return {
+    statusCode: 200,
+    headers: {},
+    result: null,
+    setHeader(key, value) {
+      this.headers[key] = value;
+    },
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(result) {
+      this.result = result;
+      return this;
+    }
+  };
+}
+async function invoke(handler, req) {
+  const reply = res();
+  await handler(req, reply);
+  return reply;
+}
+
+test('reader HTTP authenticates source identity and forbids client wallet/user forgery', async () => {
+  const f = fixture();
+  const api = makeHttp(f);
+  const get = await invoke(api.reader, httpReq('user-1'));
+  assert.equal(get.statusCode, 200);
+  assert.equal(get.result.wallet.availablePoints, 50000);
+  const forbidden = await invoke(
+    api.reader,
+    httpReq('user-2', 'POST', {
+      action: 'exchange_request',
+      operationId: op1,
+      amountPoints: 30000,
+      userId: first
+    })
+  );
+  assert.equal(forbidden.statusCode, 400);
+  assert.equal((await f.service.listPendingExchanges()).items.length, 0);
+  const differentOrigin = await invoke(
+    api.reader,
+    httpReq(
+      'user-1',
+      'POST',
+      {
+        action: 'exchange_request',
+        operationId: op1,
+        amountPoints: 30000
+      },
+      'https://attacker.example'
+    )
+  );
+  assert.equal(differentOrigin.statusCode, 403);
+  const noAuth = await invoke(api.reader, httpReq('invalid'));
+  assert.equal(noAuth.statusCode, 401);
+  assert.equal((await f.service.listPendingExchanges()).items.length, 0);
+});
+
+test('admin queue requires existing admin allowlist and provider receipt is not browser supplied', async () => {
+  const f = fixture();
+  const api = makeHttp(f);
+  const denied = await invoke(api.admin, httpReq('user-1'));
+  assert.equal(denied.statusCode, 403);
+  const queued = await invoke(
+    api.reader,
+    httpReq('user-1', 'POST', {
+      action: 'exchange_request',
+      operationId: op1,
+      amountPoints: 30000
+    })
+  );
+  assert.equal(queued.statusCode, 202);
+  assert.equal(queued.result.status, 'request_received');
+  const queue = await invoke(api.admin, httpReq('admin'));
+  assert.equal(queue.statusCode, 200);
+  assert.equal(queue.result.items.length, 1);
+  const forged = await invoke(
+    api.admin,
+    httpReq('admin', 'POST', {
+      operationId: op1,
+      action: 'confirm_fulfilled',
+      reviewerId: first
+    })
+  );
+  assert.equal(forged.statusCode, 400);
+  const done = await invoke(
+    api.admin,
+    httpReq('admin', 'POST', {
+      operationId: op1,
+      action: 'confirm_fulfilled'
+    })
+  );
+  assert.equal(done.statusCode, 200);
+  assert.equal(done.result.status, 'committed');
+});
+
+test('only authorized administrator can read formal reward accounting overview', async () => {
+  const f = fixture();
+  let reads = 0;
+  const api = makeHttp(f, async () => {
+    reads++;
+    return {
+      status: 'reward_overview_ready',
+      pointsPerYen: 10,
+      issuedMonth: 50,
+      issuedTotal: 200,
+      readMonth: 30,
+      commentMonth: 20,
+      giftSpentNet: 0,
+      aiSpentNet: 0,
+      eligibleAvailable: 150,
+      eligibleReserved: 0,
+      pendingExchangePoints: 0,
+      pendingExchangeCount: 0,
+      recent: []
+    };
+  });
+  const readerReq = httpReq('user-1');
+  readerReq.query = { view: 'reward_overview' };
+  assert.equal((await invoke(api.admin, readerReq)).statusCode, 403);
+  const noAuthReq = httpReq('invalid');
+  noAuthReq.query = { view: 'reward_overview' };
+  assert.notEqual((await invoke(api.admin, noAuthReq)).statusCode, 200);
+  assert.equal(reads, 0);
+  const adminReq = httpReq('admin');
+  adminReq.query = { view: 'reward_overview' };
+  const response = await invoke(api.admin, adminReq);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.result.issuedMonth, 50);
+  assert.equal(response.result.status, 'reward_overview_ready');
+  assert.equal(reads, 1);
+});
+
+test('existing reader UI binding talks to authenticated unregistered HTTP handler', async () => {
+  const f = fixture();
+  const api = makeHttp(f);
+  let counter = 0;
+  const binding =
+    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings(
+      {
+        request: async ({ method, body }) => {
+          const r = await invoke(api.reader, httpReq('user-1', method, body));
+          return r.result;
+        },
+        nextOperationId: () => [op1, op2][counter++]
+      }
+    );
+  const snapshot = await binding.fetchSnapshot();
+  assert.equal(snapshot.serverVerified, true);
+  assert.equal(snapshot.wallet.availablePoints, 50000);
+  assert.equal(
+    (await binding.onExchange({ amountPoints: 30000 })).status,
+    'request_received'
+  );
+  assert.equal(
+    (await binding.onAiUse({ featureId: 'analysis' })).status,
+    'started'
+  );
+  assert.equal((await binding.fetchSnapshot()).wallet.availablePoints, 19880);
+});
+
+test('administrator UI binding calls the authenticated admin handler for queue and verified settlement', async () => {
+  await import('../assets/formal-scout-reward-admin.js');
+  const f = fixture();
+  const api = makeHttp(f);
+  await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  const admin = globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings(
+    {
+      request: async ({ method, body }) => {
+        const result = await invoke(api.admin, httpReq('admin', method, body));
+        return result.result;
+      }
+    }
+  );
+  assert.equal((await admin.loadQueue()).items.length, 1);
+  assert.equal(
+    (
+      await admin.onResolve({
+        operationId: op1,
+        action: 'confirm_fulfilled'
+      })
+    ).status,
+    'committed'
+  );
+  assert.equal((await admin.loadQueue()).items.length, 0);
+});
+
+test('reader retry after a lost response keeps original operation UUID and prevents duplicate debit', async () => {
+  const f = fixture();
+  const api = makeHttp(f);
+  let submitted = 0;
+  const ids = [];
+  const binding =
+    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings(
+      {
+        request: async ({ method, body }) => {
+          const r = await invoke(api.reader, httpReq('user-1', method, body));
+          if (method === 'POST') {
+            ids.push(body.operationId);
+            submitted++;
+            if (submitted === 1)
+              throw new Error('synthetic lost response after commit');
+          }
+          return r.result;
+        },
+        nextOperationId: () => op1
+      }
+    );
+  await assert.rejects(
+    binding.onExchange({ amountPoints: 30000 }),
+    /synthetic lost response/
+  );
+  const retry = await binding.onExchange({ amountPoints: 30000 });
+  assert.equal(retry.status, 'already_processed');
+  assert.deepEqual(ids, [op1, op1]);
+  const snap = await f.service.getReaderSnapshot(first);
+  assert.equal(snap.wallet.availablePoints, 20000);
+  assert.equal((await f.service.listPendingExchanges()).items.length, 1);
+});
+
+test('confirmed gift refund restores original Point buckets once, without replenishing settlement budget', async () => {
+  const f = fixture();
+  await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  await f.service.resolveExchange({
+    operationId: op1,
+    action: 'confirm_fulfilled',
+    reviewerId: adminId
+  });
+  assert.equal((await f.service.listRefundCandidates()).items.length, 1);
+  const initial = await f.service.getReaderSnapshot(first);
+  assert.equal(initial.wallet.availablePoints, 20000);
+  const result = await f.service.refundCommitted({
+    operationId: op1,
+    reviewerId: adminId
+  });
+  assert.equal(result.status, 'refunded');
+  const restored = await f.service.getReaderSnapshot(first);
+  assert.equal(restored.wallet.availablePoints, 50000);
+  assert.equal(restored.wallet.exchangeEligiblePoints, 32000);
+  assert.equal(restored.history[0].points, 30000);
+  assert.equal(restored.history[0].kind, 'refund');
+  assert.equal((await f.service.listRefundCandidates()).items.length, 0);
+  assert.equal(
+    (
+      await f.service.refundCommitted({
+        operationId: op1,
+        reviewerId: adminId
+      })
+    ).status,
+    'already_processed'
+  );
+  // No new refund on a repeated admin request and no silent budget recycle.
+  assert.equal(
+    (
+      await f.service.requestExchange({
+        userId: first,
+        operationId: op2,
+        amountPoints: 30000
+      })
+    ).status,
+    'request_received'
+  );
+});
+
+test('gift refund refuses unverified money recovery, while AI refund requires independent usage reversal', async () => {
+  const blocked = fixture({ verifyGiftRefund: false });
+  await blocked.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  await blocked.service.resolveExchange({
+    operationId: op1,
+    action: 'confirm_fulfilled',
+    reviewerId: adminId
+  });
+  assert.equal(
+    (
+      await blocked.service.refundCommitted({
+        operationId: op1,
+        reviewerId: adminId
+      })
+    ).status,
+    'refund_evidence_missing'
+  );
+  assert.equal(
+    (await blocked.service.getReaderSnapshot(first)).wallet.availablePoints,
+    20000
+  );
+  const ai = fixture({ verifyAiRefund: true });
+  await ai.service.requestAiUse({
+    userId: first,
+    operationId: op2,
+    featureId: 'analysis'
+  });
+  assert.equal(
+    (
+      await ai.service.refundCommitted({
+        operationId: op2,
+        reviewerId: adminId
+      })
+    ).status,
+    'refunded'
+  );
+  assert.equal(
+    (await ai.service.getReaderSnapshot(first)).wallet.availablePoints,
+    50000
+  );
+  const aiBlocked = fixture({ verifyAiRefund: false });
+  await aiBlocked.service.requestAiUse({
+    userId: first,
+    operationId: op2,
+    featureId: 'analysis'
+  });
+  assert.equal(
+    (
+      await aiBlocked.service.refundCommitted({
+        operationId: op2,
+        reviewerId: adminId
+      })
+    ).status,
+    'refund_evidence_missing'
+  );
+});
+
+test('admin-only HTTP refund view and operation reject normal reader and forged reviewer ID', async () => {
+  const f = fixture();
+  const api = makeHttp(f);
+  await f.service.requestExchange({
+    userId: first,
+    operationId: op1,
+    amountPoints: 30000
+  });
+  await f.service.resolveExchange({
+    operationId: op1,
+    action: 'confirm_fulfilled',
+    reviewerId: adminId
+  });
+  const normal = httpReq('user-1', 'GET');
+  normal.query = { view: 'refunds' };
+  assert.equal((await invoke(api.admin, normal)).statusCode, 403);
+  const adminReq = httpReq('admin', 'GET');
+  adminReq.query = { view: 'refunds' };
+  const queue = await invoke(api.admin, adminReq);
+  assert.equal(queue.statusCode, 200);
+  assert.equal(queue.result.status, 'refund_candidates_ready');
+  assert.equal(queue.result.items.length, 1);
+  const forged = await invoke(
+    api.admin,
+    httpReq('admin', 'POST', {
+      action: 'refund_recovered',
+      operationId: op1,
+      reviewerId: first
+    })
+  );
+  assert.equal(forged.statusCode, 400);
+  assert.equal(
+    (await f.service.getReaderSnapshot(first)).wallet.availablePoints,
+    20000
+  );
+  const verified = await invoke(
+    api.admin,
+    httpReq('admin', 'POST', {
+      action: 'refund_recovered',
+      operationId: op1
+    })
+  );
+  assert.equal(verified.statusCode, 200);
+  assert.equal(verified.result.status, 'refunded');
+  assert.equal(
+    (await f.service.getReaderSnapshot(first)).wallet.availablePoints,
+    50000
+  );
+});
+
+test('canonical Point ledger entry ceiling blocks un-settleable exchange and AI before any reservation or external work', async () => {
+  const repository = createOfflineFormalUsageRepository({
+    readers: [
+      {
+        userId: first,
+        availablePoints: 2_000_000,
+        exchangeEligiblePoints: 2_000_000
+      }
+    ],
+    budgets: {
+      external_exchange: {
+        scopeId: 'offline-exchange-cap',
+        limitPoints: 3_000_000
+      },
+      ai_direct_use: { scopeId: 'offline-ai-cap', limitPoints: 3_000_000 }
+    }
+  });
+  let aiCalls = 0;
+  let externalChecks = 0;
+  const service = createFormalRewardUsageService({
+    repository,
+    releaseConfiguration: {
+      formalRewardsEnabled: true,
+      productionCutoverApproved: true
+    },
+    trustedServerAuthorization: {
+      verifiedByTrustedServer: true,
+      serviceRoleVerified: true
+    },
+    catalog: [
+      {
+        id: 'very_large_mock',
+        name: '開発用架空AI',
+        pricePoints: 1_000_001,
+        approved: true
+      }
+    ],
+    policy: {
+      giftProviderReady: true,
+      verifyExchange: async () => {
+        externalChecks++;
+        return approval;
+      },
+      verifyAi: async () => {
+        externalChecks++;
+        return approval;
+      },
+      allocateAiEligiblePoints: async () => 0
+    },
+    aiExecutor: async () => {
+      aiCalls++;
+      return {
+        status: 'succeeded',
+        costPoints: 1_000_001
+      };
+    }
+  });
+  const before = await service.getReaderSnapshot(first);
+  assert.equal(
+    (
+      await service.requestExchange({
+        userId: first,
+        operationId: op1,
+        amountPoints: 1_000_001
+      })
+    ).status,
+    'canonical_ledger_entry_limit'
+  );
+  assert.equal(
+    (
+      await service.requestAiUse({
+        userId: first,
+        operationId: op2,
+        featureId: 'very_large_mock'
+      })
+    ).status,
+    'canonical_ledger_entry_limit'
+  );
+  const after = await service.getReaderSnapshot(first);
+  assert.deepEqual(after.wallet, before.wallet);
+  assert.equal((await service.listPendingExchanges()).items.length, 0);
+  assert.equal(externalChecks, 0);
+  assert.equal(aiCalls, 0);
+  // Canonical integer boundary itself remains permitted for the gift path.
+  assert.equal(
+    (
+      await service.requestExchange({
+        userId: first,
+        operationId: op3,
+        amountPoints: 1_000_000
+      })
+    ).status,
+    'request_received'
+  );
+});

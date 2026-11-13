@@ -1,0 +1,446 @@
+name: NOVELIGHT Reader Point 10x Staging Rollback Proof
+
+# Only a new OWNER Issue #294 comment may initiate this workflow.
+# Never run from a pull request, push, workflow_dispatch, or schedule.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  admit:
+    name: Admit exact OWNER Point10x request once
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_READER_POINT10X_APPROVE ')
+    concurrency:
+      group: novelight-reader-point10x-admit-issue294
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    outputs:
+      main_sha: ${{ steps.verify.outputs.main_sha }}
+      candidate_sha: ${{ steps.verify.outputs.candidate_sha }}
+      request_id: ${{ steps.verify.outputs.request_id }}
+      pr_number: ${{ steps.verify.outputs.pr_number }}
+      manifest_b64: ${{ steps.verify.outputs.manifest_b64 }}
+    steps:
+      - name: Checkout trusted main, never candidate code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validate exact Issue scope, owner, HEAD and unused ledger
+        id: verify
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          pr="$(printf '%s\n' "$COMMENT_BODY" |
+            sed -n 's/^NOVELIGHT_STAGING_READER_POINT10X_APPROVE //p' |
+            jq -er '.pr | select(type == "number" and . > 0 and floor == .)')"
+          [[ "$pr" =~ ^[1-9][0-9]*$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/point10x-main.json
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$pr" > /tmp/point10x-pr.json
+          main="$(jq -er '.object.sha' /tmp/point10x-main.json)"
+          head="$(jq -er '.head.sha' /tmp/point10x-pr.json)"
+          gh api "repos/$GITHUB_REPOSITORY/compare/$main...$head" > /tmp/point10x-compare.json
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/pulls/$pr/files?per_page=100" |
+            jq -e 'add' > /tmp/point10x-files.json
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" \
+            > /tmp/point10x-ledger.json
+          node scripts/scout-point10x-staging-admission.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/point10x-main.json /tmp/point10x-pr.json \
+            /tmp/point10x-compare.json /tmp/point10x-files.json \
+            /tmp/point10x-ledger.json > /tmp/point10x-decision.json
+          test "$(git rev-parse HEAD)" = "$main"
+          {
+            echo "main_sha=$(jq -er '.mainSha' /tmp/point10x-decision.json)"
+            echo "candidate_sha=$(jq -er '.candidateSha' /tmp/point10x-decision.json)"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/point10x-decision.json)"
+            echo "pr_number=$(jq -er '.pr' /tmp/point10x-decision.json)"
+            echo "manifest_b64=$(base64 -w0 /tmp/point10x-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+          echo 'OWNER-authored one-time rollback-only approval validated.'
+
+      - name: CLAIM once before Staging secrets can be accessed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.verify.outputs.main_sha }}
+          CANDIDATE: ${{ steps.verify.outputs.candidate_sha }}
+          REQUEST_ID: ${{ steps.verify.outputs.request_id }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN" --arg candidateSha "$CANDIDATE" \
+            --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_READER_POINT10X_CLAIMED $payload" >/dev/null
+          echo 'CLAIMED: this approval is now consumed regardless of downstream result.'
+
+  stage:
+    name: Isolated backup restore, then one rollback-only Staging SQL proof
+    needs: admit
+    if: needs.admit.result == 'success'
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: temporary_local_restore_only
+          POSTGRES_DB: point10x_restore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      MAIN: ${{ needs.admit.outputs.main_sha }}
+      CANDIDATE: ${{ needs.admit.outputs.candidate_sha }}
+      PR_NUMBER: ${{ needs.admit.outputs.pr_number }}
+      MANIFEST_B64: ${{ needs.admit.outputs.manifest_b64 }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-point10x-staging-url
+      PGSSLMODE: require
+    steps:
+      - name: Trusted main checkout only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit.outputs.main_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify exact refs and staging environment before reading secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.head.sha')" = "$CANDIDATE"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.draft')" = true
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.state')" = open
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+          printf '%s' "$MANIFEST_B64" | base64 -d > /tmp/point10x-manifest.json
+          test "$(jq -r '.scope' /tmp/point10x-manifest.json)" = reader-reward-beta-point-10x-staging
+          test "$(jq -r '.mode' /tmp/point10x-manifest.json)" = rollback-only
+          test "$(jq -r '.stagingRef' /tmp/point10x-manifest.json)" = wmlzjgvxgoyrovdhbqbg
+          test "$(jq -r '.mainSha' /tmp/point10x-manifest.json)" = "$MAIN"
+          test "$(jq -r '.candidateSha' /tmp/point10x-manifest.json)" = "$CANDIDATE"
+
+      - name: Retrieve ONLY four SHA-pinned approved SQL blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$(mktemp -d)"
+          echo "POINT10X_SQL_ROOT=$root" >> "$GITHUB_ENV"
+          jq -r '.artifacts | to_entries[] | [.key,.value.path,.value.sha] | join("|")' \
+            /tmp/point10x-manifest.json > /tmp/point10x-sql-list
+          while IFS='|' read -r kind path blob; do
+            [[ "$kind" =~ ^(migration|precheck|postcheck|rollback)$ ]]
+            [[ "$blob" =~ ^[a-f0-9]{40}$ ]]
+            case "$path" in
+              supabase/migrations/*|supabase/checks/*|supabase/rollback/*) ;;
+              *) exit 1 ;;
+            esac
+            gh api "repos/$GITHUB_REPOSITORY/contents/$path?ref=$CANDIDATE" \
+              > /tmp/point10x-blob-response.json
+            jq -e --arg pin "$blob" '.sha == $pin and .encoding == "base64"' \
+              /tmp/point10x-blob-response.json >/dev/null
+            jq -r '.content' /tmp/point10x-blob-response.json |
+              base64 -d > "$root/$kind.sql"
+            test "$(git hash-object "$root/$kind.sql")" = "$blob"
+          done < /tmp/point10x-sql-list
+          test "$(wc -l </tmp/point10x-sql-list | tr -d ' ')" = 4
+          node scripts/staging-candidate-sql.mjs compose "$root" \
+            > /tmp/point10x-approved-rollback-only.sql
+          echo 'Only SHA-pinned reviewed SQL compiled by trusted main script.'
+
+      - name: Verify Staging credential target, not Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/resolve-staging-session-pooler.mjs
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          command -v psql
+          command -v pg_dump
+          command -v pg_restore
+          test -f /tmp/point10x-approved-rollback-only.sql
+
+      - name: Verify full logical Staging backup and independent restore BEFORE any Staging write
+        shell: bash
+        env:
+          PGPASSWORD: temporary_local_restore_only
+        run: |
+          set -euo pipefail
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          test -n "$STAGING_DATABASE_URL"
+          backup="$RUNNER_TEMP/novelight-point10x-private-staging.dump"
+          # Entire Staging logical DB, not a SELECT-only checksum.
+          # If privileges, installed extensions, or independent restore are incomplete, STOP.
+          pg_dump "$STAGING_DATABASE_URL" --format=custom \
+            --no-owner --no-acl --file="$backup"
+          test -s "$backup"
+          pg_restore --list "$backup" > /tmp/point10x-dump-table-of-contents
+          grep -q scout_point_ledger /tmp/point10x-dump-table-of-contents
+          # This connection is an isolated job service, NOT Supabase.
+          export PGSSLMODE=disable
+          pg_restore --exit-on-error --no-owner --no-acl \
+            --host 127.0.0.1 --port 5432 --username postgres \
+            --dbname point10x_restore "$backup" >/tmp/point10x-restore-stdout
+          psql "postgresql://postgres:temporary_local_restore_only@127.0.0.1:5432/point10x_restore" \
+            -X -A -t -v ON_ERROR_STOP=1 \
+            -f scripts/scout-point10x-staging-fingerprint.sql \
+            > /tmp/point10x-restore-ledger-summary
+          PGSSLMODE=require psql "$STAGING_DATABASE_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -f scripts/scout-point10x-staging-fingerprint.sql \
+            > /tmp/point10x-staging-before-summary
+          diff -u /tmp/point10x-staging-before-summary /tmp/point10x-restore-ledger-summary
+          echo 'Full Point/XP/badge row fingerprints and award RPC reconciled against independent restore.'
+          # No uploaded artifact or secret output. Files remain only on ephemeral runner.
+
+      - name: Check exact refs again and execute one ROLLBACK-ONLY Staging transaction
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.head.sha')" = "$CANDIDATE"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.draft')" = true
+          STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
+          export STAGING_DATABASE_URL
+          node scripts/verify-staging-migration-target.mjs
+          # A reviewed migration BEGIN/COMMIT body is rewritten by trusted
+          # compiler into ONE BEGIN...ROLLBACK. No persist/commit path exists.
+          psql "$STAGING_DATABASE_URL" -X -v ON_ERROR_STOP=1 \
+            -f /tmp/point10x-approved-rollback-only.sql \
+            >/tmp/point10x-rollback-proof-stdout
+          psql "$STAGING_DATABASE_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -f scripts/scout-point10x-staging-fingerprint.sql \
+            > /tmp/point10x-staging-after-summary
+          diff -u /tmp/point10x-staging-before-summary /tmp/point10x-staging-after-summary
+          echo 'STAGING_POINT10X_ROLLBACK_ONLY_PASS: all recorded Staging Point/XP/badge row fingerprints and award RPC unchanged.'
+
+      - name: Remove all ephemeral database credentials, SQL, backups and local snapshots
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$STAGING_DATABASE_URL_FILE" \
+            /tmp/point10x-approved-rollback-only.sql \
+            /tmp/point10x-blob-response.json /tmp/point10x-manifest.json \
+            /tmp/point10x-sql-list /tmp/point10x-dump-table-of-contents \
+            /tmp/point10x-restore-stdout /tmp/point10x-rollback-proof-stdout \
+            /tmp/point10x-restore-ledger-summary \
+            /tmp/point10x-staging-before-summary \
+            /tmp/point10x-staging-after-summary \
+            "$RUNNER_TEMP/novelight-point10x-private-staging.dump"
+          if [ -n "$POINT10X_SQL_ROOT" ]; then rm -rf "$POINT10X_SQL_ROOT"; fi
+
+  record:
+    name: Consume admitted approval after success, failure or interruption
+    needs: [admit, stage]
+    if: always() && needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Write one-time CONSUMED audit event to Issue 294
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST_ID: ${{ needs.admit.outputs.request_id }}
+          MAIN: ${{ needs.admit.outputs.main_sha }}
+          CANDIDATE: ${{ needs.admit.outputs.candidate_sha }}
+          RESULT: ${{ needs.stage.result }}
+        run: |
+          set -euo pipefail
+          case "$RESULT" in success|failure|cancelled|skipped) ;; *) exit 1;; esac
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" \
+            --arg mainSha "$MAIN" --arg candidateSha "$CANDIDATE" \
+            --arg runId "$GITHUB_RUN_ID" --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,candidateSha:$candidateSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_READER_POINT10X_CONSUMED $payload" >/dev/null
+          echo 'Owner Staging approval consumed exactly once; never retry automatically.'
+
+  # Independent branch: one synthetic new reader, not the legacy Point10x job.
+  admit_new_reader:
+    name: Admit one new-reader synthetic proof (OWNER only)
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE ')
+    concurrency:
+      group: novelight-reader-one-admit-issue294
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      main_sha: ${{ steps.verify.outputs.main_sha }}
+      request_id: ${{ steps.verify.outputs.request_id }}
+      reference_at: ${{ steps.verify.outputs.reference_at }}
+    steps:
+      - name: Checkout trusted main, never PR code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Bind exact OWNER scope, main and unused Issue 294 approval
+        id: verify
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/reader-one-main.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/reader-one-ledger.json
+          node scripts/scout-formal-new-reader-staging-proof.mjs validate \
+            "$GITHUB_EVENT_PATH" /tmp/reader-one-main.json /tmp/reader-one-ledger.json > /tmp/reader-one-decision.json
+          main="$(jq -er '.mainSha' /tmp/reader-one-decision.json)"
+          test "$(git rev-parse HEAD)" = "$main"
+          {
+            echo "main_sha=$main"
+            echo "request_id=$(jq -er '.requestCommentId' /tmp/reader-one-decision.json)"
+            echo "reference_at=$(jq -er '.referenceAt' /tmp/reader-one-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Claim this OWNER approval before access to Staging secrets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ steps.verify.outputs.main_sha }}
+          REQUEST_ID: ${{ steps.verify.outputs.request_id }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$MAIN"
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" --arg mainSha "$MAIN" --arg runId "$GITHUB_RUN_ID" '{requestCommentId:$requestCommentId,mainSha:$mainSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" -f body="NOVELIGHT_STAGING_NEW_READER_ONE_CLAIMED $payload" >/dev/null
+
+  stage_new_reader:
+    name: Staging one reader JWT and Level1 Wallet0 (no Preview)
+    needs: admit_new_reader
+    if: needs.admit_new_reader.result == 'success'
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit_new_reader.outputs.main_sha }}
+      STAGING_REQUEST_COMMENT_ID: ${{ needs.admit_new_reader.outputs.request_id }}
+      STAGING_TEST_REFERENCE: ${{ needs.admit_new_reader.outputs.reference_at }}
+      STAGING_PROJECT_REF: wmlzjgvxgoyrovdhbqbg
+      NOVELIGHT_ONE_READER_ADMITTED: '1'
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+      STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+      STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-one-reader-staging-url
+      PGSSLMODE: require
+    steps:
+      - name: Checkout exact OWNER-approved trusted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit_new_reader.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Check main and exact Staging scope before interacting with secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test "$STAGING_TEST_REFERENCE" = '2026-11-10T00:00:00.000Z'
+          test -n "$STAGING_DATABASE_URL_SOURCE"
+          test -n "$STAGING_SUPABASE_SECRET_KEY"
+          test -n "$STAGING_SUPABASE_PUBLISHABLE_KEY"
+      - name: Reuse verified Staging-only TLS Session pooler
+        shell: bash
+        run: node scripts/resolve-staging-session-pooler.mjs
+      - name: Install existing locked dependencies, no lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund --quiet
+      - name: One synthetic Auth user, JWT proof and one atomic Level/Wallet setup
+        shell: bash
+        run: node scripts/scout-formal-new-reader-staging-proof.mjs run
+      - name: Remove ephemeral Staging DB URL (do not delete the user or data)
+        if: always()
+        shell: bash
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
+
+  record_new_reader:
+    name: Consume exactly one new-reader approval, including failure
+    needs: [admit_new_reader, stage_new_reader]
+    if: always() && needs.admit_new_reader.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Record consumed result on existing Issue 294
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAIN: ${{ needs.admit_new_reader.outputs.main_sha }}
+          REQUEST_ID: ${{ needs.admit_new_reader.outputs.request_id }}
+          RESULT: ${{ needs.stage_new_reader.result }}
+        run: |
+          set -euo pipefail
+          case "$RESULT" in success|failure|cancelled|skipped) ;; *) exit 1;; esac
+          payload="$(jq -cn --arg requestCommentId "$REQUEST_ID" --arg mainSha "$MAIN" --arg runId "$GITHUB_RUN_ID" --arg result "$RESULT" '{requestCommentId:$requestCommentId,mainSha:$mainSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" -f body="NOVELIGHT_STAGING_NEW_READER_ONE_CONSUMED $payload" >/dev/null
+          echo 'New reader approval consumed: never retry automatically.'

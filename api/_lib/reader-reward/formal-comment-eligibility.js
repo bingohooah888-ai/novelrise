@@ -1,0 +1,194 @@
+// Dormant, formal-release-only content eligibility classifier.
+// The authoritative novel_comments row and same-user comment history must
+// be retrieved by a trusted service. This code does not issue Points.
+// Semantic relevance is a moderation decision, not a keyword guess.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_HISTORY = 200;
+function normalise(value) {
+  return value
+    .normalize('NFKC')
+    .replace(/\s+/gu, '')
+    .toLocaleLowerCase('ja-JP');
+}
+function reviewedRejection(status, commentId, decision, rule) {
+  if (
+    decision === 'ineligible' &&
+    typeof rule === 'string' &&
+    rule.length >= 1 &&
+    rule.length <= 120
+  ) {
+    return Object.freeze({
+      status,
+      mayAward: false,
+      mayRecordDecision: true,
+      commentId,
+      verifiedModerationRule: rule
+    });
+  }
+  return Object.freeze({ status, mayAward: false });
+}
+
+export function reviewFormalEpisodeComment({
+  comment,
+  priorUserComments,
+  trustedSourceVerified,
+  reviewerDecision,
+  reviewerRule
+}) {
+  const blocked = Object.freeze({
+    status: 'eligibility_evidence_pending',
+    mayAward: false
+  });
+  if (
+    trustedSourceVerified !== true ||
+    !comment ||
+    !UUID.test(comment.id) ||
+    !UUID.test(comment.user_id) ||
+    !Number.isSafeInteger(comment.episode_id) ||
+    comment.episode_id <= 0 ||
+    !Array.isArray(priorUserComments) ||
+    priorUserComments.length > MAX_HISTORY
+  ) {
+    return blocked;
+  }
+  if (
+    (comment.deleted_at !== null && comment.deleted_at !== undefined) ||
+    (comment.author_hidden_at !== null &&
+      comment.author_hidden_at !== undefined) ||
+    typeof comment.body !== 'string'
+  ) {
+    return reviewedRejection(
+      'ineligible_hidden_or_missing',
+      comment.id,
+      reviewerDecision,
+      reviewerRule
+    );
+  }
+  const text = normalise(comment.body);
+  if (!text) {
+    return reviewedRejection(
+      'ineligible_blank',
+      comment.id,
+      reviewerDecision,
+      reviewerRule
+    );
+  }
+  for (const previous of priorUserComments) {
+    if (
+      !previous ||
+      previous.user_id !== comment.user_id ||
+      typeof previous.body !== 'string' ||
+      !Number.isSafeInteger(previous.episode_id)
+    ) {
+      return blocked;
+    }
+  }
+  // Identical cross-episode repetition is suspicious, but "template spam"
+  // thresholds aren't OWNER-defined. Hold for review; do not guess rejection.
+  const exactCrossEpisode = priorUserComments.some(
+    (previous) =>
+      previous.id !== comment.id &&
+      previous.episode_id !== comment.episode_id &&
+      normalise(previous.body) === text
+  );
+  if (
+    exactCrossEpisode &&
+    reviewerDecision !== 'eligible' &&
+    reviewerDecision !== 'ineligible'
+  ) {
+    return Object.freeze({
+      status: 'repetitive_text_requires_review',
+      mayAward: false
+    });
+  }
+  // Irrelevant content cannot be detected from untrusted client text alone.
+  if (reviewerDecision !== 'eligible' && reviewerDecision !== 'ineligible') {
+    return Object.freeze({
+      status: 'semantic_review_required',
+      mayAward: false
+    });
+  }
+  if (
+    typeof reviewerRule !== 'string' ||
+    reviewerRule.length < 1 ||
+    reviewerRule.length > 120
+  ) {
+    return blocked;
+  }
+  if (reviewerDecision === 'ineligible') {
+    return Object.freeze({
+      status: 'reviewed_ineligible',
+      mayAward: false,
+      mayRecordDecision: true,
+      commentId: comment.id,
+      verifiedModerationRule: reviewerRule
+    });
+  }
+  return Object.freeze({
+    status: 'reviewed_eligible',
+    mayAward: true,
+    commentId: comment.id,
+    verifiedModerationRule: reviewerRule
+  });
+}
+
+/**
+ * OWNER-approved post-award policy, draft quotation only. Editing, hiding or
+ * deleting a previously rewarded comment NEVER revokes Points automatically.
+ * A verified human decision with separate violation/reversal evidence is
+ * required before a future trusted atomic ledger reversal may be proposed.
+ * Flags are NOT independently trusted proof, and this function does not write.
+ */
+export function quoteFormalPostAwardCommentReview({
+  commentId,
+  originalAwardLedgerId,
+  changeKind,
+  canonicalChangeVerified,
+  originalAwardVerified,
+  reversalHistoryVerified,
+  reversalAlreadyExists,
+  independentViolationEvidenceVerified,
+  verifiedReviewerId,
+  verifiedEvidenceId,
+  reviewerDecision
+} = {}) {
+  const held = Object.freeze({
+    status: 'post_award_evidence_pending',
+    mayReversePoints: false
+  });
+  if (
+    !UUID.test(commentId || '') ||
+    !UUID.test(originalAwardLedgerId || '') ||
+    !['edited', 'deleted', 'hidden'].includes(changeKind) ||
+    canonicalChangeVerified !== true ||
+    originalAwardVerified !== true ||
+    reversalHistoryVerified !== true ||
+    typeof reversalAlreadyExists !== 'boolean'
+  )
+    return held;
+  if (reversalAlreadyExists)
+    return Object.freeze({
+      status: 'already_reversed',
+      mayReversePoints: false
+    });
+  if (
+    independentViolationEvidenceVerified !== true ||
+    reviewerDecision !== 'reverse' ||
+    !UUID.test(verifiedReviewerId || '') ||
+    !UUID.test(verifiedEvidenceId || '')
+  )
+    return Object.freeze({
+      status: 'manual_review_required',
+      mayReversePoints: false
+    });
+  // A future writer must independently authenticate the reviewer, verify
+  // evidence + original award, lock the wallet and enforce a unique reversal.
+  return Object.freeze({
+    status: 'reversal_quote_only',
+    commentId,
+    originalAwardLedgerId,
+    verifiedReviewerId,
+    verifiedEvidenceId,
+    mayReversePoints: false
+  });
+}

@@ -234,3 +234,299 @@ jobs:
             "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/294/comments" \
             -d "$(jq -cn --arg body "$body" '{body:$body}')" \
             >/dev/null
+
+  # Separate OWNER-only proof for one new synthetic Staging reader.
+  # Migration sync request/sync/record jobs above stay byte-for-byte unchanged.
+  admit_one_new_reader:
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      main_sha: ${{ steps.validate.outputs.main_sha }}
+      request_id: ${{ steps.validate.outputs.request_id }}
+      reference_at: ${{ steps.validate.outputs.reference_at }}
+    steps:
+      - name: Checkout current trusted main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Validate exact one-reader OWNER command and claim once
+        id: validate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" > /tmp/reader-one-main.json
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/issues/294/comments?per_page=100" > /tmp/reader-one-comments.json
+          node --input-type=module <<'JS' > /tmp/reader-one-decision.json
+          import {readFileSync} from 'node:fs';
+          const fail=()=>{throw Error('ONE_READER_APPROVAL_DENIED')};
+          const ev=JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH,'utf8'));
+          const main=JSON.parse(readFileSync('/tmp/reader-one-main.json','utf8'));
+          const entries=JSON.parse(readFileSync('/tmp/reader-one-comments.json','utf8'));
+          const all=entries.flat(Infinity);
+          const env=process.env;
+          const prefix='NOVELIGHT_STAGING_NEW_READER_ONE_APPROVE ';
+          if(env.GITHUB_EVENT_NAME!=='issue_comment'||env.GITHUB_ACTOR!=='bingohooah888-ai'||
+            env.GITHUB_TRIGGERING_ACTOR!=='bingohooah888-ai'||ev.action!=='created'||
+            ev.repository?.full_name!=='bingohooah888-ai/novelrise'||ev.issue?.number!==294||
+            ev.issue?.state!=='open'||ev.issue?.title!=='[Staging Control] Supabase migration sync'||
+            ev.issue?.pull_request!=null||ev.issue?.user?.login!=='bingohooah888-ai'||
+            ev.sender?.login!=='bingohooah888-ai'||ev.comment?.user?.login!=='bingohooah888-ai'||
+            ev.comment?.author_association!=='OWNER'||typeof ev.comment?.body!=='string'||
+            !ev.comment.body.startsWith(prefix))fail();
+          let v;try{v=JSON.parse(ev.comment.body.slice(prefix.length));}catch{fail();}
+          const keys=['confirmation','mainSha','maxReaders','pr','referenceAt','scope','stagingRef'];
+          if(!v||Array.isArray(v)||Object.keys(v).sort().join(',')!==keys.sort().join(',')||
+            v.confirmation!=='STAGING APPROVED'||v.scope!=='formal-new-reader-one-staging-proof'||
+            v.pr!==2762||v.stagingRef!=='wmlzjgvxgoyrovdhbqbg'||
+            v.referenceAt!=='2026-11-10T00:00:00.000Z'||v.maxReaders!==1||
+            !/^[a-f0-9]{40}$/.test(v.mainSha||'')||v.mainSha!==main.object?.sha)fail();
+          const requestId=ev.comment.id;
+          if(!Number.isSafeInteger(requestId)||requestId<=0||
+            !all.some(c=>c.id===requestId&&c.body===ev.comment.body&&c.user?.login==='bingohooah888-ai'))fail();
+          for(const c of all){
+            if(c.user?.login!=='github-actions[bot]')continue;
+            for(const prefix of ['NOVELIGHT_STAGING_NEW_READER_ONE_CLAIMED ','NOVELIGHT_STAGING_NEW_READER_ONE_CONSUMED ']){
+              if(typeof c.body!=='string'||!c.body.startsWith(prefix))continue;
+              let used;try{used=JSON.parse(c.body.slice(prefix.length));}catch{fail();}
+              if(String(used?.requestCommentId)===String(requestId))fail();
+            }
+          }
+          console.log(JSON.stringify({mainSha:v.mainSha,requestId:String(requestId),
+            referenceAt:v.referenceAt,stagingRef:v.stagingRef,maxReaders:v.maxReaders}));
+          JS
+          approved_sha="$(jq -er '.mainSha' /tmp/reader-one-decision.json)"
+          test "$(git rev-parse HEAD)" = "$approved_sha"
+          {
+            echo "main_sha=$approved_sha"
+            echo "request_id=$(jq -er '.requestId' /tmp/reader-one-decision.json)"
+            echo "reference_at=$(jq -er '.referenceAt' /tmp/reader-one-decision.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Record single-use claim before accessing Staging secrets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPROVED_MAIN_SHA: ${{ steps.validate.outputs.main_sha }}
+          REQUEST_COMMENT_ID: ${{ steps.validate.outputs.request_id }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          body="$(jq -cn --arg requestCommentId "$REQUEST_COMMENT_ID" \
+            --arg mainSha "$APPROVED_MAIN_SHA" --arg runId "$GITHUB_RUN_ID" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,runId:$runId}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_NEW_READER_ONE_CLAIMED $body" >/dev/null
+
+  stage_one_new_reader:
+    needs: admit_one_new_reader
+    if: needs.admit_one_new_reader.result == 'success'
+    concurrency:
+      group: supabase-staging-migration-sync
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    environment: staging
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APPROVED_MAIN_SHA: ${{ needs.admit_one_new_reader.outputs.main_sha }}
+      STAGING_REQUEST_COMMENT_ID: ${{ needs.admit_one_new_reader.outputs.request_id }}
+      STAGING_TEST_REFERENCE: ${{ needs.admit_one_new_reader.outputs.reference_at }}
+      NOVELIGHT_ONE_READER_ADMITTED: '1'
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_DATABASE_URL_FILE: /tmp/novelight-one-reader-staging-url
+      PGSSLMODE: require
+    steps:
+      - name: Checkout exact approved trusted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.admit_one_new_reader.outputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify Staging credentials and main match without printing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$APPROVED_MAIN_SHA"
+          test "$STAGING_SUPABASE_URL" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+          test "$STAGING_TEST_REFERENCE" = '2026-11-10T00:00:00.000Z'
+          test "$NOVELIGHT_ONE_READER_ADMITTED" = '1'
+      - name: Setup reviewed Node 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Reuse existing Staging-only TLS Session pooler
+        shell: bash
+        env:
+          STAGING_DATABASE_URL_SOURCE: ${{ secrets.STAGING_DATABASE_URL }}
+        run: node scripts/resolve-staging-session-pooler.mjs
+      - name: Install locked dependencies without lifecycle scripts
+        shell: bash
+        run: npm ci --ignore-scripts --no-audit --no-fund --quiet
+      - name: Create exactly one Auth reader and verify JWT, Level and Wallet
+        shell: bash
+        env:
+          STAGING_SUPABASE_SECRET_KEY: ${{ secrets.STAGING_SUPABASE_SECRET_KEY }}
+          STAGING_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.STAGING_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import { readFileSync } from 'node:fs';
+          import { randomBytes,randomUUID } from 'node:crypto';
+          import {spawnSync} from 'node:child_process';
+          import {createClient} from '@supabase/supabase-js';
+          import {verifyStagingMigrationTarget} from './scripts/verify-staging-migration-target.mjs';
+          try {
+          const REF='wmlzjgvxgoyrovdhbqbg';
+          const URL='https://'+REF+'.supabase.co';
+          const AT='2026-11-10T00:00:00.000Z';
+          const fail=()=>{throw Error('STAGING_ONE_READER_STOPPED_NO_RETRY')};
+          const env=process.env;
+          if(env.GITHUB_RUN_ATTEMPT!=='1'||env.NOVELIGHT_ONE_READER_ADMITTED!=='1'||
+            env.STAGING_SUPABASE_URL!==URL||env.STAGING_TEST_REFERENCE!==AT||
+            !/^[a-f0-9]{40}$/.test(env.APPROVED_MAIN_SHA||'')||
+            !/^[1-9][0-9]*$/.test(env.STAGING_REQUEST_COMMENT_ID||'')||
+            !env.STAGING_SUPABASE_SECRET_KEY?.startsWith('sb_secret_')||
+            !env.STAGING_SUPABASE_PUBLISHABLE_KEY?.startsWith('sb_publishable_'))fail();
+          const sh=(exe,args,input)=> {
+            const res=spawnSync(exe,args,{encoding:'utf8',timeout:30000,maxBuffer:1048576,
+              ...(input!==undefined?{input}:{})});
+            if(res.error||res.status!==0)fail();
+            return res.stdout.trim();
+          };
+          if(sh('git',['rev-parse','HEAD'])!==env.APPROVED_MAIN_SHA||
+            sh('gh',['api','repos/bingohooah888-ai/novelrise/git/ref/heads/main','--jq','.object.sha'])!==env.APPROVED_MAIN_SHA)fail();
+          const db=readFileSync(env.STAGING_DATABASE_URL_FILE,'utf8').trim();
+          verifyStagingMigrationTarget({
+            STAGING_SUPABASE_URL:URL,STAGING_DATABASE_URL:db,PGSSLMODE:'require'
+          });
+          const url=new URL(db);
+          const pgEnv={
+            PATH:env.PATH,HOME:env.HOME,
+            PGHOST:url.hostname,PGPORT:url.port||'5432',
+            PGUSER:decodeURIComponent(url.username),
+            PGPASSWORD:decodeURIComponent(url.password),
+            PGDATABASE:'postgres',PGSSLMODE:'require',PGCONNECT_TIMEOUT:'8'
+          };
+          const query=(sql)=>{
+            const r=spawnSync('psql',['-X','-qAt','-v','ON_ERROR_STOP=1'],
+              {env:pgEnv,input:sql,encoding:'utf8',timeout:30000,maxBuffer:1048576});
+            if(r.error||r.status!==0)fail();
+            return r.stdout.trim();
+          };
+          const options={auth:{persistSession:false,autoRefreshToken:false}};
+          const admin=createClient(URL,env.STAGING_SUPABASE_SECRET_KEY,options);
+          const client=createClient(URL,env.STAGING_SUPABASE_PUBLISHABLE_KEY,options);
+          const email='novelight-reader-one-'+randomUUID()+'@example.invalid';
+          const password='Test1!'+randomBytes(25).toString('base64url');
+          const created=await admin.auth.admin.createUser({
+            email,password,email_confirm:true,
+            user_metadata:{proof_scope:'formal-new-reader-one-staging-proof'}
+          });
+          const id=created?.data?.user?.id;
+          if(created?.error||!(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id||'')))fail();
+          console.log('STAGING_ONE_READER_UUID='+id);
+          const login=await client.auth.signInWithPassword({email,password});
+          const token=login?.data?.session?.access_token;
+          if(login.error||!token||login.data.session.user?.id!==id)fail();
+          const verified=await client.auth.getUser(token);
+          if(verified.error||verified.data?.user?.id!==id)fail();
+          console.log('STAGING_ONE_READER_JWT_MATCH=1');
+          const uuid="'"+id+"'::uuid";
+          const sql=[
+            'BEGIN;',
+            'SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;',
+            'DO $one_reader$',
+            'DECLARE registered timestamptz; marker text; changed integer;',
+            'BEGIN',
+            " SELECT created_at,raw_user_meta_data->>'proof_scope' INTO registered,marker",
+            ' FROM auth.users WHERE id='+uuid+' FOR UPDATE;',
+            " IF registered IS NULL OR registered < '"+AT+"'::timestamptz OR marker IS DISTINCT FROM 'formal-new-reader-one-staging-proof' THEN",
+            " RAISE EXCEPTION 'NOT_ELIGIBLE'; END IF;",
+            ' IF EXISTS (SELECT 1 FROM public.scout_point_ledger WHERE user_id='+uuid+') OR',
+            ' EXISTS (SELECT 1 FROM public.scout_xp_ledger WHERE user_id='+uuid+') OR',
+            ' EXISTS (SELECT 1 FROM novelight_formal_private.scout_level_state WHERE user_id='+uuid+') OR',
+            ' EXISTS (SELECT 1 FROM novelight_formal_private.scout_point_usage_wallets WHERE user_id='+uuid+') THEN',
+            " RAISE EXCEPTION 'EXISTING_READER_HISTORY'; END IF;",
+            ' INSERT INTO novelight_formal_private.scout_level_state',
+            ' (user_id,current_level,highest_level,level_progress_xp,review_anchor_at,revision)',
+            ' VALUES ('+uuid+',1,1,0,registered,0);',
+            " GET DIAGNOSTICS changed=ROW_COUNT; IF changed<>1 THEN RAISE EXCEPTION 'LEVEL_WRITES_NOT_ONE'; END IF;",
+            ' INSERT INTO novelight_formal_private.scout_point_usage_wallets',
+            ' (user_id,available_points,exchange_eligible_points,reserved_points,held_points,revision)',
+            ' VALUES ('+uuid+',0,0,0,0,0);',
+            " GET DIAGNOSTICS changed=ROW_COUNT; IF changed<>1 THEN RAISE EXCEPTION 'WALLET_WRITES_NOT_ONE'; END IF;",
+            'END','$one_reader$;','COMMIT;'
+          ].join('\n');
+          query(sql);
+          const checked=query([
+            'SELECT json_build_object(',
+            " 'level',(SELECT count(*) FROM novelight_formal_private.scout_level_state WHERE user_id="+uuid+" AND current_level=1 AND highest_level=1 AND level_progress_xp=0 AND revision=0),",
+            " 'wallet',(SELECT count(*) FROM novelight_formal_private.scout_point_usage_wallets WHERE user_id="+uuid+" AND available_points=0 AND exchange_eligible_points=0 AND reserved_points=0 AND held_points=0 AND revision=0),",
+            " 'point',(SELECT count(*) FROM public.scout_point_ledger WHERE user_id="+uuid+"),",
+            " 'xp',(SELECT count(*) FROM public.scout_xp_ledger WHERE user_id="+uuid+"),",
+            " 'anchor',(SELECT count(*) FROM novelight_formal_private.scout_level_state s JOIN auth.users a ON a.id=s.user_id WHERE s.user_id="+uuid+" AND s.review_anchor_at=a.created_at)",
+            ')'
+          ].join('\n'));
+          let result;try{result=JSON.parse(checked);}catch{fail();}
+          if(result.level!==1||result.wallet!==1||result.point!==0||
+            result.xp!==0||result.anchor!==1)fail();
+          console.log('STAGING_ONE_READER_LEVEL1_WALLET0_CONFIRMED=1');
+          console.log('STAGING_ONE_READER_RETAINED_NO_AUTO_DELETE');
+          } catch {
+            console.error('STAGING_ONE_READER_STOPPED_NO_RETRY');
+            process.exitCode = 1;
+          }
+          JS
+      - name: Remove ephemeral database credentials, leave synthetic data intact
+        if: always()
+        shell: bash
+        run: rm -f "$STAGING_DATABASE_URL_FILE"
+
+  record_one_new_reader:
+    needs: [admit_one_new_reader, stage_one_new_reader]
+    if: always() && needs.admit_one_new_reader.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Consume single-use approval even on failure
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPROVED_MAIN_SHA: ${{ needs.admit_one_new_reader.outputs.main_sha }}
+          REQUEST_COMMENT_ID: ${{ needs.admit_one_new_reader.outputs.request_id }}
+          RESULT: ${{ needs.stage_one_new_reader.result }}
+        run: |
+          set -euo pipefail
+          case "$RESULT" in success|failure|cancelled|skipped) ;; *) exit 1;; esac
+          body="$(jq -cn --arg requestCommentId "$REQUEST_COMMENT_ID" \
+            --arg mainSha "$APPROVED_MAIN_SHA" --arg runId "$GITHUB_RUN_ID" \
+            --arg result "$RESULT" \
+            '{requestCommentId:$requestCommentId,mainSha:$mainSha,runId:$runId,result:$result}')"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/294/comments" \
+            -f body="NOVELIGHT_STAGING_NEW_READER_ONE_CONSUMED $body" >/dev/null
