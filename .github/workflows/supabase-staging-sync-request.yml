@@ -443,6 +443,7 @@ jobs:
           const password='Test1!'+randomBytes(25).toString('base64url');
           const created=await admin.auth.admin.createUser({
             email,password,email_confirm:true,
+            app_metadata:{internal_e2e:true},
             user_metadata:{proof_scope:'formal-new-reader-one-staging-proof'}
           });
           const id=created?.data?.user?.id;

@@ -219,6 +219,7 @@ async function live(env = process.env) {
     email,
     password,
     email_confirm: true,
+    app_metadata: { internal_e2e: true },
     user_metadata: { proof_scope: 'formal-new-reader-one-staging-proof' }
   });
   const id = created?.data?.user?.id;
