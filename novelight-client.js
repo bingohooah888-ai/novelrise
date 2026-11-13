@@ -32,6 +32,7 @@
   const VERCEL_INTERNAL_PRODUCTION_HOST = 'novelrise.vercel.app';
   const PRODUCTION_SUPABASE_HOST = 'fiepaguycecrredwrcwx.supabase.co';
   const STAGING_BROWSER_CONFIG_PATH = '/api/staging-browser-config';
+  const VERCEL_PRODUCTION_ENV_PATH = '/api/public-production-environment';
   const BRAND_LOGO_PATH = 'assets/novelight-header-logo.webp';
   const THEME_STYLESHEET_PATH = 'novelight-theme.css';
   const PUBLIC_HEADER_STYLESHEET_PATH = 'novelight-header-light.css';
@@ -69,12 +70,34 @@
   ]);
   let memoryVisitorToken = null;
 
+  // A deployment-specific *.vercel.app URL can target either Preview or
+  // Production. Treat it as Preview unless its own server proves Production.
+  // Unknown environments retain the fail-closed Staging configuration gate.
+  let verifiedProductionDeploymentHost = null;
+
   function isVercelPreviewHost() {
     const host = window.location.hostname.toLowerCase();
-    return (
-      host.endsWith('.vercel.app') &&
-      host !== VERCEL_INTERNAL_PRODUCTION_HOST
-    );
+    if (!host.endsWith('.vercel.app')) return false;
+    if (host === VERCEL_INTERNAL_PRODUCTION_HOST) return false;
+
+    if (verifiedProductionDeploymentHost === null) {
+      verifiedProductionDeploymentHost = false;
+      try {
+        const request = new XMLHttpRequest();
+        request.open('GET', VERCEL_PRODUCTION_ENV_PATH, false);
+        request.setRequestHeader('Accept', 'application/json');
+        request.send(null);
+        if (request.status === 200) {
+          const environment = JSON.parse(request.responseText);
+          verifiedProductionDeploymentHost =
+            environment?.vercelEnv === 'production';
+        }
+      } catch {
+        // Never infer Production from a network error or malformed response.
+      }
+    }
+
+    return !verifiedProductionDeploymentHost;
   }
 
   function validateStagingBrowserConfig(config) {

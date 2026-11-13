@@ -135,3 +135,20 @@ html body:is(.novelight-public-dark, .novelight-public-header-page) header.site-
     font-size: 16px !important;
   }
 }
+
+
+/* Home and search use the same canonical header markup; do not let the
+   login control's generic 100% width squeeze signup into vertical text.
+   Scope to the two verified pages; keep other public headers unchanged. */
+@media (min-width: 1181px) {
+  html body:is(.novelight-page-index, .novelight-page-search) header.site-header .header-actions > .login-action {
+    width: auto !important;
+    flex: 0 0 auto !important;
+  }
+
+  html body:is(.novelight-page-index, .novelight-page-search) header.site-header .header-actions > .signup-action {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+}
