@@ -761,21 +761,18 @@ test('complete offline author journey persists confirmation and resumes after re
   assert.equal(reopened.children[0].children[0].textContent, '');
 });
 
-test('new review-state API and browser adapter are not mounted in production', () => {
+test('review-state browser adapter is connected, server route is default-off', () => {
   const html = readFileSync(
     new URL('../story-notes.html', import.meta.url),
     'utf8'
   );
-  assert.doesNotMatch(
-    html,
-    /novelight-ai-bible-owner-review-state-offline-http/
-  );
-  assert.equal(
-    existsSync(
-      new URL('../api/ai-owner-bible-review-state.js', import.meta.url)
-    ),
-    false
-  );
+  assert.match(html, /novelight-ai-bible-owner-review-state-offline-http/);
+  assert.match(html, /saveReviewState:reviewReader\.save/);
+  const route = new URL('../api/ai-owner-bible-review-state.js', import.meta.url);
+  assert.equal(existsSync(route), true);
+  const source = readFileSync(route, 'utf8');
+  assert.match(source, /enabled = false/);
+  assert.match(source, /export default createOwnerBibleReviewStateApiHandler\(\)/);
 });
 
 test('revocation after private preview but before CAS prevents a write', async () => {
