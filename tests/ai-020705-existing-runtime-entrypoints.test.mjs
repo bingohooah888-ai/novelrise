@@ -97,12 +97,13 @@ test('watchdog entry rejects Production and self-identity', () => {
     /ENTRY_DENIED/
   );
   assert.throws(
-    () => create020705ExistingWatchdogEntrypoint({
-      scope,
-      controllerRunId: scope.runId,
-      readControllerCapabilities: async () => ({}),
-      stopOptions: {}
-    }),
+    () =>
+      create020705ExistingWatchdogEntrypoint({
+        scope,
+        controllerRunId: scope.runId,
+        readControllerCapabilities: async () => ({}),
+        stopOptions: {}
+      }),
     /ENTRY_DENIED/
   );
 });
@@ -121,21 +122,4 @@ test('metadata-only Watchdog cannot start cleanup or retry', async () => {
   await assert.rejects(entry.recover(), /EXISTING_WATCHDOG_ENTRY_DENIED/);
   await assert.rejects(entry.recover(), /EXISTING_WATCHDOG_ENTRY_DENIED/);
   assert.equal(calls, 1);
-});
-
-// PRETTIER_DIAG_START - temporary, removed before final PR review.
-test('print exact prettier formatter result for this single synthetic test', async () => {
-  const fs = await import('node:fs/promises');
-  const prettier = await import('prettier');
-  const text = await fs.readFile(new URL(import.meta.url), 'utf8');
-  const original = text.split('// PRETTIER_DIAG_START')[0];
-  const formatted = await prettier.format(original, {
-    parser: 'babel',
-    singleQuote: true,
-    semi: true,
-    tabWidth: 2,
-    trailingComma: 'none',
-    endOfLine: 'lf'
-  });
-  console.log('AI020705_FORMATTED=' + JSON.stringify(formatted));
 });
