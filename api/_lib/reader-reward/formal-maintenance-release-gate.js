@@ -43,15 +43,18 @@ export function quoteScoutXpLockOrder(userIds) {
 // Evidence flags are a design checklist, never authorization to call an RPC.
 // Even all true does not prove source finality or an approved release.
 export function inspectFormalMaintenanceDesignEvidence(evidence = {}) {
-  const valid = evidence !== null && typeof evidence === 'object' &&
+  const valid =
+    evidence !== null &&
+    typeof evidence === 'object' &&
     !Array.isArray(evidence);
   const missing = FORMAL_MAINTENANCE_PENDING_PROOFS.filter(
     (key) => !valid || evidence[key] !== true
   );
   return Object.freeze({
-    status: missing.length === 0
-      ? 'requires_separate_database_proof_and_owner_approval'
-      : 'formal_maintenance_safety_unverified',
+    status:
+      missing.length === 0
+        ? 'requires_separate_database_proof_and_owner_approval'
+        : 'formal_maintenance_safety_unverified',
     executionAllowed: false,
     missing: Object.freeze(missing)
   });

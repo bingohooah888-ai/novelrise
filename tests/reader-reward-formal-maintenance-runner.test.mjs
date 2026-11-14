@@ -29,10 +29,11 @@ test('release safety gate is deliberately hard-disabled', () => {
 test('factory rejects missing trusted dependencies', () => {
   assert.throws(() => createUnregisteredFormalMaintenanceRunner({}), TypeError);
   assert.throws(
-    () => createUnregisteredFormalMaintenanceRunner({
-      postgresClient: { query() {} },
-      now: 'invalid'
-    }),
+    () =>
+      createUnregisteredFormalMaintenanceRunner({
+        postgresClient: { query() {} },
+        now: 'invalid'
+      }),
     TypeError
   );
 });
@@ -54,13 +55,20 @@ test('all old launch flags true still cannot query or review', async () => {
 
 test('forged seal and cutover booleans do not bypass blocked release', async () => {
   let calls = 0;
-  const r = runner(async () => {
-    calls++;
-    return { rows: [] };
-  }, {
-    launchConfiguration: { ...flags, sealVerified: true, cutoverVerified: true },
-    trustedServerAuthorization: { ...authorization, sealVerified: true }
-  });
+  const r = runner(
+    async () => {
+      calls++;
+      return { rows: [] };
+    },
+    {
+      launchConfiguration: {
+        ...flags,
+        sealVerified: true,
+        cutoverVerified: true
+      },
+      trustedServerAuthorization: { ...authorization, sealVerified: true }
+    }
+  );
   assert.equal((await r.reviewDue()).status, 'formal_maintenance_disabled');
   assert.equal(calls, 0);
 });
@@ -87,7 +95,10 @@ test('invalid limits and even valid ticks cannot reach any SQL', async () => {
     return { rows: [] };
   });
   for (const limit of [0, 1, 10, 25, 26, '10']) {
-    assert.equal((await r.reviewDue({ limit })).status, 'formal_maintenance_disabled');
+    assert.equal(
+      (await r.reviewDue({ limit })).status,
+      'formal_maintenance_disabled'
+    );
   }
   assert.equal(calls, 0);
 });

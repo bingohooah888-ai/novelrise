@@ -13,7 +13,10 @@ import {
 const A = '11111111-1111-4111-8111-111111111111';
 const B = '22222222-2222-4222-8222-222222222222';
 const design = readFileSync(
-  new URL('../docs/drafts/SCOUT_FORMAL_30DAY_SAFETY_CONTRACT_20261114.md', import.meta.url),
+  new URL(
+    '../docs/drafts/SCOUT_FORMAL_30DAY_SAFETY_CONTRACT_20261114.md',
+    import.meta.url
+  ),
   'utf8'
 );
 
@@ -22,7 +25,10 @@ test('runtime is blocked even with a fully synthetic positive checklist', () => 
   const fake = Object.fromEntries(
     FORMAL_MAINTENANCE_PENDING_PROOFS.map((name) => [name, true])
   );
-  assert.equal(inspectFormalMaintenanceDesignEvidence(fake).executionAllowed, false);
+  assert.equal(
+    inspectFormalMaintenanceDesignEvidence(fake).executionAllowed,
+    false
+  );
 });
 
 test('missing required proof is explicit, immutable and fail-closed', () => {
@@ -39,11 +45,20 @@ test('all-true evidence remains just a design checklist', () => {
   );
   const result = inspectFormalMaintenanceDesignEvidence(fake);
   assert.deepEqual(result.missing, []);
-  assert.equal(result.status, 'requires_separate_database_proof_and_owner_approval');
+  assert.equal(
+    result.status,
+    'requires_separate_database_proof_and_owner_approval'
+  );
 });
 
 test('forged truthy strings and malformed evidence never satisfy proof', () => {
-  for (const input of [null, [], false, 'true', { allXpInsertUpdateDeleteWritersSerialized: 'true' }]) {
+  for (const input of [
+    null,
+    [],
+    false,
+    'true',
+    { allXpInsertUpdateDeleteWritersSerialized: 'true' }
+  ]) {
     assert.equal(
       inspectFormalMaintenanceDesignEvidence(input).missing.length,
       11
@@ -61,7 +76,10 @@ test('lock keys are stable, canonical and independent of event category', () => 
 });
 
 test('cross-reader UPDATE locks both IDs in sorted order', () => {
-  assert.deepEqual(quoteScoutXpLockOrder([B, A, B]), quoteScoutXpLockOrder([A, B]));
+  assert.deepEqual(
+    quoteScoutXpLockOrder([B, A, B]),
+    quoteScoutXpLockOrder([A, B])
+  );
   assert.equal(quoteScoutXpLockOrder([A, B]).length, 2);
 });
 
@@ -73,13 +91,26 @@ test('case-insensitive UUID normalization cannot create distinct locks', () => {
 });
 
 test('malformed readers and unsupported large batches fail closed', () => {
-  for (const input of [[], null, 'text', Array(26).fill(A), [A, 'bad'], [undefined]]) {
+  for (const input of [
+    [],
+    null,
+    'text',
+    Array(26).fill(A),
+    [A, 'bad'],
+    [undefined]
+  ]) {
     assert.throws(() => quoteScoutXpLockOrder(input));
   }
 });
 
 test('non-executable SQL design includes all three XP ledger mutations', () => {
-  for (const section of ['DO NOT APPLY', 'INSERT', 'UPDATE', 'DELETE', 'deterministic']) {
+  for (const section of [
+    'DO NOT APPLY',
+    'INSERT',
+    'UPDATE',
+    'DELETE',
+    'deterministic'
+  ]) {
     assert.ok(design.includes(section), section);
   }
 });
@@ -97,13 +128,23 @@ test('design requires a shared transaction lock and fresh committed snapshot', (
 });
 
 test('seal, late-XP corrections and compensation remain blocked', () => {
-  for (const term of ['seal', 'HELD', 'correction', 'compensation', 'fail-closed']) {
+  for (const term of [
+    'seal',
+    'HELD',
+    'correction',
+    'compensation',
+    'fail-closed'
+  ]) {
     assert.ok(design.includes(term), term);
   }
 });
 
 test('beta cap, discovery XP and rollback are explicit release blockers', () => {
-  for (const term of ['novelight_cap_scout_xp_beta', 'light_seed_discovery', 'rollback']) {
+  for (const term of [
+    'novelight_cap_scout_xp_beta',
+    'light_seed_discovery',
+    'rollback'
+  ]) {
     assert.ok(design.includes(term), term);
   }
 });
@@ -122,5 +163,5 @@ test('due-RPC is private, bounded and does not grant direct table SELECT', () =>
 
 test('contract is Markdown-only, not a runnable SQL migration', () => {
   assert.match(design, /Markdown-only/);
-  assert.doesNotMatch(design, /^CREATE\s+FUNCTION/mi);
+  assert.doesNotMatch(design, /^CREATE\s+FUNCTION/im);
 });
