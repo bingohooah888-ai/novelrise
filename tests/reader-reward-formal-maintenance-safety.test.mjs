@@ -232,3 +232,24 @@ test('source seal and corrections fail closed without live review', () => {
   assert.match(cutoverSql, /FROM service_role/);
   assert.doesNotMatch(cutoverSql, /^\s*COMMIT;/im);
 });
+
+test('internal E2E corrections remain durable and finality fails closed', () => {
+  const sql = readFileSync(
+    new URL(
+      '../docs/drafts/SCOUT_FORMAL_30DAY_FINALITY_COMPENSATION_20261114.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(sql, /scout_30d_compensation_hold/);
+  assert.match(sql, /CHECK \(status = 'pending'\)/);
+  assert.match(sql, /raw_app_meta_data->>'internal_e2e'='true'/);
+  assert.match(sql, /held_source_finality_unverified/);
+  assert.match(sql, /source_finality_verified',false/);
+  assert.match(sql, /aa_scout_30d_event_ingress_hold/);
+  assert.match(sql, /aa_scout_30d_light_seed_ingress_hold/);
+  assert.match(sql, /aa_scout_30d_rank_ingress_hold/);
+  assert.match(sql, /zz_scout_30d_xp_compensation_hold/);
+  assert.doesNotMatch(sql, /^UPDATE public\.scout_xp_ledger/im);
+  assert.equal(FORMAL_MAINTENANCE_SAFETY_APPROVED, false);
+});
