@@ -170,7 +170,7 @@ test('Actual SCOUT RECORD renderer maps initial RPC values to DOM', () => {
 const previewOrigin = 'https://novelrise-abc123-ranobe1.vercel.app';
 const receiptId = '11111111-2222-4333-8444-555555555555';
 const mailboxEnv = {
-  NOVELIGHT_STAGING_READER_MAILBOX_DOMAIN: 'readerproof.resend.app',
+  NOVELIGHT_STAGING_READER_MAILBOX_DOMAIN: 'novelight.jp',
   NOVELIGHT_STAGING_READER_MAILBOX_SENDER: 'auth@novelight.jp',
   NOVELIGHT_STAGING_READER_MAILBOX_API_KEY: 're_offline_fake_key_only'
 };
@@ -191,14 +191,17 @@ const mail = {
   text: ''
 };
 
-test('Staging mailbox must be dedicated, configured and never an invalid address', () => {
-  assert.equal(mailbox.domain, 'readerproof.resend.app');
-  assert.equal(recipient.endsWith('@readerproof.resend.app'), true);
+test('Staging mailbox reuses only the verified domain and Auth sender', () => {
+  assert.equal(mailbox.domain, 'novelight.jp');
+  assert.equal(recipient.endsWith('@novelight.jp'), true);
   for (const invalid of [
-    { NOVELIGHT_STAGING_READER_MAILBOX_DOMAIN: 'novelight.jp' },
+    { NOVELIGHT_STAGING_READER_MAILBOX_DOMAIN: 'readerproof.resend.app' },
+    { NOVELIGHT_STAGING_READER_MAILBOX_DOMAIN: 'novelight.jp.evil.example' },
     { NOVELIGHT_STAGING_READER_MAILBOX_DOMAIN: 'example.invalid' },
     { NOVELIGHT_STAGING_READER_MAILBOX_API_KEY: '' },
-    { NOVELIGHT_STAGING_READER_MAILBOX_SENDER: '' }
+    { NOVELIGHT_STAGING_READER_MAILBOX_SENDER: '' },
+    { NOVELIGHT_STAGING_READER_MAILBOX_SENDER: 'auth@evil.example' },
+    { NOVELIGHT_STAGING_READER_MAILBOX_SENDER: 'support@novelight.jp' }
   ]) {
     assert.throws(
       () => requireReaderMailbox({ ...mailboxEnv, ...invalid }),
@@ -335,6 +338,16 @@ test('Missing mailbox configuration denies E2E before any browser signup', () =>
   assert.ok(config > 0 && preflight > config && signup > preflight);
   assert.ok(confirm > signup && login > confirm);
   assert.doesNotMatch(source, /email_confirm:|signInWithOtp/u);
+});
+
+test('Normal Staging smoke always excludes unapproved reader signup', () => {
+  const config = readFileSync(
+    'tests/e2e/playwright.staging.config.mjs',
+    'utf8'
+  );
+  assert.ok(
+    config.includes("testIgnore: ['**/reader-scout-onboarding.spec.js']")
+  );
 });
 
 test('Real Staging browser proof uses normal signup/login without bypass or retry', () => {
