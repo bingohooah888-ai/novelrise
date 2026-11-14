@@ -295,7 +295,7 @@ test('iPhone Safari PNG fallback completes signed upload, finalize and manuscrip
     '.episode-illustration-upload input[type=file]'
   );
   const base64 = await page.evaluate(() => {
-    const c = document.createElement('canvas');
+    const c = globalThis.document.createElement('canvas');
     c.width = 4;
     c.height = 4;
     c.getContext('2d').fillRect(0, 0, 4, 4);
@@ -307,9 +307,9 @@ test('iPhone Safari PNG fallback completes signed upload, finalize and manuscrip
     buffer: Buffer.from(base64, 'base64')
   });
   await page.evaluate(() => {
-    const original = HTMLCanvasElement.prototype.toBlob;
-    window.__originalSafariToBlob__ = original;
-    HTMLCanvasElement.prototype.toBlob = function (callback) {
+    const original = globalThis.HTMLCanvasElement.prototype.toBlob;
+    globalThis.window.__originalSafariToBlob__ = original;
+    globalThis.HTMLCanvasElement.prototype.toBlob = function (callback) {
       return original.call(this, callback, 'image/png');
     };
   });
@@ -318,15 +318,18 @@ test('iPhone Safari PNG fallback completes signed upload, finalize and manuscrip
     await expect(page.locator('#content')).toHaveValue(
       /NOVELIGHT_ILLUSTRATION:/u
     );
-    const proof = await page.evaluate(() => window.__safariUploadProof__);
+    const proof = await page.evaluate(
+      () => globalThis.window.__safariUploadProof__
+    );
     expect(proof.path).toMatch(/\.png$/u);
     expect(proof.mimeType).toBe('image/png');
     expect(proof.contentType).toBe('image/png');
     expect(proof.byteCount).toBeGreaterThan(0);
   } finally {
     await page.evaluate(() => {
-      if (window.__originalSafariToBlob__) {
-        HTMLCanvasElement.prototype.toBlob = window.__originalSafariToBlob__;
+      if (globalThis.window.__originalSafariToBlob__) {
+        globalThis.HTMLCanvasElement.prototype.toBlob =
+          globalThis.window.__originalSafariToBlob__;
       }
     });
   }

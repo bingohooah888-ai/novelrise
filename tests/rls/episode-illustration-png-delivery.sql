@@ -64,6 +64,7 @@ set local role service_role;
 do $$
 declare
   v_id uuid;
+  v_bundle jsonb;
   v_owner uuid := '84000000-0000-0000-0000-000000000001';
   v_path text := '84000000-0000-0000-0000-000000000001/840002/84000000-0000-4000-8000-000000000102.png';
 begin
@@ -74,11 +75,17 @@ begin
     840002, v_owner, v_path, 'image/png', 426061, 1024, 768,
     'Safari PNG fallback'
   );
-  if not exists (
-    select 1 from public.episode_illustrations
-     where id=v_id and episode_id=840002 and mime_type='image/png'
-       and storage_path=v_path and width=1024 and height=768
-  ) then
+  -- Even service_role has no direct SELECT on the private registry.
+  -- Verify through the exact service RPC used by the editor instead.
+  v_bundle := public.novelight_episode_illustration_editor_bundle(840002, v_owner);
+  if coalesce((v_bundle ->> 'can_edit')::boolean, false) is not true
+     or pg_catalog.jsonb_array_length(v_bundle -> 'assets') <> 1
+     or v_bundle #>> '{assets,0,id}' <> v_id::text
+     or v_bundle #>> '{assets,0,mime_type}' <> 'image/png'
+     or v_bundle #>> '{assets,0,storage_path}' <> v_path
+     or (v_bundle #>> '{assets,0,width}')::integer <> 1024
+     or (v_bundle #>> '{assets,0,height}')::integer <> 768
+  then
     raise exception 'PNG registry lost MIME, extension or image dimensions';
   end if;
 
