@@ -4,6 +4,12 @@ import { spawnSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
 import { expect, test } from '@playwright/test';
 import {
+  preflightReaderMailbox,
+  receiveReaderConfirmation,
+  requireReaderMailbox,
+  uniqueReaderAddress
+} from './reader-scout-confirmation-mailbox.mjs';
+import {
   STAGING_REF,
   assertOwnerStagingGate,
   assertReaderUiParity,
@@ -61,6 +67,7 @@ test('one newly registered Staging reader sees own Lv.1 and 0 Point', async ({
     testInfo.project.name !== 'staging-desktop-chromium',
     'Exactly one reader, never one per device'
   );
+  test.setTimeout(150_000);
 
   let stage = 'gate';
   try {
@@ -68,6 +75,10 @@ test('one newly registered Staging reader sees own Lv.1 and 0 Point', async ({
     if (!process.env.STAGING_SUPABASE_SECRET_KEY?.startsWith('sb_secret_')) {
       throw new Error('STAGING_READER_UI_GATE_DENIED');
     }
+
+    stage = 'inbox-preflight';
+    const mailbox = requireReaderMailbox(process.env);
+    await preflightReaderMailbox(mailbox);
 
     const database = readStagingDbConnection();
     stage = 'db-preflight';
@@ -96,15 +107,10 @@ test('one newly registered Staging reader sees own Lv.1 and 0 Point', async ({
     });
 
     stage = 'signup';
-    const email =
-      'novelight-staging-reader-ui-' + randomUUID() + '@example.invalid';
+    // This unique address must belong to the approved, receive-capable
+    // Resend-only Staging inbox. Never use Production or an invalid domain.
+    const email = uniqueReaderAddress(mailbox, randomUUID());
     const password = 'Test1!' + randomBytes(32).toString('base64url');
-    // No real mailbox receives @example.invalid. Reject before the first
-    // signup request; never leave a synthetic Auth account behind on failure.
-    // The verified-mailbox flow requires a separate reviewed implementation.
-    if (email.endsWith('@example.invalid')) {
-      throw new Error('STAGING_READER_UI_MAILBOX_UNVERIFIED');
-    }
     await page.goto(origin + '/signup.html?redirect=scout-record.html');
     await expect(page.locator('#signupForm')).toBeVisible();
     await page.locator('#name').fill('Staging reader UI proof');
@@ -113,6 +119,7 @@ test('one newly registered Staging reader sees own Lv.1 and 0 Point', async ({
     await page.locator('#passwordConfirm').fill(password);
     await page.locator('#termsConsent').check();
 
+    const signupStartedAt = Date.now();
     const submitted = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
@@ -151,8 +158,21 @@ test('one newly registered Staging reader sees own Lv.1 and 0 Point', async ({
       throw new Error('STAGING_SYNTHETIC_MARK_DENIED');
     }
 
-    // If Staging requires email verification, do not bypass confirmation.
-    // This is a terminal, one-use failure, not a reason to create another user.
+    // Confirm only through the real delivered Supabase email link.
+    // Missing/ambiguous/unsafe mail halts the one-reader test without retry.
+    stage = 'email-confirmation-receipt';
+    const confirmationHref = await receiveReaderConfirmation({
+      mailbox,
+      recipient: email,
+      previewOrigin: origin,
+      sinceMs: signupStartedAt
+    });
+    stage = 'email-confirmation-browser';
+    await page.goto(confirmationHref, { waitUntil: 'domcontentloaded' });
+    if (new globalThis.URL(page.url()).origin !== origin) {
+      throw new Error('STAGING_READER_UI_EMAIL_CALLBACK_DENIED');
+    }
+
     stage = 'login';
     await page.goto(origin + '/login.html?redirect=scout-record.html');
     await page.locator('#email').fill(email);
