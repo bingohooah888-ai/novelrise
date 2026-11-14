@@ -42,6 +42,35 @@ test('unregistered formal Postgres host constructs without connecting to any dat
   assert.equal(typeof host.handlers.reader, 'function');
   assert.equal(typeof host.handlers.admin, 'function');
   assert.equal(calls, 0);
+
+  const response = {
+    statusCode: 200,
+    result: null,
+    setHeader() {},
+    status(value) {
+      this.statusCode = value;
+      return this;
+    },
+    json(value) {
+      this.result = value;
+      return this;
+    }
+  };
+  await host.handlers.reader(
+    {
+      method: 'GET',
+      headers: {
+        origin: 'https://novelight.jp',
+        host: 'novelight.jp',
+        'x-forwarded-proto': 'https',
+        'sec-fetch-site': 'same-origin'
+      }
+    },
+    response
+  );
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.result.error, 'UNAUTHORIZED');
+  assert.equal(calls, 0);
   assert.equal(
     (
       await host.service.requestExchange({
