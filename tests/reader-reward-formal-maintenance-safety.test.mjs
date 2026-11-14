@@ -204,3 +204,31 @@ test('absent sealed DB proof keeps rollout blocked', () => {
   assert.match(design, /list_due_scout_30_day_reviews/);
   assert.match(design, /source finality/);
 });
+const cutoverSql = readFileSync(
+  new URL(
+    '../docs/drafts/SCOUT_FORMAL_30DAY_E2E_CUTOVER_HOLD_20261114.sql',
+    import.meta.url
+  ),
+  'utf8'
+);
+
+test('E2E beta cap and discovery cutover are physically disabled', () => {
+  assert.match(cutoverSql, /scout_30d_e2e_cutover/);
+  assert.match(cutoverSql, /CHECK \(enabled = false\)/);
+  assert.match(cutoverSql, /raw_app_meta_data->>'internal_e2e'='true'/);
+  assert.match(cutoverSql, /scout_30d_discovery_e2e_from_rank/);
+  assert.match(cutoverSql, /novelight_cap_scout_xp_beta/);
+  assert.equal(FORMAL_MAINTENANCE_SAFETY_APPROVED, false);
+});
+
+test('source seal and corrections fail closed without live review', () => {
+  assert.match(
+    cutoverSql,
+    /source_evidence_verified = false AND late_issue = true/
+  );
+  assert.match(cutoverSql, /issue_count=/);
+  assert.match(cutoverSql, /review_scout_30_days_sealed/);
+  assert.match(cutoverSql, /REVOKE EXECUTE ON FUNCTION/);
+  assert.match(cutoverSql, /FROM service_role/);
+  assert.doesNotMatch(cutoverSql, /^\s*COMMIT;/im);
+});
