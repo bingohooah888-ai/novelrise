@@ -99,6 +99,12 @@ test('one newly registered Staging reader sees own Lv.1 and 0 Point', async ({
     const email =
       'novelight-staging-reader-ui-' + randomUUID() + '@example.invalid';
     const password = 'Test1!' + randomBytes(32).toString('base64url');
+    // No real mailbox receives @example.invalid. Reject before the first
+    // signup request; never leave a synthetic Auth account behind on failure.
+    // The verified-mailbox flow requires a separate reviewed implementation.
+    if (email.endsWith('@example.invalid')) {
+      throw new Error('STAGING_READER_UI_MAILBOX_UNVERIFIED');
+    }
     await page.goto(origin + '/signup.html?redirect=scout-record.html');
     await expect(page.locator('#signupForm')).toBeVisible();
     await page.locator('#name').fill('Staging reader UI proof');
