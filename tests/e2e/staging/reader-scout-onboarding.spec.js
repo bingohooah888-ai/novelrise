@@ -158,9 +158,12 @@ test('one newly registered Staging reader sees own Lv.1 and 0 Point', async ({
 
     stage = 'authenticated-rpc';
     const result = await page.evaluate(async () => {
-      const configResponse = await globalThis.fetch('/api/staging-browser-config', {
-        cache: 'no-store'
-      });
+      const configResponse = await globalThis.fetch(
+        '/api/staging-browser-config',
+        {
+          cache: 'no-store'
+        }
+      );
       if (!configResponse.ok) return null;
       const config = await configResponse.json();
       const client = globalThis.window.supabase.createClient(
