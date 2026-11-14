@@ -42,7 +42,9 @@ const [
   read('supabase/checks/restore_validation.sql'),
   read('docs/NOVELIGHT-MASTER.md')
 ]);
-const pngAlignment = await read('supabase/migrations/20261114121000_episode_illustration_png_delivery_consistency.sql');
+const pngAlignment = await read(
+  'supabase/migrations/20261114121000_episode_illustration_png_delivery_consistency.sql'
+);
 
 test('MASTER locks safe plain-text illustration blocks and beta media limits', () => {
   assert.match(master, /episodes\.content[\s\S]{0,500}illustration ID/iu);
@@ -101,7 +103,10 @@ test('private Storage bucket keeps its bounds while PNG fallback is activated en
     migration,
     /'episode-illustrations',[\s\S]*false,[\s\S]*10485760,[\s\S]*array\['image\/webp'\]/iu
   );
-  assert.match(pngAlignment, /allowed_mime_types = array\['image\/webp', 'image\/png'\]/iu);
+  assert.match(
+    pngAlignment,
+    /allowed_mime_types = array\['image\/webp', 'image\/png'\]/iu
+  );
   assert.match(pngAlignment, /episode_illustrations_mime_extension_check/u);
   assert.match(api, /novelight_authorize_episode_illustration_upload/u);
   assert.match(api, /status: 429/u);
@@ -193,10 +198,7 @@ test('illustration-aware backups preserve markers and original WebP/PNG binaries
   assert.match(myNovels, /作品バックアップ/u);
   assert.match(exportClient, /export-bundle/u);
   assert.match(exportClient, /illustrations\/manifest\.json/u);
-  assert.match(
-    exportClient,
-    /name: illustrationFilePath\(asset\)/u
-  );
+  assert.match(exportClient, /name: illustrationFilePath\(asset\)/u);
   assert.match(exportClient, /work\.txt/u);
   assert.match(exportClient, /NOVELIGHT_ILLUSTRATION:<id>/u);
   assert.match(exportClient, /p_format: format/u);

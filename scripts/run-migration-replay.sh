@@ -1058,6 +1058,10 @@ insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('episode-illustrations','episode-illustrations',false,10485760,array['image/webp']::text[])
 on conflict(id) do nothing;
 SQL
+# Historical rollback leaves old WebP-only schema without logical deletion
+# or reference guards. Restore current semantics before the new MIME migration.
+"${REPLAY[@]}" -f supabase/migrations/20260930193000_episode_illustration_logical_delete.sql
+"${REPLAY[@]}" -f supabase/migrations/20261108154048_protect_episode_illustration_active_references.sql
 "${REPLAY[@]}" -f "supabase/checks/20261114121000_episode_illustration_png_delivery_consistency_precheck.sql"
 "${REPLAY[@]}" -f "supabase/migrations/20261114121000_episode_illustration_png_delivery_consistency.sql"
 "${REPLAY[@]}" -f "supabase/checks/20261114121000_episode_illustration_png_delivery_consistency_postcheck.sql"
