@@ -131,6 +131,7 @@ test('exchange estimate validates 30000 threshold and eligible balance; no live 
   byTag(root, 'button')
     .find((n) => n.textContent === 'デジタルギフト交換')
     .fire('click');
+  assert.match(text(root), /キャンセルは未発行の確認後/);
   const input = byTag(root, 'input')[0];
   const form = byTag(root, 'form')[0];
   input.value = '29999';
