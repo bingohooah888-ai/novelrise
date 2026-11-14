@@ -90,7 +90,7 @@ test('Staging request bridge excludes DB credentials', () => {
   }
 });
 
-test('New-reader Staging proof keeps its own scoped credentials and two atomic inserts', () => {
+test('One-reader proof isolates Staging credentials and atomic writes', () => {
   requirePatterns(newReaderWorkflow, [
     /^  admit_one_new_reader:/m,
     /^  stage_one_new_reader:/m,
@@ -107,12 +107,16 @@ test('New-reader Staging proof keeps its own scoped credentials and two atomic i
     newReaderWorkflow.indexOf('\n  stage_one_new_reader:'),
     newReaderWorkflow.indexOf('\n  record_one_new_reader:')
   );
-  const jobEnv = stage.slice(stage.indexOf('\n    env:'), stage.indexOf('\n    steps:'));
+  const jobEnv = stage.slice(
+    stage.indexOf('\n    env:'),
+    stage.indexOf('\n    steps:')
+  );
   assert.doesNotMatch(
     jobEnv,
     /STAGING_DATABASE_URL_SOURCE:|STAGING_SUPABASE_SECRET_KEY:|STAGING_SUPABASE_PUBLISHABLE_KEY:/
   );
-  assert.equal((newReaderWorkflow.match(/INSERT INTO novelight_formal_private\./g) || []).length, 2);
+  const insertPattern = /INSERT INTO novelight_formal_private\./g;
+  assert.equal(newReaderWorkflow.match(insertPattern)?.length, 2);
   for (const forbidden of [
     /PRODUCTION_DB_PASSWORD/,
     /SUPABASE_ACCESS_TOKEN/,
