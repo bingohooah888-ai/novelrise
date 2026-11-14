@@ -1,8 +1,9 @@
--- NOVELIGHT 30-day Scout Staging SQL IMPLEMENTATION CANDIDATE.
--- NOT A MIGRATION. DO NOT APPLY: Staging project identity and branch privileges
--- are not yet verifiable with the authorized Supabase connector.
--- Formal review remains HARD DISABLED: no user demotions, XP mutations or cutover.
--- Separate verification and approval required before any SQL execution.
+-- NOVELIGHT Scout formal 30-day Staging-only disabled SQL implementation.
+-- Applied to Staging ref wmlzjgvxgoyrovdhbqbg only via Supabase migration
+-- 20261114062717_scout_formal_30day_safe_staging_disabled_20261114.
+-- NOT FOR PRODUCTION. Formal review remains HARD DISABLED: no demotions
+-- or formal cutover are authorized. Separate approval is still required
+-- before any live review RPC, beta cutover, or production integration.
 --
 -- Rollback if separately authorized in a controlled Staging transaction:
 -- DROP TRIGGER IF EXISTS aa_scout_30d_xp_guard ON public.scout_xp_ledger;
@@ -12,7 +13,7 @@
 -- DROP TABLE IF EXISTS novelight_formal_private.scout_30d_late_issue;
 -- DROP TABLE IF EXISTS novelight_formal_private.scout_30d_window_evidence;
 -- DROP TABLE IF EXISTS novelight_formal_private.scout_30d_release_control;
--- No rollback is executed as part of this candidate.
+-- Rollback statements are reference only; no rollback was run.
 
 CREATE TABLE novelight_formal_private.scout_30d_release_control (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
@@ -121,7 +122,8 @@ REVOKE ALL ON FUNCTION
   novelight_formal_private.scout_30d_guard_xp_mutation()
   FROM PUBLIC, anon, authenticated, service_role;
 -- Name sorts before scout_xp_beta_level_cap. Beta cap remains untouched.
--- DO NOT INSTALL until parent-event lock order has been proved in Staging.
+-- Installed on Staging with formal reviews disabled; source ingress lock
+-- order and settlement semantics still require their own release approval.
 CREATE TRIGGER aa_scout_30d_xp_guard
   BEFORE INSERT OR UPDATE OR DELETE ON public.scout_xp_ledger
   FOR EACH ROW EXECUTE FUNCTION
@@ -132,7 +134,7 @@ CREATE TRIGGER aa_scout_30d_xp_guard
 CREATE FUNCTION novelight_formal_private.list_due_scout_30_day_reviews(
   p_as_of timestamptz, p_limit integer
 ) RETURNS TABLE(user_id uuid)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
 AS $$
 BEGIN
   IF p_as_of IS NULL OR p_as_of > pg_catalog.clock_timestamp()
