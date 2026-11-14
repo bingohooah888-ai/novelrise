@@ -398,6 +398,7 @@ jobs:
           import {spawnSync} from 'node:child_process';
           import {createClient} from '@supabase/supabase-js';
           import {verifyStagingMigrationTarget} from './scripts/verify-staging-migration-target.mjs';
+          let failureStage = 'credential_format';
           try {
           const REF='wmlzjgvxgoyrovdhbqbg';
           const URL='https://'+REF+'.supabase.co';
@@ -410,6 +411,7 @@ jobs:
             !/^[1-9][0-9]*$/.test(env.STAGING_REQUEST_COMMENT_ID||'')||
             !env.STAGING_SUPABASE_SECRET_KEY?.startsWith('sb_secret_')||
             !env.STAGING_SUPABASE_PUBLISHABLE_KEY?.startsWith('sb_publishable_'))fail();
+          failureStage = 'approved_main_sha';
           const sh=(exe,args,input)=> {
             const res=spawnSync(exe,args,{encoding:'utf8',timeout:30000,maxBuffer:1048576,
               ...(input!==undefined?{input}:{})});
@@ -418,6 +420,7 @@ jobs:
           };
           if(sh('git',['rev-parse','HEAD'])!==env.APPROVED_MAIN_SHA||
             sh('gh',['api','repos/bingohooah888-ai/novelrise/git/ref/heads/main','--jq','.object.sha'])!==env.APPROVED_MAIN_SHA)fail();
+          failureStage = 'staging_database_guard';
           const db=readFileSync(env.STAGING_DATABASE_URL_FILE,'utf8').trim();
           verifyStagingMigrationTarget({
             STAGING_SUPABASE_URL:URL,STAGING_DATABASE_URL:db,PGSSLMODE:'require'
@@ -436,9 +439,11 @@ jobs:
             if(r.error||r.status!==0)fail();
             return r.stdout.trim();
           };
+          failureStage = 'auth_client_setup';
           const options={auth:{persistSession:false,autoRefreshToken:false}};
           const admin=createClient(URL,env.STAGING_SUPABASE_SECRET_KEY,options);
           const client=createClient(URL,env.STAGING_SUPABASE_PUBLISHABLE_KEY,options);
+          failureStage = 'auth_create_user';
           const email='novelight-reader-one-'+randomUUID()+'@example.invalid';
           const password='Test1!'+randomBytes(25).toString('base64url');
           const created=await admin.auth.admin.createUser({
@@ -449,12 +454,15 @@ jobs:
           const id=created?.data?.user?.id;
           if(created?.error||!(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id||'')))fail();
           console.log('STAGING_ONE_READER_UUID='+id);
+          failureStage = 'jwt_sign_in';
           const login=await client.auth.signInWithPassword({email,password});
           const token=login?.data?.session?.access_token;
           if(login.error||!token||login.data.session.user?.id!==id)fail();
+          failureStage = 'jwt_get_user';
           const verified=await client.auth.getUser(token);
           if(verified.error||verified.data?.user?.id!==id)fail();
           console.log('STAGING_ONE_READER_JWT_MATCH=1');
+          failureStage = 'database_level_wallet_write';
           const uuid="'"+id+"'::uuid";
           const sql=[
             'BEGIN;',
@@ -482,6 +490,7 @@ jobs:
             'END','$one_reader$;','COMMIT;'
           ].join('\n');
           query(sql);
+          failureStage = 'database_level_wallet_readback';
           const checked=query([
             'SELECT json_build_object(',
             " 'level',(SELECT count(*) FROM novelight_formal_private.scout_level_state WHERE user_id="+uuid+" AND current_level=1 AND highest_level=1 AND level_progress_xp=0 AND revision=0),",
@@ -497,6 +506,7 @@ jobs:
           console.log('STAGING_ONE_READER_LEVEL1_WALLET0_CONFIRMED=1');
           console.log('STAGING_ONE_READER_RETAINED_NO_AUTO_DELETE');
           } catch {
+            console.error('STAGING_ONE_READER_FAILURE_STAGE='+failureStage);
             console.error('STAGING_ONE_READER_STOPPED_NO_RETRY');
             process.exitCode = 1;
           }
