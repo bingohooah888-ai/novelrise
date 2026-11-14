@@ -466,12 +466,12 @@ test('SQL proposal requires service_role, RLS, ownership and signed session evid
   );
   assert.match(sql, /v_text_id = any\(v_seen\)/);
   assert.match(sql, /p_expected_revision = 2147483647/);
-  assert.equal(
-    existsSync(
-      new URL('../api/ai-owner-bible-review-state.js', import.meta.url)
-    ),
-    false
+  const route = new URL(
+    '../api/ai-owner-bible-review-state.js',
+    import.meta.url
   );
+  assert.equal(existsSync(route), true);
+  assert.match(readFileSync(route, 'utf8'), /enabled = false/);
   assert.equal(
     existsSync(
       new URL(

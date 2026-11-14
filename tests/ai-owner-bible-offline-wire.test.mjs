@@ -325,7 +325,10 @@ test('server-internal wiring never reaches the owner browser page', () => {
     const source = readFileSync(new URL(path, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /owner-bible-outline-offline-wiring/);
   }
-  const page = readFileSync(new URL('../story-notes.html', import.meta.url), 'utf8');
+  const page = readFileSync(
+    new URL('../story-notes.html', import.meta.url),
+    'utf8'
+  );
   assert.match(page, /novelight-ai-bible-owner-outline-offline-http/);
   assert.match(page, /readOutline:outlineReader/);
 });

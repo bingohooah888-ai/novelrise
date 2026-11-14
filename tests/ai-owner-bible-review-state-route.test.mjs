@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createOwnerBibleReviewStateApiHandler } from '../api/ai-owner-bible-review-state.js';
+import {
+  createOwnerBibleReviewStateApiHandler
+} from '../api/ai-owner-bible-review-state.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const TOKEN = 'synthetic-owner-review-bearer-not-live';
@@ -103,11 +105,15 @@ test('invalid method, origin, bearer, and novel ID deny before privileged IO', a
   for (const [req, expected] of [
     [request({ method: 'DELETE' }), 405],
     [
-      request({ headers: { ...request().headers, origin: 'https://evil.test' } }),
+      request({
+        headers: { ...request().headers, origin: 'https://evil.test' }
+      }),
       403
     ],
     [
-      request({ headers: { ...request().headers, authorization: 'Bearer short' } }),
+      request({
+        headers: { ...request().headers, authorization: 'Bearer short' }
+      }),
       401
     ],
     [request({ query: { novel_id: '25bad' } }), 400]

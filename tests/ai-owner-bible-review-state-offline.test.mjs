@@ -768,7 +768,10 @@ test('review-state browser adapter is connected, server route is default-off', (
   );
   assert.match(html, /novelight-ai-bible-owner-review-state-offline-http/);
   assert.match(html, /saveReviewState:reviewReader\.save/);
-  const route = new URL('../api/ai-owner-bible-review-state.js', import.meta.url);
+  const route = new URL(
+    '../api/ai-owner-bible-review-state.js',
+    import.meta.url
+  );
   assert.equal(existsSync(route), true);
   const source = readFileSync(route, 'utf8');
   assert.match(source, /enabled = false/);
