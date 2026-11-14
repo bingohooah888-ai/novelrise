@@ -2,9 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
-import {
-  FORMAL_MAINTENANCE_SAFETY_APPROVED
-} from '../api/_lib/reader-reward/formal-maintenance-release-gate.js';
+import { FORMAL_MAINTENANCE_SAFETY_APPROVED } from '../api/_lib/reader-reward/formal-maintenance-release-gate.js';
 
 const matrix = JSON.parse(
   readFileSync(
@@ -111,7 +109,7 @@ test('permission probe never invokes review RPC', () => {
 test('commit-order visibility test is restricted to disposable clone', () => {
   assert.equal(clone('C01').commitRequired, true);
   assert.equal(clone('C01').expected, '200_XP_NO_DEMOTION_AFTER_COMMIT');
-  assert.match(plan, /全接続ROLLBACKでは/);
+  assert.match(plan, /å¨æ¥ç¶ROLLBACKã§ã¯/);
 });
 
 test('writer rollback cannot be mistaken for a sealed review', () => {
@@ -127,12 +125,12 @@ test('backdated XP and corrections are held', () => {
 
 test('cross-user locks require deterministic order', () => {
   assert.equal(clone('C05').expected, 'NO_DEADLOCK');
-  assert.match(plan, /決定的順/);
+  assert.match(plan, /æ±ºå®çé /);
 });
 
 test('beta cutover remains blocked until verified separately', () => {
   assert.equal(clone('C06').expected, 'CUTOVER_UNAPPROVED_HELD');
-  assert.match(plan, /βcap/);
+  assert.match(plan, /Î²cap/);
 });
 
 test('future private due RPC is bound to 25 users without direct SELECT', () => {
@@ -183,26 +181,6 @@ test('plan makes no executable migration or release claim', () => {
   assert.match(plan, /PLAN_VALIDATED/);
   assert.match(plan, /STAGING_PROVEN/);
   assert.match(plan, /DO NOT EXECUTE/);
-  assert.doesNotMatch(plan, /^\s*CREATE\s+FUNCTION/mi);
-  assert.doesNotMatch(plan, /^\s*GRANT\s+SELECT/mi);
-});
-
-
-// NOVELIGHT_PR2862_PLAN_PRETTIER_DIAGNOSTIC_BEGIN
-test('temporary static Prettier diagnostic only', async () => {
-  const { format, resolveConfig } = await import('prettier');
-  const ownSource = readFileSync(new URL(import.meta.url), 'utf8');
-  const clean = ownSource.slice(
-    0,
-    ownSource.indexOf('// NOVELIGHT_PR2862_PLAN_PRETTIER_DIAGNOSTIC_BEGIN')
-  );
-  const configuration = await resolveConfig(new URL(import.meta.url));
-  const formatted = await format(clean, {
-    ...configuration,
-    filepath: 'tests/reader-reward-formal-staging-proof-plan.test.mjs'
-  });
-  console.log(
-    'NOVELIGHT_PLAN_FORMAT_BASE64=' +
-      Buffer.from(formatted).toString('base64')
-  );
+  assert.doesNotMatch(plan, /^\s*CREATE\s+FUNCTION/im);
+  assert.doesNotMatch(plan, /^\s*GRANT\s+SELECT/im);
 });
