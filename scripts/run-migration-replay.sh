@@ -68,6 +68,11 @@ for migration in supabase/migrations/*.sql; do
     echo "::notice::Defer starless Rank cutover until after legacy replay/rollback verification"
     continue
   fi
+  # Legacy illustration replay expects WebP-only Storage; test PNG after it completes.
+  if [[ "$migration" == "supabase/migrations/20261114121000_episode_illustration_png_delivery_consistency.sql" ]]; then
+    echo "::notice::Defer Safari PNG illustration migration until historical replay completes"
+    continue
+  fi
   if [[ "$migration" == "supabase/migrations/20260923064500_secure_beta_author_invites.sql" ]]; then
     echo "::notice::Defer $migration until historical Founding/Auth replay checks finish"
     continue
@@ -1030,6 +1035,42 @@ echo '::group::Verify Inquiry #84 cross-visit reader retention (disposable DB on
 "${REPLAY[@]}" -f supabase/migrations/20261110172000_author_reader_retention_cross_visit.sql
 "${REPLAY[@]}" -f supabase/checks/20261110172000_author_reader_retention_cross_visit_postcheck.sql
 "${REPLAY[@]}" -f tests/rls/light-analytics-cross-visit.sql
+echo '::endgroup::'
+
+
+echo '::group::Verify Safari PNG illustration contract on isolated disposable DB'
+# Plain PostgreSQL replay has no Supabase Storage. Install a minimal mock ONLY
+# within this throwaway replay DB, never a hosted production/staging project.
+"${REPLAY[@]}" <<'SQL'
+create schema if not exists storage;
+create table if not exists storage.buckets (
+  id text primary key,
+  name text not null,
+  public boolean not null,
+  file_size_limit bigint,
+  allowed_mime_types text[]
+);
+create table if not exists storage.objects (
+  bucket_id text not null,
+  name text not null
+);
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values('episode-illustrations','episode-illustrations',false,10485760,array['image/webp']::text[])
+on conflict(id) do nothing;
+SQL
+# Historical rollback leaves old WebP-only schema without logical deletion
+# or reference guards. Restore current semantics before the new MIME migration.
+"${REPLAY[@]}" -f supabase/migrations/20260930193000_episode_illustration_logical_delete.sql
+"${REPLAY[@]}" -f supabase/migrations/20261108154048_protect_episode_illustration_active_references.sql
+"${REPLAY[@]}" -f "supabase/checks/20261114121000_episode_illustration_png_delivery_consistency_precheck.sql"
+"${REPLAY[@]}" -f "supabase/migrations/20261114121000_episode_illustration_png_delivery_consistency.sql"
+"${REPLAY[@]}" -f "supabase/checks/20261114121000_episode_illustration_png_delivery_consistency_postcheck.sql"
+"${REPLAY[@]}" -f tests/rls/episode-illustration-png-delivery.sql
+# PNG fixture rows were transactional and have already rolled back.
+"${REPLAY[@]}" -f "supabase/rollback/20261114121000_episode_illustration_png_delivery_consistency_rollback.sql"
+"${REPLAY[@]}" -f "supabase/checks/20261114121000_episode_illustration_png_delivery_consistency_precheck.sql"
+"${REPLAY[@]}" -f "supabase/migrations/20261114121000_episode_illustration_png_delivery_consistency.sql"
+"${REPLAY[@]}" -f "supabase/checks/20261114121000_episode_illustration_png_delivery_consistency_postcheck.sql"
 echo '::endgroup::'
 
 echo 'Fresh NOVELIGHT migration replay passed.'
