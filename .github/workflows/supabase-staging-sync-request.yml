@@ -450,10 +450,12 @@ jobs:
             requiredColumns.map(([rel,col])=>"('"+rel+"','"+col+"')").join(',')+
             ') AS needed(rel,col) ON a.attrelid=pg_catalog.to_regclass(needed.rel) '+
             'AND a.attname=needed.col WHERE a.attnum>0 AND NOT a.attisdropped '+
-            "AND pg_catalog.has_table_privilege(a.attrelid, CASE "+
-            "WHEN needed.rel='auth.users' THEN 'SELECT,UPDATE' "+
-            "WHEN needed.rel LIKE 'novelight_formal_private.%' THEN 'SELECT,INSERT' "+
-            "ELSE 'SELECT' END);";
+            "AND (pg_catalog.has_table_privilege(a.attrelid,'SELECT') "+
+            "AND CASE WHEN needed.rel='auth.users' "+
+            "THEN pg_catalog.has_table_privilege(a.attrelid,'UPDATE') "+
+            "WHEN needed.rel LIKE 'novelight_formal_private.%' "+
+            "THEN pg_catalog.has_table_privilege(a.attrelid,'INSERT') "+
+            "ELSE true END);";
           if(query(catalogSql)!==String(requiredColumns.length))fail();
           failureStage = 'auth_client_setup';
           const options={auth:{persistSession:false,autoRefreshToken:false}};
