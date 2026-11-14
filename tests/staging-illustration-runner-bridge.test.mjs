@@ -82,7 +82,7 @@ test('Staging workflows remain one-use OWNER issue-comment only', async () => {
     assert.ok(workflow.includes('Consume Staging approval exactly once'));
     assert.ok(
       workflow.includes(
-        "test \"$STAGING_SUPABASE_URL\" = 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'"
+        'test "$STAGING_SUPABASE_URL" = \'https://wmlzjgvxgoyrovdhbqbg.supabase.co\''
       )
     );
     assert.ok(
@@ -104,7 +104,9 @@ test('Staging-only SQL digest proof precedes strict history parity', async () =>
       'diff -u /tmp/staging-main-migration-versions /tmp/staging-baseline-versions'
     );
     assert.ok(proof > 0 && versions > proof && parity > versions);
-    assert.ok(workflow.includes('test -s /tmp/staging-main-migration-versions'));
+    assert.ok(
+      workflow.includes('test -s /tmp/staging-main-migration-versions')
+    );
     assert.ok(workflow.includes('if grep -Fxq "$MIGRATION"'));
   }
 });
@@ -115,7 +117,7 @@ test('only PR 2861 routes to pinned check/persist; generic fallback remains', as
   for (const workflow of [persist, check]) {
     assert.ok(
       workflow.includes(
-        "\"$PR_NUMBER\" == '2861' && \"$MIGRATION\" == '20261114121000'"
+        '"$PR_NUMBER" == \'2861\' && "$MIGRATION" == \'20261114121000\''
       )
     );
     assert.ok(
@@ -125,7 +127,9 @@ test('only PR 2861 routes to pinned check/persist; generic fallback remains', as
     assert.ok(workflow.includes('= "$CANDIDATE"'));
   }
   assert.ok(persist.includes('"$PR_NUMBER" == \'2698\''));
-  assert.ok(persist.includes('scripts/staging-candidate-persist-sql.mjs compose'));
+  assert.ok(
+    persist.includes('scripts/staging-candidate-persist-sql.mjs compose')
+  );
   assert.ok(persist.includes('"$PR_NUMBER" persist'));
   assert.ok(check.includes('scripts/staging-candidate-sql.mjs compose'));
   assert.ok(check.includes('"$PR_NUMBER" check'));
