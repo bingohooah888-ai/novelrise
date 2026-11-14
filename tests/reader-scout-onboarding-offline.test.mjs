@@ -159,6 +159,19 @@ test('Actual SCOUT RECORD renderer maps initial RPC values to DOM', () => {
   assert.equal(rendered.get('pointBalance'), '0');
 });
 
+test('unreceivable synthetic address is denied before browser signup', () => {
+  const source = readFileSync(
+    'tests/e2e/staging/reader-scout-onboarding.spec.js',
+    'utf8'
+  );
+  const guard = source.indexOf("if (email.endsWith('@example.invalid'))");
+  const signup = source.indexOf(
+    "page.goto(origin + '/signup.html?redirect=scout-record.html')"
+  );
+  assert.ok(guard > 0 && signup > guard);
+  assert.match(source, /STAGING_READER_UI_MAILBOX_UNVERIFIED/u);
+});
+
 test('Real Staging browser proof uses normal signup/login without bypass or retry', () => {
   const source = readFileSync(
     'tests/e2e/staging/reader-scout-onboarding.spec.js',
