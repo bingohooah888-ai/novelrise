@@ -156,7 +156,9 @@ async function simulateOneReader(options = {}) {
   const sha = 'a'.repeat(40);
   const id = '11111111-2222-3333-4444-555555555555';
   const db =
-    '***aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres';
+    'postgresql://' +
+    'postgres.wmlzjgvxgoyrovdhbqbg:fake%25offline' +
+    '@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres';
   const state = {
     authCalls: 0,
     signIns: 0,
@@ -373,18 +375,3 @@ test('offline DB failures stop without retries or detail leakage', async () => {
   }
 });
 
-
-// TEMP_PRETTIER_CLI_REPORT
-test('capture exact CLI formatter result', async () => {
-  const { spawnSync } = await import('node:child_process');
-  const file = 'tests/staging-migration-sync-request.test.mjs';
-  const current = await readFile(file, 'utf8');
-  const original = current.split('\n// TEMP_PRETTIER_CLI_REPORT\n')[0];
-  const out = spawnSync(
-    'node',
-    ['node_modules/prettier/bin/prettier.cjs', '--stdin-filepath', file],
-    { input: original, encoding: 'utf8', maxBuffer: 1024 * 1024 }
-  );
-  assert.equal(out.status, 0);
-  console.log('NOVELIGHT_PRETTIER_CLI_JSON=' + JSON.stringify(out.stdout));
-});
