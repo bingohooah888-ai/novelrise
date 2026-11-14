@@ -44,7 +44,9 @@ test('canonical award and Wallet credit are atomic and idempotent', () => {
   assert.ok(credit.includes('on conflict(canonical_point_id) do nothing'));
   assert.ok(credit.includes("status','already_credited"));
   assert.ok(credit.includes('available_points=available_points+'));
-  assert.ok(credit.includes('exchange_eligible_points=exchange_eligible_points+'));
+  assert.ok(
+    credit.includes('exchange_eligible_points=exchange_eligible_points+')
+  );
   assert.ok(credit.includes('revision=revision+1'));
   assert.ok(credit.includes('Formal wallet credit not persisted'));
   for (const writer of [read, comment]) {
