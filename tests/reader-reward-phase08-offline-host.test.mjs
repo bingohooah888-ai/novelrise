@@ -92,6 +92,20 @@ test('missing injected PostgreSQL pool and trusted authentication fail closed', 
   assert.throws(
     () =>
       createUnregisteredFormalRewardHost({
+        repository: {
+          transact() {
+            throw new Error('OFFLINE_TEST_MUST_NOT_TRANSACT');
+          },
+          readReader() {
+            throw new Error('OFFLINE_TEST_MUST_NOT_READ');
+          },
+          listPendingExchanges() {
+            throw new Error('OFFLINE_TEST_MUST_NOT_LIST');
+          },
+          findOperation() {
+            throw new Error('OFFLINE_TEST_MUST_NOT_FIND');
+          }
+        },
         releaseConfiguration: { formalRewardsEnabled: false }
       }),
     /Trusted existing Supabase Auth client required/
