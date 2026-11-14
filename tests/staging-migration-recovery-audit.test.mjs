@@ -65,10 +65,12 @@ test('reports all missing migration artifacts and never treats drift as permissi
 test('four approved Staging-only versions are not mistaken for unexpected Production migrations', () => {
   const approved = STAGING_ONLY_SCOUT_FILES.map((file) => file.slice(0, 14));
   const report = assessStagingMigrationRecovery({
-    localMigrations: [{
-      name: '20261110172000_author_reader_retention_cross_visit.sql',
-      sql: 'create function public.fixture() returns int language sql as $ select 1 $;'
-    }],
+    localMigrations: [
+      {
+        name: '20261110172000_author_reader_retention_cross_visit.sql',
+        sql: 'create function public.fixture() returns int language sql as $ select 1 $;'
+      }
+    ],
     remoteVersions: approved,
     checkNames: [],
     rollbackNames: [],
@@ -90,13 +92,18 @@ test('four approved Staging-only versions are not mistaken for unexpected Produc
   assert.deepEqual(wrong.missingApprovedStagingOnly, [approved[0]]);
   assert.deepEqual(wrong.unexpectedOnStaging, ['20261112120000']);
   assert.ok(wrong.blockers.includes('MISSING_APPROVED_STAGING_ONLY_MIGRATION'));
-  assert.throws(() => assessStagingMigrationRecovery({
-    localMigrations: [safe],
-    remoteVersions: [],
-    checkNames: [],
-    rollbackNames: [],
-    approvedStagingOnlyVersions: [safe.name.slice(0, 14)]
-  }), /overlap Production-track/);
+  assert.equal(wrong.migrationParity, false);
+  assert.throws(
+    () =>
+      assessStagingMigrationRecovery({
+        localMigrations: [safe],
+        remoteVersions: [],
+        checkNames: [],
+        rollbackNames: [],
+        approvedStagingOnlyVersions: [safe.name.slice(0, 14)]
+      }),
+    /overlap Production-track/
+  );
 });
 
 test('a single pending version with complete artifacts still cannot be auto-applied', () => {
@@ -181,7 +188,10 @@ test('uses read-only remote migration history and local artifacts only', async (
     await mkdir(join(root, 'supabase/rollback'));
     await mkdir(join(root, 'supabase/staging-migrations'));
     for (const filename of STAGING_ONLY_SCOUT_FILES) {
-      await writeFile(join(root, 'supabase/staging-migrations', filename), 'select 1;');
+      await writeFile(
+        join(root, 'supabase/staging-migrations', filename),
+        'select 1;'
+      );
     }
     await writeFile(join(root, 'supabase/migrations', safe.name), safe.sql);
     await writeFile(

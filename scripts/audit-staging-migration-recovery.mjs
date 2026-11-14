@@ -121,7 +121,10 @@ export function assessStagingMigrationRecovery({
 
   return {
     mode: 'READ_ONLY_STAGING_MIGRATION_RECOVERY_ASSESSMENT',
-    migrationParity: pending.length === 0 && unexpectedRemote.length === 0,
+    migrationParity:
+      pending.length === 0 &&
+      unexpectedRemote.length === 0 &&
+      missingApprovedStagingOnly.length === 0,
     automaticRepairAllowed: false,
     localMigrationCount: localVersions.length,
     stagingAppliedCount: stagingVersions.length,
