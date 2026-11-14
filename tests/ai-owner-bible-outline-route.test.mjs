@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  createOwnerBibleOutlineApiHandler
-} from '../api/ai-owner-bible-outline.js';
+import { createOwnerBibleOutlineApiHandler } from '../api/ai-owner-bible-outline.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const TOKEN = 'synthetic-owner-bearer-00000000';
@@ -78,15 +76,16 @@ test('default disabled route is 404 even with enabled flags', async () => {
 
 test('missing session or invalid config blocks client setup', async () => {
   let created = 0;
-  const make = (options) => createOwnerBibleOutlineApiHandler({
-    enabled: true,
-    env: ENV,
-    createServiceClient() {
-      created += 1;
-      return fakeService();
-    },
-    ...options
-  });
+  const make = (options) =>
+    createOwnerBibleOutlineApiHandler({
+      enabled: true,
+      env: ENV,
+      createServiceClient() {
+        created += 1;
+        return fakeService();
+      },
+      ...options
+    });
   const res = response();
   await make()(request(), res);
   assert.equal(res.statusCode, 503);

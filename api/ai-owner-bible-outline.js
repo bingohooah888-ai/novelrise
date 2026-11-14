@@ -6,12 +6,8 @@ import {
   applyAdminSecurityHeaders,
   isSameOriginRequest
 } from './_lib/admin-auth.js';
-import {
-  createOfflineOwnerBibleOutlineWiring
-} from './_lib/ai/owner-bible-outline-offline-wiring.js';
-import {
-  resolveOwnerNovelBiblePreviewConfig
-} from './_lib/ai/owner-novel-bible-preview.js';
+import { createOfflineOwnerBibleOutlineWiring } from './_lib/ai/owner-bible-outline-offline-wiring.js';
+import { resolveOwnerNovelBiblePreviewConfig } from './_lib/ai/owner-novel-bible-preview.js';
 
 function unavailable(res) {
   return res.status(503).json({ error: 'OUTLINE_UNAVAILABLE' });
