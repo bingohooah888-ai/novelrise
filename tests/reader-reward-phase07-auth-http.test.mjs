@@ -342,4 +342,3 @@ test('administrator UI binding calls the authenticated admin handler for queue a
   );
   assert.equal((await admin.loadQueue()).items.length, 0);
 });
-
