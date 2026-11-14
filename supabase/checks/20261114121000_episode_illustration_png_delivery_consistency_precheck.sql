@@ -1,5 +1,4 @@
 -- Read-only inspection: run before applying the Safari PNG contract migration.
-begin;
 do $$
 begin
   if pg_catalog.to_regclass('public.episode_illustrations') is null
@@ -23,4 +22,3 @@ begin
   raise notice 'PRECHECK PASS: current private WebP-only storage and registry baseline verified';
 end
 $$;
-rollback;

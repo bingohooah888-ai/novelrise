@@ -1,5 +1,4 @@
 -- Read-only assertions after applying the matching migration.
-begin;
 do $$
 declare v_fn oid := pg_catalog.to_regprocedure(
   'public.novelight_register_episode_illustration(bigint,uuid,text,text,bigint,integer,integer,text)'
@@ -45,4 +44,3 @@ begin
   raise notice 'POSTCHECK PASS: WebP/PNG storage, registry, private access and quota contract aligned';
 end
 $$;
-rollback;
