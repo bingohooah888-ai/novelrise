@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createPrivateKey, createPublicKey, generateKeyPairSync, sign, webcrypto } from 'node:crypto';
+import { generateKeyPairSync, sign, webcrypto } from 'node:crypto';
 import { GateAWatchdogDurableObject, inspect020705CloudflareGithubExit, verify020705CloudflareSignature } from '../.github/staging-ai-02-07-05/cloudflare-gatea-live-candidate.mjs';
 import { create020705TrustedMainRuntime } from '../.github/staging-ai-02-07-05/trusted-main-live-runtime.mjs';
 
