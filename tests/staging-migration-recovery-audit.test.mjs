@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+import { STAGING_ONLY_SCOUT_FILES } from '../scripts/verify-staging-migration-parity.mjs';
 import test from 'node:test';
 
 import {
@@ -58,6 +60,43 @@ test('reports all missing migration artifacts and never treats drift as permissi
     report.blockers.includes('POTENTIAL_DATA_MUTATION_REQUIRES_MANUAL_REVIEW')
   );
   assert.deepEqual(report.pending[1].advisorySqlMutationMarkers, ['UPDATE']);
+});
+
+test('four approved Staging-only versions are not mistaken for unexpected Production migrations', () => {
+  const approved = STAGING_ONLY_SCOUT_FILES.map((file) => file.slice(0, 14));
+  const report = assessStagingMigrationRecovery({
+    localMigrations: [{
+      name: '20261110172000_author_reader_retention_cross_visit.sql',
+      sql: 'create function public.fixture() returns int language sql as $ select 1 $;'
+    }],
+    remoteVersions: approved,
+    checkNames: [],
+    rollbackNames: [],
+    approvedStagingOnlyVersions: approved
+  });
+  assert.deepEqual(report.missingOnStaging, ['20261110172000']);
+  assert.deepEqual(report.unexpectedOnStaging, []);
+  assert.deepEqual(report.missingApprovedStagingOnly, []);
+  assert.equal(report.automaticRepairAllowed, false);
+  assert.equal(report.stagingOnlyRemoteDigestVerified, false);
+
+  const wrong = assessStagingMigrationRecovery({
+    localMigrations: [safe],
+    remoteVersions: [...approved.slice(1), '20261112120000'],
+    checkNames: [],
+    rollbackNames: [],
+    approvedStagingOnlyVersions: approved
+  });
+  assert.deepEqual(wrong.missingApprovedStagingOnly, [approved[0]]);
+  assert.deepEqual(wrong.unexpectedOnStaging, ['20261112120000']);
+  assert.ok(wrong.blockers.includes('MISSING_APPROVED_STAGING_ONLY_MIGRATION'));
+  assert.throws(() => assessStagingMigrationRecovery({
+    localMigrations: [safe],
+    remoteVersions: [],
+    checkNames: [],
+    rollbackNames: [],
+    approvedStagingOnlyVersions: [safe.name.slice(0, 14)]
+  }), /overlap Production-track/);
 });
 
 test('a single pending version with complete artifacts still cannot be auto-applied', () => {
@@ -140,6 +179,10 @@ test('uses read-only remote migration history and local artifacts only', async (
     await mkdir(join(root, 'supabase/migrations'), { recursive: true });
     await mkdir(join(root, 'supabase/checks'));
     await mkdir(join(root, 'supabase/rollback'));
+    await mkdir(join(root, 'supabase/staging-migrations'));
+    for (const filename of STAGING_ONLY_SCOUT_FILES) {
+      await writeFile(join(root, 'supabase/staging-migrations', filename), 'select 1;');
+    }
     await writeFile(join(root, 'supabase/migrations', safe.name), safe.sql);
     await writeFile(
       join(
@@ -173,7 +216,7 @@ test('uses read-only remote migration history and local artifacts only', async (
         root,
         remoteReader: async (args) => {
           observed = args;
-          return [];
+          return STAGING_ONLY_SCOUT_FILES.map((file) => file.slice(0, 14));
         }
       }
     );
@@ -184,6 +227,9 @@ test('uses read-only remote migration history and local artifacts only', async (
     assert.equal(result.pending[0].artifactCountConflict, false);
     assert.deepEqual(result.blockers, []);
     assert.equal(result.automaticRepairAllowed, false);
+    assert.deepEqual(result.unexpectedOnStaging, []);
+    assert.equal(result.approvedStagingOnlyVersions.length, 4);
+    assert.equal(result.stagingOnlyRemoteDigestVerified, false);
     assert.ok(!JSON.stringify(result).includes('test-token'));
   } finally {
     await rm(root, { recursive: true, force: true });

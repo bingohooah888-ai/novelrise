@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import {
   compareMigrationVersions,
   readRemoteMigrationVersions,
+  readLocalStagingOnlyMigrations,
   resolveStagingProjectRef
 } from './verify-staging-migration-parity.mjs';
 
@@ -44,7 +45,8 @@ export function assessStagingMigrationRecovery({
   localMigrations,
   remoteVersions,
   checkNames,
-  rollbackNames
+  rollbackNames,
+  approvedStagingOnlyVersions = []
 }) {
   if (!Array.isArray(localMigrations)) throw new Error('localMigrations must be an array');
   const local = localMigrations.map(({ name, sql }) => {
@@ -56,9 +58,22 @@ export function assessStagingMigrationRecovery({
   });
   const localVersions = validatedVersions(local.map((entry) => entry.version), 'repository');
   const stagingVersions = validatedVersions(remoteVersions, 'Staging');
-  const { missingRemote, unexpectedRemote } = compareMigrationVersions(
-    localVersions,
-    stagingVersions
+  const approvedStagingOnly = validatedVersions(
+    approvedStagingOnlyVersions,
+    'approved Staging-only'
+  );
+  if (approvedStagingOnly.some((version) => localVersions.includes(version))) {
+    throw new Error(
+      'Approved Staging-only migrations cannot overlap Production-track versions'
+    );
+  }
+  const { missingRemote: missingExpected, unexpectedRemote } =
+    compareMigrationVersions([...localVersions, ...approvedStagingOnly], stagingVersions);
+  const missingApprovedStagingOnly = missingExpected.filter((version) =>
+    approvedStagingOnly.includes(version)
+  );
+  const missingRemote = missingExpected.filter((version) =>
+    localVersions.includes(version)
   );
   const checkFiles = new Set(checkNames);
   const rollbackFiles = new Set(rollbackNames);
@@ -93,6 +108,9 @@ export function assessStagingMigrationRecovery({
 
   const blockers = [];
   if (unexpectedRemote.length) blockers.push('UNEXPECTED_STAGING_MIGRATION_HISTORY');
+  if (missingApprovedStagingOnly.length) {
+    blockers.push('MISSING_APPROVED_STAGING_ONLY_MIGRATION');
+  }
   if (pending.length > 1) blockers.push('MULTIPLE_PENDING_MIGRATIONS');
   if (pending.some((item) =>
     Object.values(item.artifacts).some((present) => !present) || item.artifactCountConflict
@@ -107,6 +125,11 @@ export function assessStagingMigrationRecovery({
     automaticRepairAllowed: false,
     localMigrationCount: localVersions.length,
     stagingAppliedCount: stagingVersions.length,
+    approvedStagingOnlyVersions: approvedStagingOnly,
+    missingApprovedStagingOnly,
+    // A version-only audit cannot attest the remote SQL digest. The trusted
+    // Staging workflow verifies exact name/hash/bytes before any mutation.
+    stagingOnlyRemoteDigestVerified: false,
     missingOnStaging: missingRemote,
     unexpectedOnStaging: unexpectedRemote,
     blockers,
@@ -137,14 +160,16 @@ export async function auditStagingMigrationRecovery(
     sql: await readFile(join(dir, name), 'utf8')
   })));
 
-  const [remoteVersions, checkNames, rollbackNames] = await Promise.all([
+  const [remoteVersions, checkNames, rollbackNames, stagingOnlyRecords] =
+    await Promise.all([
     remoteReader({
       accessToken: env.SUPABASE_ACCESS_TOKEN,
       projectRef,
       fetchImpl
     }),
     readdir(join(root, 'supabase/checks')),
-    readdir(join(root, 'supabase/rollback'))
+    readdir(join(root, 'supabase/rollback')),
+    readLocalStagingOnlyMigrations(join(root, 'supabase/staging-migrations'))
   ]);
 
   return {
@@ -153,7 +178,8 @@ export async function auditStagingMigrationRecovery(
       localMigrations,
       remoteVersions,
       checkNames,
-      rollbackNames
+      rollbackNames,
+      approvedStagingOnlyVersions: stagingOnlyRecords.map((entry) => entry.version)
     })
   };
 }
