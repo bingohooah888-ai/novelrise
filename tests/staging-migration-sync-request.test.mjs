@@ -374,18 +374,3 @@ test('offline DB failures stop without retries or detail leakage', async () => {
     assert.ok(r.errors.includes('STAGING_ONE_READER_STOPPED_NO_RETRY'));
   }
 });
-
-
-
-// TEMP_CLI_RENDER
-test('render checked-in offline test with pinned prettier', async () => {
-  const { spawnSync } = await import('node:child_process');
-  const filename = 'tests/staging-migration-sync-request.test.mjs';
-  const source = (await readFile(filename, 'utf8')).split('\n// TEMP_CLI_RENDER\n')[0];
-  const formatted = spawnSync(
-    'node', ['node_modules/prettier/bin/prettier.cjs', '--stdin-filepath', filename],
-    { input: source, encoding: 'utf8', maxBuffer: 1024 * 1024 }
-  );
-  assert.equal(formatted.status, 0);
-  console.log('NOVELIGHT_CLI_FORMAT_JSON=' + JSON.stringify(formatted.stdout));
-});
