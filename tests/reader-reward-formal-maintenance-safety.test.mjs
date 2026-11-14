@@ -253,3 +253,25 @@ test('internal E2E corrections remain durable and finality fails closed', () => 
   assert.doesNotMatch(sql, /^UPDATE public\.scout_xp_ledger/im);
   assert.equal(FORMAL_MAINTENANCE_SAFETY_APPROVED, false);
 });
+test('restoration only corrects an unambiguous E2E demotion once', () => {
+  const sql = readFileSync(
+    new URL(
+      '../docs/drafts/SCOUT_FORMAL_30DAY_RESTORE_E2E_20261114.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(sql, /scout_30d_restoration_claim/);
+  assert.match(sql, /PRIMARY KEY \(user_id,window_end_at\)/);
+  assert.match(sql, /DEFERRABLE INITIALLY DEFERRED/);
+  assert.match(sql, /raw_app_meta_data->>'internal_e2e'='true'/);
+  assert.match(sql, /v_window_count <> 1/);
+  assert.match(sql, /r.window_end_at>v_end/);
+  assert.match(sql, /v_negative OR v_xp<200/);
+  assert.match(sql, /s.highest_level>=v_review.before_level/);
+  assert.match(sql, /SET current_level=v_review.before_level/);
+  assert.doesNotMatch(sql, /INSERT INTO public\.scout_xp_ledger/);
+  assert.doesNotMatch(sql, /^COMMIT;/im);
+  assert.match(sql, /trusted producer settlement proof remains absent/);
+  assert.equal(FORMAL_MAINTENANCE_SAFETY_APPROVED, false);
+});
