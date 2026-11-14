@@ -50,7 +50,7 @@ function request(overrides = {}) {
   };
 }
 
-test('default export state returns 404 without privileged client construction', async () => {
+test('default-off route denies before client creation', async () => {
   let created = 0;
   const handler = createOwnerBibleReviewStateApiHandler({
     env: ENV,
@@ -67,7 +67,7 @@ test('default export state returns 404 without privileged client construction', 
   assert.equal(res.headers['Cache-Control'], 'private, no-store, max-age=0');
 });
 
-test('active flags never replace a trusted private session observer', async () => {
+test('feature flags cannot replace a trusted session observer', async () => {
   let created = 0;
   const make = (options) =>
     createOwnerBibleReviewStateApiHandler({
@@ -91,7 +91,7 @@ test('active flags never replace a trusted private session observer', async () =
   assert.equal(created, 0);
 });
 
-test('invalid method, origin, bearer, and novel ID deny before privileged IO', async () => {
+test('invalid requests deny before privileged IO', async () => {
   let created = 0;
   const handler = createOwnerBibleReviewStateApiHandler({
     env: ENV,

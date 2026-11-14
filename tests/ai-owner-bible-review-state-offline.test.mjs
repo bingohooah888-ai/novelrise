@@ -761,7 +761,7 @@ test('complete offline author journey persists confirmation and resumes after re
   assert.equal(reopened.children[0].children[0].textContent, '');
 });
 
-test('review-state browser adapter is connected, server route is default-off', () => {
+test('review-state browser adapter uses a default-off server route', () => {
   const html = readFileSync(
     new URL('../story-notes.html', import.meta.url),
     'utf8'
@@ -775,7 +775,10 @@ test('review-state browser adapter is connected, server route is default-off', (
   assert.equal(existsSync(route), true);
   const source = readFileSync(route, 'utf8');
   assert.match(source, /enabled = false/);
-  assert.match(source, /export default createOwnerBibleReviewStateApiHandler\(\)/);
+  assert.match(
+    source,
+    /export default createOwnerBibleReviewStateApiHandler\(\)/
+  );
 });
 
 test('revocation after private preview but before CAS prevents a write', async () => {
