@@ -19,6 +19,9 @@ const vercelBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
 export default defineConfig({
   testDir: './staging',
+  // Generic smoke must not create an unapproved Auth reader.
+  // A separate OWNER-approved runner is required for this proof.
+  testIgnore: ['**/reader-scout-onboarding.spec.js'],
   outputDir: 'staging-test-results',
   preserveOutput: 'failures-only',
   fullyParallel: false,
