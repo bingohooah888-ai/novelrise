@@ -289,18 +289,15 @@ test('Staging plan requires independent approval and two read-only checks, leave
   assert.match(plan, /NO-GO/);
   assert.match(plan, /セッション/);
   assert.match(plan, /ROLLBACK_PROPOSAL/);
-  assert.equal(
-    existsSync(
-      new URL('../api/ai-owner-bible-review-state.js', import.meta.url)
-    ),
-    false
+  const route = new URL(
+    '../api/ai-owner-bible-review-state.js',
+    import.meta.url
   );
+  assert.equal(existsSync(route), true);
+  assert.match(readFileSync(route, 'utf8'), /enabled = false/);
   const html = readFileSync(
     new URL('../story-notes.html', import.meta.url),
     'utf8'
   );
-  assert.doesNotMatch(
-    html,
-    /novelight-ai-bible-owner-review-state-offline-http/
-  );
+  assert.match(html, /novelight-ai-bible-owner-review-state-offline-http/);
 });

@@ -359,16 +359,14 @@ test('offline outline denial and missing dependency do not expose a private owne
   }
 });
 
-test('deployed story notes cannot activate the optional offline outline dependency', () => {
+test('owner notes can request chapter data only via the gated server API', () => {
   const page = readFileSync(
     new URL('../story-notes.html', import.meta.url),
     'utf8'
   );
-  assert.match(
-    page,
-    /NovelightAiBibleOwnerStudio\.attach\(\{client,novelId,ownerId:/
-  );
-  assert.doesNotMatch(page, /readOutline\s*:/);
+  assert.match(page, /NovelightAiBibleOwnerStudio\.attach\(\{/);
+  assert.match(page, /readOutline:outlineReader/);
+  assert.match(page, /readReviewState:reviewReader\.read/);
   assert.doesNotMatch(page, /novelight_novel_outline/);
 });
 

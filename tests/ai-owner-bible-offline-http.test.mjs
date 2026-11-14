@@ -179,7 +179,7 @@ test('logout or account/token change during transport never returns stale privat
   }
 });
 
-test('new HTTP adapter is an unmounted offline-only script', () => {
+test('owner notes only provides an HTTP reader, never a browser permission grant', () => {
   const page = readFileSync(
     new URL('../story-notes.html', import.meta.url),
     'utf8'
@@ -188,6 +188,7 @@ test('new HTTP adapter is an unmounted offline-only script', () => {
     new URL('../novelight-ai-bible-owner-studio.js', import.meta.url),
     'utf8'
   );
-  assert.doesNotMatch(page, /owner-outline-offline-http|readOutline\s*:/);
+  assert.match(page, /owner-outline-offline-http/);
+  assert.match(page, /readOutline:outlineReader/);
   assert.doesNotMatch(studio, /owner-outline-offline-http/);
 });
