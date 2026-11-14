@@ -8,6 +8,8 @@ import {readFile} from 'node:fs/promises';
 // prettier-ignore
 import {DatabaseSync} from 'node:sqlite';
 // prettier-ignore
+import {URL} from 'node:url';
+// prettier-ignore
 import test from 'node:test';
 // prettier-ignore
 import worker, {GateAWatchdogDurableObject as Combined} from '../.github/staging-ai-02-07-05/cloudflare-gatea-live-candidate.mjs';
