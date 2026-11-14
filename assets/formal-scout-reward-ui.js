@@ -314,6 +314,13 @@
             ' pt（3,000円相当）。旧βで獲得したPointは外部交換対象に含まれません。'
         )
       );
+      contents.append(
+        el(
+          'p',
+          'rr-muted',
+          '申請のキャンセルは未発行の確認後に予約を解除します。発行済みの特典は返還証拠の確認が必要です。確認前はPointを自動返却しません。'
+        )
+      );
       const form = el('form', 'rr-form');
       const lab = el('label', '', '申請するScout Point');
       const amount = el('input');
