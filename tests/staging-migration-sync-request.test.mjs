@@ -373,3 +373,15 @@ test('offline DB failures stop without retries or detail leakage', async () => {
     assert.ok(r.errors.includes('STAGING_ONE_READER_STOPPED_NO_RETRY'));
   }
 });
+
+// TEMP_PRETTIER_OUTPUT_DO_NOT_KEEP
+
+test('format reporter for existing changed test file', async () => {
+  const prettier = await import('prettier');
+  const file = 'tests/staging-migration-sync-request.test.mjs';
+  const current = await readFile(file, 'utf8');
+  const original = current.split('\n// TEMP_PRETTIER_OUTPUT_DO_NOT_KEEP\n')[0];
+  const config = (await prettier.resolveConfig(file)) || {};
+  const formatted = await prettier.format(original, { ...config, filepath: file });
+  console.log('NOVELIGHT_PRETTIER_FORMATTED_JSON=' + JSON.stringify(formatted));
+});
