@@ -206,22 +206,27 @@ test('absent sealed DB proof keeps rollout blocked', () => {
 });
 
 
-test('draft Staging implementation has a transaction-scoped XP mutation lock', () => {
-  const sql = readFileSync(
-    new URL('../docs/drafts/SCOUT_FORMAL_30DAY_STAGING_SAFE_SQL_20261114.sql', import.meta.url),
-    'utf8'
-  );
+const stagingSqlCandidate = readFileSync(
+  new URL(
+    '../docs/drafts/SCOUT_FORMAL_30DAY_STAGING_SAFE_SQL_20261114.sql',
+    import.meta.url
+  ),
+  'utf8'
+);
+
+test('fail-closed XP lock covers mutations', () => {
+  const sql = stagingSqlCandidate;
   assert.match(sql, /pg_advisory_xact_lock/);
-  assert.match(sql, /BEFORE INSERT OR UPDATE OR DELETE ON public\.scout_xp_ledger/);
+  assert.match(
+    sql,
+    /BEFORE INSERT OR UPDATE OR DELETE ON public\.scout_xp_ledger/
+  );
   assert.match(sql, /novelight:scout-formal-xp-review:v1:/);
   assert.match(sql, /ORDER BY id::text/);
 });
 
-test('database reviewer is held until authoritative finality and beta cutover', () => {
-  const sql = readFileSync(
-    new URL('../docs/drafts/SCOUT_FORMAL_30DAY_STAGING_SAFE_SQL_20261114.sql', import.meta.url),
-    'utf8'
-  );
+test('review holds until finality and cutover', () => {
+  const sql = stagingSqlCandidate;
   assert.match(sql, /CHECK \(enabled = false\)/);
   assert.match(sql, /source_evidence_verified/);
   assert.match(sql, /source_watermark_at >= v_end/);
@@ -229,14 +234,14 @@ test('database reviewer is held until authoritative finality and beta cutover', 
   assert.match(sql, /window_unsealed/);
   assert.match(sql, /late_xp_pending/);
   assert.match(sql, /adjustment_policy_pending/);
-  assert.doesNotMatch(sql, /PERFORM\s+novelight_formal_private\.review_scout_30_days\(/);
+  assert.doesNotMatch(
+    sql,
+    /PERFORM\s+novelight_formal_private\.review_scout_30_days\(/
+  );
 });
 
-test('new due and sealed RPC privileges are service-only without direct table SELECT', () => {
-  const sql = readFileSync(
-    new URL('../docs/drafts/SCOUT_FORMAL_30DAY_STAGING_SAFE_SQL_20261114.sql', import.meta.url),
-    'utf8'
-  );
+test('private RPCs avoid direct table SELECT', () => {
+  const sql = stagingSqlCandidate;
   assert.match(sql, /list_due_scout_30_day_reviews/);
   assert.match(sql, /review_scout_30_days_sealed/);
   assert.match(sql, /SECURITY DEFINER SET search_path = ''/);
@@ -245,14 +250,14 @@ test('new due and sealed RPC privileges are service-only without direct table SE
   assert.doesNotMatch(sql, /^GRANT SELECT ON /mi);
 });
 
-test('no automatic beta cutover or execution approval is included', () => {
-  const sql = readFileSync(
-    new URL('../docs/drafts/SCOUT_FORMAL_30DAY_STAGING_SAFE_SQL_20261114.sql', import.meta.url),
-    'utf8'
-  );
+test('beta cutover remains unapproved', () => {
+  const sql = stagingSqlCandidate;
   assert.match(sql, /NOT A MIGRATION/);
   assert.match(sql, /DO NOT APPLY/);
-  assert.match(sql, /beta cap, discovery awarding, and legacy RPC are NOT replaced/);
+  assert.match(
+    sql,
+    /beta cap, discovery awarding, and legacy RPC are NOT replaced/
+  );
   assert.doesNotMatch(sql, /^\s*COMMIT\s*;/mi);
   assert.equal(FORMAL_MAINTENANCE_SAFETY_APPROVED, false);
 });
