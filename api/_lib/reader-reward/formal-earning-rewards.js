@@ -13,7 +13,9 @@ function quoteEpisodeRewardTenths(level) {
 }
 function quoteMonthlyCommentRewardTenths(eligibleCommentCount) {
   if (!Number.isSafeInteger(eligibleCommentCount) || eligibleCommentCount < 0) {
-    throw new RangeError('Eligible comment count must be a nonnegative safe integer');
+    throw new RangeError(
+      'Eligible comment count must be a nonnegative safe integer'
+    );
   }
   return Math.min(eligibleCommentCount, 50) * 20;
 }
