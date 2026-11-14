@@ -3,6 +3,12 @@
 This is **Markdown-only**, non-executable SQL design. **No migration,
 secret, workflow, scheduler, XP writer, or review RPC is being deployed.**
 The current Runner must remain disabled. Real Staging concurrency is unverified.
+The legacy `review_scout_30_days` does not prove XP source finality or
+cross-writer serialization and must NOT be a Runner execution target. The
+Runner now references only the future private `review_scout_30_days_sealed`
+and `list_due_scout_30_day_reviews` contracts, neither installed nor
+approved. Their absence keeps execution fail-closed. No database functions
+are installed or changed by this PR.
 
 ## Proposed shared transaction lock (NOT IMPLEMENTED)
 
@@ -59,8 +65,15 @@ read-only and no client-controlled search space. Require:
 - Fully qualified SQL names, EXECUTE revoked from PUBLIC, anon and
   authenticated; allow only verified server role;
 - **No GRANT SELECT** on private state to `service_role`;
-- Runner must replace direct due-table SELECT with this RPC only in a
-  future separately approved implementation.
+- Runner code now targets this future private due RPC, with no direct table
+  SELECT; execution remains blocked until separately approved.
+- Future `review_scout_30_days_sealed(uuid,timestamptz)` must atomically
+  acquire the common XP-writer transaction lock, prove trusted source finality,
+  hold on uncommitted/late/corrected XP, verify beta-to-formal cutover and
+  enforce the unique review claim. An unverified window must return a
+  non-writing `held` result rather than demoting.
+- The server must never fall back to the legacy unsealed
+  `review_scout_30_days` RPC.
 
 Existing Staging has `service_role` RPC EXECUTE but lacks private state
 SELECT, and the Runner currently reads that table directly; both are

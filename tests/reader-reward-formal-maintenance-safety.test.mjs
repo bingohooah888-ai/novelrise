@@ -165,3 +165,36 @@ test('contract is Markdown-only, not a runnable SQL migration', () => {
   assert.match(design, /Markdown-only/);
   assert.doesNotMatch(design, /^CREATE\s+FUNCTION/im);
 });
+
+test('due-user selection never uses private table SELECT', () => {
+  const runnerSource = readFileSync(
+    new URL('../api/_lib/reader-reward/formal-maintenance-runner.js', import.meta.url),
+    'utf8'
+  );
+  assert.match(runnerSource, /list_due_scout_30_day_reviews/);
+  assert.doesNotMatch(
+    runnerSource,
+    /select user_id from novelight_formal_private\.scout_level_state/
+  );
+  assert.doesNotMatch(runnerSource, /has_table_privilege/);
+});
+
+test('no code path in Runner targets legacy unsealed review RPC', () => {
+  const runnerSource = readFileSync(
+    new URL('../api/_lib/reader-reward/formal-maintenance-runner.js', import.meta.url),
+    'utf8'
+  );
+  assert.match(runnerSource, /review_scout_30_days_sealed/);
+  assert.doesNotMatch(
+    runnerSource,
+    /select novelight_formal_private\.review_scout_30_days\(/
+  );
+  assert.match(runnerSource, /FORMAL_MAINTENANCE_SAFETY_APPROVED === true/);
+});
+
+test('absent sealed DB proof keeps rollout blocked', () => {
+  assert.equal(FORMAL_MAINTENANCE_SAFETY_APPROVED, false);
+  assert.match(design, /review_scout_30_days_sealed/);
+  assert.match(design, /list_due_scout_30_day_reviews/);
+  assert.match(design, /source finality/);
+});

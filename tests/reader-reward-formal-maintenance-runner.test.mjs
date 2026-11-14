@@ -114,7 +114,10 @@ test('manual readiness inspection remains read-only and cannot start reviews', a
     'maintenance_connection_unready'
   );
   assert.equal(queries.length, 1);
-  assert.match(queries[0], /has_table_privilege/);
+  assert.match(queries[0], /has_function_privilege/);
+  assert.match(queries[0], /list_due_scout_30_day_reviews/);
+  assert.match(queries[0], /review_scout_30_days_sealed/);
+  assert.doesNotMatch(queries[0], /has_table_privilege/);
   assert.doesNotMatch(queries[0], /review_scout_30_days\(\$1/);
   assert.equal((await r.reviewDue()).status, 'formal_maintenance_disabled');
   assert.equal(queries.length, 1);

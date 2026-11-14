@@ -5,20 +5,41 @@ import { FORMAL_MAINTENANCE_SAFETY_APPROVED } from './formal-maintenance-release
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_PER_TICK = 25;
+// Old review_scout_30_days has no trusted XP source seal: never call it.
+// These future private functions are NOT installed by this PR.
 const DUE_SQL =
-  'select user_id from novelight_formal_private.scout_level_state ' +
-  "where coalesce(last_review_end_at,review_anchor_at) + interval '30 days' <= $1::timestamptz " +
-  'order by coalesce(last_review_end_at,review_anchor_at),user_id limit $2::integer';
+  'select user_id from ' +
+  'novelight_formal_private.list_due_scout_30_day_reviews(' +
+  '$1::timestamptz,$2::integer)';
 const REVIEW_SQL =
-  'select novelight_formal_private.review_scout_30_days($1::uuid,$2::timestamptz) as result';
-// Fail closed before selecting due users or calling the mutating review RPC.
-// In Staging, service_role has EXECUTE but lacks SELECT on scout_level_state.
-// This read-only check uses the actual injected PostgreSQL session role.
+  'select novelight_formal_private.review_scout_30_days_sealed(' +
+  '$1::uuid,$2::timestamptz) as result';
+const DUE_RPC =
+  'novelight_formal_private.list_due_scout_30_day_reviews(timestamptz,integer)';
+const SEALED_REVIEW_RPC =
+  'novelight_formal_private.review_scout_30_days_sealed(uuid,timestamptz)';
+// The injected server role requires private RPC EXECUTE, not private table SELECT.
+// Missing functions or accidental anon/authenticated EXECUTE => unready.
 const ACCESS_SQL =
   "select (has_schema_privilege(current_user,'novelight_formal_private','USAGE') " +
-  "and has_table_privilege(current_user,'novelight_formal_private.scout_level_state','SELECT') " +
-  "and not row_security_active('novelight_formal_private.scout_level_state'::regclass) " +
-  "and has_function_privilege(current_user,'novelight_formal_private.review_scout_30_days(uuid,timestamptz)','EXECUTE')) as ready";
+  "and coalesce(has_function_privilege(current_user,to_regprocedure('" +
+  DUE_RPC +
+  "'),'EXECUTE'),false) " +
+  "and coalesce(has_function_privilege(current_user,to_regprocedure('" +
+  SEALED_REVIEW_RPC +
+  "'),'EXECUTE'),false) " +
+  "and not coalesce(has_function_privilege('anon',to_regprocedure('" +
+  DUE_RPC +
+  "'),'EXECUTE'),false) " +
+  "and not coalesce(has_function_privilege('authenticated',to_regprocedure('" +
+  DUE_RPC +
+  "'),'EXECUTE'),false) " +
+  "and not coalesce(has_function_privilege('anon',to_regprocedure('" +
+  SEALED_REVIEW_RPC +
+  "'),'EXECUTE'),false) " +
+  "and not coalesce(has_function_privilege('authenticated',to_regprocedure('" +
+  SEALED_REVIEW_RPC +
+  "'),'EXECUTE'),false)) as ready";
 
 function validLimit(value) {
   return Number.isSafeInteger(value) && value >= 1 && value <= MAX_PER_TICK;
@@ -107,14 +128,22 @@ export function createUnregisteredFormalMaintenanceRunner({
         seen.add(userId);
       }
       for (const userId of seen) {
-        // This SQL invokes a mutating SECURITY DEFINER function only after
-        // a future independently authorized formal launch. No JS writes.
+        // Only the future sealed RPC may review: it must serialize XP writes,
+        // prove the period is final and handle corrections atomically.
+        // There is no fallback to the currently installed unsealed RPC.
         const response = await postgresClient.query(REVIEW_SQL, [userId, asOf]);
         const result = response?.rows?.[0]?.result;
         if (result?.status === 'reviewed') counts.reviewed++;
         else if (result?.status === 'already_reviewed')
           counts.alreadyReviewed++;
-        else if (result?.status === 'adjustment_policy_pending') counts.held++;
+        else if (
+          result?.status === 'held' ||
+          result?.status === 'window_unsealed' ||
+          result?.status === 'late_xp_pending' ||
+          result?.status === 'beta_cutover_pending' ||
+          result?.status === 'adjustment_policy_pending'
+        )
+          counts.held++;
         else
           return Object.freeze({
             status: 'review_result_requires_attention',
