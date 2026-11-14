@@ -420,25 +420,43 @@ jobs:
           };
           if(sh('git',['rev-parse','HEAD'])!==env.APPROVED_MAIN_SHA||
             sh('gh',['api','repos/bingohooah888-ai/novelrise/git/ref/heads/main','--jq','.object.sha'])!==env.APPROVED_MAIN_SHA)fail();
-          failureStage = 'staging_database_guard';
+          failureStage = 'staging_database_file';
           const db=readFileSync(env.STAGING_DATABASE_URL_FILE,'utf8').trim();
+          failureStage = 'staging_database_target';
           verifyStagingMigrationTarget({
             STAGING_SUPABASE_URL:URL,STAGING_DATABASE_URL:db,PGSSLMODE:'require'
           });
-          const url=new URL(db);
-          const pgEnv={
-            PATH:env.PATH,HOME:env.HOME,
-            PGHOST:url.hostname,PGPORT:url.port||'5432',
-            PGUSER:decodeURIComponent(url.username),
-            PGPASSWORD:decodeURIComponent(url.password),
-            PGDATABASE:'postgres',PGSSLMODE:'require',PGCONNECT_TIMEOUT:'8'
-          };
+          // Reuse the exact TLS Staging URL already proven by the pooler resolver.
           const query=(sql)=>{
-            const r=spawnSync('psql',['-X','-qAt','-v','ON_ERROR_STOP=1'],
-              {env:pgEnv,input:sql,encoding:'utf8',timeout:30000,maxBuffer:1048576});
+            const r=spawnSync('psql',['-X','-qAt','-v','ON_ERROR_STOP=1',db],
+              {env:{PATH:env.PATH,HOME:env.HOME,PGSSLMODE:'require',PGCONNECT_TIMEOUT:'8'},
+                input:sql,encoding:'utf8',timeout:30000,maxBuffer:1048576});
             if(r.error||r.status!==0)fail();
             return r.stdout.trim();
           };
+          // Check the required Staging columns and DB privileges before Auth creation.
+          failureStage = 'staging_database_catalog_preflight';
+          const requiredColumns=[
+            ['auth.users','id'],['auth.users','created_at'],
+            ['auth.users','raw_user_meta_data'],
+            ['public.scout_point_ledger','user_id'],
+            ['public.scout_xp_ledger','user_id'],
+            ...['user_id','current_level','highest_level','level_progress_xp',
+              'review_anchor_at','revision'].map(c=>['novelight_formal_private.scout_level_state',c]),
+            ...['user_id','available_points','exchange_eligible_points','reserved_points',
+              'held_points','revision'].map(c=>['novelight_formal_private.scout_point_usage_wallets',c])
+          ];
+          const catalogSql='SELECT count(*) FROM pg_catalog.pg_attribute a JOIN (VALUES '+
+            requiredColumns.map(([rel,col])=>"('"+rel+"','"+col+"')").join(',')+
+            ') AS needed(rel,col) ON a.attrelid=pg_catalog.to_regclass(needed.rel) '+
+            'AND a.attname=needed.col WHERE a.attnum>0 AND NOT a.attisdropped '+
+            "AND (pg_catalog.has_table_privilege(a.attrelid,'SELECT') "+
+            "AND CASE WHEN needed.rel='auth.users' "+
+            "THEN pg_catalog.has_table_privilege(a.attrelid,'UPDATE') "+
+            "WHEN needed.rel LIKE 'novelight_formal_private.%' "+
+            "THEN pg_catalog.has_table_privilege(a.attrelid,'INSERT') "+
+            "ELSE true END);";
+          if(query(catalogSql)!==String(requiredColumns.length))fail();
           failureStage = 'auth_client_setup';
           const options={auth:{persistSession:false,autoRefreshToken:false}};
           const admin=createClient(URL,env.STAGING_SUPABASE_SECRET_KEY,options);
