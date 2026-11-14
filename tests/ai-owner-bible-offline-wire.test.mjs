@@ -315,7 +315,7 @@ test('wrong method, work, origin and bearer are rejected before privileged reads
   assert.deepEqual(f.state.calls, []);
 });
 
-test('offline wiring has no live route, and preview/studio/offline modules remain unmounted', () => {
+test('server-internal wiring never reaches the owner browser page', () => {
   const paths = [
     '../api/ai-owner-novel-bible.js',
     '../story-notes.html',
@@ -323,11 +323,14 @@ test('offline wiring has no live route, and preview/studio/offline modules remai
   ];
   for (const path of paths) {
     const source = readFileSync(new URL(path, import.meta.url), 'utf8');
-    assert.doesNotMatch(
-      source,
-      /owner-bible-outline-offline-wiring|owner-outline-offline-http/
-    );
+    assert.doesNotMatch(source, /owner-bible-outline-offline-wiring/);
   }
+  const page = readFileSync(
+    new URL('../story-notes.html', import.meta.url),
+    'utf8'
+  );
+  assert.match(page, /novelight-ai-bible-owner-outline-offline-http/);
+  assert.match(page, /readOutline:outlineReader/);
 });
 
 test('full offline journey: owner studio -> preview -> HTTP reader -> existing server wiring -> chapter -> logout', async () => {
