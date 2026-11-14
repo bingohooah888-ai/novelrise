@@ -27,7 +27,7 @@ test('candidate rejects public traffic and stays disabled', async () => {
   assert.equal((await worker.fetch({ method: 'POST' }, {})).status, 404);
   await assert.rejects(runtime.arm(), /CLOUDFLARE_LIVE_NO_GO/);
   await assert.rejects(runtime.heartbeat(), /CLOUDFLARE_LIVE_NO_GO/);
-  await assert.rejects(runtime.alarm(), /CLOUDFLARE_LIVE_NO_GO/);
+  assert.equal(await runtime.alarm(), undefined); // OFF alarms are inert
 });
 
 test('owner grant requires a pinned Ed25519 signature', async () => {

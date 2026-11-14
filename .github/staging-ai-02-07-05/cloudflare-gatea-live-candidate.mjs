@@ -2,6 +2,8 @@
 // Original 2026-11-03 A1 files remain unchanged and hash-pinned in the S2 ZIP.
 // NOT deployed, no route, trigger, secret, arm, paid call or Staging side effect.
 // Only an independently authorized Cloudflare service binding may invoke DO RPC.
+import {GateAWatchdogDurableObject as SyntheticA1} from './cloudflare-gatea-a1-preserved.mjs';
+
 const REPO = 'bingohooah888-ai/novelrise';
 const PROJECT = 'wmlzjgvxgoyrovdhbqbg';
 const WORKFLOW = '.github/workflows/ai-020705-owner-staging-paid-trial.yml';
@@ -113,13 +115,14 @@ async function sign020705Death({ proof, keyId, nonce, pkcs8, cryptoImpl }) {
 // The class name is deliberately identical to the existing A1 binding.
 // Deploying this CANDIDATE would REPLACE the existing class implementation;
 // that is not authorized in this turn. No new Worker / DO is defined.
-export class GateAWatchdogDurableObject {
-  constructor(ctx, env) {
-    this.ctx = ctx;
-    this.env = env;
+// Preserve the hash-pinned A1 prototype and SQLite rows, not a new DO class.
+export class GateAWatchdogDurableObject extends SyntheticA1 {
+  constructor(ctx, env, clock = Date.now) {
+    super(ctx, env, clock);
   }
   check() {
-    if (this.env?.GATEA_LIVE_ENABLED !== 'true' ||
+    if (this.env?.GATEA_LOCAL_SYNTHETIC_ONLY === 'true' ||
+        this.env?.GATEA_LIVE_ENABLED !== 'true' ||
         typeof this.env?.GATEA_OWNER_PUB_SPKI !== 'string' ||
         typeof this.env?.GATEA_RUNNER_PUB_SPKI !== 'string' ||
         typeof this.env?.GATEA_CONTROLLER_PRIVATE_PKCS8 !== 'string' ||
@@ -204,10 +207,29 @@ export class GateAWatchdogDurableObject {
     try { await this.ctx.storage.setAlarm(deadline); } catch { deny(); }
     return Object.freeze({ state: 'WATCHING', authorizesPaidCall: false });
   }
+  // A1 and S2 share ONE Cloudflare alarm slot. S2 is inert until enabled;
+  // an existing A1 alarm retains its original behavior when A1 is enabled.
+  async alarm() {
+    if (this.env?.GATEA_LOCAL_SYNTHETIC_ONLY === 'true') {
+      // Both flags ON is invalid. No retry storm, mutation or recovery.
+      if (this.env?.GATEA_LIVE_ENABLED === 'true') return;
+      return super.alarm();
+    }
+    // A pre-existing alarm must not throw/retry when S2 is OFF.
+    if (this.env?.GATEA_LIVE_ENABLED !== 'true') return;
+    return this.alarmLive();
+  }
+
   // Alarm lives in this independent Cloudflare DO, not in the paid Runner.
   // An expired heartbeat alone NEVER authorizes a mutation or death report.
-  async alarm() {
+  async alarmLive() {
     this.check();
+    // An A1 alarm can arrive after a future mode change. Never create a
+    // live table merely in response to that old alarm.
+    const liveTable = this.ctx.storage.sql.exec(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='gatea_live_once'"
+    ).toArray();
+    if (liveTable.length !== 1) return;
     const current = this.row();
     if (!current || current.state !== 'WATCHING') return;
     const now = Date.now();
@@ -303,7 +325,8 @@ export default Object.freeze({
     const rejected = () => new Response(null, {
       status: 404, headers: { 'cache-control': 'no-store' }
     });
-    if (env?.GATEA_LIVE_ENABLED !== 'true' ||
+    if (env?.GATEA_LOCAL_SYNTHETIC_ONLY === 'true' ||
+        env?.GATEA_LIVE_ENABLED !== 'true' ||
         env?.GATEA_HTTP_ADMISSION_ENABLED !== 'true' ||
         request?.method !== 'POST' ||
         typeof env?.GATEA_WATCHDOG?.idFromName !== 'function' ||
