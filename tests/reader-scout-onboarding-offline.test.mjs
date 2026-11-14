@@ -3,6 +3,14 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import {
+  preflightReaderMailbox,
+  receiveReaderConfirmation,
+  requireReaderMailbox,
+  requireSignupVerificationLink,
+  parseReaderConfirmation,
+  uniqueReaderAddress
+} from './e2e/staging/reader-scout-confirmation-mailbox.mjs';
+import {
   STAGING_REF,
   assertOwnerStagingGate,
   assertReaderUiParity,
@@ -159,17 +167,149 @@ test('Actual SCOUT RECORD renderer maps initial RPC values to DOM', () => {
   assert.equal(rendered.get('pointBalance'), '0');
 });
 
-test('unreceivable synthetic address is denied before browser signup', () => {
+const previewOrigin = 'https://novelrise-abc123-ranobe1.vercel.app';
+const receiptId = '11111111-2222-4333-8444-555555555555';
+const mailboxEnv = {
+  NOVELIGHT_STAGING_READER_MAILBOX_DOMAIN: 'readerproof.resend.app',
+  NOVELIGHT_STAGING_READER_MAILBOX_SENDER: 'auth@novelight.jp',
+  NOVELIGHT_STAGING_READER_MAILBOX_API_KEY: 're_offline_fake_key_only'
+};
+const mailbox = requireReaderMailbox(mailboxEnv);
+const recipient = uniqueReaderAddress(mailbox, receiptId);
+const confirmation =
+  'https://' +
+  STAGING_REF +
+  '.supabase.co/auth/v1/verify?token=' +
+  'A'.repeat(32) +
+  '&type=signup&redirect_to=' +
+  encodeURIComponent(previewOrigin + '/index.html');
+const mail = {
+  to: [recipient],
+  from: 'NOVELIGHT <auth@novelight.jp>',
+  subject: '【NOVELIGHT】メールアドレスの確認',
+  html: '<a href="' + confirmation.replaceAll('&', '&amp;') + '">確認</a>',
+  text: ''
+};
+
+test('Staging mailbox must be dedicated, configured and never an invalid address', () => {
+  assert.equal(mailbox.domain, 'readerproof.resend.app');
+  assert.equal(recipient.endsWith('@readerproof.resend.app'), true);
+  for (const invalid of [
+    { NOVELIGHT_STAGING_READER_MAILBOX_DOMAIN: 'novelight.jp' },
+    { NOVELIGHT_STAGING_READER_MAILBOX_DOMAIN: 'example.invalid' },
+    { NOVELIGHT_STAGING_READER_MAILBOX_API_KEY: '' },
+    { NOVELIGHT_STAGING_READER_MAILBOX_SENDER: '' }
+  ]) {
+    assert.throws(
+      () => requireReaderMailbox({ ...mailboxEnv, ...invalid }),
+      /STAGING_READER_MAILBOX_DENIED/u
+    );
+  }
+  assert.throws(
+    () => uniqueReaderAddress(mailbox, 'not-a-uuid'),
+    /STAGING_READER_MAILBOX_DENIED/u
+  );
+});
+
+test('Only a real Staging signup confirmation link returning to pinned Preview is accepted', () => {
+  assert.equal(
+    parseReaderConfirmation(mail, recipient, mailbox.sender, previewOrigin),
+    confirmation
+  );
+  for (const unsafe of [
+    confirmation.replace(STAGING_REF, 'fiepaguycecrredwrcwx'),
+    confirmation.replace('type=signup', 'type=recovery'),
+    confirmation.replace('auth/v1/verify', 'auth/v1/admin'),
+    confirmation.replace(
+      encodeURIComponent(previewOrigin + '/index.html'),
+      encodeURIComponent('https://novelight.jp/index.html')
+    ),
+    confirmation.replace('token=' + 'A'.repeat(32), 'token='),
+    'https://evil.example/confirm'
+  ]) {
+    assert.throws(
+      () => requireSignupVerificationLink(unsafe, previewOrigin),
+      /STAGING_READER_MAILBOX_DENIED/u
+    );
+  }
+  assert.throws(
+    () => parseReaderConfirmation({ ...mail, from: 'evil@example.com' }, recipient, mailbox.sender, previewOrigin),
+    /STAGING_READER_MAILBOX_DENIED/u
+  );
+  assert.throws(
+    () => parseReaderConfirmation({ ...mail, to: ['other@example.com'] }, recipient, mailbox.sender, previewOrigin),
+    /STAGING_READER_MAILBOX_DENIED/u
+  );
+});
+
+test('Inbox preflight and one-use receipt read only approved Resend GET endpoints', async () => {
+  const calls = [];
+  const sentAt = Date.now();
+  const fetchedMail = {
+    id: receiptId,
+    to: [recipient],
+    from: mail.from,
+    subject: mail.subject,
+    created_at: new Date(sentAt).toISOString()
+  };
+  const fetcher = async (url, options) => {
+    calls.push({ url, method: options.method, redirect: options.redirect });
+    if (url.endsWith('?limit=30')) {
+      return { ok: true, json: async () => ({ object: 'list', data: [fetchedMail] }) };
+    }
+    if (url.endsWith('/' + receiptId)) {
+      return { ok: true, json: async () => mail };
+    }
+    throw new Error('unexpected GET');
+  };
+  assert.equal(await preflightReaderMailbox(mailbox, fetcher), true);
+  const link = await receiveReaderConfirmation({
+    mailbox,
+    recipient,
+    previewOrigin,
+    sinceMs: sentAt,
+    fetcher,
+    sleep: async () => {
+      throw new Error('should not poll again');
+    },
+    maxPolls: 2
+  });
+  assert.equal(link, confirmation);
+  assert.equal(calls.length, 3);
+  assert.equal(calls.every((call) => call.method === 'GET'), true);
+  assert.equal(calls.every((call) => call.redirect === 'error'), true);
+  assert.equal(
+    calls.every((call) => call.url.startsWith('https://api.resend.com/emails/receiving')),
+    true
+  );
+  await assert.rejects(
+    receiveReaderConfirmation({
+      mailbox,
+      recipient,
+      previewOrigin,
+      sinceMs: sentAt,
+      fetcher: async () => ({ ok: false }),
+      maxPolls: 1
+    }),
+    /STAGING_READER_MAILBOX_DENIED/u
+  );
+});
+
+test('Missing mailbox configuration denies E2E before any browser signup', () => {
   const source = readFileSync(
     'tests/e2e/staging/reader-scout-onboarding.spec.js',
     'utf8'
   );
-  const guard = source.indexOf("if (email.endsWith('@example.invalid'))");
+  const config = source.indexOf('requireReaderMailbox(process.env)');
+  const preflight = source.indexOf('await preflightReaderMailbox(mailbox)');
   const signup = source.indexOf(
     "page.goto(origin + '/signup.html?redirect=scout-record.html')"
   );
-  assert.ok(guard > 0 && signup > guard);
-  assert.match(source, /STAGING_READER_UI_MAILBOX_UNVERIFIED/u);
+  const confirm = source.indexOf('await receiveReaderConfirmation(');
+  const login = source.indexOf("page.goto(origin + '/login.html?redirect=scout-record.html')");
+  assert.ok(config > 0 && preflight > config && signup > preflight);
+  assert.ok(confirm > signup && login > confirm);
+  assert.doesNotMatch(source, /email_confirm:|signInWithOtp/u);
 });
 
 test('Real Staging browser proof uses normal signup/login without bypass or retry', () => {
