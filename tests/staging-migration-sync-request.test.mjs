@@ -303,7 +303,7 @@ async function simulateOneReader(options = {}) {
   return { state, output, errors, exitCode: fakeProcess.exitCode };
 }
 
-test('offline reader runs catalog, Auth, JWT, DB write, and readback', async () => {
+test('offline full one-reader path', async () => {
   const r = await simulateOneReader();
   assert.equal(r.exitCode, 0);
   assert.deepEqual(r.state, {
