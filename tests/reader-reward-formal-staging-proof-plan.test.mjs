@@ -186,3 +186,23 @@ test('plan makes no executable migration or release claim', () => {
   assert.doesNotMatch(plan, /^\s*CREATE\s+FUNCTION/mi);
   assert.doesNotMatch(plan, /^\s*GRANT\s+SELECT/mi);
 });
+
+
+// NOVELIGHT_PR2862_PLAN_PRETTIER_DIAGNOSTIC_BEGIN
+test('temporary static Prettier diagnostic only', async () => {
+  const { format, resolveConfig } = await import('prettier');
+  const ownSource = readFileSync(new URL(import.meta.url), 'utf8');
+  const clean = ownSource.slice(
+    0,
+    ownSource.indexOf('// NOVELIGHT_PR2862_PLAN_PRETTIER_DIAGNOSTIC_BEGIN')
+  );
+  const configuration = await resolveConfig(new URL(import.meta.url));
+  const formatted = await format(clean, {
+    ...configuration,
+    filepath: 'tests/reader-reward-formal-staging-proof-plan.test.mjs'
+  });
+  console.log(
+    'NOVELIGHT_PLAN_FORMAT_BASE64=' +
+      Buffer.from(formatted).toString('base64')
+  );
+});
