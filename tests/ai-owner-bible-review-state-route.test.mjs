@@ -131,4 +131,3 @@ test('invalid requests never touch the privileged client', async () => {
   }
   assert.equal(created, 0);
 });
-
