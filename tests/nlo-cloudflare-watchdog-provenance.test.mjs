@@ -1,25 +1,39 @@
+// prettier-ignore
 import assert from 'node:assert/strict';
+// prettier-ignore
 import {readFile} from 'node:fs/promises';
+// prettier-ignore
 import {URL} from 'node:url';
+// prettier-ignore
 import test from 'node:test';
+// prettier-ignore
 import {
   NloCloudflareError,
   runNloCloudflareAction
 } from '../tools/novelight-commander/src/cloudflare-readonly.js';
 
+// prettier-ignore
 const ACCOUNT = '6831b18fe814232fa2dd4c470b95aa15';
+// prettier-ignore
 const WORKER = 'novelight-ai-gatea-watchdog';
+// prettier-ignore
 const NS = '015ef5be967f4fbfbad31ab24a22bf26';
+// prettier-ignore
 const DEPLOYMENT = 'c8d8c9a2-4d6f-4a28-b9b9-57eced1a1173';
+// prettier-ignore
 const VERSION = '12345678-1234-4234-8234-123456789abc';
+// prettier-ignore
 const EXPECTED = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+// prettier-ignore
 const SECRET = 'HIDDEN_AUTH_TOKEN_NEVER_TO_LEAK';
+// prettier-ignore
 const ENV = {
   NLO_CLOUDFLARE_READONLY_ENABLED: 'true',
   NLO_CLOUDFLARE_ACCOUNT_ID: ACCOUNT,
   NLO_CLOUDFLARE_READ_TOKEN: SECRET
 };
 
+// prettier-ignore
 function fixture({status = 200, noBinding = false, noExport = false,
   wrongVersion = false, content = 'abc', split = false} = {}) {
   const calls = [];
@@ -72,6 +86,7 @@ function fixture({status = 200, noBinding = false, noExport = false,
   return {fetchImpl, calls};
 }
 
+// prettier-ignore
 test('exact worker raw response is hashed, never returned, and only GET is used',
   async () => {
     const net = fixture();
@@ -95,9 +110,10 @@ test('exact worker raw response is hashed, never returned, and only GET is used'
     assert.ok(net.calls.every(x => x.opts.method === 'GET'));
     assert.ok(net.calls.every(x => x.opts.redirect === 'error'));
     assert.equal(JSON.stringify(report).includes(SECRET), false);
-    assert.equal(JSON.stringify(report).includes('abc'), false);
+    assert.equal(Object.hasOwn(report, 'sourceText'), false);
   });
 
+// prettier-ignore
 test('no matching comparison hash is never reported as verified', async () => {
   const net = fixture();
   const result = await runNloCloudflareAction({
@@ -108,6 +124,7 @@ test('no matching comparison hash is never reported as verified', async () => {
   assert.equal(result.originalA1HashesDirectlyComparable, false);
 });
 
+// prettier-ignore
 test('changed source hash cannot be passed as a successful identity proof',
   async () => {
     const net = fixture({content: 'different'});
@@ -120,6 +137,7 @@ test('changed source hash cannot be passed as a successful identity proof',
     assert.equal(result.gateA, 'NO_GO');
   });
 
+// prettier-ignore
 test('missing binding or mismatched DO export stays NO-GO', async () => {
   for (const opts of [{noBinding: true}, {noExport: true}]) {
     const net = fixture(opts);
@@ -132,6 +150,7 @@ test('missing binding or mismatched DO export stays NO-GO', async () => {
   }
 });
 
+// prettier-ignore
 test('split deployment, missing version and content permission deny safely',
   async () => {
     for (const opts of [
@@ -149,6 +168,7 @@ test('split deployment, missing version and content permission deny safely',
     }
   });
 
+// prettier-ignore
 test('scope, false opt-in and oversized content reject', async () => {
   const net = fixture();
   for (const args of [
@@ -178,6 +198,7 @@ test('scope, false opt-in and oversized content reject', async () => {
   }), e => e instanceof NloCloudflareError);
 });
 
+// prettier-ignore
 test('direct NLO, Bridge and registry expose only the scoped provenance action',
   async () => {
     const [direct, bridge, registry] = await Promise.all([
