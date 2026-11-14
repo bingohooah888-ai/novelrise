@@ -1,0 +1,133 @@
+{
+  "schema": "novelight.scout30d-staging-proof-plan.v1",
+  "mode": "design_only",
+  "status": "NOT_EXECUTED",
+  "executionAuthorized": false,
+  "pr": 2862,
+  "restrictions": {
+    "stagingCommit": false,
+    "realReviewRpc": false,
+    "durableStagingDml": false,
+    "production": false,
+    "realUsers": false,
+    "secrets": false,
+    "sqlApply": false,
+    "newWorkflow": false,
+    "additionalApproval": true
+  },
+  "precheck": [
+    "P01_PR_AND_MAIN_SHA",
+    "P02_STAGING_BRANCH_MIGRATION_HEALTH",
+    "P03_SYNTHETIC_IDENTITY_UNIQUE",
+    "P04_BASELINE_FULL_SNAPSHOT",
+    "P05_PRIVILEGE_TRIGGER_RPC_AUDIT",
+    "P06_THREE_STICKY_DISTINCT_SESSIONS",
+    "P07_SAME_SESSION_ROLLBACK_GUARANTEE",
+    "P08_NO_EXTERNAL_SIDE_EFFECTS",
+    "P09_NO_UNRELATED_CONCURRENT_WORK"
+  ],
+  "stagingScenarios": [
+    {
+      "id": "S01",
+      "sessions": [
+        "A",
+        "B",
+        "C"
+      ],
+      "durableWrites": false,
+      "commit": false,
+      "transactionResults": [
+        "ROLLBACK",
+        "ROLLBACK",
+        "ROLLBACK"
+      ],
+      "steps": [
+        "A_LOCK_OBTAINED",
+        "B_SAME_LOCK_TRY_FALSE",
+        "A_ROLLBACK_CONFIRMED",
+        "B_SAME_LOCK_TRY_TRUE",
+        "B_AND_C_ROLLBACK_CONFIRMED"
+      ],
+      "provesXpWriterIntegration": false
+    },
+    {
+      "id": "S02",
+      "sessions": [],
+      "durableWrites": false,
+      "commit": false,
+      "transactionResults": [],
+      "steps": [
+        "RUNNER_DISABLED",
+        "DIRECT_SELECT_DENIED",
+        "DUE_RPC_ABSENT",
+        "REVIEW_RPC_NOT_INVOKED"
+      ],
+      "provesXpWriterIntegration": false
+    }
+  ],
+  "cloneScenarios": [
+    {
+      "id": "C01",
+      "case": "UNCOMMITTED_199_TO_200",
+      "commitRequired": true,
+      "expected": "200_XP_NO_DEMOTION_AFTER_COMMIT"
+    },
+    {
+      "id": "C02",
+      "case": "WRITER_ROLLBACK",
+      "commitRequired": false,
+      "expected": "199_XP_HELD_WITHOUT_SEAL"
+    },
+    {
+      "id": "C03",
+      "case": "BACKDATED_OR_LATE_XP",
+      "commitRequired": true,
+      "expected": "DURABLE_QUARANTINE_OR_HELD"
+    },
+    {
+      "id": "C04",
+      "case": "NEGATIVE_CORRECTION_UPDATE_DELETE",
+      "commitRequired": true,
+      "expected": "SERIALIZED_HELD"
+    },
+    {
+      "id": "C05",
+      "case": "TWO_READER_LOCK_ORDER",
+      "commitRequired": true,
+      "expected": "NO_DEADLOCK"
+    },
+    {
+      "id": "C06",
+      "case": "BETA_CAP_AND_DISCOVERY_CUTOVER",
+      "commitRequired": false,
+      "expected": "CUTOVER_UNAPPROVED_HELD"
+    },
+    {
+      "id": "C07",
+      "case": "PRIVATE_DUE_RPC_AUTHZ",
+      "commitRequired": true,
+      "expected": "UP_TO_25_NO_DIRECT_SELECT"
+    }
+  ],
+  "postchecks": [
+    "LEVEL_ANCHOR_REVISION_EXACT_MATCH",
+    "WALLET_BALANCES_AND_REVISION_EXACT_MATCH",
+    "REVIEW_CLAIMS_XP_AND_POINT_FINGERPRINT_UNCHANGED",
+    "PROOF_LOCKS_AND_TRANSACTIONS_ZERO",
+    "CATALOG_PRIVILEGES_TRIGGERS_UNCHANGED",
+    "REPORT_PASS_FAIL_NOT_EXECUTED"
+  ],
+  "stop": [
+    "UNEXPECTED_SHA_OR_ENVIRONMENT",
+    "STAGING_HEALTH_OR_MIGRATION_UNVERIFIED",
+    "SYNTHETIC_IDENTITY_NOT_UNIQUE",
+    "UNSTABLE_OR_MIXED_SESSION",
+    "ROLLBACK_UNVERIFIED",
+    "NONTRANSACTIONAL_SIDE_EFFECT_RISK",
+    "LOCK_CONTENTION_MISMATCH_OR_DEADLOCK",
+    "WINDOW_SEAL_OR_LATE_XP_POLICY_MISSING",
+    "BETA_CUTOVER_NOT_APPROVED",
+    "PRIVATE_DUE_RPC_OR_PRIVILEGE_MISSING",
+    "POSTCHECK_DIFF_OR_MISSING_EVIDENCE"
+  ]
+}
