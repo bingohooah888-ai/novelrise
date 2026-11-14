@@ -170,6 +170,7 @@ jobs:
             test "$(git hash-object "$root/$kind.sql")" = "$blob"
           done < /tmp/candidate-sql-file-list
           test "$(wc -l </tmp/candidate-sql-file-list | tr -d ' ')" = 4
+          filename="$(jq -er '.artifacts.migration.path | split("/") | last' /tmp/candidate-pinned-manifest.json)"
           if [[ "$PR_NUMBER" == '2861' && "$MIGRATION" == '20261114121000' ]]; then
             node scripts/staging-illustration-pinned-sql.mjs compose \
               "$root" "$MIGRATION" "$filename" "$PR_NUMBER" check \
