@@ -33,7 +33,9 @@ test('formal state and review claims have private RLS and a unique key', () => {
   for (const table of ['scout_level_state', 'scout_review_claim']) {
     const name = schema + table;
     assert.ok(sql.includes('create table ' + name + ' ('));
-    assert.ok(sql.includes('alter table ' + name + ' enable row level security;'));
+    assert.ok(
+      sql.includes('alter table ' + name + ' enable row level security;')
+    );
   }
   assert.ok(sql.includes('primary key (user_id, window_end_at)'));
   assert.ok(sql.includes('current_level smallint not null'));
@@ -84,17 +86,4 @@ test('SQL remains a static reference without a scheduler', () => {
   assert.doesNotMatch(sql, /cron\.schedule|create trigger.*review_scout/i);
   assert.ok(!sql.includes('create extension'));
   assert.ok(!sql.includes('function ' + schema + 'review_due_users('));
-});
-
-// NOVELIGHT_TEMP_PRETTIER_PROBE_START
-test('temporary static format probe', async () => {
-  const { format, resolveConfig } = await import('prettier');
-  const all = readFileSync(new URL(import.meta.url), 'utf8');
-  const source = all.slice(0, all.indexOf('// NOVELIGHT_TEMP_PRETTIER_PROBE_START'));
-  const config = await resolveConfig(new URL(import.meta.url));
-  const formatted = await format(source, {
-    ...config,
-    filepath: 'tests/reader-reward-formal-staging-sql-contract.test.mjs'
-  });
-  console.log('NOVELIGHT_FORMATTED_BASE64=' + Buffer.from(formatted).toString('base64'));
 });
