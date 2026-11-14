@@ -130,35 +130,3 @@ test('no general SQL compiler relaxations or unapproved automatic deployment', a
     assert.match(source, /PR_NUMBER.*2861.*MIGRATION.*20261114121000/u);
   }
 });
-
-test('retention recovery is pinned to Staging baseline and rollback restores both functions', async () => {
-  const pre = await readFile(
-    'supabase/recovery/staging-retention-20261110/precheck.sql',
-    'utf8'
-  );
-  const rb = await readFile(
-    'supabase/recovery/staging-retention-20261110/rollback.sql',
-    'utf8'
-  );
-  for (const sha of [
-    '84db65f80613f2e1e15cab8f66c973981bdd56260ac3b866da66b29284c67653',
-    'e2879f44469f2cc5d4f33d5969a4b8a85ae17fa13ffb50e93c87fa136be943c3'
-  ]) {
-    assert.match(pre, new RegExp(sha, 'u'));
-    assert.match(rb, new RegExp(sha, 'u'));
-  }
-  assert.match(pre, /Retention precheck: Staging function definition drift/u);
-  assert.match(pre, /schema_migrations/u);
-  assert.match(
-    rb,
-    /CREATE OR REPLACE FUNCTION public\.novelight_author_exposure_funnel_v2/u
-  );
-  assert.match(
-    rb,
-    /CREATE OR REPLACE FUNCTION public\.novelight_author_analytics_timeseries/u
-  );
-  assert.match(rb, /security definer/iu);
-  assert.match(rb, /WHERE version::text='20261110172000'/u);
-  assert.doesNotMatch(rb, /DELETE FROM public\./iu);
-  assert.doesNotMatch(rb, /DROP TABLE|DROP FUNCTION/iu);
-});

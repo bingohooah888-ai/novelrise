@@ -54,7 +54,6 @@ This file is the machine-readable registry for formal NOVELIGHT documentation. T
     {"path":"docs/COMPETITOR-FEATURE-AUDIT-IMPLEMENTATION-STATUS-2026-09-19.md","status":"CURRENT","role":"competitor-feature-audit-implementation-status","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":["docs/COMPETITOR-FEATURE-AUDIT-2026-09-16.md"]},
     {"path":"docs/DOCUMENT-FRESHNESS.md","status":"CURRENT","role":"document-freshness-policy","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/DOCUMENT-SOURCE-OF-TRUTH.md","status":"CURRENT","role":"document-source-of-truth-registry","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
-    {"path":"docs/EPISODE-ILLUSTRATION-STAGING-RECOVERY.md","status":"CURRENT","role":"episode-illustration-staging-recovery","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/EVIDENCE-FRESHNESS-GATE.md","status":"CURRENT","role":"external-evidence-freshness-gate","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/EXECUTION-TURN-CARD-GATE.md","status":"CURRENT","role":"execution-turn-card-gate","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
     {"path":"docs/IMAGE-EXECUTION-GATE.md","status":"CURRENT","role":"image-execution-gate","singletonRole":true,"classification":"CURRENT_CANDIDATE","historicalReferences":[]},
