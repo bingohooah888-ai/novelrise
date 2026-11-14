@@ -233,11 +233,23 @@ test('Only a real Staging signup confirmation link returning to pinned Preview i
     );
   }
   assert.throws(
-    () => parseReaderConfirmation({ ...mail, from: 'evil@example.com' }, recipient, mailbox.sender, previewOrigin),
+    () =>
+      parseReaderConfirmation(
+        { ...mail, from: 'evil@example.com' },
+        recipient,
+        mailbox.sender,
+        previewOrigin
+      ),
     /STAGING_READER_MAILBOX_DENIED/u
   );
   assert.throws(
-    () => parseReaderConfirmation({ ...mail, to: ['other@example.com'] }, recipient, mailbox.sender, previewOrigin),
+    () =>
+      parseReaderConfirmation(
+        { ...mail, to: ['other@example.com'] },
+        recipient,
+        mailbox.sender,
+        previewOrigin
+      ),
     /STAGING_READER_MAILBOX_DENIED/u
   );
 });
@@ -255,7 +267,10 @@ test('Inbox preflight and one-use receipt read only approved Resend GET endpoint
   const fetcher = async (url, options) => {
     calls.push({ url, method: options.method, redirect: options.redirect });
     if (url.endsWith('?limit=30')) {
-      return { ok: true, json: async () => ({ object: 'list', data: [fetchedMail] }) };
+      return {
+        ok: true,
+        json: async () => ({ object: 'list', data: [fetchedMail] })
+      };
     }
     if (url.endsWith('/' + receiptId)) {
       return { ok: true, json: async () => mail };
@@ -276,10 +291,18 @@ test('Inbox preflight and one-use receipt read only approved Resend GET endpoint
   });
   assert.equal(link, confirmation);
   assert.equal(calls.length, 3);
-  assert.equal(calls.every((call) => call.method === 'GET'), true);
-  assert.equal(calls.every((call) => call.redirect === 'error'), true);
   assert.equal(
-    calls.every((call) => call.url.startsWith('https://api.resend.com/emails/receiving')),
+    calls.every((call) => call.method === 'GET'),
+    true
+  );
+  assert.equal(
+    calls.every((call) => call.redirect === 'error'),
+    true
+  );
+  assert.equal(
+    calls.every((call) =>
+      call.url.startsWith('https://api.resend.com/emails/receiving')
+    ),
     true
   );
   await assert.rejects(
@@ -306,7 +329,9 @@ test('Missing mailbox configuration denies E2E before any browser signup', () =>
     "page.goto(origin + '/signup.html?redirect=scout-record.html')"
   );
   const confirm = source.indexOf('await receiveReaderConfirmation(');
-  const login = source.indexOf("page.goto(origin + '/login.html?redirect=scout-record.html')");
+  const login = source.indexOf(
+    "page.goto(origin + '/login.html?redirect=scout-record.html')"
+  );
   assert.ok(config > 0 && preflight > config && signup > preflight);
   assert.ok(confirm > signup && login > confirm);
   assert.doesNotMatch(source, /email_confirm:|signInWithOtp/u);

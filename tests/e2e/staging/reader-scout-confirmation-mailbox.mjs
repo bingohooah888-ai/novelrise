@@ -56,7 +56,10 @@ async function inboundGet(path, apiKey, fetcher) {
 
 // Must succeed BEFORE the test creates an Auth reader. This verifies inbound
 // API read access, not domain MX routing or an email delivery guarantee.
-export async function preflightReaderMailbox(mailbox, fetcher = globalThis.fetch) {
+export async function preflightReaderMailbox(
+  mailbox,
+  fetcher = globalThis.fetch
+) {
   const list = await inboundGet('?limit=30', mailbox.apiKey, fetcher);
   if (list?.object !== 'list' || !Array.isArray(list.data)) deny();
   return true;
@@ -108,12 +111,15 @@ function linksFromEmail(mail) {
       (match) => match[0]
     )
   ];
-  return links.map((value) =>
-    value.replace(/&amp;|&#38;|&#x26;/giu, '&')
-  );
+  return links.map((value) => value.replace(/&amp;|&#38;|&#x26;/giu, '&'));
 }
 
-export function parseReaderConfirmation(mail, recipient, sender, previewOrigin) {
+export function parseReaderConfirmation(
+  mail,
+  recipient,
+  sender,
+  previewOrigin
+) {
   if (
     !Array.isArray(mail?.to) ||
     mail.to.length !== 1 ||
