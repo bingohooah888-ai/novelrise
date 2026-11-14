@@ -288,10 +288,47 @@ export class GateAWatchdogDurableObject {
   }
 }
 
+// Dormant: enabling an authenticated route and GATEA_HTTP_ADMISSION_ENABLED
+// requires separate OWNER approval. No routing/trigger change in this PR.
 export default Object.freeze({
-  async fetch() {
-    return new Response(null, {
+  async fetch(request, env) {
+    const rejected = () => new Response(null, {
       status: 404, headers: { 'cache-control': 'no-store' }
     });
+    if (env?.GATEA_LIVE_ENABLED !== 'true' ||
+        env?.GATEA_HTTP_ADMISSION_ENABLED !== 'true' ||
+        request?.method !== 'POST' ||
+        typeof env?.GATEA_WATCHDOG?.idFromName !== 'function' ||
+        typeof env?.GATEA_WATCHDOG?.get !== 'function') return rejected();
+    const path = new URL(request.url).pathname;
+    const operation = {
+      '/_novelight/gatea/arm': 'arm',
+      '/_novelight/gatea/heartbeat': 'heartbeat',
+      '/_novelight/gatea/receipt': 'readReceipt'
+    }[path];
+    if (!operation) return rejected();
+    try {
+      const length = Number(request.headers.get('content-length'));
+      if (Number.isFinite(length) && length > 4096) return rejected();
+      const text = await request.text();
+      if (text.length > 4096) return rejected();
+      const input = JSON.parse(text);
+      if (!validScope(input?.scope) || !NONCE.test(input?.nonce ?? '')) {
+        return rejected();
+      }
+      const id = env.GATEA_WATCHDOG.idFromName('ai-020705-' + input.scope.runId);
+      const stub = env.GATEA_WATCHDOG.get(id);
+      const method = stub?.[operation];
+      if (typeof method !== 'function') return rejected();
+      // DO checks a pinned Ed25519 owner or runner signature *before* any
+      // mutation or receipt disclosure. No unsigned/status/debug endpoint.
+      const result = await method.call(stub, input);
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { 'content-type': 'application/json', 'cache-control': 'no-store' }
+      });
+    } catch {
+      return rejected();
+    }
   }
 });
