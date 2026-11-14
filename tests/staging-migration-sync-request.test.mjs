@@ -372,3 +372,19 @@ test('offline DB failures stop without retries or detail leakage', async () => {
     assert.ok(r.errors.includes('STAGING_ONE_READER_STOPPED_NO_RETRY'));
   }
 });
+
+
+// TEMP_PRETTIER_CLI_REPORT
+test('capture exact CLI formatter result', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const file = 'tests/staging-migration-sync-request.test.mjs';
+  const current = await readFile(file, 'utf8');
+  const original = current.split('\n// TEMP_PRETTIER_CLI_REPORT\n')[0];
+  const out = spawnSync(
+    'node',
+    ['node_modules/prettier/bin/prettier.cjs', '--stdin-filepath', file],
+    { input: original, encoding: 'utf8', maxBuffer: 1024 * 1024 }
+  );
+  assert.equal(out.status, 0);
+  console.log('NOVELIGHT_PRETTIER_CLI_JSON=' + JSON.stringify(out.stdout));
+});
