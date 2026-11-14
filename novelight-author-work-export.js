@@ -122,6 +122,18 @@
     };
   }
 
+  const ILLUSTRATION_EXTENSIONS = Object.freeze({
+    'image/webp': 'webp',
+    'image/png': 'png'
+  });
+
+  function illustrationFilePath(asset) {
+    const mimeType = String(asset?.mimeType || '').toLowerCase();
+    const extension = ILLUSTRATION_EXTENSIONS[mimeType];
+    if (!extension) throw new Error('illustration_export_invalid_metadata');
+    return `illustrations/${asset.episodeId}/${asset.id}.${extension}`;
+  }
+
   function illustrationManifest(novelId, aiUsage, assets, exportedAt) {
     return {
       format: 'NOVELIGHT_EPISODE_ILLUSTRATIONS_V1',
@@ -134,8 +146,8 @@
         id: asset.id,
         episode_id: asset.episodeId,
         marker: asset.marker,
-        archive_path: `illustrations/${asset.episodeId}/${asset.id}.webp`,
-        mime_type: 'image/webp',
+        archive_path: illustrationFilePath(asset),
+        mime_type: String(asset.mimeType).toLowerCase(),
         width: asset.width,
         height: asset.height,
         alt_text: asset.altText || '',
@@ -191,7 +203,7 @@
         data:
           'NOVELIGHT挿絵バックアップ\n\n' +
           'work.txtの本文中にある [[NOVELIGHT_ILLUSTRATION:<id>]] が挿絵の配置位置です。\n' +
-          'manifest.jsonのarchive_pathと対応するWebP画像を保持してください。\n'
+          'manifest.jsonのarchive_pathと対応するWebP/PNG画像を保持してください。\n'
       }
     ];
 
@@ -201,7 +213,7 @@
       const bytes = new Uint8Array(await response.arrayBuffer());
       if (!bytes.length) throw new Error('illustration_binary_download_failed');
       files.push({
-        name: `illustrations/${asset.episodeId}/${asset.id}.webp`,
+        name: illustrationFilePath(asset),
         data: bytes
       });
     }
@@ -229,6 +241,7 @@
     if (
       message.includes('illustration_export_unavailable') ||
       message.includes('illustration_binary_download_failed') ||
+      message.includes('illustration_export_invalid_metadata') ||
       message.includes('zip_runtime_unavailable')
     ) {
       return '挿絵を含む完全なバックアップを作成できませんでした。画像を省略せず、時間をおいて再度お試しください。';

@@ -62,7 +62,16 @@ function provideMockSupabase() {
     createClient: () => ({
       auth: { getSession: async () => ({ data: { session }, error: null }) },
       from: table,
-      rpc: async () => ({ data: true, error: null })
+      rpc: async () => ({ data: true, error: null }),
+      storage: { from: () => ({
+        uploadToSignedUrl: async (path, token, blob, options) => {
+          globalThis.__safariUploadProof__ = {
+            path, token, mimeType: blob.type, contentType: options.contentType,
+            byteCount: blob.size
+          };
+          return { data: { path }, error: null };
+        }
+      }) }
     })
   };
 }
@@ -245,4 +254,58 @@ test('iPhone Safari WebKit accepts PNG fallback from illustration canvas', async
   expect(output.blobType).toBe('image/png');
   expect(output.width).toBe(2);
   expect(output.byteCount).toBeGreaterThan(0);
+});
+
+test('iPhone Safari PNG fallback completes signed upload, finalize and manuscript insertion', async ({ page, browserName }) => {
+  expect(browserName).toBe('webkit');
+  await installFixture(page, '本文の前半');
+  await page.unroute('**/api/episode-illustrations');
+  await page.route('**/api/episode-illustrations', (route) => {
+    const action = route.request().postDataJSON()?.action;
+    let payload;
+    if (action === 'prepare-upload') {
+      payload = { path: 'owner/73006/12345678-1234-4234-8234-123456789abc.png', token: 'fixture-token' };
+    } else if (action === 'finalize-upload') {
+      payload = { id: idA };
+    } else {
+      payload = { episodeId: 73006, novelId: 73007, isOwner: true,
+        aiUsage: false, limit: 10, assets: [] };
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify(payload) });
+  });
+  await page.goto('/episode-edit.html?id=73006');
+  await page.locator('#openIllustrationEditor').click();
+  const fileInput = page.locator('.episode-illustration-upload input[type=file]');
+  const base64 = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 4;
+    c.height = 4;
+    c.getContext('2d').fillRect(0, 0, 4, 4);
+    return c.toDataURL('image/png').split(',')[1];
+  });
+  await fileInput.setInputFiles({ name: 'fallback.png', mimeType: 'image/png',
+    buffer: Buffer.from(base64, 'base64') });
+  await page.evaluate(() => {
+    const original = HTMLCanvasElement.prototype.toBlob;
+    window.__originalSafariToBlob__ = original;
+    HTMLCanvasElement.prototype.toBlob = function (callback) {
+      return original.call(this, callback, 'image/png');
+    };
+  });
+  try {
+    await page.getByRole('button', { name: '挿絵をアップロード' }).click();
+    await expect(page.locator('#content')).toHaveValue(/NOVELIGHT_ILLUSTRATION:/u);
+    const proof = await page.evaluate(() => window.__safariUploadProof__);
+    expect(proof.path).toMatch(/\.png$/u);
+    expect(proof.mimeType).toBe('image/png');
+    expect(proof.contentType).toBe('image/png');
+    expect(proof.byteCount).toBeGreaterThan(0);
+  } finally {
+    await page.evaluate(() => {
+      if (window.__originalSafariToBlob__) {
+        HTMLCanvasElement.prototype.toBlob = window.__originalSafariToBlob__;
+      }
+    });
+  }
 });
