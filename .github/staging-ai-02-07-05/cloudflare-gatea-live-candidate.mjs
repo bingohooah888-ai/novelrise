@@ -232,8 +232,16 @@ export class GateAWatchdogDurableObject {
       return;
     }
     if (exit.independentGithubExitVerified !== true ||
+        current.heartbeat_ms === 0 ||
         now - current.heartbeat_ms < 250 ||
-        now - current.heartbeat_ms > 15000) deny();
+        now - current.heartbeat_ms > 15000) {
+      this.ctx.storage.transactionSync(() => {
+        this.ctx.storage.sql.exec(
+          "UPDATE gatea_live_once SET state='FAILED_CLOSED' WHERE id=1 AND state='WATCHING'"
+        );
+      });
+      return;
+    }
     // Exactly ONE recovery round; duplicates, alarm retries and replays inert.
     this.ctx.storage.transactionSync(() => {
       if (this.row()?.state !== 'WATCHING') deny();
