@@ -168,7 +168,10 @@ test('contract is Markdown-only, not a runnable SQL migration', () => {
 
 test('due-user selection never uses private table SELECT', () => {
   const runnerSource = readFileSync(
-    new URL('../api/_lib/reader-reward/formal-maintenance-runner.js', import.meta.url),
+    new URL(
+      '../api/_lib/reader-reward/formal-maintenance-runner.js',
+      import.meta.url
+    ),
     'utf8'
   );
   assert.match(runnerSource, /list_due_scout_30_day_reviews/);
@@ -181,7 +184,10 @@ test('due-user selection never uses private table SELECT', () => {
 
 test('no code path in Runner targets legacy unsealed review RPC', () => {
   const runnerSource = readFileSync(
-    new URL('../api/_lib/reader-reward/formal-maintenance-runner.js', import.meta.url),
+    new URL(
+      '../api/_lib/reader-reward/formal-maintenance-runner.js',
+      import.meta.url
+    ),
     'utf8'
   );
   assert.match(runnerSource, /review_scout_30_days_sealed/);
