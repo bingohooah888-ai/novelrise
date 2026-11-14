@@ -30,7 +30,8 @@ const artifacts = Object.fromEntries(
 const candidate = {
   pr: 2861,
   version: '20261114121000',
-  migrationFile: '20261114121000_episode_illustration_png_delivery_consistency.sql',
+  migrationFile:
+    '20261114121000_episode_illustration_png_delivery_consistency.sql',
   artifacts
 };
 
@@ -43,7 +44,10 @@ test('trusted-main exception pins all FOUR immutable candidate SQL Git blobs', (
 
 test('pinned PNG check never commits and persistent path uses an atomic ledger', () => {
   const check = composePinnedIllustrationSql({ ...candidate, mode: 'check' });
-  const persist = composePinnedIllustrationSql({ ...candidate, mode: 'persist' });
+  const persist = composePinnedIllustrationSql({
+    ...candidate,
+    mode: 'persist'
+  });
   assert.equal((check.match(/^BEGIN;$/gm) || []).length, 1);
   assert.equal((check.match(/^ROLLBACK;$/gm) || []).length, 1);
   assert.doesNotMatch(check, /^COMMIT;$/mu);
@@ -71,7 +75,10 @@ test('unreviewed changes to security-definer SQL and all identity drifts are den
     { mode: 'main' },
     {
       mode: 'persist',
-      artifacts: { ...artifacts, migration: artifacts.migration + '\nselect 1;' }
+      artifacts: {
+        ...artifacts,
+        migration: artifacts.migration + '\nselect 1;'
+      }
     },
     {
       mode: 'persist',
@@ -87,7 +94,12 @@ test('unreviewed changes to security-definer SQL and all identity drifts are den
     }
   ]) {
     assert.throws(
-      () => composePinnedIllustrationSql({ ...candidate, mode: 'persist', ...wrong }),
+      () =>
+        composePinnedIllustrationSql({
+          ...candidate,
+          mode: 'persist',
+          ...wrong
+        }),
       /DENIED/u
     );
   }
@@ -97,11 +109,20 @@ test('no general SQL compiler relaxations or unapproved automatic deployment', a
   const generic = await readFile('scripts/staging-candidate-sql.mjs', 'utf8');
   assert.ok(generic.includes('security\\s+definer'));
   const workflows = await Promise.all([
-    readFile('.github/workflows/staging-candidate-db-persistent-apply.yml', 'utf8'),
-    readFile('.github/workflows/staging-candidate-db-rollback-check.yml', 'utf8')
+    readFile(
+      '.github/workflows/staging-candidate-db-persistent-apply.yml',
+      'utf8'
+    ),
+    readFile(
+      '.github/workflows/staging-candidate-db-rollback-check.yml',
+      'utf8'
+    )
   ]);
   for (const source of workflows) {
-    assert.match(source, /NOVELIGHT_STAGING_CANDIDATE_(?:CHECK|PERSIST)_APPROVE/u);
+    assert.match(
+      source,
+      /NOVELIGHT_STAGING_CANDIDATE_(?:CHECK|PERSIST)_APPROVE/u
+    );
     assert.ok(
       source.includes("github.event.comment.author_association == 'OWNER'")
     );

@@ -17,8 +17,8 @@ BEGIN
   ) OR v_funnel IS NULL OR v_series IS NULL THEN
     RAISE EXCEPTION 'Retention rollback blocked: migration ledger or function missing';
   END IF;
-  IF pg_catalog.position('reader_cohorts as materialized' IN pg_catalog.lower(pg_catalog.pg_get_functiondef(v_funnel)))=0
-     OR pg_catalog.position('reader_cohorts as materialized' IN pg_catalog.lower(pg_catalog.pg_get_functiondef(v_series)))=0 THEN
+  IF pg_catalog.strpos(pg_catalog.lower(pg_catalog.pg_get_functiondef(v_funnel)), 'reader_cohorts as materialized')=0
+     OR pg_catalog.strpos(pg_catalog.lower(pg_catalog.pg_get_functiondef(v_series)), 'reader_cohorts as materialized')=0 THEN
     RAISE EXCEPTION 'Retention rollback blocked: installed function is not expected version';
   END IF;
   IF NOT (SELECT p.prosecdef FROM pg_catalog.pg_proc p WHERE p.oid=v_funnel)
