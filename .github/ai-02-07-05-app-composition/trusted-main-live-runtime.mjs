@@ -1,10 +1,8 @@
 // Code-only trusted-main / detached-controller wire-up.
 // Requires an independently authenticated Cloudflare service/receipt reader.
 // No workflow, transport, secret or runtime is started by this module.
-import { create020705OwnerStagingLiveEntrypoint } from
-  '../ai-02-07-05-app-composition/owner-staging-live-entrypoint.mjs';
-import { create020705ExistingWatchdogEntrypoint } from
-  './existing-watchdog-entrypoint.mjs';
+import { create020705OwnerStagingLiveEntrypoint } from './owner-staging-live-entrypoint.mjs';
+import { create020705ExistingWatchdogEntrypoint } from '../staging-ai-02-07-05/existing-watchdog-entrypoint.mjs';
 const STAGING = 'wmlzjgvxgoyrovdhbqbg';
 const WORKER = 'novelight-ai-gatea-watchdog';
 const NAMESPACE = '015ef5be967f4fbfbad31ab24a22bf26';
