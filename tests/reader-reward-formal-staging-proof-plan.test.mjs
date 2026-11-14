@@ -109,7 +109,7 @@ test('permission probe never invokes review RPC', () => {
 test('commit-order visibility test is restricted to disposable clone', () => {
   assert.equal(clone('C01').commitRequired, true);
   assert.equal(clone('C01').expected, '200_XP_NO_DEMOTION_AFTER_COMMIT');
-  assert.match(plan, /å¨æ¥ç¶ROLLBACKã§ã¯/);
+  assert.match(plan, /READ COMMITTED/);
 });
 
 test('writer rollback cannot be mistaken for a sealed review', () => {
@@ -125,12 +125,12 @@ test('backdated XP and corrections are held', () => {
 
 test('cross-user locks require deterministic order', () => {
   assert.equal(clone('C05').expected, 'NO_DEADLOCK');
-  assert.match(plan, /æ±ºå®çé /);
+  assert.match(plan, /UUID/);
 });
 
 test('beta cutover remains blocked until verified separately', () => {
   assert.equal(clone('C06').expected, 'CUTOVER_UNAPPROVED_HELD');
-  assert.match(plan, /Î²cap/);
+  assert.match(plan, /cutover/);
 });
 
 test('future private due RPC is bound to 25 users without direct SELECT', () => {
