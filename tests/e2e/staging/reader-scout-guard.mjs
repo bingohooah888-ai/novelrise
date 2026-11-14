@@ -28,7 +28,7 @@ export function assertOwnerStagingGate(env = process.env) {
 
   let url;
   try {
-    url = new URL(env.STAGING_BASE_URL);
+    url = new globalThis.URL(env.STAGING_BASE_URL);
   } catch {
     deny();
   }
@@ -49,7 +49,7 @@ export function assertOwnerStagingGate(env = process.env) {
 export function assertStagingDbUrl(value) {
   let parsed;
   try {
-    parsed = new URL(value);
+    parsed = new globalThis.URL(value);
   } catch {
     deny();
   }

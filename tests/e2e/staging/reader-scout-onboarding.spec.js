@@ -91,7 +91,7 @@ test('one newly registered Staging reader sees own Lv.1 and 0 Point', async ({
 
     // Never allow a browser request to the Production Supabase project.
     await context.route(/https:\/\/[^/]+\.supabase\.co\//u, (route) => {
-      const target = new URL(route.request().url());
+      const target = new globalThis.URL(route.request().url());
       return target.origin === expectedUrl ? route.continue() : route.abort();
     });
 
@@ -158,12 +158,12 @@ test('one newly registered Staging reader sees own Lv.1 and 0 Point', async ({
 
     stage = 'authenticated-rpc';
     const result = await page.evaluate(async () => {
-      const configResponse = await fetch('/api/staging-browser-config', {
+      const configResponse = await globalThis.fetch('/api/staging-browser-config', {
         cache: 'no-store'
       });
       if (!configResponse.ok) return null;
       const config = await configResponse.json();
-      const client = window.supabase.createClient(
+      const client = globalThis.window.supabase.createClient(
         config.supabaseUrl,
         config.supabasePublishableKey
       );
