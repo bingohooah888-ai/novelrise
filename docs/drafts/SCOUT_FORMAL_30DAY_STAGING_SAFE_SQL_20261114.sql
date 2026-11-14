@@ -84,7 +84,7 @@ BEGIN
         UNION
         SELECT NEW.user_id AS id
       ) x;
-    v_earliest := pg_catalog.least(OLD.occurred_at, NEW.occurred_at);
+    v_earliest := least(OLD.occurred_at, NEW.occurred_at);
     v_xp_id := NEW.id;
   END IF;
   FOREACH v_user IN ARRAY v_ids LOOP
@@ -148,9 +148,9 @@ BEGIN
   ) THEN RETURN; END IF;
   RETURN QUERY SELECT s.user_id
     FROM novelight_formal_private.scout_level_state s
-   WHERE pg_catalog.coalesce(s.last_review_end_at,s.review_anchor_at)
+   WHERE coalesce(s.last_review_end_at,s.review_anchor_at)
          + interval '30 days' <= p_as_of
-   ORDER BY pg_catalog.coalesce(s.last_review_end_at,s.review_anchor_at),
+   ORDER BY coalesce(s.last_review_end_at,s.review_anchor_at),
             s.user_id
    LIMIT p_limit;
 END $$;
@@ -190,7 +190,7 @@ BEGIN
     FROM novelight_formal_private.scout_level_state
     WHERE user_id = p_user_id FOR UPDATE;
   IF NOT FOUND THEN RETURN pg_catalog.jsonb_build_object('status','held'); END IF;
-  v_start := pg_catalog.coalesce(v_state.last_review_end_at,v_state.review_anchor_at);
+  v_start := coalesce(v_state.last_review_end_at,v_state.review_anchor_at);
   v_end := v_start + interval '30 days';
   IF p_as_of < v_end THEN
     RETURN pg_catalog.jsonb_build_object('status','not_due');
@@ -227,8 +227,8 @@ BEGIN
     SELECT 1 FROM novelight_formal_private.scout_30d_late_issue i
     WHERE i.user_id=p_user_id AND i.occurred_at < v_end
   ) THEN RETURN pg_catalog.jsonb_build_object('status','late_xp_pending'); END IF;
-  SELECT pg_catalog.coalesce(pg_catalog.sum(pg_catalog.greatest(0,x.xp_value)),0),
-         pg_catalog.coalesce(pg_catalog.bool_or(x.xp_value < 0),false)
+  SELECT coalesce(pg_catalog.sum(greatest(0,x.xp_value)),0),
+         coalesce(pg_catalog.bool_or(x.xp_value < 0),false)
     INTO v_xp,v_negative
     FROM public.scout_xp_ledger x
    WHERE x.user_id=p_user_id
@@ -240,7 +240,7 @@ BEGIN
     RETURN pg_catalog.jsonb_build_object('status','held');
   END IF;
   v_next := CASE WHEN v_xp >= 200 THEN v_state.current_level
-    ELSE pg_catalog.greatest(
+    ELSE greatest(
       CASE WHEN v_state.highest_level>=70 THEN 50 ELSE 1 END,
       v_state.current_level-1
     ) END;
