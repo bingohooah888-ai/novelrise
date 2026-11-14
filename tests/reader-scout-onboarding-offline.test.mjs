@@ -72,7 +72,10 @@ test('Staging database guard refuses Production and unsafe transport', () => {
     dbUrl.replace('/postgres', '/postgres?sslmode=disable'),
     ''
   ]) {
-    assert.throws(() => assertStagingDbUrl(invalid), /STAGING_READER_UI_GATE_DENIED/u);
+    assert.throws(
+      () => assertStagingDbUrl(invalid),
+      /STAGING_READER_UI_GATE_DENIED/u
+    );
   }
 });
 
@@ -88,7 +91,10 @@ test('Staging DB preflight and snapshot are read-only and bound to one UUID', ()
     );
   }
   assert.match(snapshot, /novelight_formal_private\.scout_level_state/u);
-  assert.match(snapshot, /novelight_formal_private\.scout_point_usage_wallets/u);
+  assert.match(
+    snapshot,
+    /novelight_formal_private\.scout_point_usage_wallets/u
+  );
   assert.match(snapshot, /public\.scout_point_ledger/u);
   assert.match(snapshot, /public\.scout_xp_ledger/u);
   assert.throws(
@@ -181,5 +187,8 @@ test('Real Staging browser proof uses normal signup/login without bypass or retr
   ]) {
     assert.match(source, pattern);
   }
-  assert.doesNotMatch(source, /workflow_dispatch|signInWithOtp|email_confirm:|db push/u);
+  assert.doesNotMatch(
+    source,
+    /workflow_dispatch|signInWithOtp|email_confirm:|db push/u
+  );
 });

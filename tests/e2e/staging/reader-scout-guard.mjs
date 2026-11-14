@@ -95,13 +95,19 @@ export function readOnlySnapshotSql(userId) {
     'SELECT json_build_object(',
     " 'auth',(SELECT count(*) FROM auth.users WHERE id=" + uid + '),',
     " 'level',(SELECT count(*) FROM novelight_formal_private.scout_level_state",
-    ' WHERE user_id=' + uid +
+    ' WHERE user_id=' +
+      uid +
       ' AND current_level=1 AND highest_level=1 AND level_progress_xp=0 AND revision=0),',
     " 'wallet',(SELECT count(*) FROM novelight_formal_private.scout_point_usage_wallets",
-    ' WHERE user_id=' + uid +
+    ' WHERE user_id=' +
+      uid +
       ' AND available_points=0 AND exchange_eligible_points=0 AND reserved_points=0 AND held_points=0 AND revision=0),',
-    " 'xp',(SELECT count(*) FROM public.scout_xp_ledger WHERE user_id=" + uid + '),',
-    " 'point',(SELECT count(*) FROM public.scout_point_ledger WHERE user_id=" + uid + ')',
+    " 'xp',(SELECT count(*) FROM public.scout_xp_ledger WHERE user_id=" +
+      uid +
+      '),',
+    " 'point',(SELECT count(*) FROM public.scout_point_ledger WHERE user_id=" +
+      uid +
+      ')',
     ');',
     'COMMIT;'
   ].join('\n');

@@ -92,13 +92,12 @@ test('one newly registered Staging reader sees own Lv.1 and 0 Point', async ({
     // Never allow a browser request to the Production Supabase project.
     await context.route(/https:\/\/[^/]+\.supabase\.co\//u, (route) => {
       const target = new URL(route.request().url());
-      return target.origin === expectedUrl
-        ? route.continue()
-        : route.abort();
+      return target.origin === expectedUrl ? route.continue() : route.abort();
     });
 
     stage = 'signup';
-    const email = 'novelight-staging-reader-ui-' + randomUUID() + '@example.invalid';
+    const email =
+      'novelight-staging-reader-ui-' + randomUUID() + '@example.invalid';
     const password = 'Test1!' + randomBytes(32).toString('base64url');
     await page.goto(origin + '/signup.html?redirect=scout-record.html');
     await expect(page.locator('#signupForm')).toBeVisible();
