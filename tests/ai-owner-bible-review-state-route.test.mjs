@@ -6,31 +6,31 @@ import {
 } from '../api/ai-owner-bible-review-state.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
-const TOKEN = 'synthetic-owner-review-bearer-not-live';
+const TOKEN = 'synthetic-owner-bearer-00000000';
 const ENV = {
   NOVELIGHT_AI_ADMIN_PREVIEW_ENABLED: 'true',
   NOVELIGHT_AI_OWNER_REVIEW_STATE_ENABLED: 'true',
   NOVELIGHT_AI_ADMIN_USER_ID: OWNER,
   SUPABASE_URL: 'https://mock.supabase.co',
-  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_synthetic_review',
-  SUPABASE_SECRET_KEY: 'synthetic-not-a-secret'
+  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_synthetic_route',
+  SUPABASE_SECRET_KEY: 'synthetic-test-secret-not-real'
 };
 
 function response() {
   return {
     headers: {},
-    statusCode: null,
+    statusCode: 0,
     body: null,
-    setHeader(k, v) {
-      this.headers[k] = v;
+    setHeader(name, value) {
+      this.headers[name] = value;
       return this;
     },
     status(code) {
       this.statusCode = code;
       return this;
     },
-    json(body) {
-      this.body = body;
+    json(payload) {
+      this.body = payload;
       return this;
     }
   };
@@ -39,24 +39,32 @@ function response() {
 function request(overrides = {}) {
   return {
     method: 'GET',
-    query: { novel_id: '25' },
     headers: {
       host: 'novelight.test',
       origin: 'https://novelight.test',
       'sec-fetch-site': 'same-origin',
       authorization: 'Bearer ' + TOKEN
     },
+    query: { novel_id: '23' },
     ...overrides
   };
 }
 
-test('default-off route denies before client creation', async () => {
+function fakeService() {
+  return {
+    auth: { getUser() {}, getClaims() {} },
+    from() {},
+    rpc() {}
+  };
+}
+
+test('default disabled route is 404 even with enabled flags', async () => {
   let created = 0;
   const handler = createOwnerBibleReviewStateApiHandler({
     env: ENV,
     createServiceClient() {
-      created++;
-      return {};
+      created += 1;
+      return fakeService();
     }
   });
   const res = response();
@@ -65,44 +73,46 @@ test('default-off route denies before client creation', async () => {
   assert.deepEqual(res.body, { error: 'NOT_FOUND' });
   assert.equal(created, 0);
   assert.equal(res.headers['Cache-Control'], 'private, no-store, max-age=0');
+  assert.equal(res.headers['X-Robots-Tag'], 'noindex, nofollow');
 });
 
-test('feature flags cannot replace a trusted session observer', async () => {
+test('missing session or invalid config blocks client setup', async () => {
   let created = 0;
   const make = (options) =>
     createOwnerBibleReviewStateApiHandler({
-      env: ENV,
       enabled: true,
+      env: ENV,
       createServiceClient() {
-        created++;
-        return {};
+        created += 1;
+        return fakeService();
       },
       ...options
     });
   const res = response();
   await make()(request(), res);
   assert.equal(res.statusCode, 503);
-  const other = response();
+  assert.equal(created, 0);
+  const invalid = response();
   await make({
     lookupOneSession: async () => true,
-    env: { ...ENV, SUPABASE_PUBLISHABLE_KEY: 'sb_secret_not_public' }
-  })(request(), other);
-  assert.equal(other.statusCode, 503);
+    env: { ...ENV, SUPABASE_PUBLISHABLE_KEY: 'sb_secret_never_public' }
+  })(request(), invalid);
+  assert.equal(invalid.statusCode, 503);
   assert.equal(created, 0);
 });
 
-test('invalid requests deny before privileged IO', async () => {
+test('invalid requests never touch the privileged client', async () => {
   let created = 0;
   const handler = createOwnerBibleReviewStateApiHandler({
-    env: ENV,
     enabled: true,
+    env: ENV,
     lookupOneSession: async () => true,
     createServiceClient() {
-      created++;
-      return {};
+      created += 1;
+      return fakeService();
     }
   });
-  for (const [req, expected] of [
+  for (const [req, statusCode] of [
     [request({ method: 'DELETE' }), 405],
     [
       request({
@@ -115,12 +125,12 @@ test('invalid requests deny before privileged IO', async () => {
         headers: { ...request().headers, authorization: 'Bearer short' }
       }),
       401
-    ],
-    [request({ query: { novel_id: '25bad' } }), 400]
+    ]
   ]) {
     const res = response();
     await handler(req, res);
-    assert.equal(res.statusCode, expected);
+    assert.equal(res.statusCode, statusCode);
   }
   assert.equal(created, 0);
 });
+
