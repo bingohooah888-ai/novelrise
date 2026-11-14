@@ -177,6 +177,12 @@ jobs:
             node scripts/staging-follow-list-pinned-sql.mjs compose \
               "$root" "$MIGRATION" "$filename" "$PR_NUMBER" \
               > /tmp/novelight-staging-candidate-persist.sql
+          elif [[ "$PR_NUMBER" == '2861' && "$MIGRATION" == '20261114121000' ]]; then
+            # One reviewed privileged RPC definition, with all four Git blobs pinned.
+            # The generic SQL security-definer denial remains unchanged.
+            node scripts/staging-illustration-pinned-sql.mjs compose \
+              "$root" "$MIGRATION" "$filename" "$PR_NUMBER" persist \
+              > /tmp/novelight-staging-candidate-persist.sql
           else
             node scripts/staging-candidate-persist-sql.mjs compose "$root" "$MIGRATION" "$filename" \
               > /tmp/novelight-staging-candidate-persist.sql

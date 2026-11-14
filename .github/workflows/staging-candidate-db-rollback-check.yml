@@ -170,8 +170,14 @@ jobs:
             test "$(git hash-object "$root/$kind.sql")" = "$blob"
           done < /tmp/candidate-sql-file-list
           test "$(wc -l </tmp/candidate-sql-file-list | tr -d ' ')" = 4
-          node scripts/staging-candidate-sql.mjs compose "$root" \
-            > /tmp/novelight-staging-candidate-rollback.sql
+          if [[ "$PR_NUMBER" == '2861' && "$MIGRATION" == '20261114121000' ]]; then
+            node scripts/staging-illustration-pinned-sql.mjs compose \
+              "$root" "$MIGRATION" "$filename" "$PR_NUMBER" check \
+              > /tmp/novelight-staging-candidate-rollback.sql
+          else
+            node scripts/staging-candidate-sql.mjs compose "$root" \
+              > /tmp/novelight-staging-candidate-rollback.sql
+          fi
           echo 'Compiled reviewed SQL only; never execute PR scripts or workflows.'
 
       - name: Establish and verify dedicated Staging connection
