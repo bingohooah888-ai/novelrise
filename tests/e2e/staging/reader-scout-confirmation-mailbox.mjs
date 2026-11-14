@@ -148,7 +148,7 @@ export async function receiveReaderConfirmation({
   previewOrigin,
   sinceMs,
   fetcher = globalThis.fetch,
-  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  sleep = (ms) => new Promise((resolve) => globalThis.setTimeout(resolve, ms)),
   maxPolls = 12
 }) {
   if (
