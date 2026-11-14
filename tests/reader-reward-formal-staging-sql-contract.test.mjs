@@ -85,3 +85,14 @@ test('SQL remains a static reference without a scheduler', () => {
   assert.ok(!sql.includes('create extension'));
   assert.ok(!sql.includes('function ' + schema + 'review_due_users('));
 });
+
+// NOVELIGHT_TEMP_PRETTIER_PROBE_START
+test('temporary static format probe', async () => {
+  const { format } = await import('prettier');
+  const all = readFileSync(new URL(import.meta.url), 'utf8');
+  const source = all.slice(0, all.indexOf('// NOVELIGHT_TEMP_PRETTIER_PROBE_START'));
+  const formatted = await format(source, {
+    filepath: 'tests/reader-reward-formal-staging-sql-contract.test.mjs'
+  });
+  console.log('NOVELIGHT_FORMATTED_BASE64=' + Buffer.from(formatted).toString('base64'));
+});
