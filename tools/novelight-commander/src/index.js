@@ -322,6 +322,11 @@ register("cloudflare_worker_metrics", "Read sanitized Gate A Worker request/erro
 register("cloudflare_do_object_count", "Read bounded count of scoped Durable Objects; no IDs or stored data.",
   {namespaceId: z.string().min(1).max(64)},
   async args => runNloCloudflareAction({action: "cloudflare_do_object_count", args}));
+register("cloudflare_watchdog_provenance",
+  "Hash existing Gate A Worker source locally and inspect DO binding/version and rollback metadata; never return raw source.",
+  {expectedContentSha256: z.string().regex(/^[a-f0-9]{64}$/u).optional()},
+  async args => runNloCloudflareAction({action: "cloudflare_watchdog_provenance", args}));
+
 register("cloudflare_plan_change", "Generate NON-EXECUTABLE Cloudflare change plan. Requires separate OWNER approval to execute.",
   {action: z.enum(["create_worker","update_worker","delete_worker",
     "manage_durable_object","stop_watchdog"]), workerName: z.literal("novelight-ai-gatea-watchdog")},

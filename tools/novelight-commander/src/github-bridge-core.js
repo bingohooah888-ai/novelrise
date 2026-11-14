@@ -1858,7 +1858,8 @@ async function actionCloudflareNloReadOnly(request) {
     'cloudflare_account', 'cloudflare_workers', 'cloudflare_durable_objects',
     'cloudflare_worker_deployments', 'cloudflare_worker_observability',
     'cloudflare_worker_metrics', 'cloudflare_do_object_count',
-    'cloudflare_watchdog_status', 'cloudflare_plan_change'
+    'cloudflare_watchdog_status', 'cloudflare_watchdog_provenance',
+    'cloudflare_plan_change'
   ]);
   if (!permitted.has(request.action)) throw new Error('nlo_cf_bridge_action_denied');
   const safe = await runNloCloudflareAction({action: request.action, args: request.args});
@@ -1882,6 +1883,7 @@ const ACTIONS = new Map([
   ['cloudflare_worker_metrics', actionCloudflareNloReadOnly],
   ['cloudflare_do_object_count', actionCloudflareNloReadOnly],
   ['cloudflare_watchdog_status', actionCloudflareNloReadOnly],
+  ['cloudflare_watchdog_provenance', actionCloudflareNloReadOnly],
   ['cloudflare_plan_change', actionCloudflareNloReadOnly],
   ['codex_auth_diagnose', actionCodexAuthDiagnose],
   ['codex_auth_repair_user_override', actionCodexAuthRepairUserOverride],
