@@ -1,6 +1,8 @@
 // Dormant formal maintenance review adapter for a trusted existing scheduler.
 // Never creates a connection, cron, trigger, route or background timer.
 // The only future writer is the already installed private 30-day review RPC.
+import { FORMAL_MAINTENANCE_SAFETY_APPROVED } from './formal-maintenance-release-gate.js';
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_PER_TICK = 25;
 const DUE_SQL =
@@ -33,6 +35,7 @@ export function createUnregisteredFormalMaintenanceRunner({
 
   // Separate from earnings and unrelated beta/contest cron approvals.
   const enabled = () =>
+    FORMAL_MAINTENANCE_SAFETY_APPROVED === true &&
     launchConfiguration?.formalMaintenanceReviewEnabled === true &&
     launchConfiguration?.formalMaintenanceSchedulerEnabled === true &&
     launchConfiguration?.productionCutoverApproved === true &&
