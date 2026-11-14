@@ -3,8 +3,8 @@
 // at import time. A separately approved protected runner supplies each live
 // capability. Do not import this file from public APIs or browser code.
 import { createHash } from 'node:crypto';
-import { create020705ProtectedStageExecutor } from './protected-stage-executor.mjs';
-import { createPaidTrialOneShotOpenAiProvider } from './paid-trial-one-shot-provider.mjs';
+import { create020705ProtectedStageExecutor } from '../staging-ai-02-07-05/protected-stage-executor.mjs';
+import { createPaidTrialOneShotOpenAiProvider } from '../staging-ai-02-07-05/paid-trial-one-shot-provider.mjs';
 import { createOpenAiTextProvider } from '../../api/_lib/ai/providers.js';
 import { createAiRouter } from '../../api/_lib/ai/router.js';
 import {

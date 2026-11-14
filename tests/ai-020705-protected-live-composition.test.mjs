@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import test from 'node:test';
-import { create020705ProtectedLiveComposition } from '../.github/staging-ai-02-07-05/protected-live-composition.mjs';
+import { create020705ProtectedLiveComposition } from '../.github/ai-02-07-05-app-composition/protected-live-composition.mjs';
 
 const NOW = Date.parse('2026-11-14T05:00:00Z');
 const STAGING = 'wmlzjgvxgoyrovdhbqbg';

@@ -1,7 +1,7 @@
 # NOVELIGHT 02-07-05：実AI一回試行への接続（Draft／2026-11-14）
 
 ## 実装したもの
-- `.github/staging-ai-02-07-05/protected-live-composition.mjs` は、既存のOpenAI Responsesアダプター、AI Router、Supabase原価予約・精算、One-Shot Claim、OWNER ledger、署名済み独立Watchdog、停止・cleanup、既存小説引用検証を**一本の実行経路**に接続する。importだけでは通信しない。
+- `.github/ai-02-07-05-app-composition/protected-live-composition.mjs` は、既存のOpenAI Responsesアダプター、AI Router、Supabase原価予約・精算、One-Shot Claim、OWNER ledger、署名済み独立Watchdog、停止・cleanup、既存小説引用検証を**一本の実行経路**に接続する。importだけでは通信しない。
 - 既存 `protected-stage-executor` → `approved-stage-coordinator` → `paid-trial-cleanup-runner` に、予算付きRouter呼び出しと引用検証結果を受け渡す任意の注入口を追加。従来の単体契約は維持。
 - OpenAIへの送信内容は、サーバー側で再取得した管理人所有・合成第1話の**最初の1チャンク（4,096 UTF-8 bytes以下）**だけ。採用済みの引用検証コードで、出典のない候補を拒否。
 - 原価は既存の原子的DB予約→Router精算/監査を使用。実験の出力は候補件数、確認済み引用件数、本文/応答ハッシュ、予約後の**会計上のマイクロ円額**だけ。実請求の確定値とは別。候補詳細はcleanup後、同一の信頼済みプロセス内の管理人用メソッドからのみ取得可能。GitHub Actionsログには出さない。
