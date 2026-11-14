@@ -205,7 +205,6 @@ test('absent sealed DB proof keeps rollout blocked', () => {
   assert.match(design, /source finality/);
 });
 
-
 const stagingSqlCandidate = readFileSync(
   new URL(
     '../docs/drafts/SCOUT_FORMAL_30DAY_STAGING_SAFE_SQL_20261114.sql',
