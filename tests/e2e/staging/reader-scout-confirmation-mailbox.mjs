@@ -18,9 +18,11 @@ export function requireReaderMailbox(env = process.env) {
     .trim()
     .toLowerCase();
   const apiKey = env.NOVELIGHT_STAGING_READER_MAILBOX_API_KEY || '';
+  // Reuse only the already verified receiving domain and known Auth sender.
+  // Delivery and Staging sender settings still require separate verification.
   if (
-    !/^[a-z0-9][a-z0-9-]{3,62}\.resend\.app$/u.test(domain) ||
-    !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}$/u.test(sender) ||
+    domain !== 'novelight.jp' ||
+    sender !== 'auth@novelight.jp' ||
     !apiKey.startsWith('re_') ||
     apiKey.length < 12
   ) {
