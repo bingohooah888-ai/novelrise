@@ -135,6 +135,7 @@ export class GateAWatchdogDurableObject {
         ' id INTEGER PRIMARY KEY CHECK(id=1), scope TEXT NOT NULL,' +
         ' nonce TEXT NOT NULL, controller_run_id INTEGER NOT NULL,' +
         ' deadline_ms INTEGER NOT NULL, heartbeat_ms INTEGER NOT NULL,' +
+        ' receipt TEXT,' +
         ' state TEXT NOT NULL CHECK(state IN ' +
         " ('WATCHING','CLAIMED','STOPPED','FAILED_CLOSED'))) "
       );
@@ -143,7 +144,7 @@ export class GateAWatchdogDurableObject {
   row() {
     return this.ctx.storage.sql.exec(
       'SELECT scope,nonce,controller_run_id,deadline_ms,heartbeat_ms,state ' +
-      'FROM gatea_live_once WHERE id=1'
+      ' ,receipt FROM gatea_live_once WHERE id=1'
     ).toArray()[0] ?? null;
   }
   async arm({ scope, nonce, controllerRunId, expiresAtMs, signature } = {}) {
@@ -159,13 +160,13 @@ export class GateAWatchdogDurableObject {
           signature, pinnedSpkiBase64: this.env.GATEA_OWNER_PUB_SPKI
         })) deny();
     this.init();
-    const deadline = Math.min(now + 1000, expiresAtMs);
+    const deadline = Math.min(now + 15000, expiresAtMs);
     this.ctx.storage.transactionSync(() => {
       if (this.row()) deny();
       this.ctx.storage.sql.exec(
-        'INSERT INTO gatea_live_once VALUES(1,?,?,?,?,?,?)',
+        'INSERT INTO gatea_live_once VALUES(1,?,?,?,?,?,?,?)',
         JSON.stringify(FIELDS.map((k) => scope[k])),
-        nonce, controllerRunId, deadline, now, 'WATCHING'
+        nonce, controllerRunId, deadline, 0, null, 'WATCHING'
       );
     });
     try { await this.ctx.storage.setAlarm(deadline); }
@@ -251,11 +252,33 @@ export class GateAWatchdogDurableObject {
       expiresAtMs: now + 10000
     };
     // Never persist key, raw GitHub response, JWT or story content.
-    return sign020705Death({
+    const envelope = await sign020705Death({
       proof, keyId: this.env.GATEA_CONTROLLER_KEY_ID,
       nonce: current.nonce, pkcs8: this.env.GATEA_CONTROLLER_PRIVATE_PKCS8,
       cryptoImpl: globalThis.crypto
     });
+    this.ctx.storage.transactionSync(() => {
+      this.ctx.storage.sql.exec(
+        "UPDATE gatea_live_once SET receipt=? WHERE id=1 AND state='CLAIMED'",
+        JSON.stringify(envelope)
+      );
+    });
+    return Object.freeze({ state: 'CLAIMED', noPaidRetry: true });
+  }
+  async readReceipt({ scope, nonce, signature } = {}) {
+    this.check();
+    if (!validScope(scope) || !NONCE.test(nonce ?? '') ||
+        !await verify020705CloudflareSignature({
+          domain: DOMAIN_ARM,
+          payload: { scope, nonce, readOnlyReceipt: true },
+          signature, pinnedSpkiBase64: this.env.GATEA_OWNER_PUB_SPKI
+        })) deny();
+    const current = this.row();
+    if (current?.state !== 'CLAIMED' || current.nonce !== nonce ||
+        current.scope !== JSON.stringify(FIELDS.map((k) => scope[k])) ||
+        typeof current.receipt !== 'string') deny();
+    return Object.freeze({ envelope: JSON.parse(current.receipt),
+      authorizesMutation: false, authorizesPaidCall: false });
   }
   async fetch() {
     // Explicitly no public admission, even after code deployment.
