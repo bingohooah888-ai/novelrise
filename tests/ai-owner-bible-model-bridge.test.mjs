@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 
+import { createOfflineOwnerNovelBibleCheckpoint } from '../api/_lib/ai/owner-novel-bible-checkpoint.js';
 import { createOwnerNovelBibleModelBridge } from '../api/_lib/ai/owner-novel-bible-model-bridge.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
@@ -456,4 +457,107 @@ test('02-07-05 history changed during provider response refuses review persisten
   assert.equal(reads, 2);
   assert.equal(state.modelCalls, 1);
   assert.equal(state.reviewCalls, 0);
+});
+
+test('02-07-05 one-call bridge resumes confirmed chunks without repeated AI expense', async () => {
+  const { state, make } = fixture({ content: '青'.repeat(3100) });
+  let row = null;
+  let recorded = 0;
+  const repository = {
+    async readSnapshot() {
+      return row === null ? null : structuredClone(row);
+    },
+    async compareAndSwap(change) {
+      recorded += 1;
+      if (
+        change.expectedRevision !== (row?.revision ?? null) ||
+        change.expectedSourceHash !== (row?.source_hash ?? null)
+      ) {
+        return null;
+      }
+      row = {
+        episode_id: 11,
+        source_hash: change.nextSourceHash,
+        summary: structuredClone(change.nextSummary),
+        revision: (row?.revision ?? 0) + 1
+      };
+      return structuredClone(row);
+    }
+  };
+  const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository
+  });
+  const bridge = make({
+    checkpoint,
+    aiRouter: {
+      async run() {
+        state.modelCalls += 1;
+        return { text: '{"suggestions":[]}' };
+      }
+    },
+    reviewWorkflow: {
+      async stage() {
+        state.reviewCalls += 1;
+        return { novelId: 41, stagedCount: 0 };
+      }
+    }
+  });
+  const run = (chunkIndex) =>
+    bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11, chunkIndex });
+
+  assert.equal((await run(0)).requiresAuthorReview, true);
+  assert.equal(recorded, 1);
+  assert.equal(row.summary.novelightPhase2.state, 'in_progress');
+  assert.equal(state.modelCalls, 1);
+  assert.deepEqual(await run(0), {
+    novelId: 41,
+    stagedCount: 0,
+    requiresAuthorReview: false
+  });
+  assert.equal(state.modelCalls, 1);
+  assert.equal(recorded, 1);
+
+  // Each request handles exactly one chunk: no automatic provider loop.
+  assert.equal((await run(1)).requiresAuthorReview, true);
+  assert.equal((await run(2)).requiresAuthorReview, true);
+  assert.equal(state.modelCalls, 3);
+  assert.equal(state.reviewCalls, 3);
+  assert.equal(recorded, 3);
+  assert.equal(row.summary.novelightPhase2.state, 'complete');
+  assert.deepEqual(await run(2), {
+    novelId: 41,
+    stagedCount: 0,
+    requiresAuthorReview: false
+  });
+  assert.equal(state.modelCalls, 3);
+});
+
+test('02-07-05 failed candidate staging never acknowledges a paid chunk', async () => {
+  const { state, make } = fixture();
+  let journalCalls = 0;
+  const bridge = make({
+    checkpoint: {
+      async inspect() {
+        return 'pending';
+      },
+      async record() {
+        journalCalls += 1;
+        return { complete: true, alreadyRecorded: false, remainingChunks: 0 };
+      }
+    },
+    reviewWorkflow: {
+      async stage() {
+        state.reviewCalls += 1;
+        throw new Error('SYNTHETIC_PENDING_WRITE_FAILURE');
+      }
+    }
+  });
+  await assert.rejects(
+    bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /SYNTHETIC_PENDING_WRITE_FAILURE/u
+  );
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.reviewCalls, 1);
+  assert.equal(journalCalls, 0);
 });
