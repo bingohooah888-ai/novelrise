@@ -170,6 +170,8 @@ function tick() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
+// Keep the synthetic event-order fixture stable across formatters.
+// prettier-ignore
 test(
   'offline owner must inspect before one explicit stage and then sees review',
   async () => {
@@ -207,6 +209,8 @@ test(
   }
 );
 
+// Keep the synthetic event-order fixture stable across formatters.
+// prettier-ignore
 test(
   'changed plan, completed work or revoked session cannot execute',
   async () => {
@@ -257,6 +261,8 @@ test(
   }
 );
 
+// Keep the synthetic event-order fixture stable across formatters.
+// prettier-ignore
 test(
   'missing offline capability does not change default deployed panel',
   async () => {
