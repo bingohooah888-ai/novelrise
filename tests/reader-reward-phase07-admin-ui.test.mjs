@@ -385,3 +385,125 @@ test('settlement actions require a separately enabled gift queue', () => {
   assert.throws(page.admin, /Gift settlement requires an approved gift queue/);
   assert.equal(touched, 0);
 });
+
+test('reader page renders verified balances without allowing Point actions', async () => {
+  await import('../assets/formal-scout-reward-transport.js');
+  await import('../assets/formal-scout-reward-ui.js');
+  await import('../assets/formal-scout-reward-client.js');
+  await import('../assets/formal-scout-reward-mount.js');
+  await import('../assets/formal-scout-reward-page.js');
+  const root = new Element('main');
+  const calls = [];
+  const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
+    readerRoot: root,
+    readerEndpoint: '/api/formal-reward-reader',
+    getAccessToken: async () => 'synthetic-reader',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({
+          serverVerified: true,
+          formalEnabled: true,
+          exchangeEnabled: true,
+          giftProviderReady: true,
+          account: { level: 48, progressXp: 40, requiredXp: 400 },
+          wallet: {
+            availablePoints: 45000,
+            exchangeEligiblePoints: 38000,
+            heldPoints: 0
+          },
+          history: [],
+          aiFeatures: [
+            {
+              id: 'preview_feature',
+              name: '未公開AI',
+              approved: true,
+              pricePoints: 200
+            }
+          ]
+        })
+      };
+    }
+  });
+  assert.equal(calls.length, 0);
+  const panel = page.reader();
+  await panel.reload();
+  assert.equal(match(root, 'Lv.48').length, 1);
+  const exchangeTab = flatten(root).find(
+    (node) => node.tagName === 'button' &&
+      node.textContent === 'デジタルギフト交換'
+  );
+  exchangeTab.fire('click');
+  const submit = match(root, '交換を申請する')[0];
+  assert.equal(submit.disabled, true);
+  const form = flatten(root).find((node) => node.tagName === 'form');
+  await form.fire('submit');
+  const aiTab = match(root, 'AIに使う')[0];
+  aiTab.fire('click');
+  const use = match(root, '利用する')[0];
+  assert.equal(use.disabled, true);
+  await use.fire('click');
+  assert.ok(calls.length >= 1);
+  assert.ok(calls.every((call) => call.options.method === 'GET'));
+  assert.ok(calls.every((call) => call.options.cache === 'no-store'));
+  assert.ok(calls.every((call) => !call.options.body));
+});
+
+test('reader Point action gates reject a missing operation ID provider', () => {
+  const prepare = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage;
+  let calls = 0;
+  for (const enabled of [
+    { readerExchangeAvailable: true },
+    { readerAiPointAvailable: true }
+  ]) {
+    assert.throws(
+      () =>
+        prepare({
+          readerRoot: new Element('main'),
+          readerEndpoint: '/api/formal-reward-reader',
+          getAccessToken: async () => 'synthetic-reader',
+          fetchImpl: async () => {
+            calls++;
+          },
+          ...enabled
+        }),
+      /Reader Point actions require operation UUIDs/
+    );
+  }
+  assert.equal(calls, 0);
+});
+
+test('new-reader readiness check works without Point operation IDs', async () => {
+  const root = new Element('main');
+  const calls = [];
+  const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
+    readerRoot: root,
+    newReaderOnboardingAvailable: true,
+    readerEndpoint: '/api/formal-reward-reader',
+    getAccessToken: async () => 'synthetic-reader',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () =>
+          url.includes('view=new_reader')
+            ? { ok: true, status: 'new_reader_ready_for_initialization' }
+            : {
+                serverVerified: true,
+                formalEnabled: false,
+                wallet: { availablePoints: 0 },
+                account: { level: 1, progressXp: 0, requiredXp: 50 }
+              }
+      };
+    }
+  });
+  const panel = page.reader();
+  await panel.reload();
+  await tick();
+  assert.ok(calls.some((call) => call.url.includes('view=new_reader')));
+  assert.ok(calls.every((call) => call.options.method === 'GET'));
+  const onboard = match(root, '正式スカウトを利用開始')[0];
+  assert.equal(onboard.disabled, false);
+  assert.equal(match(root, '正式登録が可能です。').length, 1);
+});
