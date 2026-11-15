@@ -323,7 +323,8 @@ test('cross-page older revision lookup enforces exact work, chapter and fact ide
       source_episode_id: 41,
       fact_kind: 'character',
       fact_key: '凛',
-      status: 'accepted',
+      // A previously rejected source is still a distinct historical version.
+      status: 'rejected',
       source_hash: HASH
     },
     {
@@ -500,7 +501,7 @@ test('cross-page older revision lookup enforces exact work, chapter and fact ide
     [100]
   );
   assert.equal(searches.length, 7);
-  assert.ok(searches.every((count) => count === 8));
+  assert.ok(searches.every((count) => count === 7));
 });
 
 test('prior-version lookup rejects malformed values and bound violations before DB', async () => {
