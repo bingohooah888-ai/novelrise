@@ -326,3 +326,54 @@ test('admin earning-source GET validates event type and UUID', async () => {
   );
   assert.equal(requests.length, 1);
 });
+
+test('maintenance readiness uses only authenticated no-body admin GET', async () => {
+  const g = browser();
+  const requests = [];
+  const request = g.NovelightFormalRewardTransport.createFormalRewardTransport({
+    endpoint: '/api/formal-reward-admin',
+    getAccessToken: async () => 'synthetic-admin',
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          status: 'maintenance_connection_unready',
+          mayRunMaintenance: false,
+          readyForPublicRelease: false
+        })
+      };
+    }
+  });
+  const admin = g.NovelightFormalRewardAdmin.createFormalAdminBindings({
+    request
+  });
+  const report = await admin.loadMaintenanceReadiness();
+  assert.equal(report.status, 'maintenance_connection_unready');
+  assert.equal(requests.length, 1);
+  assert.equal(
+    requests[0].url,
+    '/api/formal-reward-admin?view=maintenance_readiness'
+  );
+  assert.equal(requests[0].options.method, 'GET');
+  assert.equal(requests[0].options.cache, 'no-store');
+  assert.equal(requests[0].options.credentials, 'same-origin');
+  assert.equal(
+    requests[0].options.headers.Authorization,
+    'Bearer synthetic-admin'
+  );
+  assert.equal(Object.hasOwn(requests[0].options, 'body'), false);
+  await assert.rejects(
+    request({ method: 'POST', query: { view: 'maintenance_readiness' } }),
+    /POST query rejected/
+  );
+  await assert.rejects(
+    request({
+      method: 'GET',
+      query: { view: 'maintenance_readiness', runMaintenance: true }
+    }),
+    /query rejected/
+  );
+  assert.equal(requests.length, 1);
+});
