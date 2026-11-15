@@ -672,47 +672,38 @@ test('history hides unverified rows and avoids balance claims', async () => {
   assert.doesNotMatch(text(root), /取得範囲内の該当履歴：80件/);
 });
 
-test('reader rate guide exactly matches existing formal rate rules', () => {
+test('reader level guide agrees with formal reward rates', () => {
   for (let level = 1; level <= 100; level++) {
     const quote = ui.quoteFormalRewardGuide(level);
+    const expected = quoteEpisodeRewardTenths(level);
     assert.equal(quote.level, level);
-    assert.equal(
-      quote.pointsPerEligibleEpisode,
-      quoteEpisodeRewardTenths(level)
-    );
+    assert.equal(quote.pointsPerEligibleEpisode, expected);
     assert.equal(quote.pointsPerEligibleComment, 20);
     assert.equal(quote.commentMonthlyLimit, 50);
-    if (quote.nextRateLevel !== null) {
-      assert.ok(quote.nextRateLevel > level);
-      assert.equal(
-        quote.nextRatePoints,
-        quoteEpisodeRewardTenths(quote.nextRateLevel)
-      );
-      for (let next = level + 1; next < quote.nextRateLevel; next++) {
-        assert.equal(
-          quoteEpisodeRewardTenths(next),
-          quote.pointsPerEligibleEpisode
-        );
-      }
-    } else {
+    if (quote.nextRateLevel === null) {
       assert.equal(quote.nextRatePoints, null);
       assert.equal(level, 100);
+      continue;
+    }
+    const nextLevel = quote.nextRateLevel;
+    const nextPoints = quoteEpisodeRewardTenths(nextLevel);
+    assert.ok(nextLevel > level);
+    assert.equal(quote.nextRatePoints, nextPoints);
+    for (let next = level + 1; next < nextLevel; next++) {
+      assert.equal(quoteEpisodeRewardTenths(next), expected);
     }
   }
-  for (const invalid of [0, 101, -1, 1.5, '72', null, undefined]) {
-    assert.equal(ui.quoteFormalRewardGuide(invalid), null);
+  const invalid = [0, 101, -1, 1.5, '72', null, undefined];
+  for (const level of invalid) {
+    assert.equal(ui.quoteFormalRewardGuide(level), null);
   }
-  assert.deepEqual(
-    {
-      nextRate: ui.quoteFormalRewardGuide(72).nextRateLevel,
-      nextRank: ui.quoteFormalRewardGuide(72).nextRankName,
-      nextRankLevel: ui.quoteFormalRewardGuide(72).nextRankLevel
-    },
-    { nextRate: 75, nextRank: 'SERAPH', nextRankLevel: 81 }
-  );
+  const quote = ui.quoteFormalRewardGuide(72);
+  assert.equal(quote.nextRateLevel, 75);
+  assert.equal(quote.nextRankLevel, 81);
+  assert.equal(quote.nextRankName, 'SERAPH');
 });
 
-test('reward guide shows next milestones without Point actions', async () => {
+test('reader reward guide shows next milestones without Point actions', async () => {
   const root = new FakeElement('main');
   let reads = 0;
   let writes = 0;
@@ -731,10 +722,9 @@ test('reward guide shows next milestones without Point actions', async () => {
   });
   await panel.reload();
   const initialReads = reads;
-  const guideTab = byTag(root, 'button').find(
-    (button) => button.textContent === '報酬ガイド'
-  );
-  guideTab.fire('click');
+  const tabs = byTag(root, 'button');
+  const guide = tabs.find((tab) => tab.textContent === '報酬ガイド');
+  guide.fire('click');
   assert.match(text(root), /Lv.72 の予定レート/);
   assert.match(text(root), /5 pt \/ 適格1話/);
   assert.match(text(root), /次の読書単価 Lv.75/);
@@ -743,32 +733,27 @@ test('reward guide shows next milestones without Point actions', async () => {
   assert.match(text(root), /Lv.81 まで あと9 Lv/);
   assert.match(text(root), /20 pt、月50件まで/);
   assert.match(text(root), /正式報酬は公開OFF/);
-  const bandRows = flatten(root).filter(
-    (element) => element.className?.includes('rr-guide-rate-row')
-  );
-  assert.equal(bandRows.length, 11);
-  assert.equal(
-    bandRows.filter((row) => row.attributes['aria-current'] === 'true').length,
-    1
-  );
+  const elements = flatten(root);
+  const rows = elements.filter((e) => e.className.includes('rr-guide-rate-row'));
+  const current = rows.filter((r) => r.attributes['aria-current'] === 'true');
+  assert.equal(rows.length, 11);
+  assert.equal(current.length, 1);
   assert.equal(reads, initialReads);
   assert.equal(writes, 0);
 });
 
-test('unverified or maximum Level cannot imply rewards', async () => {
+test('invalid and maximum reader Levels have bounded guidance', async () => {
   const root = new FakeElement('main');
-  let snapshot = {
-    ...base,
-    account: { ...base.account, level: 100 }
-  };
+  let snapshot = { ...base, account: { ...base.account, level: 100 } };
   const panel = ui.createRewardReaderPanel({
     root,
     fetchSnapshot: async () => snapshot
   });
   await panel.reload();
-  byTag(root, 'button')
-    .find((button) => button.textContent === '報酬ガイド')
-    .fire('click');
+  const guide = byTag(root, 'button').find(
+    (tab) => tab.textContent === '報酬ガイド'
+  );
+  guide.fire('click');
   assert.match(text(root), /11 pt \/ 適格1話/);
   assert.match(text(root), /最高レート/);
   assert.match(text(root), /最高Rank/);
