@@ -11,7 +11,6 @@ import {
   recheckScoutReviewProposal
 } from './state-transition.js';
 import {
-  quoteScoutMaintenanceWindow,
   quoteScoutMaintenanceReviewDryRun
 } from './maintenance-review.js';
 
@@ -413,7 +412,7 @@ export function createOfflineFormalUsageRepository({
       });
       return {
         status: 'reviewed',
-        ...quote.reviewOrdinal && { reviewOrdinal: quote.reviewOrdinal },
+        reviewOrdinal: quote.reviewOrdinal,
         windowStartMs: quote.windowStartMs,
         windowEndMs: quote.windowEndMs,
         earnedXp: quote.earnedXpInCompleted30DayWindow,
