@@ -64,7 +64,20 @@
     ) {
       return false;
     }
-    const ids = [...payload.candidates, ...accepted].map((item) =>
+    const stale = payload.staleCandidates ?? [];
+    if (
+      !Array.isArray(stale) ||
+      stale.length > 200 ||
+      !stale.every(
+        (item) =>
+          ['pending', 'accepted'].includes(item?.status) &&
+          ['source_changed', 'episode_missing'].includes(item?.staleReason) &&
+          validItem(item, item.status)
+      )
+    ) {
+      return false;
+    }
+    const ids = [...payload.candidates, ...accepted, ...stale].map((item) =>
       positive(item.id)
     );
     return new Set(ids).size === ids.length;
@@ -311,6 +324,35 @@
           item.evidence;
         row.appendChild(details);
         row.appendChild(offerTransfer(item));
+        list.appendChild(row);
+      }
+    }
+    // Stale rows are historical candidate records, not reviewable canon.
+    // Render as text only; never offer accept/reject or note-transfer actions.
+    if (data.staleCandidates?.length) {
+      const heading = doc.createElement('p');
+      heading.textContent =
+        '改稿前のAI候補（過去の版・操作不可。再解析で確認してください）';
+      list.appendChild(heading);
+      for (const item of data.staleCandidates) {
+        const row = doc.createElement('div');
+        const details = doc.createElement('p');
+        details.textContent =
+          (item.status === 'accepted' ? '過去に確認済み' : '未確認') +
+          '／' +
+          item.kind +
+          '：' +
+          item.key +
+          '／参照エピソードID：' +
+          item.episodeId +
+          '／旧版の候補：' +
+          item.summary +
+          '／旧版の本文根拠：' +
+          item.evidence +
+          (item.staleReason === 'episode_missing'
+            ? '／参照話が見つかりません'
+            : '／本文が変更されています');
+        row.appendChild(details);
         list.appendChild(row);
       }
     }
