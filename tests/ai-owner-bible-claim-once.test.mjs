@@ -14,30 +14,63 @@ const OTHER = '22222222-2222-4222-8222-222222222222';
 const TOKEN = 'synthetic-owner-jwt-never-real';
 const TEXT = '凛は青い鍵を持っていた。';
 const proposal = readFileSync(
-  new URL('../reports/sql/novelight_ai_checkpoint_claim_once_v1_PROPOSAL.sql', import.meta.url),
+  new URL(
+    '../reports/sql/novelight_ai_checkpoint_claim_once_v1_PROPOSAL.sql',
+    import.meta.url
+  ),
   'utf8'
 );
 
-test('SQL is OFFLINE only, unique and service-only; admission is not CAS completion', () => {
+test('SQL claim is OFFLINE, unique, service-only and separate from CAS', () => {
   assert.match(proposal, /OFFLINE-ONLY/u);
   assert.match(proposal, /NOT a migration/u);
   assert.match(proposal, /create table public\.novelight_ai_chunk_claims/u);
-  assert.match(proposal, /primary key\s*\(actor_id,novel_id,episode_id,source_hash,fingerprint,chunk_index\)/u);
+  assert.match(
+    proposal,
+    /primary key\s*\(actor_id,novel_id,episode_id,source_hash,fingerprint,chunk_index\)/u
+  );
   assert.match(proposal, /enable row level security/u);
-  assert.match(proposal, /revoke all on table public\.novelight_ai_chunk_claims from public,anon,authenticated,service_role/u);
-  assert.match(proposal, /grant select,insert on table public\.novelight_ai_chunk_claims to service_role/u);
-  assert.match(proposal, /returns boolean language plpgsql security invoker set search_path = ''/u);
+  assert.match(
+    proposal,
+    /revoke all on table public\.novelight_ai_chunk_claims from public,anon,authenticated,service_role/u
+  );
+  assert.match(
+    proposal,
+    /grant select,insert on table public\.novelight_ai_chunk_claims to service_role/u
+  );
+  assert.match(
+    proposal,
+    /returns boolean language plpgsql security invoker set search_path = ''/u
+  );
   assert.match(proposal, /current_user <> 'service_role'/u);
-  assert.match(proposal, /from public\.novels n where n\.id = p_novel_id for share/u);
-  assert.match(proposal, /from public\.episodes e where e\.id = p_episode_id for share/u);
+  assert.match(
+    proposal,
+    /from public\.novels n where n\.id = p_novel_id for share/u
+  );
+  assert.match(
+    proposal,
+    /from public\.episodes e where e\.id = p_episode_id for share/u
+  );
   assert.match(proposal, /where a\.episode_id = p_episode_id for update/u);
   assert.match(proposal, /v_current_hash is distinct from p_source_hash/u);
   assert.match(proposal, /p_chunk_index >= v_count/u);
-  assert.match(proposal, /on conflict on constraint novelight_ai_chunk_claims_pkey do nothing/u);
-  assert.match(proposal, /revoke all on function public\.novelight_ai_checkpoint_claim_once_v1/u);
+  assert.match(
+    proposal,
+    /on conflict on constraint novelight_ai_chunk_claims_pkey do nothing/u
+  );
+  assert.match(
+    proposal,
+    /revoke all on function public\.novelight_ai_checkpoint_claim_once_v1/u
+  );
   assert.match(proposal, /to service_role;\s*commit;/u);
-  assert.doesNotMatch(proposal, /create or replace function public\.novelight_ai_checkpoint_cas_v1/u);
-  assert.doesNotMatch(proposal, /(?:delete|truncate) from public\.novelight_ai_chunk_claims/u);
+  assert.doesNotMatch(
+    proposal,
+    /create or replace function public\.novelight_ai_checkpoint_cas_v1/u
+  );
+  assert.doesNotMatch(
+    proposal,
+    /(?:delete|truncate) from public\.novelight_ai_chunk_claims/u
+  );
   assert.match(proposal, /Unknown outcome:/u);
 });
 
@@ -50,8 +83,12 @@ function syntheticClient({ forcedClaimResult, owner = OWNER, body = TEXT } = {})
   const client = {
     from(table) {
       return {
-        select() { return this; },
-        eq() { return this; },
+        select() {
+          return this;
+        },
+        eq() {
+          return this;
+        },
         async maybeSingle() {
           if (table === 'novels') {
             return { data: { id: 41, user_id: owner }, error: null };
@@ -80,16 +117,22 @@ function syntheticClient({ forcedClaimResult, owner = OWNER, body = TEXT } = {})
         }
         // Simulate the sole atomic INSERT under a unique key.
         const key = [
-          p.p_actor_id, p.p_novel_id, p.p_episode_id, p.p_source_hash,
-          p.p_fingerprint, p.p_chunk_index
+          p.p_actor_id,
+          p.p_novel_id,
+          p.p_episode_id,
+          p.p_source_hash,
+          p.p_fingerprint,
+          p.p_chunk_index
         ].join(':');
         if (claims.has(key)) return { data: false, error: null };
         claims.add(key);
         return { data: true, error: null };
       }
       if (name === 'novelight_ai_checkpoint_cas_v1') {
-        if (p.p_expected_revision !== (row?.revision ?? null) ||
-            p.p_expected_source_hash !== (row?.source_hash ?? null)) {
+        if (
+          p.p_expected_revision !== (row?.revision ?? null) ||
+          p.p_expected_source_hash !== (row?.source_hash ?? null)
+        ) {
           return { data: [], error: null };
         }
         row = {
@@ -105,39 +148,62 @@ function syntheticClient({ forcedClaimResult, owner = OWNER, body = TEXT } = {})
   };
   const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
     enabled: true,
-    repository: createSupabaseOwnerNovelBibleCheckpointRepository({ serviceClient: client }),
+    repository: createSupabaseOwnerNovelBibleCheckpointRepository({
+      serviceClient: client
+    }),
     atomicAdmissionEnabled: true
   });
   const bridge = createOwnerNovelBibleModelBridge({
     enabled: true,
     externalProcessingApproved: true,
     ownerId: OWNER,
-    authClient: { auth: { async getUser() {
-      return { data: { user: { id: OWNER } }, error: null };
-    } } },
+    authClient: {
+      auth: {
+        async getUser() {
+          return { data: { user: { id: OWNER } }, error: null };
+        }
+      }
+    },
     serviceClient: client,
     permissionCheck: async () => true,
-    aiRouter: { async run(options) {
-      state.routerCalls += 1; // Includes budget reservation and provider entry.
-      const excerpt = JSON.parse(options.user).untrusted_excerpt;
-      return { text: JSON.stringify({
-        suggestions: [{ kind: 'character', key: '凛', summary: '青い鍵を持つ。', evidence: excerpt }]
-      }) };
-    } },
-    reviewWorkflow: { async stage() {
-      state.stageCalls += 1;
-      return { novelId: 41, stagedCount: 1 };
-    } },
+    aiRouter: {
+      async run(options) {
+        state.routerCalls += 1; // Includes budget reservation and provider entry.
+        const excerpt = JSON.parse(options.user).untrusted_excerpt;
+        return {
+          text: JSON.stringify({
+            suggestions: [
+              {
+                kind: 'character',
+                key: '凛',
+                summary: '青い鍵を持つ。',
+                evidence: excerpt
+              }
+            ]
+          })
+        };
+      }
+    },
+    reviewWorkflow: {
+      async stage() {
+        state.stageCalls += 1;
+        return { novelId: 41, stagedCount: 1 };
+      }
+    },
     checkpoint
   });
   return { bridge, checkpoint, client, state, claims };
 }
 
-const stage = (bridge) => bridge.stage({
-  token: TOKEN, novelId: 41, episodeId: 11, chunkIndex: 0
-});
+const stage = (bridge) =>
+  bridge.stage({
+    token: TOKEN,
+    novelId: 41,
+    episodeId: 11,
+    chunkIndex: 0
+  });
 
-test('two simultaneous owner requests enter Router/provider at most once', async () => {
+test('two simultaneous requests enter Router/provider at most once', async () => {
   const { bridge, state } = syntheticClient();
   const results = await Promise.allSettled([stage(bridge), stage(bridge)]);
   assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
@@ -149,39 +215,57 @@ test('two simultaneous owner requests enter Router/provider at most once', async
   assert.equal(state.routerCalls, 1);
 });
 
-test('duplicate and unknown claims stop BEFORE reservation and model call', async () => {
+test('duplicate and unknown claims block Router and model', async () => {
   for (const result of ['false', 'unknown']) {
     const { bridge, state } = syntheticClient({ forcedClaimResult: result });
-    await assert.rejects(stage(bridge), /AI_BIBLE_CHECKPOINT_(?:CONFLICT|UNAVAILABLE)/u);
+    await assert.rejects(
+      stage(bridge),
+      /AI_BIBLE_CHECKPOINT_(?:CONFLICT|UNAVAILABLE)/u
+    );
     assert.equal(state.routerCalls, 0);
     assert.equal(state.stageCalls, 0);
     assert.equal(state.claims, 1);
   }
 });
 
-test('wrong work owner, manuscript mismatch, and invalid index cannot enter Router', async () => {
+test('owner mismatch and invalid chunk index cannot enter Router', async () => {
   const foreign = syntheticClient({ owner: OTHER });
-  await assert.rejects(stage(foreign.bridge), /AI_BIBLE_MODEL_BRIDGE_DENIED/u);
+  await assert.rejects(
+    stage(foreign.bridge),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
   assert.equal(foreign.state.claims, 0);
   assert.equal(foreign.state.routerCalls, 0);
 
   const edited = syntheticClient({ body: '' });
   await assert.rejects(
-    edited.bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11, chunkIndex: 8 }),
+    edited.bridge.stage({
+      token: TOKEN,
+      novelId: 41,
+      episodeId: 11,
+      chunkIndex: 8
+    }),
     /AI_BIBLE_MODEL_BRIDGE_DENIED/u
   );
   assert.equal(edited.state.routerCalls, 0);
 
   const client = syntheticClient({ forcedClaimResult: 'false' });
   await assert.rejects(
-    client.bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11, chunkIndex: -1 }),
+    client.bridge.stage({
+      token: TOKEN,
+      novelId: 41,
+      episodeId: 11,
+      chunkIndex: -1
+    }),
     /AI_BIBLE_MODEL_BRIDGE_DENIED/u
   );
   assert.equal(client.state.routerCalls, 0);
 });
 
-test('claim adapter rejects malformed RPC receipt; no automatic replay', async () => {
-  const { client, state, bridge } = syntheticClient({ forcedClaimResult: 'unknown' });
+test('unknown RPC outcome is not automatically replayed', async () => {
+  const { client, state, bridge } = syntheticClient({
+    forcedClaimResult: 'unknown'
+  });
   await assert.rejects(stage(bridge), /AI_BIBLE_CHECKPOINT_UNAVAILABLE/u);
   assert.equal(state.claims, 1);
   assert.equal(state.routerCalls, 0);
