@@ -120,6 +120,20 @@ function setup(options = {}) {
       state.hashes.set(requestHash, ids);
       return { count: candidates.length };
     },
+    async listPending({ actorId, novelId }) {
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 354);
+      return [...state.records.values()]
+        .filter((row) => row.status === 'pending')
+        .map((row) => ({ ...row }));
+    },
+    async listAccepted({ actorId, novelId }) {
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 354);
+      return [...state.records.values()]
+        .filter((row) => row.status === 'accepted')
+        .map((row) => ({ ...row }));
+    },
     async readCandidate({ actorId, novelId, candidateId }) {
       const row = state.records.get(candidateId);
       if (row?.actorId !== actorId || row?.novelId !== novelId) return null;
@@ -314,4 +328,68 @@ test('fail closed for bad repository and settings', async () => {
   state.storedCanon = [{ kind: 'made-up-kind', key: '凛' }];
   await assert.rejects(stage(), /AI_OWNER_REVIEW_DENIED/);
   assert.equal(state.records.size, 0);
+});
+
+test('owner list quarantines stale pending and accepted records without writes', async () => {
+  const f = setup();
+  await f.stage();
+  let result = await f.workflow.list({ token: TOKEN, novelId: 354 });
+  assert.equal(result.candidates.length, 1);
+  assert.deepEqual(result.staleCandidates, []);
+  assert.equal(result.candidates[0].status, 'pending');
+
+  f.state.episode.title = '改稿された題名';
+  result = await f.workflow.list({ token: TOKEN, novelId: 354 });
+  assert.deepEqual(result.candidates, []);
+  assert.deepEqual(result.acceptedCandidates, []);
+  assert.equal(result.staleCandidates.length, 1);
+  assert.equal(result.staleCandidates[0].status, 'pending');
+  assert.equal(result.staleCandidates[0].staleReason, 'source_changed');
+  await assert.rejects(f.decide(), /AI_BIBLE_INFERENCE_INVALID/u);
+  assert.equal(f.state.records.get(1).status, 'pending');
+
+  // A previously accepted suggestion is historical evidence, not author
+  // canon and not eligible for a new notes transfer after source changes.
+  f.state.episode.title = EPISODE.title;
+  await f.decide();
+  f.state.episode.content += '改稿';
+  result = await f.workflow.list({ token: TOKEN, novelId: 354 });
+  assert.equal(result.acceptedCandidates.length, 0);
+  assert.equal(result.staleCandidates.length, 1);
+  assert.equal(result.staleCandidates[0].status, 'accepted');
+  assert.equal(result.staleCandidates[0].staleReason, 'source_changed');
+  assert.equal(f.state.records.get(1).revision, 2);
+  assert.equal(f.state.storedCanon[0].key, '凛');
+});
+
+test('missing episode stays in a read-only stale list, never auto-deleted', async () => {
+  const f = setup();
+  await f.stage();
+  f.state.episode = null;
+  const list = await f.workflow.list({ token: TOKEN, novelId: 354 });
+  assert.deepEqual(list.candidates, []);
+  assert.equal(list.staleCandidates.length, 1);
+  assert.equal(list.staleCandidates[0].staleReason, 'episode_missing');
+  assert.equal(f.state.records.get(1).status, 'pending');
+  assert.equal(f.state.records.size, 1);
+});
+
+test('foreign-work episode, unauthenticated owner and malformed source reject listing', async () => {
+  const f = setup();
+  await f.stage();
+  await assert.rejects(
+    f.workflow.list({ token: 'not-a-valid-owner-token', novelId: 354 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+  f.state.episode.novel_id = 999;
+  await assert.rejects(
+    f.workflow.list({ token: TOKEN, novelId: 354 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+  f.state.episode.novel_id = 354;
+  f.state.episode.content = null;
+  await assert.rejects(
+    f.workflow.list({ token: TOKEN, novelId: 354 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
 });
