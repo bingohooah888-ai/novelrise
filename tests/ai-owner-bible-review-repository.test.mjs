@@ -316,14 +316,86 @@ test('repository rejects malformed or unsafe review cursors before reads', async
 test('cross-page older revision lookup enforces exact work, chapter and fact identity', async () => {
   const currentHash = 'c'.repeat(64);
   const historical = [
-    { id: 1, actor_id: OWNER, novel_id: 354, source_episode_id: 41, fact_kind: 'character', fact_key: '凛', status: 'accepted', source_hash: HASH },
-    { id: 2, actor_id: OWNER, novel_id: 354, source_episode_id: 41, fact_kind: 'character', fact_key: '凛', status: 'pending', source_hash: currentHash },
-    { id: 3, actor_id: OWNER, novel_id: 355, source_episode_id: 41, fact_kind: 'character', fact_key: '凛', status: 'pending', source_hash: HASH },
-    { id: 4, actor_id: OWNER, novel_id: 354, source_episode_id: 42, fact_kind: 'character', fact_key: '凛', status: 'pending', source_hash: HASH },
-    { id: 5, actor_id: OWNER, novel_id: 354, source_episode_id: 41, fact_kind: 'event', fact_key: '凛', status: 'pending', source_hash: HASH },
-    { id: 6, actor_id: OWNER, novel_id: 354, source_episode_id: 41, fact_kind: 'character', fact_key: '別名', status: 'pending', source_hash: HASH },
-    { id: 7, actor_id: '22222222-2222-4222-8222-222222222222', novel_id: 354, source_episode_id: 41, fact_kind: 'character', fact_key: '凛', status: 'pending', source_hash: HASH },
-    { id: 150, actor_id: OWNER, novel_id: 354, source_episode_id: 41, fact_kind: 'character', fact_key: '凛', status: 'pending', source_hash: HASH }
+    {
+      id: 1,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'accepted',
+      source_hash: HASH
+    },
+    {
+      id: 2,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: currentHash
+    },
+    {
+      id: 3,
+      actor_id: OWNER,
+      novel_id: 355,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: HASH
+    },
+    {
+      id: 4,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 42,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: HASH
+    },
+    {
+      id: 5,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'event',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: HASH
+    },
+    {
+      id: 6,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '別名',
+      status: 'pending',
+      source_hash: HASH
+    },
+    {
+      id: 7,
+      actor_id: '22222222-2222-4222-8222-222222222222',
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: HASH
+    },
+    {
+      id: 150,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: HASH
+    }
   ];
   const searches = [];
   const serviceClient = {
@@ -377,13 +449,41 @@ test('cross-page older revision lookup enforces exact work, chapter and fact ide
     authorClient: { rpc() {} }
   });
   const candidates = [
-    { id: 130, episodeId: 41, factKind: 'character', factKey: '凛', sourceHash: currentHash },
-    { id: 131, episodeId: 42, factKind: 'character', factKey: '凛', sourceHash: currentHash },
-    { id: 132, episodeId: 41, factKind: 'event', factKey: '凛', sourceHash: currentHash },
-    { id: 133, episodeId: 41, factKind: 'character', factKey: '別名', sourceHash: currentHash }
+    {
+      id: 130,
+      episodeId: 41,
+      factKind: 'character',
+      factKey: '凛',
+      sourceHash: currentHash
+    },
+    {
+      id: 131,
+      episodeId: 42,
+      factKind: 'character',
+      factKey: '凛',
+      sourceHash: currentHash
+    },
+    {
+      id: 132,
+      episodeId: 41,
+      factKind: 'event',
+      factKey: '凛',
+      sourceHash: currentHash
+    },
+    {
+      id: 133,
+      episodeId: 41,
+      factKind: 'character',
+      factKey: '別名',
+      sourceHash: currentHash
+    }
   ];
   assert.deepEqual(
-    await repo.listPriorVersionIds({ actorId: OWNER, novelId: 354, candidates }),
+    await repo.listPriorVersionIds({
+      actorId: OWNER,
+      novelId: 354,
+      candidates
+    }),
     [130, 131, 132, 133]
   );
   // False positive controls: matching current source is NOT a prior revision.
