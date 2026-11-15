@@ -124,10 +124,7 @@ test('row-by-row units are mandatory and old-only input refuses already converte
     handoff(rows, oldUnit).status,
     'legacy_ledger_identity_or_version_invalid'
   );
-  assert.equal(
-    handoff(rows, newUnit).status,
-    'legacy_point_unit_not_verified'
-  );
+  assert.equal(handoff(rows, newUnit).status, 'legacy_point_unit_not_verified');
   const unknown = rows.map((row) => ({ ...row }));
   unknown[2].sourceUnitVersion = 'unverified';
   assert.equal(
