@@ -49,15 +49,13 @@ test('OWNER-only trusted-main Staging context is required', () => {
     ['STAGING_SUPABASE_URL', 'https://fiepaguycecrredwrcwx.supabase.co']
   ]) {
     assert.throws(
-      () =>
-        verifyFormalReaderProvisionContext({ ...stage, [field]: invalid }),
+      () => verifyFormalReaderProvisionContext({ ...stage, [field]: invalid }),
       /UNTRUSTED_APPROVAL_CONTEXT/u,
       field
     );
   }
   assert.throws(
-    () =>
-      verifyFormalReaderProvisionContext({ ...stage, VERCEL_API_TOKEN: '' }),
+    () => verifyFormalReaderProvisionContext({ ...stage, VERCEL_API_TOKEN: '' }),
     /EXISTING_STAGING_SECRETS_REQUIRED/u
   );
 });
