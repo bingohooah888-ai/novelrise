@@ -144,9 +144,7 @@ const FIELDS = Object.freeze([
 
 function positiveInt(value) {
   const number =
-    typeof value === 'string' && /^\d+$/.test(value)
-      ? Number(value)
-      : value;
+    typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
   if (!Number.isSafeInteger(number) || number < 0)
     throw new Error('FORMAL_SETTLEMENT_RECOVERY_INVALID_AGGREGATE');
   return number;
