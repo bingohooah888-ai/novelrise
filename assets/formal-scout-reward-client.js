@@ -5,11 +5,12 @@
   'use strict';
   const UUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  function createFormalReaderRewardBindings({ request, nextOperationId }) {
-    if (typeof request !== 'function' || typeof nextOperationId !== 'function')
-      throw new TypeError(
-        'Trusted host request adapter and operation ID required'
-      );
+  function createFormalReaderRewardBindings({ request, nextOperationId } = {}) {
+    if (
+      typeof request !== 'function' ||
+      (nextOperationId !== undefined && typeof nextOperationId !== 'function')
+    )
+      throw new TypeError('Trusted host request adapter required');
     async function call(method, body) {
       const result = await request({ method, body });
       if (!result || typeof result !== 'object')
@@ -40,7 +41,7 @@
         unresolved.delete(key);
       return result;
     }
-    return Object.freeze({
+    const readOnly = {
       // Explicit user action only. There is never an onboarding request on GET.
       inspectNewReader: () =>
         request({ method: 'GET', query: { view: 'new_reader' } }),
@@ -51,7 +52,15 @@
         if (data.serverVerified !== true)
           throw new Error('REWARD_SNAPSHOT_UNVERIFIED');
         return data;
-      },
+      }
+    };
+    // A read-only reader needs no operation IDs or Point-mutating callbacks.
+    // Existing submit operations remain available only to an explicit host
+    // that supplies a trusted operation ID generator.
+    if (typeof nextOperationId !== 'function')
+      return Object.freeze(readOnly);
+    return Object.freeze({
+      ...readOnly,
       onExchange: async ({ amountPoints }) => {
         if (!Number.isSafeInteger(amountPoints) || amountPoints < 30000)
           return { status: 'below_exchange_minimum' };
