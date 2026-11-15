@@ -300,3 +300,144 @@ test('unverified source fails closed and hidden panel stays inactive', async () 
   assert.match(flatten(authorized), /確認結果を検証できません/);
   assert.doesNotMatch(flatten(authorized), /根拠イベントを確認しました/);
 });
+
+test('formal diagnostic overview works without gift queue or settlement controls', async () => {
+  const calls = [];
+  const element = root();
+  const panel = createFormalRewardAdminPanel({
+    root: element,
+    authorized: true,
+    loadNewReaderSummary: async () => {
+      calls.push('new_readers');
+      return {
+        status: 'new_reader_summary_ready',
+        totalRegistered: 12,
+        initialized: 9,
+        partial: 3
+      };
+    },
+    loadBadgeCatalog: async () => {
+      calls.push('badge_catalog');
+      return reports.badge_catalog;
+    },
+    loadBadgeHistory: async () => {
+      calls.push('badge_history');
+      return reports.badge_history;
+    },
+    loadWalletCohort: async () => {
+      calls.push('wallet_cohort');
+      return reports.wallet_cohort;
+    },
+    loadSettlementRecovery: async () => {
+      calls.push('settlement_recovery');
+      return reports.settlement_recovery;
+    }
+  });
+  const result = await panel.refresh();
+  assert.equal(result.status, 'queue_not_connected');
+  assert.deepEqual([...new Set(calls)].sort(), [
+    'badge_catalog',
+    'badge_history',
+    'new_readers',
+    'settlement_recovery',
+    'wallet_cohort'
+  ]);
+  const visible = flatten(element);
+  assert.match(visible, /登録：12人/);
+  assert.match(visible, /初期化完了：9人/);
+  assert.match(visible, /要確認：3人/);
+  assert.match(visible, /称号定義：100/);
+  assert.match(visible, /Wallet未作成：4/);
+  assert.match(visible, /交換キューは未接続/);
+  assert.equal(
+    descendants(element, (n) => n.tag === 'button').length,
+    0
+  );
+});
+
+test('gift queue failure does not suppress independent reader monitoring', async () => {
+  let summaryCalls = 0;
+  const element = root();
+  const panel = createFormalRewardAdminPanel({
+    root: element,
+    authorized: true,
+    loadQueue: async () => {
+      throw Error('GIFT_QUEUE_DISABLED');
+    },
+    loadNewReaderSummary: async () => {
+      summaryCalls++;
+      return {
+        status: 'new_reader_summary_ready',
+        totalRegistered: 8,
+        initialized: 5,
+        partial: 3
+      };
+    },
+    loadBadgeCatalog: async () => reports.badge_catalog
+  });
+  const result = await panel.refresh();
+  assert.equal(result.status, 'queue_unavailable');
+  assert.ok(summaryCalls >= 1);
+  const visible = flatten(element);
+  assert.match(visible, /登録：8人/);
+  assert.match(visible, /要確認：3人/);
+  assert.match(visible, /称号定義：100/);
+  assert.match(visible, /申請一覧を取得できませんでした/);
+  assert.equal(
+    descendants(element, (n) => n.tag === 'button').length,
+    0
+  );
+});
+
+test('read-only queue and refund candidates never render mutation buttons', async () => {
+  const userId = '11111111-1111-4111-8111-111111111111';
+  const operationId = '22222222-2222-4222-8222-222222222222';
+  const element = root();
+  const panel = createFormalRewardAdminPanel({
+    root: element,
+    authorized: true,
+    loadQueue: async () => ({
+      status: 'queue_ready',
+      items: [
+        { userId, operationId, amountPoints: 30000, phase: 'reserved' }
+      ]
+    }),
+    loadRefunds: async () => ({
+      status: 'refund_candidates_ready',
+      items: [
+        {
+          userId,
+          operationId,
+          amountPoints: 30000,
+          phase: 'committed',
+          purpose: 'external_exchange'
+        }
+      ]
+    })
+  });
+  assert.equal((await panel.refresh()).status, 'queue_ready');
+  const visible = flatten(element);
+  assert.match(visible, /30,000 pt/);
+  assert.match(visible, /確定済み取引の返金照合/);
+  assert.equal(
+    descendants(element, (n) => n.tag === 'button').length,
+    0
+  );
+});
+
+test('malformed reader summary cannot look like initialized accounts', async () => {
+  const element = root();
+  const panel = createFormalRewardAdminPanel({
+    root: element,
+    authorized: true,
+    loadNewReaderSummary: async () => ({
+      status: 'new_reader_summary_ready',
+      totalRegistered: 10,
+      initialized: '10',
+      partial: 0
+    })
+  });
+  assert.equal((await panel.refresh()).status, 'queue_not_connected');
+  assert.match(flatten(element), /新規読者の初期化状況は未確認/);
+  assert.doesNotMatch(flatten(element), /初期化完了：10人/);
+});
