@@ -58,7 +58,76 @@ export function createOfflineFormalUsageRepository({
     });
   }
   const operations = new Map();
+  const syntheticEarningLedger = new Map();
   let tail = Promise.resolve();
+
+  // Only the offline fixture may use this synthetic credit writer. It shares
+  // the existing in-memory transaction tail with spending, so Wallet and
+  // Point history change together with a unique ledger event key.
+  async function creditSyntheticEarning({
+    userId,
+    eventId,
+    eventKey,
+    points,
+    kind,
+    at
+  } = {}) {
+    if (
+      !UUID.test(userId || '') ||
+      !UUID.test(eventId || '') ||
+      typeof eventKey !== 'string' ||
+      eventKey.length < 1 ||
+      eventKey.length > 240 ||
+      !['read', 'comment'].includes(kind) ||
+      !Number.isSafeInteger(points) ||
+      points < 1 ||
+      points > (kind === 'read' ? 11 : 20) ||
+      typeof at !== 'string' ||
+      !Number.isFinite(Date.parse(at))
+    )
+      return { status: 'invalid_synthetic_earning' };
+    let unlock;
+    const next = new Promise((resolve) => {
+      unlock = resolve;
+    });
+    const prior = tail;
+    tail = next;
+    await prior;
+    try {
+      const existing = syntheticEarningLedger.get(eventKey);
+      if (existing)
+        return {
+          status:
+            existing.userId === userId && existing.eventId === eventId
+              ? 'already_recorded'
+              : 'synthetic_ledger_conflict'
+        };
+      const user = users.get(userId);
+      if (!user) return { status: 'wallet_unavailable' };
+      const available = user.wallet.availablePoints + points;
+      const eligible = user.wallet.exchangeEligiblePoints + points;
+      if (
+        !Number.isSafeInteger(available) ||
+        !Number.isSafeInteger(eligible) ||
+        eligible > available
+      )
+        return { status: 'synthetic_point_overflow' };
+      user.wallet.availablePoints = available;
+      user.wallet.exchangeEligiblePoints = eligible;
+      user.wallet.revision++;
+      user.history.unshift({
+        operationId: eventId,
+        kind,
+        points,
+        status: 'confirmed',
+        at
+      });
+      syntheticEarningLedger.set(eventKey, { userId, eventId, points, kind });
+      return { status: 'recorded' };
+    } finally {
+      unlock();
+    }
+  }
 
   async function transact(userId, callback) {
     if (!users.has(userId)) return { status: 'wallet_unavailable' };
@@ -151,6 +220,20 @@ export function createOfflineFormalUsageRepository({
 
   return Object.freeze({
     transact,
+    creditSyntheticEarning,
+    getSyntheticUsageTotals() {
+      const settled = [...operations.values()].filter(
+        (operation) => operation.phase === 'committed'
+      );
+      return {
+        giftSpentNet: settled
+          .filter((operation) => operation.purpose === 'external_exchange')
+          .reduce((sum, operation) => sum + operation.amountPoints, 0),
+        aiSpentNet: settled
+          .filter((operation) => operation.purpose === 'ai_direct_use')
+          .reduce((sum, operation) => sum + operation.amountPoints, 0)
+      };
+    },
     async readReader(userId) {
       const s = users.get(userId);
       if (!s) return null;
