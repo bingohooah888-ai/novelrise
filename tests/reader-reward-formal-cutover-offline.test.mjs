@@ -390,3 +390,170 @@ test('mock rejects Point grants for nonexistent reader fixtures and duplicate ev
     /Invalid synthetic reward event/
   );
 });
+
+
+test('canonical synthetic read/comment events flow through existing quotes into private Wallet and reader binding', async () => {
+  const readId = '00000000-0000-4000-8000-000000000430';
+  const commentId = '00000000-0000-4000-8000-000000000431';
+  const duplicateCommentId = '00000000-0000-4000-8000-000000000432';
+  const wrongReadId = '00000000-0000-4000-8000-000000000433';
+  const unverifiedReadId = '00000000-0000-4000-8000-000000000434';
+  const qualifiedAt = '2026-12-02T00:00:00.000Z';
+  const chapter = '100';
+  const validRead = {
+    id: readId,
+    reader_id: reader,
+    episode_id_snapshot: chapter,
+    qualified_at: qualifiedAt
+  };
+  const readEvent = {
+    kind: 'read',
+    userId: reader,
+    sourceFixtureVerified: true,
+    verifiedReadEvent: validRead,
+    verifiedScoutLevel: 30,
+    verifiedReadTimeLevelEvidence: {
+      serverVerified: true,
+      readEventId: readId,
+      readerId: reader,
+      qualifiedAt,
+      level: 30,
+      revision: 1
+    }
+  };
+  const comment = {
+    id: commentId,
+    user_id: reader,
+    episode_id: 100,
+    body: '伏線の回収が丁寧で最後まで楽しく読みました',
+    deleted_at: null,
+    author_hidden_at: null,
+    created_at: '2026-12-02T00:01:00.000Z'
+  };
+  const commentEvent = {
+    kind: 'comment',
+    userId: reader,
+    sourceFixtureVerified: true,
+    verifiedComment: comment,
+    verifiedPriorUserComments: [],
+    reviewerDecision: 'eligible',
+    reviewerRule: 'synthetic-reviewed-v1',
+    verifiedNovelAuthorId: second,
+    verifiedCommentReadEvent: {
+      serverVerified: true,
+      readerId: reader,
+      episodeId: chapter,
+      qualifiedAt
+    }
+  };
+  const sandbox = createFormalOfflineIntegration({
+    handoff: quote(),
+    betaThresholdRows,
+    operatorId: operator,
+    formalReleaseAtMs: release,
+    mockBudgets: {
+      external_exchange: { scopeId: 'synthetic-gift', limitPoints: 100000 },
+      ai_direct_use: { scopeId: 'synthetic-ai', limitPoints: 100000 }
+    },
+    syntheticEligibleEvents: [
+      readEvent,
+      readEvent, // same canonical event cannot award twice
+      commentEvent,
+      {
+        ...commentEvent,
+        verifiedComment: { ...comment, id: duplicateCommentId }
+      }, // only the first eligible comment for this episode is credited
+      {
+        ...readEvent,
+        verifiedReadEvent: { ...validRead, id: wrongReadId, reader_id: second }
+      },
+      {
+        ...readEvent,
+        sourceFixtureVerified: false,
+        verifiedReadEvent: { ...validRead, id: unverifiedReadId }
+      },
+      { ...commentEvent, reviewerDecision: undefined } // no unreviewed reward
+    ]
+  });
+  assert.equal(sandbox.noRealPointOrProvider, true);
+  assert.deepEqual(
+    sandbox.rewardDecisions.map((d) => [d.status, d.points]),
+    [
+      ['reward_quote_only', 2],
+      ['already_awarded', 0],
+      ['reward_quote_only', 20],
+      ['already_awarded', 0],
+      ['wrong_reader', 0],
+      ['evidence_incomplete', 0],
+      ['semantic_review_required', 0]
+    ]
+  );
+  const view =
+    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings({
+      request: async (input) =>
+        (await sandbox.readerRequest(reader, input)).body
+    });
+  const snapshot = await view.fetchSnapshot();
+  assert.equal(snapshot.serverVerified, true);
+  assert.equal(snapshot.wallet.availablePoints, 35022);
+  assert.equal(snapshot.wallet.exchangeEligiblePoints, 22);
+  assert.equal(snapshot.account.level, 30);
+  assert.equal(snapshot.account.requiredXp, 400);
+  assert.deepEqual(
+    snapshot.history.filter((entry) => ['read', 'comment'].includes(entry.kind))
+      .map((entry) => [entry.kind, entry.points]),
+    [['read', 2], ['comment', 20]]
+  );
+  const other = await sandbox.readerRequest(second, { method: 'GET' });
+  assert.equal(other.body.wallet.availablePoints, 7000);
+  assert.equal(other.body.wallet.exchangeEligiblePoints, 0);
+});
+
+test('synthetic earning bridge requires explicit release anchor and cannot mix unverified comment claims', () => {
+  const foundation = {
+    handoff: quote(),
+    betaThresholdRows,
+    operatorId: operator,
+    mockBudgets: {
+      external_exchange: { scopeId: 'synthetic-gift', limitPoints: 100000 },
+      ai_direct_use: { scopeId: 'synthetic-ai', limitPoints: 100000 }
+    }
+  };
+  assert.throws(
+    () => createFormalOfflineIntegration({
+      ...foundation,
+      syntheticEligibleEvents: [{ kind: 'read', userId: reader }]
+    }),
+    /Complete synthetic release fixture required/
+  );
+  const id = '00000000-0000-4000-8000-000000000435';
+  assert.throws(
+    () => createFormalOfflineIntegration({
+      ...foundation,
+      formalReleaseAtMs: release,
+      syntheticPostReleasePoints: [{
+        eventId: 'offline-formal:unverified-existing',
+        userId: reader,
+        amountPoints: 20
+      }],
+      syntheticEligibleEvents: [{
+        kind: 'comment',
+        userId: reader,
+        sourceFixtureVerified: true,
+        verifiedComment: {
+          id,
+          user_id: reader,
+          episode_id: 100,
+          body: '作品の演出が面白かったです',
+          deleted_at: null,
+          author_hidden_at: null,
+          created_at: '2026-12-02T00:01:00.000Z'
+        },
+        verifiedPriorUserComments: [],
+        reviewerDecision: 'eligible',
+        reviewerRule: 'synthetic-reviewed-v1'
+      }]
+    }),
+    /Mixed synthetic comment history is not verifiable/
+  );
+});
