@@ -10,6 +10,7 @@ import { createUnregisteredFormalNewReaderOnboarding } from './formal-new-reader
 import { createUnregisteredFormalApiDispatch } from './formal-api-dispatch.js';
 import { createFormalCanonicalSourceReader } from './formal-earning-source-reader.js';
 import { holdDeferredFormalChannels } from './formal-deferred-channel-gates.js';
+import { createUnregisteredFormalBadgeCatalogInspector } from './formal-badge-catalog-inspector.js';
 
 export function createUnregisteredFormalApplication({
   pool,
@@ -67,6 +68,9 @@ export function createUnregisteredFormalApplication({
   const earningSourceReader = createFormalCanonicalSourceReader({
     postgresClient: pool
   });
+  const badgeCatalog = createUnregisteredFormalBadgeCatalogInspector({
+    query: pool.query.bind(pool)
+  });
   // OWNER-held channels remain independently OFF even if formal earning,
   // Level, or wallet readiness is later approved. No supplied catalog or
   // provider adapter can activate gift exchange or charge for AI by accident.
@@ -80,6 +84,7 @@ export function createUnregisteredFormalApplication({
         ? newReader.inspectVerifiedOne
         : (user) => newReader.inspectOne(user.id),
     inspectEarningSource: earningSourceReader.load,
+    getAdminBadgeCatalog: badgeCatalog.inspect,
     // A single verified Auth user cannot prove cohort totals.
     getNewReaderSummary:
       stagingTestReferenceAt === undefined
@@ -189,6 +194,7 @@ export function createUnregisteredFormalApplication({
         ? newReader.inspectVerifiedOne
         : newReader.inspectOne,
     inspectEarningSource: earningSourceReader.load,
+    inspectReaderBadgeCatalog: badgeCatalog.inspect,
     getReaderSnapshot: usage.service.getReaderSnapshot,
     submitModeration: earnings.submitModeration,
     drainDueEarnings: earnings.drainDue,
