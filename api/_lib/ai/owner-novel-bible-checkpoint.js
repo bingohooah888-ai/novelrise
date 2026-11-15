@@ -332,6 +332,7 @@ export function createOfflineOwnerNovelBibleCheckpoint({
     try {
       saved = await repository.compareAndSwap({
         ...scope,
+        action: 'record',
         expectedRevision: snapshot?.row.revision ?? null,
         expectedSourceHash: snapshot?.row.source_hash ?? null,
         nextSourceHash: complete
@@ -392,6 +393,7 @@ export function createOfflineOwnerNovelBibleCheckpoint({
     try {
       saved = await repository.compareAndSwap({
         ...scope,
+        action: 'replan',
         expectedRevision: snapshot.row.revision,
         expectedSourceHash: snapshot.row.source_hash,
         nextSourceHash,
@@ -446,6 +448,7 @@ export function createOfflineOwnerNovelBibleCheckpoint({
     try {
       saved = await repository.compareAndSwap({
         ...scope,
+        action: 'complete_empty',
         expectedRevision: snapshot?.row.revision ?? null,
         expectedSourceHash: snapshot?.row.source_hash ?? null,
         nextSourceHash: scope.sourceHash,
@@ -501,6 +504,8 @@ export function createOfflineOwnerNovelBibleCheckpoint({
     try {
       saved = await repository.compareAndSwap({
         ...scope,
+        sourceHash,
+        action: 'discard_restored',
         expectedRevision: snapshot.row.revision,
         expectedSourceHash: sourceHash,
         nextSourceHash: sourceHash,
@@ -539,7 +544,10 @@ export function createOfflineOwnerNovelBibleCheckpoint({
 export function createSupabaseOwnerNovelBibleCheckpointRepository({
   serviceClient
 } = {}) {
-  if (typeof serviceClient?.from !== 'function') unavailable();
+  if (
+    typeof serviceClient?.from !== 'function' ||
+    typeof serviceClient?.rpc !== 'function'
+  ) unavailable();
 
   return Object.freeze({
     async readSnapshot({ episodeId }) {
@@ -552,55 +560,80 @@ export function createSupabaseOwnerNovelBibleCheckpointRepository({
       if (error) unavailable();
       return data;
     },
+    // The sole enabled write path: a scoped RPC that locks owner and source
+    // together with the checkpoint CAS. Missing SQL never permits direct writes.
     async compareAndSwap({
+      actorId,
+      novelId,
       episodeId,
+      sourceHash,
+      action,
+      chunkIndex,
       expectedRevision,
       expectedSourceHash,
       nextSourceHash,
       nextSummary
     }) {
+      const nextProgress = nextSummary?.[KEY] ?? null;
       if (
+        typeof actorId !== 'string' ||
+        !UUID.test(actorId) ||
+        !validId(novelId) ||
         !validId(episodeId) ||
+        !SHA.test(sourceHash) ||
+        !['record', 'replan', 'complete_empty', 'discard_restored'].includes(
+          action
+        ) ||
         !SHA.test(nextSourceHash) ||
-        !nextSummary ||
-        typeof nextSummary !== 'object'
+        (expectedRevision === null) !== (expectedSourceHash === null) ||
+        (expectedRevision !== null &&
+          (!validId(expectedRevision) || !SHA.test(expectedSourceHash))) ||
+        (action === 'discard_restored'
+          ? nextProgress !== null
+          : !nextProgress ||
+            typeof nextProgress !== 'object' ||
+            Array.isArray(nextProgress)) ||
+        (action === 'record'
+          ? !Number.isSafeInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= 64
+          : chunkIndex !== undefined)
       ) {
         unavailable();
       }
-      let result;
-      const nextRevision = (expectedRevision ?? 0) + 1;
-      if (expectedRevision === null && expectedSourceHash === null) {
-        result = await serviceClient
-          .from('novelight_ai_episode_analysis')
-          .insert({
-            episode_id: episodeId,
-            source_hash: nextSourceHash,
-            summary: nextSummary,
-            revision: nextRevision
-          })
-          .select('episode_id,source_hash,revision,summary')
-          .maybeSingle();
-      } else {
-        if (!validId(expectedRevision) || !SHA.test(expectedSourceHash)) {
-          unavailable();
+      const { data, error } = await serviceClient.rpc(
+        'novelight_ai_checkpoint_cas_v1',
+        {
+          p_actor_id: actorId.toLowerCase(),
+          p_novel_id: novelId,
+          p_episode_id: episodeId,
+          p_action: action,
+          p_target_source_hash: sourceHash,
+          p_expected_revision: expectedRevision,
+          p_expected_source_hash: expectedSourceHash,
+          p_next_source_hash: nextSourceHash,
+          p_next_progress: nextProgress,
+          p_chunk_index: action === 'record' ? chunkIndex : null
         }
-        result = await serviceClient
-          .from('novelight_ai_episode_analysis')
-          .update({
-            source_hash: nextSourceHash,
-            summary: nextSummary,
-            revision: nextRevision,
-            analyzed_at: new Date().toISOString()
-          })
-          .eq('episode_id', episodeId)
-          .eq('revision', expectedRevision)
-          .eq('source_hash', expectedSourceHash)
-          .select('episode_id,source_hash,revision,summary')
-          .maybeSingle();
+      );
+      if (error || !Array.isArray(data) || data.length > 1) unavailable();
+      if (data.length === 0) return null;
+      const row = data[0];
+      if (
+        !row ||
+        Number(row.episode_id) !== episodeId ||
+        !SHA.test(row.source_hash) ||
+        !validId(row.revision) ||
+        !row.summary ||
+        typeof row.summary !== 'object' ||
+        Array.isArray(row.summary)
+      ) {
+        unavailable();
       }
-      if (result?.error?.code === '23505') return null;
-      if (result?.error) unavailable();
-      return result?.data ?? null;
+      return {
+        episode_id: Number(row.episode_id),
+        source_hash: row.source_hash,
+        revision: row.revision,
+        summary: row.summary
+      };
     }
   });
 }
