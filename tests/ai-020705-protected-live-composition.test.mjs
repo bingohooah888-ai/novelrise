@@ -233,6 +233,7 @@ function scenario({
         projectRef: STAGING,
         runtimeDisabledZero: true,
         approvalTombstoneCount: 1,
+        chunkClaimsRetained: 0, // Legacy one-shot fixture has no chunk claim.
         ...Object.fromEntries(ZERO.map((key) => [key, 0]))
       };
     }
