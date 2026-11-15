@@ -104,14 +104,23 @@ test('read-only SQL covers private phases, exact spend/refund keys and orphan ev
   assert.match(sql, /refund_reversal is distinct from spend_id/);
   assert.match(sql, /from orphaned o left join checked c on true/);
   assert.match(sql, /count\(c.operation_id\)::text as operations_total/);
-  assert.doesNotMatch(sql, /\b(insert|update|delete|truncate|alter|drop)\s+\w+/i);
-  assert.ok(
-    report.blockers.includes('committed_debit_or_phase_mismatch_requires_review')
+  assert.doesNotMatch(
+    sql,
+    /\b(insert|update|delete|truncate|alter|drop)\s+\w+/i
   );
   assert.ok(
-    report.blockers.includes('refund_provenance_or_phase_mismatch_requires_review')
+    report.blockers.includes(
+      'committed_debit_or_phase_mismatch_requires_review'
+    )
   );
-  assert.ok(report.blockers.includes('unbound_settlement_ledger_events_require_review'));
+  assert.ok(
+    report.blockers.includes(
+      'refund_provenance_or_phase_mismatch_requires_review'
+    )
+  );
+  assert.ok(
+    report.blockers.includes('unbound_settlement_ledger_events_require_review')
+  );
   assert.equal(report.mayResumeWriters, false);
   assert.equal(report.mayWriteDb, false);
   assert.equal(report.maySettle, false);
@@ -137,14 +146,14 @@ test('even clean synthetic operation reports do not authorize provider recovery'
 });
 
 test('orphan-only history remains visible when no private operation rows exist', async () => {
-  const zero = Object.fromEntries(
-    Object.keys(faulty).map((key) => [key, '0'])
-  );
+  const zero = Object.fromEntries(Object.keys(faulty).map((key) => [key, '0']));
   zero.orphan_settlement_ledger_events = '3';
   const report = await fixture(zero).inspector.inspect();
   assert.equal(report.observed.operations_total, 0);
   assert.equal(report.observed.orphan_settlement_ledger_events, 3);
-  assert.ok(report.blockers.includes('unbound_settlement_ledger_events_require_review'));
+  assert.ok(
+    report.blockers.includes('unbound_settlement_ledger_events_require_review')
+  );
 });
 
 test('missing, invalid and inconsistent aggregates fail closed', async () => {
@@ -155,10 +164,16 @@ test('missing, invalid and inconsistent aggregates fail closed', async () => {
     fixture({ ...clean, missing_spend_operations: '3' }).inspector.inspect()
   );
   await assert.rejects(() =>
-    fixture({ ...clean, orphan_settlement_ledger_events: '-1' }).inspector.inspect()
+    fixture({
+      ...clean,
+      orphan_settlement_ledger_events: '-1'
+    }).inspector.inspect()
   );
   await assert.rejects(() =>
-    fixture({ ...clean, refunded_operations: '9007199254740992' }).inspector.inspect()
+    fixture({
+      ...clean,
+      refunded_operations: '9007199254740992'
+    }).inspector.inspect()
   );
   await assert.rejects(() =>
     fixture({ ...clean, invalid_refund_operations: null }).inspector.inspect()
