@@ -401,9 +401,9 @@ export function createFormalOfflineIntegration({
         : { status: 'formal_worker_disabled', processed: 0 },
     inspectSyntheticQueue: () =>
       syntheticDb ? syntheticDb.inspectQueue() : [],
-    interruptNextSyntheticAward: () => {
+    interruptNextSyntheticAward: (count) => {
       if (!syntheticDb) throw new Error('SYNTHETIC_QUEUE_DISABLED');
-      syntheticDb.interruptNextSyntheticAward();
+      syntheticDb.interruptNextSyntheticAward(count);
     },
     async readerRequest(userId, request) {
       if (!readerIds.has(userId))
