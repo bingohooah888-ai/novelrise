@@ -1,7 +1,8 @@
 // Formal Scout Record: read-only projection from the EXISTING badge and SEED
 // source tables. Not an endpoint, job, migration, award or new source of truth.
 // Must be invoked only after a trusted handler verifies the user's JWT.
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SEEDS = new Set(['GOLD', 'SILVER', 'BRONZE']);
 const STATUS = new Set(['in_progress', 'earned', 'revoked']);
 const CATEGORY = new Set(['reader', 'author', 'limited']);
@@ -30,9 +31,10 @@ const SEEDS_SQL =
   'order by d.updated_at desc,d.seed_id desc limit 20';
 
 function int(value, min, max) {
-  const n = typeof value === 'string' && /^\d+$/.test(value)
-    ? Number(value)
-    : value;
+  const n =
+    typeof value === 'string' && /^\d+$/.test(value)
+      ? Number(value)
+      : value;
   if (!Number.isSafeInteger(n) || n < min || n > max)
     throw new Error('SCOUT_OVERVIEW_DB_VALUE_INVALID');
   return n;
@@ -54,19 +56,25 @@ export function createFormalScoutOverviewReader({ query } = {}) {
         query(BADGES_SQL, [userId]),
         query(SEEDS_SQL, [userId])
       ]);
-      if (!Array.isArray(badges?.rows) || !Array.isArray(discoveries?.rows) ||
-          badges.rows.length > 100 || discoveries.rows.length > 20)
+      if (
+        !Array.isArray(badges?.rows) ||
+        !Array.isArray(discoveries?.rows) ||
+        badges.rows.length > 100 ||
+        discoveries.rows.length > 20
+      )
         throw new Error('SCOUT_OVERVIEW_SOURCE_UNAVAILABLE');
       const seen = new Set();
       const titles = badges.rows.map((row) => {
-        if (typeof row.badge_id !== 'string' ||
-            !/^reader_[a-z0-9_]+$/.test(row.badge_id) ||
-            seen.has(row.badge_id) ||
-            !CATEGORY.has(row.badge_category) ||
-            !DIFFICULTY.has(row.difficulty) ||
-            typeof row.is_hidden !== 'boolean' ||
-            typeof row.enabled !== 'boolean' ||
-            !STATUS.has(row.status))
+        if (
+          typeof row.badge_id !== 'string' ||
+          !/^reader_[a-z0-9_]+$/.test(row.badge_id) ||
+          seen.has(row.badge_id) ||
+          !CATEGORY.has(row.badge_category) ||
+          !DIFFICULTY.has(row.difficulty) ||
+          typeof row.is_hidden !== 'boolean' ||
+          typeof row.enabled !== 'boolean' ||
+          !STATUS.has(row.status)
+        )
           throw new Error('SCOUT_OVERVIEW_BADGE_INVALID');
         seen.add(row.badge_id);
         const earned = row.status === 'earned' && row.earned_at != null;
@@ -99,9 +107,10 @@ export function createFormalScoutOverviewReader({ query } = {}) {
           growth: delta,
           novaPrediction: rankAtSeed === 5 && highest === 6,
           // Do not expose rank_at_seed / highest_rank_seen: internal Rank is private.
-          workTitle: typeof row.novel_title === 'string'
-            ? row.novel_title.slice(0, 140)
-            : null,
+          workTitle:
+            typeof row.novel_title === 'string'
+              ? row.novel_title.slice(0, 140)
+              : null,
           expiresAt: date(row.window_expires_at),
           updatedAt: date(row.updated_at)
         });
