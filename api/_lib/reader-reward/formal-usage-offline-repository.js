@@ -10,9 +10,7 @@ import {
   quoteScoutReviewStateTransition,
   recheckScoutReviewProposal
 } from './state-transition.js';
-import {
-  quoteScoutMaintenanceReviewDryRun
-} from './maintenance-review.js';
+import { quoteScoutMaintenanceReviewDryRun } from './maintenance-review.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const copy = (value) => JSON.parse(JSON.stringify(value));
@@ -341,9 +339,7 @@ export function createOfflineFormalUsageRepository({
       const state = user.levelState;
       const last = state.lastReviewedWindowEndMs;
       const ordinal =
-        last === null
-          ? 1
-          : 1 + (last - state.reviewAnchorMs) / (30 * 86400000);
+        last === null ? 1 : 1 + (last - state.reviewAnchorMs) / (30 * 86400000);
       if (!Number.isSafeInteger(ordinal) || ordinal < 1)
         return { status: 'review_checkpoint_invalid' };
       let quote;
@@ -363,8 +359,7 @@ export function createOfflineFormalUsageRepository({
       } catch {
         return { status: 'review_evidence_invalid' };
       }
-      if (quote.status !== 'quotation_only')
-        return { status: quote.status };
+      if (quote.status !== 'quotation_only') return { status: quote.status };
       let proposal;
       try {
         proposal = quoteScoutReviewStateTransition({
