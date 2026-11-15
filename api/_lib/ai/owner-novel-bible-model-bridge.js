@@ -252,6 +252,32 @@ export function createOwnerNovelBibleModelBridge({
       const { chunk, source, history, completionPlan, zeroChange } =
         await chooseChunk(original, chunkIndex);
       if (!chunk) {
+        if (!zeroChange && checkpoint?.discardRestored) {
+          // A restored former source is already analyzed. Drop only an old
+          // partial-progress journal; preserve the completed source hash.
+          const fresh = await scope(token, workId, chapterId);
+          await permission(workId, chapterId);
+          const current = await chooseChunk(fresh, chunkIndex);
+          if (
+            current.chunk ||
+            current.zeroChange ||
+            current.history !== history
+          ) {
+            deny();
+          }
+          const sourceHash = createHash('sha256')
+            .update(
+              JSON.stringify([fresh.episode.title, fresh.episode.content])
+            )
+            .digest('hex');
+          const receipt = await checkpoint.discardRestored({
+            actorId: owner,
+            novelId: workId,
+            episodeId: chapterId,
+            sourceHash
+          });
+          if (typeof receipt?.discarded !== 'boolean') deny();
+        }
         if (zeroChange && checkpoint) {
           if (typeof checkpoint.completeEmpty !== 'function') deny();
           // Recheck owner, consent and the CURRENT source immediately before
