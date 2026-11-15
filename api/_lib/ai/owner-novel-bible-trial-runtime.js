@@ -36,6 +36,7 @@ export function createOwnerNovelBibleTrialRuntime({
   serviceClient,
   createAuthorClient,
   permissionCheck,
+  readVerifiedHistory,
   providers,
   routes,
   cache = null
@@ -49,6 +50,8 @@ export function createOwnerNovelBibleTrialRuntime({
     typeof serviceClient?.rpc !== 'function' ||
     typeof createAuthorClient !== 'function' ||
     typeof permissionCheck !== 'function' ||
+    (readVerifiedHistory !== undefined &&
+      typeof readVerifiedHistory !== 'function') ||
     !providers ||
     !routes
   ) {
@@ -167,7 +170,8 @@ export function createOwnerNovelBibleTrialRuntime({
         serviceClient,
         aiRouter: router,
         reviewWorkflow: workflow,
-        permissionCheck
+        permissionCheck,
+        readVerifiedHistory
       });
       // Only the bridge sees the request. It must independently verify the
       // live episode and consent and validate all evidence before staging.
