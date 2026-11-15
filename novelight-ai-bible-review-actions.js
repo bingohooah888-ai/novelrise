@@ -83,6 +83,22 @@
     const ids = [...payload.candidates, ...accepted, ...stale].map((item) =>
       positive(item.id)
     );
+    const pagination = payload.pagination;
+    if (pagination !== undefined) {
+      if (
+        !pagination ||
+        typeof pagination !== 'object' ||
+        Array.isArray(pagination) ||
+        Object.keys(pagination).length !== 1 ||
+        (pagination.nextBeforeId !== null &&
+          !positive(pagination.nextBeforeId)) ||
+        ids.length > 25 ||
+        (pagination.nextBeforeId !== null &&
+          (!ids.length || pagination.nextBeforeId !== Math.min(...ids)))
+      ) {
+        return false;
+      }
+    }
     return new Set(ids).size === ids.length;
   }
 
@@ -123,8 +139,9 @@
         next.data?.session?.access_token === token
       );
     }
-    async function getCandidates() {
-      const response = await fetcher(url, {
+    async function getCandidates(beforeId = null) {
+      const pageUrl = beforeId === null ? url : url + '&before_id=' + beforeId;
+      const response = await fetcher(pageUrl, {
         method: 'GET',
         headers: { Authorization: 'Bearer ' + token },
         credentials: 'same-origin',
@@ -332,38 +349,12 @@
       return element;
     }
 
-    for (const item of data.candidates) {
-      const row = doc.createElement('div');
-      const details = doc.createElement('p');
-      details.textContent =
-        (item.replacesOutdatedVersion ? '【改稿後の新版候補】' : '') +
-        item.kind +
-        '：' +
-        item.key +
-        '／参照エピソードID：' +
-        item.episodeId +
-        '／候補：' +
-        item.summary +
-        '／本文根拠：' +
-        item.evidence;
-      row.appendChild(details);
-      row.appendChild(
-        button('候補を確認済みにする（正式設定は未変更）', 'accept', item, row)
-      );
-      row.appendChild(button('却下', 'reject', item, row));
-      list.appendChild(row);
-    }
-    if (!data.candidates.length) {
-      list.textContent = '保留中の候補はありません。';
-    }
-    // Previously reviewed candidates are still recoverable after reload,
-    // but neither listing nor transfer changes the author's canonical notes.
-    if (data.acceptedCandidates?.length && typeof onAccepted === 'function') {
-      const heading = doc.createElement('p');
-      heading.textContent =
-        '確認済み候補（まだ創作ノートへ保存していない場合は転記できます）';
-      list.appendChild(heading);
-      for (const item of data.acceptedCandidates) {
+    // Render only one validated, owner-scoped page per explicit author click.
+    // The same ID may never appear twice, even if another review changes
+    // status during paging. The server owns ordering and stale decisions.
+    const seenIds = new Set();
+    function appendPage(page) {
+      for (const item of page.candidates) {
         const row = doc.createElement('div');
         const details = doc.createElement('p');
         details.textContent =
@@ -373,43 +364,148 @@
           item.key +
           '／参照エピソードID：' +
           item.episodeId +
-          '／確認済み候補：' +
+          '／候補：' +
           item.summary +
           '／本文根拠：' +
           item.evidence;
         row.appendChild(details);
-        row.appendChild(offerTransfer(item));
+        row.appendChild(
+          button('候補を確認済みにする（正式設定は未変更）', 'accept', item, row)
+        );
+        row.appendChild(button('却下', 'reject', item, row));
         list.appendChild(row);
+      }
+      if (!page.candidates.length && page === data) {
+        list.textContent = '保留中の候補はありません。';
+      }
+      // Previously reviewed candidates are still recoverable after reload,
+      // but neither listing nor transfer changes the author's canonical notes.
+      if (page.acceptedCandidates?.length && typeof onAccepted === 'function') {
+        const heading = doc.createElement('p');
+        heading.textContent =
+          '確認済み候補（まだ創作ノートへ保存していない場合は転記できます）';
+        list.appendChild(heading);
+        for (const item of page.acceptedCandidates) {
+          const row = doc.createElement('div');
+          const details = doc.createElement('p');
+          details.textContent =
+            (item.replacesOutdatedVersion ? '【改稿後の新版候補】' : '') +
+            item.kind +
+            '：' +
+            item.key +
+            '／参照エピソードID：' +
+            item.episodeId +
+            '／確認済み候補：' +
+            item.summary +
+            '／本文根拠：' +
+            item.evidence;
+          row.appendChild(details);
+          row.appendChild(offerTransfer(item));
+          list.appendChild(row);
+        }
+      }
+      // Stale rows are historical candidate records, not reviewable canon.
+      // Render as text only; never offer accept/reject or note-transfer actions.
+      if (page.staleCandidates?.length) {
+        const heading = doc.createElement('p');
+        heading.textContent =
+          '改稿前のAI候補（過去の版・操作不可。再解析で確認してください）';
+        list.appendChild(heading);
+        for (const item of page.staleCandidates) {
+          const row = doc.createElement('div');
+          const details = doc.createElement('p');
+          details.textContent =
+            (item.status === 'accepted' ? '過去に確認済み' : '未確認') +
+            '／' +
+            item.kind +
+            '：' +
+            item.key +
+            '／参照エピソードID：' +
+            item.episodeId +
+            '／旧版の候補：' +
+            item.summary +
+            '／旧版の本文根拠：' +
+            item.evidence +
+            (item.staleReason === 'episode_missing'
+              ? '／参照話が見つかりません'
+              : '／本文が変更されています');
+          row.appendChild(details);
+          list.appendChild(row);
+        }
       }
     }
-    // Stale rows are historical candidate records, not reviewable canon.
-    // Render as text only; never offer accept/reject or note-transfer actions.
-    if (data.staleCandidates?.length) {
-      const heading = doc.createElement('p');
-      heading.textContent =
-        '改稿前のAI候補（過去の版・操作不可。再解析で確認してください）';
-      list.appendChild(heading);
-      for (const item of data.staleCandidates) {
-        const row = doc.createElement('div');
-        const details = doc.createElement('p');
-        details.textContent =
-          (item.status === 'accepted' ? '過去に確認済み' : '未確認') +
-          '／' +
-          item.kind +
-          '：' +
-          item.key +
-          '／参照エピソードID：' +
-          item.episodeId +
-          '／旧版の候補：' +
-          item.summary +
-          '／旧版の本文根拠：' +
-          item.evidence +
-          (item.staleReason === 'episode_missing'
-            ? '／参照話が見つかりません'
-            : '／本文が変更されています');
-        row.appendChild(details);
-        list.appendChild(row);
+    function pageIds(page) {
+      return [
+        ...page.candidates,
+        ...(page.acceptedCandidates ?? []),
+        ...(page.staleCandidates ?? [])
+      ].map((item) => item.id);
+    }
+    function allowPage(page, requestedBeforeId = null) {
+      if (!validResponse(page, id)) return false;
+      const ids = pageIds(page);
+      if (
+        ids.some(
+          (itemId) =>
+            seenIds.has(itemId) ||
+            (requestedBeforeId !== null && itemId >= requestedBeforeId)
+        ) ||
+        (requestedBeforeId !== null &&
+          page.pagination === undefined) ||
+        (requestedBeforeId !== null &&
+          page.pagination.nextBeforeId !== null &&
+          page.pagination.nextBeforeId >= requestedBeforeId)
+      ) {
+        return false;
       }
+      for (const itemId of ids) seenIds.add(itemId);
+      return true;
+    }
+    if (!allowPage(data)) return false;
+    appendPage(data);
+
+    if (data.pagination) {
+      const pager = doc.createElement('div');
+      const showNext = doc.createElement('button');
+      showNext.type = 'button';
+      showNext.textContent = 'さらに古い候補を25件表示';
+      let nextBeforeId = data.pagination.nextBeforeId;
+      showNext.hidden = nextBeforeId === null;
+      showNext.addEventListener('click', async () => {
+        if (disposed || busy || nextBeforeId === null) return;
+        busy = true;
+        const requestedBeforeId = nextBeforeId;
+        try {
+          if (!(await currentSession())) {
+            clear();
+            return;
+          }
+          const page = await getCandidates(requestedBeforeId);
+          if (!(await currentSession())) {
+            clear();
+            return;
+          }
+          if (!page || !allowPage(page, requestedBeforeId)) {
+            nextBeforeId = null;
+            showNext.hidden = true;
+            reviewNotice.textContent =
+              '続きを確認できませんでした。ページを再読み込みしてください。';
+            return;
+          }
+          appendPage(page);
+          nextBeforeId = page.pagination.nextBeforeId;
+          showNext.hidden = nextBeforeId === null;
+        } catch {
+          nextBeforeId = null;
+          showNext.hidden = true;
+          reviewNotice.textContent =
+            '続きを取得できませんでした。ページを再読み込みしてください。';
+        } finally {
+          busy = false;
+        }
+      });
+      pager.appendChild(showNext);
+      section.appendChild(pager);
     }
     const listener = client.auth.onAuthStateChange((_event, next) => {
       if (next?.user?.id !== ownerId || next?.access_token !== token) {
