@@ -925,6 +925,8 @@ test('cross-page version label persists before matching historical row loads', a
   assert.match(current.children[0].textContent, /改稿後の新版候補/u);
 });
 
+// Synthetic-only owner scoped candidate refresh.
+// prettier-ignore
 test('owner refresh replaces only a freshly verified review list without POST', async () => {
   const f = mock();
   const candidate = {
@@ -982,6 +984,8 @@ test('owner refresh replaces only a freshly verified review list without POST', 
   assert.equal(await refresh(options), null);
 });
 
+// Synthetic-only owner scoped candidate refresh.
+// prettier-ignore
 test('cross-account review refresh cannot fetch, replace or mutate a view', async () => {
   const f = mock();
   const options = {

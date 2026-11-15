@@ -620,6 +620,8 @@ test('author studio rechecks the same session around offline review reads', asyn
   assert.equal(swapped.main.children.length, 0);
 });
 
+// Preserve synthetic reader response and event order.
+// prettier-ignore
 test('owner studio refresh reuses authenticated preview and saved-state reader', async () => {
   const f = rig();
   const config = args(f);
@@ -643,6 +645,8 @@ test('owner studio refresh reuses authenticated preview and saved-state reader',
   assert.equal(section.removed, true);
 });
 
+// Preserve synthetic reader response and event order.
+// prettier-ignore
 test('failed private preview refresh cannot retain the old author content', async () => {
   const f = rig();
   const config = args(f);

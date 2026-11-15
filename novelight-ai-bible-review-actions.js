@@ -127,16 +127,10 @@
     ) {
       return false;
     }
-    const previous = mountedReviews.get(host);
-    if (previous && previous !== replaceExisting) {
-      return (
-        previous.client === client &&
-        previous.ownerId === ownerId &&
-        previous.novelId === id &&
-        previous.fetcher === fetcher &&
-        (await previous.currentSession())
-      );
-    }
+    // Plain attach() preserves the original re-open/recovery behavior.
+    // Only the explicitly requested refresh replaces an existing section.
+    const previous = replaceExisting ? mountedReviews.get(host) : null;
+    if (replaceExisting && previous !== replaceExisting) return false;
     if (previous && !previous.canReplace()) return false;
     const first = await client.auth.getSession();
     const session = !first.error && first.data?.session;
