@@ -862,7 +862,6 @@ test('durable claims reject duplicates and unverified source rows', async () => 
   );
 });
 
-
 const syntheticXpLedgerId = '00000000-0000-4000-8000-000000000519';
 const syntheticXpSourceId = '00000000-0000-4000-8000-000000000520';
 const syntheticXpRow = {
@@ -965,22 +964,20 @@ test('synthetic XP claims serialize duplicates and one-time level rewards across
       occurred_at: '2026-12-02T03:00:00.000Z'
     }
   };
-  const sandbox = durableDemo([], [
-    syntheticXpFixture,
-    replaySameSource,
-    another
-  ]);
+  const sandbox = durableDemo(
+    [],
+    [syntheticXpFixture, replaySameSource, another]
+  );
   const sameTime = await Promise.all([
     sandbox.applyCommittedXp({ xpLedgerId: syntheticXpLedgerId }),
     sandbox.applyCommittedXp({ xpLedgerId: syntheticXpLedgerId })
   ]);
-  assert.deepEqual(
-    sameTime.map((result) => result.status).sort(),
-    ['already_applied', 'applied']
-  );
+  assert.deepEqual(sameTime.map((result) => result.status).sort(), [
+    'already_applied',
+    'applied'
+  ]);
   assert.equal(
-    (await sandbox.applyCommittedXp({ xpLedgerId: duplicateSourceId }))
-      .status,
+    (await sandbox.applyCommittedXp({ xpLedgerId: duplicateSourceId })).status,
     'already_applied'
   );
   const next = await sandbox.applyCommittedXp({ xpLedgerId: nextSourceId });
@@ -989,9 +986,8 @@ test('synthetic XP claims serialize duplicates and one-time level rewards across
   assert.equal(next.progressXp, 50);
   assert.deepEqual(next.firstLevelsRewarded, [33]);
   assert.equal(next.pointsAwarded, 50);
-  const snapshot = (
-    await sandbox.readerRequest(reader, { method: 'GET' })
-  ).body;
+  const snapshot = (await sandbox.readerRequest(reader, { method: 'GET' }))
+    .body;
   assert.equal(snapshot.account.earnedXpInPeriod, 1250);
   assert.equal(snapshot.wallet.availablePoints, 35150);
   assert.equal(snapshot.wallet.exchangeEligiblePoints, 150);
@@ -999,10 +995,12 @@ test('synthetic XP claims serialize duplicates and one-time level rewards across
     snapshot.history.filter((entry) => entry.kind === 'level_up').length,
     3
   );
-  const report = (await sandbox.adminRequest({
-    method: 'GET',
-    query: { view: 'reward_overview' }
-  })).body;
+  const report = (
+    await sandbox.adminRequest({
+      method: 'GET',
+      query: { view: 'reward_overview' }
+    })
+  ).body;
   assert.equal(report.xpEventsMonth, 2);
   assert.equal(report.xpEarnedMonth, 1250);
   assert.equal(report.levelUpTotal, 150);
@@ -1013,56 +1011,57 @@ test('unverified, pre-release and finalized-window XP never creates Point, XP cl
   const beforeReleaseId = '00000000-0000-4000-8000-000000000524';
   const outsideWindowId = '00000000-0000-4000-8000-000000000525';
   const unverifiedId = '00000000-0000-4000-8000-000000000526';
-  const sandbox = durableDemo([], [
-    {
-      sourceFixtureVerified: false,
-      verifiedXpLedgerRow: {
-        ...syntheticXpRow,
-        id: unverifiedId
+  const sandbox = durableDemo(
+    [],
+    [
+      {
+        sourceFixtureVerified: false,
+        verifiedXpLedgerRow: {
+          ...syntheticXpRow,
+          id: unverifiedId
+        }
+      },
+      {
+        sourceFixtureVerified: true,
+        verifiedXpLedgerRow: {
+          ...syntheticXpRow,
+          id: beforeReleaseId,
+          occurred_at: '2026-11-30T23:59:59.000Z'
+        }
+      },
+      {
+        sourceFixtureVerified: true,
+        verifiedXpLedgerRow: {
+          ...syntheticXpRow,
+          id: outsideWindowId,
+          occurred_at: '2027-01-01T00:00:00.000Z'
+        }
       }
-    },
-    {
-      sourceFixtureVerified: true,
-      verifiedXpLedgerRow: {
-        ...syntheticXpRow,
-        id: beforeReleaseId,
-        occurred_at: '2026-11-30T23:59:59.000Z'
-      }
-    },
-    {
-      sourceFixtureVerified: true,
-      verifiedXpLedgerRow: {
-        ...syntheticXpRow,
-        id: outsideWindowId,
-        occurred_at: '2027-01-01T00:00:00.000Z'
-      }
-    }
-  ]);
+    ]
+  );
   assert.equal(
-    (await sandbox.applyCommittedXp({ xpLedgerId: unverifiedId }))
-      .status,
+    (await sandbox.applyCommittedXp({ xpLedgerId: unverifiedId })).status,
     'canonical_xp_source_missing'
   );
   assert.equal(
-    (await sandbox.applyCommittedXp({ xpLedgerId: beforeReleaseId }))
-      .status,
+    (await sandbox.applyCommittedXp({ xpLedgerId: beforeReleaseId })).status,
     'outside_formal_release_window'
   );
   assert.equal(
-    (await sandbox.applyCommittedXp({ xpLedgerId: outsideWindowId }))
-      .status,
+    (await sandbox.applyCommittedXp({ xpLedgerId: outsideWindowId })).status,
     'review_checkpoint_due_first'
   );
-  const readerView = (
-    await sandbox.readerRequest(reader, { method: 'GET' })
-  ).body;
+  const readerView = (await sandbox.readerRequest(reader, { method: 'GET' }))
+    .body;
   assert.equal(readerView.account.level, 30);
   assert.equal(readerView.account.earnedXpInPeriod, 0);
   assert.equal(readerView.wallet.availablePoints, 35000);
-  const adminView = (await sandbox.adminRequest({
-    method: 'GET',
-    query: { view: 'reward_overview' }
-  })).body;
+  const adminView = (
+    await sandbox.adminRequest({
+      method: 'GET',
+      query: { view: 'reward_overview' }
+    })
+  ).body;
   assert.equal(adminView.xpEventsMonth, 0);
   assert.equal(adminView.levelUpTotal, 0);
 });
@@ -1099,9 +1098,8 @@ test('highest-level history prevents reissuing 50 Point after offline demotion a
   assert.deepEqual(result.levelsGained, [31, 32]);
   assert.deepEqual(result.firstLevelsRewarded, []);
   assert.equal(result.pointsAwarded, 0);
-  const snapshot = (
-    await sandbox.readerRequest(reader, { method: 'GET' })
-  ).body;
+  const snapshot = (await sandbox.readerRequest(reader, { method: 'GET' }))
+    .body;
   assert.equal(snapshot.account.level, 32);
   assert.equal(snapshot.account.highestLevel, 32);
   assert.equal(snapshot.wallet.availablePoints, 35000);
@@ -1142,8 +1140,10 @@ test('offline administrator UI displays source-derived XP and first-level Point 
       loadRewardOverview: bindings.loadRewardOverview
     });
   await panel.refresh();
-  const textOf = (el) =>
-    [el.textContent, ...el.children.flatMap((child) => [child.textContent])];
+  const textOf = (el) => [
+    el.textContent,
+    ...el.children.flatMap((child) => [child.textContent])
+  ];
   const walk = (el) => [el, ...el.children.flatMap(walk)];
   const view = walk(root).flatMap(textOf).join(' ');
   assert.match(view, /今月の初回Level到達報酬/);
