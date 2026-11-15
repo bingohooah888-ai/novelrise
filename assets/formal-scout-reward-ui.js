@@ -474,7 +474,8 @@
         : '現在は正式版の準備中です。Pointの交換・AI直接利用はまだできません。';
     }
     function selectTab(name) {
-      if (!['history', 'scout', 'guide', 'exchange', 'ai'].includes(name)) return;
+      if (!['history', 'scout', 'guide', 'exchange', 'ai'].includes(name))
+        return;
       tab = name;
       tabs.replaceChildren();
       for (const [key, title] of [
@@ -561,7 +562,11 @@
         }
         row.append(
           el('span', '', 'Lv.' + start + (end === start ? '' : '〜' + end)),
-          el('strong', '', quoteFormalRewardGuide(start).pointsPerEligibleEpisode + ' pt / 話')
+          el(
+            'strong',
+            '',
+            quoteFormalRewardGuide(start).pointsPerEligibleEpisode + ' pt / 話'
+          )
         );
         rateList.append(row);
       }
