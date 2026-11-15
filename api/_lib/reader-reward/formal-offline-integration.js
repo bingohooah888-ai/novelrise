@@ -97,11 +97,7 @@ function syntheticBadgeHistorySource(handoff, readerIds, badges) {
   };
   return createUnregisteredFormalBadgeHistoryInspector({
     query: async (sql) => ({
-      rows: [
-        sql.includes('from public.user_scout_badges b')
-          ? counts
-          : orphans
-      ]
+      rows: [sql.includes('from public.user_scout_badges b') ? counts : orphans]
     })
   });
 }
@@ -136,8 +132,7 @@ export function createFormalOfflineIntegration({
     !Array.isArray(syntheticEligibleEvents) ||
     !Array.isArray(syntheticDurableEvents) ||
     !Array.isArray(syntheticXpEvents) ||
-    (syntheticBadgeHistory !== null &&
-      !Array.isArray(syntheticBadgeHistory)) ||
+    (syntheticBadgeHistory !== null && !Array.isArray(syntheticBadgeHistory)) ||
     syntheticEligibleEvents.length > 100 ||
     syntheticXpEvents.length > 100 ||
     syntheticDurableEvents.length > 100 ||
@@ -489,7 +484,7 @@ export function createFormalOfflineIntegration({
       body,
       query,
       headers: {
-        authorization: 'Bearer mock:' + user,
+        authorization: '***' + user,
         origin: 'https://novelight.jp',
         host: 'novelight.jp',
         'x-forwarded-proto': 'https',
