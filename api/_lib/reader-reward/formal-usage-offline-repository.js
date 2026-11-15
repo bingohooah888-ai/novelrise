@@ -18,7 +18,8 @@ const copy = (value) => JSON.parse(JSON.stringify(value));
 export function createOfflineFormalUsageRepository({
   readers = [],
   budgets = {},
-  openingPointEventKeys = []
+  openingPointEventKeys = [],
+  openingEvidence = null
 } = {}) {
   if (!Array.isArray(openingPointEventKeys))
     throw new TypeError('Verified opening Point keys required');
@@ -54,6 +55,59 @@ export function createOfflineFormalUsageRepository({
         : null,
       history: copy(reader.history || [])
     });
+  }
+
+  // A synthetic handoff must carry its original canonical beta entries as
+  // well as post-release credits. The source keys are never rewritten.
+  const openingByUser = new Map();
+  const openingKeys = new Set();
+  if (openingEvidence !== null) {
+    const canonical = openingEvidence?.canonicalRows;
+    const formal = openingEvidence?.formalCredits;
+    if (!Array.isArray(canonical) || !Array.isArray(formal))
+      throw new TypeError('Complete synthetic opening evidence required');
+    for (const entry of [...canonical, ...formal]) {
+      if (
+        !entry ||
+        !UUID.test(entry.userId || '') ||
+        !users.has(entry.userId) ||
+        typeof entry.eventKey !== 'string' ||
+        !entry.eventKey ||
+        openingKeys.has(entry.eventKey) ||
+        !Number.isSafeInteger(entry.points) ||
+        (entry.formal === true && entry.points <= 0) ||
+        (entry.formal !== true && entry.status !== 'confirmed')
+      )
+        throw new TypeError('Invalid or duplicate canonical opening entry');
+      openingKeys.add(entry.eventKey);
+      const total = openingByUser.get(entry.userId) || {
+        all: 0,
+        eligible: 0,
+        events: 0
+      };
+      total.all += entry.points;
+      if (entry.formal === true) total.eligible += entry.points;
+      total.events++;
+      if (
+        !Number.isSafeInteger(total.all) ||
+        !Number.isSafeInteger(total.eligible)
+      )
+        throw new RangeError('Synthetic opening Point overflow');
+      openingByUser.set(entry.userId, total);
+    }
+    if (
+      openingPointKeys.size !== canonical.length ||
+      canonical.some((entry) => !openingPointKeys.has(entry.eventKey))
+    )
+      throw new TypeError('Canonical beta event-key inventory mismatch');
+    for (const [userId, user] of users) {
+      const sum = openingByUser.get(userId) || { all: 0, eligible: 0 };
+      if (
+        sum.all !== user.wallet.availablePoints ||
+        sum.eligible !== user.wallet.exchangeEligiblePoints
+      )
+        throw new TypeError('Synthetic opening Wallet ledger mismatch');
+    }
   }
 
   const allowedPurposes = ['external_exchange', 'ai_direct_use'];
@@ -526,6 +580,101 @@ export function createOfflineFormalUsageRepository({
           .filter((row) => row.kind === 'level_up')
           .map(copy)
       };
+    },
+    // Aggregate-only counterpart to the existing canonical Wallet cohort
+    // inspector. It independently re-sums immutable opening entries, later
+    // unique Point claims, and settled/reserved operations. No identifiers
+    // leave this method, and the inspector still blocks real activation.
+    getSyntheticWalletCohortAggregate() {
+      if (openingEvidence === null)
+        throw new Error('SYNTHETIC_OPENING_EVIDENCE_REQUIRED');
+      const values = {
+        population_users: users.size,
+        wallet_users: users.size,
+        ledger_users: 0,
+        ledger_without_wallet_users: 0,
+        wallet_without_ledger_users: 0,
+        wallet_balance_mismatch_users: 0,
+        eligible_exceeds_available_users: 0,
+        negative_ledger_users: 0,
+        unsettled_ledger_users: 0,
+        unsettled_ledger_rows: 0,
+        held_wallet_users: 0,
+        wallet_available_points: 0,
+        wallet_reserved_points: 0,
+        wallet_eligible_points: 0,
+        ledger_confirmed_net_points: 0
+      };
+      for (const [id, state] of users) {
+        const opening = openingByUser.get(id) || {
+          all: 0,
+          eligible: 0,
+          events: 0
+        };
+        const awarded = [...syntheticEarningLedger.values()]
+          .filter((entry) => entry.userId === id)
+          .reduce((total, entry) => total + entry.points, 0);
+        const reserved = [...operations.values()].filter(
+          (op) => op.userId === id && op.phase === 'reserved'
+        );
+        const committed = [...operations.values()].filter(
+          (op) => op.userId === id && op.phase === 'committed'
+        );
+        const pendingSum = reserved.reduce(
+          (total, op) => total + op.amountPoints,
+          0
+        );
+        const spent = committed.reduce(
+          (total, op) => total + op.amountPoints,
+          0
+        );
+        const eligibleUsed = [...reserved, ...committed].reduce(
+          (total, op) => total + op.eligibleReservedPoints,
+          0
+        );
+        const canonicalNet = opening.all + awarded - spent;
+        const expectedAvailable = canonicalNet - pendingSum;
+        const expectedEligible = opening.eligible + awarded - eligibleUsed;
+        const history = state.history.map((entry) => entry.operationId);
+        if (
+          !Number.isSafeInteger(canonicalNet) ||
+          !Number.isSafeInteger(expectedAvailable) ||
+          !Number.isSafeInteger(expectedEligible)
+        )
+          throw new RangeError('Synthetic cohort reconciliation overflow');
+        const ledgerExists =
+          opening.events > 0 ||
+          awarded > 0 ||
+          committed.length > 0;
+        if (ledgerExists) values.ledger_users++;
+        else values.wallet_without_ledger_users++;
+        const duplicateHistory = new Set(history).size !== history.length;
+        if (
+          expectedAvailable !== state.wallet.availablePoints ||
+          pendingSum !== state.wallet.reservedPoints ||
+          expectedEligible !== state.wallet.exchangeEligiblePoints ||
+          duplicateHistory
+        )
+          values.wallet_balance_mismatch_users++;
+        if (
+          state.wallet.exchangeEligiblePoints < 0 ||
+          state.wallet.exchangeEligiblePoints > state.wallet.availablePoints
+        )
+          values.eligible_exceeds_available_users++;
+        if (canonicalNet < 0) values.negative_ledger_users++;
+        if (reserved.length) values.unsettled_ledger_users++;
+        values.unsettled_ledger_rows += reserved.length;
+        if (state.wallet.heldPoints > 0) values.held_wallet_users++;
+        values.wallet_available_points += state.wallet.availablePoints;
+        values.wallet_reserved_points += state.wallet.reservedPoints;
+        values.wallet_eligible_points += state.wallet.exchangeEligiblePoints;
+        values.ledger_confirmed_net_points += canonicalNet;
+      }
+      if (
+        Object.values(values).some((v) => !Number.isSafeInteger(v))
+      )
+        throw new RangeError('Synthetic cohort aggregate overflow');
+      return values;
     },
     getSyntheticUsageTotals() {
       const settled = [...operations.values()].filter(
