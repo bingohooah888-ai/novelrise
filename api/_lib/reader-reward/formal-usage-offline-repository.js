@@ -268,16 +268,10 @@ export function createOfflineFormalUsageRepository({
         return { status: proposal.status };
       if (syntheticXpGrantKeys.has(proposal.grantKey))
         return { status: 'already_applied' };
-      // Match the dormant SQL's unresolved Lv.100 surplus policy.
-      if (state.currentLevel === 100)
-        return { status: 'level_100_surplus_policy_pending' };
-      if (proposal.nextState.currentLevel === 100) {
-        const toCap = Object.keys(requiredXpByLevel)
-          .filter((level) => Number(level) >= state.currentLevel)
-          .reduce((sum, level) => sum + requiredXpByLevel[level], 0);
-        if (row.xp_value + state.levelProgressXp > toCap)
-          return { status: 'level_100_surplus_policy_pending' };
-      }
+      // OWNER-approved Lv.100 policy: quoteScoutXpLevelUp already stops
+      // progression at 100 and discards ONLY surplus progression XP.
+      // The canonical event is still claimed exactly once, while the full
+      // XP value remains eligible for the 30-day maintenance ledger review.
       const recheck = recheckScoutXpLevelUp({
         proposal,
         currentStateSnapshot: state,
