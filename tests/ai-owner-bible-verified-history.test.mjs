@@ -225,7 +225,7 @@ test('reader construction and unscoped calls reject before any database read', a
 test('unfinished new-episode checkpoint is never mistaken for completed analysis', async () => {
   const targetHash = sourceHash(CURRENT);
   const f = fixture({
-    analysisHash: targetHash,
+    analysisHash: '0'.repeat(64),
     phase2Summary: {
       version: 1,
       state: 'in_progress',
