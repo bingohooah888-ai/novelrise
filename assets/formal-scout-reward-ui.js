@@ -56,6 +56,98 @@
     return node;
   };
 
+  const SEED_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  function normalizeSeedEvidence(value) {
+    if (
+      !value ||
+      value.status !== 'formal_reader_seed_evidence_review_only' ||
+      value.readyForPublicRelease !== false ||
+      value.historicalXpBackfillAllowed !== false ||
+      value.mayIssueXp !== false ||
+      value.independentlyVerifiedEntireLedger !== false ||
+      typeof value.moreSeedsAvailable !== 'boolean' ||
+      !Array.isArray(value.items) ||
+      value.items.length > 60
+    )
+      return null;
+
+    const seen = new Set();
+    const items = [];
+    let eventCount = 0;
+    for (const seed of value.items) {
+      if (
+        !seed ||
+        typeof seed.seedId !== 'string' ||
+        !SEED_ID.test(seed.seedId) ||
+        seen.has(seed.seedId) ||
+        !['GOLD', 'SILVER', 'BRONZE'].includes(seed.grade) ||
+        !Number.isSafeInteger(seed.growth) ||
+        seed.growth < 0 ||
+        seed.growth > 5 ||
+        typeof seed.novaPrediction !== 'boolean' ||
+        (seed.workTitle !== null && typeof seed.workTitle !== 'string') ||
+        !Number.isFinite(Date.parse(seed.expiresAt)) ||
+        !Number.isFinite(Date.parse(seed.updatedAt)) ||
+        !validPoints(seed.recordedCreditedXp) ||
+        !validPoints(seed.missingXpEvidenceEvents) ||
+        !Array.isArray(seed.stages)
+      )
+        return null;
+      seen.add(seed.seedId);
+      let creditedSum = 0;
+      let missing = 0;
+      const stages = [];
+      for (const stage of seed.stages) {
+        if (
+          !stage ||
+          !/^(growth_[2-5]|NOVA_prediction)$/.test(stage.stage) ||
+          !Number.isFinite(Date.parse(stage.occurredAt)) ||
+          typeof stage.creditLedgerVerified !== 'boolean' ||
+          typeof stage.claimedDeltaMatchesLedger !== 'boolean' ||
+          (stage.ledgerCreditedXp !== null &&
+            !validPoints(stage.ledgerCreditedXp)) ||
+          stage.creditLedgerVerified !==
+            (stage.ledgerCreditedXp !== null) ||
+          (stage.ledgerCreditedXp === null &&
+            stage.claimedDeltaMatchesLedger !== false)
+        )
+          return null;
+        if (stage.ledgerCreditedXp === null) {
+          missing++;
+        } else {
+          creditedSum += stage.ledgerCreditedXp;
+          if (!Number.isSafeInteger(creditedSum)) return null;
+        }
+        stages.push({
+          name:
+            stage.stage === 'NOVA_prediction'
+              ? 'NOVA予見'
+              : '+' + stage.stage.slice(-1) + ' Rank',
+          at: safeDate(stage.occurredAt),
+          creditedXp: stage.ledgerCreditedXp,
+          matchesClaim: stage.claimedDeltaMatchesLedger
+        });
+        if (++eventCount > 500) return null;
+      }
+      if (
+        creditedSum !== seed.recordedCreditedXp ||
+        missing !== seed.missingXpEvidenceEvents
+      )
+        return null;
+      items.push({
+        grade: seed.grade,
+        title: seed.workTitle === null ? null : label(seed.workTitle),
+        creditedXp: creditedSum,
+        missing,
+        stages
+      });
+    }
+    return Object.freeze({
+      items,
+      moreSeedsAvailable: value.moreSeedsAvailable
+    });
+  }
+
   function normalizeSnapshot(source) {
     const s = source && typeof source === 'object' ? source : {};
     const wallet = s.wallet || {};
@@ -111,6 +203,10 @@
               badges: s.scout.badges.slice(0, 100),
               seeds: s.scout.seeds.slice(0, 20)
             }
+          : null,
+      seedEvidence:
+        verified && s.formalEnabled === true
+          ? normalizeSeedEvidence(s.seedEvidence)
           : null,
       authorGrowth:
         verified &&
@@ -400,6 +496,75 @@
       if (!seedList.children.length)
         seedList.append(el('p', 'rr-muted', '表示できる発掘履歴はありません。'));
       contents.append(seedList);
+      if (latest.seedEvidence) {
+        contents.append(
+          el('h3', '', 'LIGHT SEED 発掘段階・実記録XP'),
+          el(
+            'p',
+            'rr-muted',
+            '発掘イベントの理論XPではなく、Scout XP台帳に実際に記録された分だけを表示します。β期の未記録XPは遡及付与しません。'
+          )
+        );
+        const evidenceList = el('div', 'rr-history');
+        for (const seed of latest.seedEvidence.items) {
+          const card = el('article', 'rr-history-row');
+          const detail = el('div');
+          detail.append(
+            el('strong', '', seed.title || '現在表示できない作品'),
+            el(
+              'small',
+              '',
+              seed.grade +
+                ' LIGHT SEED ・台帳で確認できたXP ' +
+                number(seed.creditedXp)
+            )
+          );
+          if (seed.missing) {
+            detail.append(
+              el(
+                'small',
+                '',
+                'XP台帳の根拠が確認できない発掘段階：' +
+                  number(seed.missing) +
+                  '件（追加付与なし）'
+              )
+            );
+          }
+          for (const stage of seed.stages) {
+            const credited =
+              stage.creditedXp === null
+                ? 'XP記録未確認'
+                : '台帳記録 ' + number(stage.creditedXp) + ' XP';
+            detail.append(
+              el(
+                'small',
+                '',
+                stage.name +
+                  ' ・' +
+                  stage.at +
+                  ' ・' +
+                  credited +
+                  (stage.creditedXp !== null && !stage.matchesClaim
+                    ? '（理論値と記録に差あり）'
+                    : '')
+              )
+            );
+          }
+          card.append(detail);
+          evidenceList.append(card);
+        }
+        if (!evidenceList.children.length) {
+          evidenceList.append(
+            el('p', 'rr-muted', '確認できる発掘段階の履歴はありません。')
+          );
+        }
+        contents.append(evidenceList);
+        if (latest.seedEvidence.moreSeedsAvailable) {
+          contents.append(
+            el('p', 'rr-muted', '表示件数の上限に達しました。残りの履歴は別途照合が必要です。')
+          );
+        }
+      }
       if (latest.authorGrowth) {
         contents.append(el('h3', '', '作者専用 / 自作品のRank・成長履歴'));
         const workList = el('div', 'rr-history');
