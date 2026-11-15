@@ -388,7 +388,11 @@ export function createFormalUsagePostgresRepository({
       );
       const activity = await client.query(
         'select id,user_id,point_kind,point_value,status,occurred_at ' +
-          'from public.scout_point_ledger where left(point_kind,7)=$1::text ' +
+          'from public.scout_point_ledger ' +
+          'where left(point_kind,7)=$1::text or ' +
+          "(point_kind='level_up' and status='confirmed' and exists (" +
+          'select 1 from novelight_formal_private.scout_point_usage_credit_claims c ' +
+          'where c.canonical_point_id=public.scout_point_ledger.id)) ' +
           'order by occurred_at desc,id desc limit 30',
         ['formal_']
       );
@@ -414,7 +418,10 @@ export function createFormalUsagePostgresRepository({
           !uuid(row.id) ||
           !uuid(row.user_id) ||
           typeof row.point_kind !== 'string' ||
-          !row.point_kind.startsWith('formal_') ||
+          !(
+            row.point_kind.startsWith('formal_') ||
+            (row.point_kind === 'level_up' && row.status === 'confirmed')
+          ) ||
           !['confirmed', 'pending', 'frozen', 'cancelled'].includes(
             row.status
           ) ||
