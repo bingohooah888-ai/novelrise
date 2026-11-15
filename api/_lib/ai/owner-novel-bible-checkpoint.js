@@ -8,6 +8,8 @@ const SHA = /^[a-f0-9]{64}$/;
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const KEY = 'novelightPhase2';
+// A first-time partial journal is not a completed analysis checkpoint.
+export const NOVEL_BIBLE_PENDING_SOURCE_HASH = '0'.repeat(64);
 
 function unavailable() {
   throw new Error('AI_BIBLE_CHECKPOINT_UNAVAILABLE');
@@ -54,6 +56,7 @@ function validPlan(plan, actorId, novelId, episodeId, chunkIndex) {
     unavailable();
   }
   const sourceHash = plan.chunks[0].sourceHash;
+  if (sourceHash === NOVEL_BIBLE_PENDING_SOURCE_HASH) unavailable();
   const previousSourceHash = plan.analyses[0]?.source_hash ?? null;
   const parts = plan.chunks.map((part) => [
     part.start,
@@ -133,7 +136,7 @@ function validateRow(row, scope) {
         progress.completedIndices.length !== progress.chunkCount)) ||
     (progress.state === 'in_progress' &&
       row.source_hash !==
-        (progress.previousSourceHash ?? progress.targetSourceHash))
+        (progress.previousSourceHash ?? NOVEL_BIBLE_PENDING_SOURCE_HASH))
   ) {
     unavailable();
   }
@@ -248,7 +251,7 @@ export function createOfflineOwnerNovelBibleCheckpoint({
         expectedSourceHash: snapshot?.row.source_hash ?? null,
         nextSourceHash: complete
           ? scope.sourceHash
-          : (scope.previousSourceHash ?? scope.sourceHash),
+          : (scope.previousSourceHash ?? NOVEL_BIBLE_PENDING_SOURCE_HASH),
         nextSummary: {
           ...(snapshot?.row.summary ?? {}),
           [KEY]: next
@@ -265,7 +268,7 @@ export function createOfflineOwnerNovelBibleCheckpoint({
       verified.row.source_hash !==
         (complete
           ? scope.sourceHash
-          : (scope.previousSourceHash ?? scope.sourceHash)) ||
+          : (scope.previousSourceHash ?? NOVEL_BIBLE_PENDING_SOURCE_HASH)) ||
       JSON.stringify(verified.progress) !== JSON.stringify(next)
     ) {
       unavailable();
