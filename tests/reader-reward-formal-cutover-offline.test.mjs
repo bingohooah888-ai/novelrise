@@ -1415,3 +1415,119 @@ test('replay two empty periods from original anchor demotes at most once per 30 
   });
   assert.equal(sandbox.inspectSyntheticMaintenance().length, 2);
 });
+
+
+test('late XP from an already finalized period requires correction policy and never reopens Wallet', async () => {
+  const original = quote();
+  const handoff = {
+    ...original,
+    walletSeeds: original.walletSeeds.map((seed) =>
+      seed.userId === reader
+        ? {
+            ...seed,
+            formalState: {
+              ...seed.formalState,
+              currentLevel: 29,
+              highestLevel: 30,
+              levelProgressXp: 0,
+              lastReviewedWindowEndMs: Date.parse(maintenanceEnd),
+              revision: 1
+            }
+          }
+        : seed
+    )
+  };
+  const late = maintenanceXp(
+    '00000000-0000-4000-8000-000000000579',
+    '00000000-0000-4000-8000-000000000580',
+    300,
+    '2026-12-29T23:00:00.000Z'
+  );
+  const sandbox = createFormalOfflineIntegration({
+    handoff,
+    betaThresholdRows,
+    operatorId: operator,
+    formalReleaseAtMs: release,
+    syntheticNowIso: '2027-01-01T00:00:00.000Z',
+    syntheticXpEvents: [late],
+    mockBudgets: {
+      external_exchange: { scopeId: 'synthetic-gift', limitPoints: 100000 },
+      ai_direct_use: { scopeId: 'synthetic-ai', limitPoints: 100000 }
+    }
+  });
+  assert.equal(
+    (await sandbox.applyCommittedXp({
+      xpLedgerId: late.verifiedXpLedgerRow.id
+    })).status,
+    'closed_review_window'
+  );
+  const replay = await sandbox.resumePendingSyntheticXp({ userId: reader });
+  assert.equal(replay.status, 'xp_hold');
+  assert.equal(replay.reason, 'closed_review_window');
+  const snapshot = (await sandbox.readerRequest(reader, { method: 'GET' }))
+    .body;
+  assert.equal(snapshot.account.level, 29);
+  assert.equal(snapshot.account.highestLevel, 30);
+  assert.equal(snapshot.wallet.availablePoints, 35000);
+  assert.equal(snapshot.wallet.exchangeEligiblePoints, 0);
+  assert.equal(sandbox.inspectSyntheticMaintenance().length, 0);
+});
+
+test('admin panel exposes verified maintenance counts without enabling Point actions', async () => {
+  const low = maintenanceXp(
+    '00000000-0000-4000-8000-000000000581',
+    '00000000-0000-4000-8000-000000000582',
+    100,
+    '2026-12-20T00:00:00.000Z'
+  );
+  const sandbox = durableDemo([], [low], maintenanceEnd);
+  assert.equal(
+    (await sandbox.resumePendingSyntheticXp({ userId: reader })).status,
+    'caught_up'
+  );
+  class DomNode {
+    constructor(tagName) {
+      this.tagName = tagName;
+      this.textContent = '';
+      this.children = [];
+    }
+    setAttribute() {}
+    addEventListener() {}
+    append(...children) {
+      this.children.push(...children);
+    }
+    replaceChildren(...children) {
+      this.children = [...children];
+    }
+  }
+  globalThis.document = { createElement: (tag) => new DomNode(tag) };
+  const root = new DomNode('main');
+  const bindings =
+    globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings({
+      request: async (input) => (await sandbox.adminRequest(input)).body
+    });
+  const panel =
+    globalThis.NovelightFormalRewardAdmin.createFormalRewardAdminPanel({
+      root,
+      authorized: true,
+      loadRewardOverview: bindings.loadRewardOverview
+    });
+  await panel.refresh();
+  const gather = (node) => [
+    node.textContent,
+    ...node.children.flatMap(gather)
+  ];
+  const view = gather(root).join(' ');
+  assert.match(view, /確定した30日維持判定/);
+  assert.match(view, /維持判定によるLevel降格/);
+  assert.match(view, /1 件/);
+  assert.match(view, /発行・利用記録/);
+  const readerView = (await sandbox.readerRequest(reader, {
+    method: 'GET'
+  })).body;
+  assert.equal(readerView.wallet.availablePoints, 35000);
+  assert.equal(
+    readerView.history.filter((entry) => entry.kind === 'level_up').length,
+    0
+  );
+});
