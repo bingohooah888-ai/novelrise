@@ -10,7 +10,9 @@ import {
 const REF = 'wmlzjgvxgoyrovdhbqbg';
 const BRANCH = 'feature/scout-formal-last-mile-integrity-off-20261115';
 const adminUrl =
-  'postgresql://postgres:synthetic-only@db.' + REF + '.supabase.co:5432/postgres';
+  'postgresql://postgres:synthetic-only@db.' +
+  REF +
+  '.supabase.co:5432/postgres';
 const stage = {
   GITHUB_ACTIONS: 'true',
   GITHUB_EVENT_NAME: 'workflow_dispatch',
@@ -33,7 +35,7 @@ const stage = {
   VERCEL_API_TOKEN: 'synthetic-token-only'
 };
 
-test('formal reader provisioner requires exact OWNER trusted-main Staging context', () => {
+test('OWNER-only trusted-main Staging context is required', () => {
   assert.equal(verifyFormalReaderProvisionContext(stage), true);
   for (const [field, invalid] of [
     ['GITHUB_REF', 'refs/heads/feature/test'],
@@ -47,18 +49,20 @@ test('formal reader provisioner requires exact OWNER trusted-main Staging contex
     ['STAGING_SUPABASE_URL', 'https://fiepaguycecrredwrcwx.supabase.co']
   ]) {
     assert.throws(
-      () => verifyFormalReaderProvisionContext({ ...stage, [field]: invalid }),
+      () =>
+        verifyFormalReaderProvisionContext({ ...stage, [field]: invalid }),
       /UNTRUSTED_APPROVAL_CONTEXT/u,
       field
     );
   }
   assert.throws(
-    () => verifyFormalReaderProvisionContext({ ...stage, VERCEL_API_TOKEN: '' }),
+    () =>
+      verifyFormalReaderProvisionContext({ ...stage, VERCEL_API_TOKEN: '' }),
     /EXISTING_STAGING_SECRETS_REQUIRED/u
   );
 });
 
-test('formal reader credentials are routed only to the approved Staging host', () => {
+test('formal reader credentials use the approved Staging host only', () => {
   const password = 'p'.repeat(64);
   const direct = new URL(deriveFormalReaderDatabaseUrl(adminUrl, password));
   assert.equal(direct.username, 'novelight_formal_reader_ro');
@@ -76,7 +80,9 @@ test('formal reader credentials are routed only to the approved Staging host', (
   for (const bad of [
     'postgresql://postgres:fake@db.fiepaguycecrredwrcwx.supabase.co:5432/postgres',
     'postgresql://postgres:fake@db.' + REF + '.supabase.co:6543/postgres',
-    'postgresql://postgres:fake@db.' + REF + '.supabase.co:5432/postgres?sslmode=disable'
+    'postgresql://postgres:fake@db.' +
+      REF +
+      '.supabase.co:5432/postgres?sslmode=disable'
   ]) {
     assert.throws(
       () => deriveFormalReaderDatabaseUrl(bad, password),
@@ -85,7 +91,7 @@ test('formal reader credentials are routed only to the approved Staging host', (
   }
 });
 
-test('SCRAM verifier never contains the plaintext generated password', () => {
+test('SCRAM verifier excludes the generated plaintext password', () => {
   const password = 'p'.repeat(64);
   const verifier = makeScramVerifier(password, Buffer.alloc(16, 7));
   assert.match(
@@ -99,7 +105,7 @@ test('SCRAM verifier never contains the plaintext generated password', () => {
   );
 });
 
-test('missing staging credentials fail before any external access', async () => {
+test('missing Staging credentials block all I/O', async () => {
   let invoked = false;
   await assert.rejects(
     provisionFormalStagingReader({
