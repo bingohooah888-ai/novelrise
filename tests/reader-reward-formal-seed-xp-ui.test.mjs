@@ -80,7 +80,10 @@ class Node {
 }
 globalThis.document = { createElement: (tag) => new Node(tag) };
 const walk = (root) => [root, ...root.children.flatMap(walk)];
-const content = (root) => walk(root).map((n) => n.textContent).join(' ');
+const content = (root) =>
+  walk(root)
+    .map((n) => n.textContent)
+    .join(' ');
 async function render(data) {
   const root = new Node('main');
   const panel = ui.createRewardReaderPanel({
