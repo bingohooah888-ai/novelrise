@@ -571,7 +571,7 @@ test('just-in-time transfer rechecks accepted row before changing note editor', 
     true
   );
   const list = f.host.children[0].children[1];
-  const transfer = list.children[2].children[1].children[0];
+  const transfer = list.children[1].children[1].children[0];
   assert.equal(f.requests.length, 1);
   await transfer.listeners.click();
   assert.equal(f.requests.length, 2);
@@ -633,7 +633,7 @@ test('edit after listing or denied recheck never transfers an old accepted row',
       true
     );
     const section = f.host.children[0];
-    const transfer = section.children[1].children[2].children[1].children[0];
+    const transfer = section.children[1].children[1].children[1].children[0];
     await transfer.listeners.click();
     assert.equal(transfers, 0);
     assert.equal(f.requests.length, 2);
