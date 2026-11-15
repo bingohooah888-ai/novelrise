@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { URL } from 'node:url';
 import { setImmediate } from 'node:timers';
+import { quoteEpisodeRewardTenths } from '../api/_lib/reader-reward/rates.js';
 await import('../assets/formal-scout-reward-ui.js');
 
 const ui = globalThis.NovelightFormalScoutReward;
@@ -669,4 +670,108 @@ test('history hides unverified rows and avoids balance claims', async () => {
   assert.equal(panel.getSnapshot().history.length, 0);
   assert.match(text(root), /取得したPoint履歴はありません/);
   assert.doesNotMatch(text(root), /取得範囲内の該当履歴：80件/);
+});
+
+test('reader rate guide exactly matches existing formal rate rules', () => {
+  for (let level = 1; level <= 100; level++) {
+    const quote = ui.quoteFormalRewardGuide(level);
+    assert.equal(quote.level, level);
+    assert.equal(
+      quote.pointsPerEligibleEpisode,
+      quoteEpisodeRewardTenths(level)
+    );
+    assert.equal(quote.pointsPerEligibleComment, 20);
+    assert.equal(quote.commentMonthlyLimit, 50);
+    if (quote.nextRateLevel !== null) {
+      assert.ok(quote.nextRateLevel > level);
+      assert.equal(
+        quote.nextRatePoints,
+        quoteEpisodeRewardTenths(quote.nextRateLevel)
+      );
+      for (let next = level + 1; next < quote.nextRateLevel; next++) {
+        assert.equal(quoteEpisodeRewardTenths(next), quote.pointsPerEligibleEpisode);
+      }
+    } else {
+      assert.equal(quote.nextRatePoints, null);
+      assert.equal(level, 100);
+    }
+  }
+  for (const invalid of [0, 101, -1, 1.5, '72', null, undefined]) {
+    assert.equal(ui.quoteFormalRewardGuide(invalid), null);
+  }
+  assert.deepEqual(
+    {
+      nextRate: ui.quoteFormalRewardGuide(72).nextRateLevel,
+      nextRank: ui.quoteFormalRewardGuide(72).nextRankName,
+      nextRankLevel: ui.quoteFormalRewardGuide(72).nextRankLevel
+    },
+    { nextRate: 75, nextRank: 'SERAPH', nextRankLevel: 81 }
+  );
+});
+
+test('reward guide shows verified next milestones without Point operations', async () => {
+  const root = new FakeElement('main');
+  let reads = 0;
+  let writes = 0;
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => {
+      reads++;
+      return base;
+    },
+    onExchange: async () => {
+      writes++;
+    },
+    onAiUse: async () => {
+      writes++;
+    }
+  });
+  await panel.reload();
+  const initialReads = reads;
+  const guideTab = byTag(root, 'button').find(
+    (button) => button.textContent === '報酬ガイド'
+  );
+  guideTab.fire('click');
+  assert.match(text(root), /Lv.72 の予定レート/);
+  assert.match(text(root), /5 pt \/ 適格1話/);
+  assert.match(text(root), /次の読書単価 Lv.75/);
+  assert.match(text(root), /6 pt \/ 適格1話まで あと3 Lv/);
+  assert.match(text(root), /次のScout Rank SERAPH/);
+  assert.match(text(root), /Lv.81 まで あと9 Lv/);
+  assert.match(text(root), /20 pt、月50件まで/);
+  assert.match(text(root), /正式報酬は公開OFF/);
+  const bandRows = flatten(root).filter(
+    (element) => element.className?.includes('rr-guide-rate-row')
+  );
+  assert.equal(bandRows.length, 11);
+  assert.equal(
+    bandRows.filter((row) => row.attributes['aria-current'] === 'true').length,
+    1
+  );
+  assert.equal(reads, initialReads);
+  assert.equal(writes, 0);
+});
+
+test('highest Level and unverified snapshots stay non-operational', async () => {
+  const root = new FakeElement('main');
+  let snapshot = {
+    ...base,
+    account: { ...base.account, level: 100 }
+  };
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => snapshot
+  });
+  await panel.reload();
+  byTag(root, 'button')
+    .find((button) => button.textContent === '報酬ガイド')
+    .fire('click');
+  assert.match(text(root), /11 pt \/ 適格1話/);
+  assert.match(text(root), /最高レート/);
+  assert.match(text(root), /最高Rank/);
+  snapshot = { ...snapshot, serverVerified: false };
+  await panel.reload();
+  assert.match(text(root), /現在の獲得見込は表示しません/);
+  assert.doesNotMatch(text(root), /現在の読書報酬目安/);
+  assert.equal(panel.getSnapshot().level, null);
 });
