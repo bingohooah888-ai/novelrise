@@ -184,6 +184,62 @@ test('renders reader badges and SEED growth without internal Rank', async () => 
   assert.equal(blocked.getSnapshot().scout, null);
 });
 
+test('author-owned Rank history is visible only in verified formal view', async () => {
+  const eligible = {
+    ...base,
+    formalEnabled: true,
+    scout: { badges: [], seeds: [] },
+    authorGrowth: {
+      works: [
+        {
+          id: '121',
+          title: '作者本人の作品',
+          rank: 4,
+          rankName: 'BEACON',
+          peakRank: 5
+        }
+      ],
+      events: [
+        {
+          workId: '121',
+          type: 'promotion',
+          toRank: 4,
+          occurredAt: '2026-11-15T00:00:00Z'
+        }
+      ]
+    }
+  };
+  const root = new FakeElement('main');
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => eligible
+  });
+  await panel.reload();
+  byTag(root, 'button')
+    .find((button) => button.textContent === '発掘・称号')
+    .fire('click');
+  assert.match(text(root), /作者専用/);
+  assert.match(text(root), /作者本人の作品/);
+  assert.match(text(root), /BEACON/);
+  assert.match(text(root), /Rank 4/);
+  assert.match(text(root), /昇格/);
+  const hidden = new FakeElement('main');
+  const blocked = ui.createRewardReaderPanel({
+    root: hidden,
+    fetchSnapshot: async () => ({ ...eligible, formalEnabled: false })
+  });
+  await blocked.reload();
+  byTag(hidden, 'button')
+    .find((button) => button.textContent === '発掘・称号')
+    .fire('click');
+  assert.doesNotMatch(text(hidden), /作者本人の作品/);
+  const unverified = ui.normalizeSnapshot({
+    ...eligible,
+    serverVerified: false
+  });
+  assert.equal(unverified.authorGrowth, null);
+});
+
 test('unverified wallet cannot display usable balances or activate reward actions', async () => {
   const snapshot = ui.normalizeSnapshot({
     ...base,

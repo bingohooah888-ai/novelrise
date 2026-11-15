@@ -34,7 +34,8 @@ export function createFormalRewardUsageService({
   verifyGiftNonFulfillment,
   verifyGiftRefund,
   verifyAiRefund,
-  getScoutOverview
+  getScoutOverview,
+  getAuthorGrowth
 } = {}) {
   if (
     typeof repository?.transact !== 'function' ||
@@ -365,6 +366,12 @@ export function createFormalRewardUsageService({
       enabled && typeof getScoutOverview === 'function'
         ? await getScoutOverview(userId)
         : null;
+    // The author view reuses the verified reader identity and is kept OFF
+    // until the same formal release and canonical cutover gates approve it.
+    const authorGrowth =
+      enabled && typeof getAuthorGrowth === 'function'
+        ? await getAuthorGrowth(userId)
+        : null;
     return {
       serverVerified: true,
       formalEnabled: enabled,
@@ -377,6 +384,7 @@ export function createFormalRewardUsageService({
       },
       account: state.account || {},
       scout,
+      authorGrowth,
       history: state.history || [],
       aiFeatures: catalog.map((f) => ({
         id: f.id,
