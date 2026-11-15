@@ -26,9 +26,7 @@ const ORPHANS_SQL =
 
 function nonnegative(value) {
   const number =
-    typeof value === 'string' && /^\d+$/.test(value)
-      ? Number(value)
-      : value;
+    typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
   if (!Number.isSafeInteger(number) || number < 0)
     throw new Error('FORMAL_BADGE_HISTORY_COUNT_INVALID');
   return number;
