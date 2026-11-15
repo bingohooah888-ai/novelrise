@@ -321,7 +321,8 @@ test('formal admin page defaults to read-only monitoring', async () => {
     1
   );
   assert.equal(match(root, '根拠を確認').length, 1);
-  assert.match(flatten(root).map((n) => n.textContent).join(' '), /交換キューは未接続/);
+  const visibleText = flatten(root).map((n) => n.textContent).join(' ');
+  assert.match(visibleText, /交換キューは未接続/);
   assert.equal(match(root, '返金・回収を照合').length, 0);
   assert.equal(match(root, '事業者への引渡しを照合').length, 0);
   assert.ok(calls.length >= 1);
