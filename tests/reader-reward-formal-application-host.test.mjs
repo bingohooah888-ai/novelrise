@@ -63,7 +63,18 @@ function setup({ unitVerified = true, adminEnabled = false } = {}) {
       throw new Error('Unexpected query: ' + sql);
     },
     async connect() {
-      throw new Error('Transactions are not authorized in this test');
+      return {
+        async query(sql, values) {
+          if (
+            sql === 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY' ||
+            sql === 'COMMIT' ||
+            sql === 'ROLLBACK'
+          )
+            return { rows: [] };
+          return pool.query(sql, values);
+        },
+        release() {}
+      };
     }
   };
   const application = createUnregisteredFormalApplication({
@@ -190,6 +201,7 @@ test('composition requires injected trusted pool and Auth; never registers a rou
   assert.equal(typeof application.readerHttp, 'function');
   assert.equal(typeof application.adminHttp, 'function');
   assert.equal(typeof application.bindExistingScheduler, 'function');
+  assert.equal(typeof application.enqueueCommittedEarning, 'function');
   assert.equal(typeof application.bindExistingMaintenanceScheduler, 'function');
   assert.equal(typeof application.reviewDueMaintenance, 'function');
   assert.equal(
@@ -201,6 +213,16 @@ test('composition requires injected trusted pool and Auth; never registers a rou
     'formal_maintenance_disabled'
   );
   assert.equal(Object.hasOwn(application, 'registerApiRoute'), false);
+});
+
+test('application keeps committed-event queue handoff disabled without launch', async () => {
+  const { application, calls } = setup();
+  const response = await application.enqueueCommittedEarning({
+    eventType: 'valid_read_qualified',
+    eventId: EVENT
+  });
+  assert.equal(response.status, 'formal_worker_disabled');
+  assert.equal(calls.length, 0);
 });
 
 test('unregistered application wires admin maintenance readiness without running review', async () => {
