@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 import {
   createOfflineOwnerNovelBibleCheckpoint,
@@ -144,7 +145,7 @@ function syntheticClient({ forcedClaimResult, owner = OWNER, body = TEXT } = {})
           source_hash: p.p_next_source_hash,
           summary: { novelightPhase2: p.p_next_progress }
         };
-        return { data: [structuredClone(row)], error: null };
+        return { data: [JSON.parse(JSON.stringify(row))], error: null };
       }
       throw new Error('Unexpected RPC');
     }
