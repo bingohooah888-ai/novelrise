@@ -149,7 +149,12 @@ function offline({
       ai_direct_use: { scopeId: 'synthetic-ai', limitPoints: 100000 }
     },
     mockAiCatalog: [
-      { id: 'analysis', name: '架空作品分析', pricePoints: aiPrice, approved: true }
+      {
+        id: 'analysis',
+        name: '架空作品分析',
+        pricePoints: aiPrice,
+        approved: true
+      }
     ],
     syntheticPostReleasePoints: formalPoints
       ? [
@@ -175,7 +180,9 @@ test('beta legacy rows convert once, already-tenfold rows stay intact and Wallet
   assert.equal(handoff.summary.convertedConfirmedNet, 7000);
   assert.equal(handoff.walletSeeds[0].availablePoints, 4000);
   assert.equal(handoff.walletSeeds[1].availablePoints, 3000);
-  assert.ok(handoff.walletSeeds.every((user) => user.exchangeEligiblePoints === 0));
+  assert.ok(
+    handoff.walletSeeds.every((user) => user.exchangeEligiblePoints === 0)
+  );
   assert.equal(
     reconcileScoutOfflineOpening({
       handoff,
@@ -199,10 +206,12 @@ test('beta legacy rows convert once, already-tenfold rows stay intact and Wallet
     new Set(first.body.history.map((entry) => entry.operationId)).size,
     first.body.history.length
   );
-  const cohort = (await sandbox.adminRequest({
-    method: 'GET',
-    query: { view: 'wallet_cohort' }
-  })).body;
+  const cohort = (
+    await sandbox.adminRequest({
+      method: 'GET',
+      query: { view: 'wallet_cohort' }
+    })
+  ).body;
   assert.equal(cohort.status, 'formal_wallet_cohort_review_only');
   assert.equal(cohort.observed.wallet_users, 2);
   assert.equal(cohort.observed.ledger_users, 2);
@@ -216,9 +225,11 @@ test('beta legacy rows convert once, already-tenfold rows stay intact and Wallet
 
 test('badge history reports old/current unit claims, baseline and missing rewards without paying twice', async () => {
   const sandbox = offline();
-  const admin = globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings({
-    request: async (input) => (await sandbox.adminRequest(input)).body
-  });
+  const admin = globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings(
+    {
+      request: async (input) => (await sandbox.adminRequest(input)).body
+    }
+  );
   const report = await admin.loadBadgeHistory();
   assert.equal(report.status, 'formal_badge_history_review_only');
   assert.equal(report.observed.earned_badges, 5);
@@ -231,7 +242,11 @@ test('badge history reports old/current unit claims, baseline and missing reward
   assert.equal(report.mayIssuePoints, false);
   assert.equal(report.readyForPublicRelease, false);
   assert.ok(report.blockers.includes('beta_point_10x_cutover_not_verified'));
-  assert.ok(report.blockers.includes('earned_without_point_event_requires_manual_review'));
+  assert.ok(
+    report.blockers.includes(
+      'earned_without_point_event_requires_manual_review'
+    )
+  );
   assert.equal(JSON.stringify(report).includes(reader), false);
   assert.equal(JSON.stringify(report).includes(sourceA), false);
 
@@ -255,7 +270,8 @@ test('gift exchange rejects beta balances even when total Points are sufficient'
   });
   assert.equal(exchange.statusCode, 409);
   assert.equal(exchange.body.error, 'insufficient_exchange_eligible_points');
-  const snapshot = (await sandbox.readerRequest(reader, { method: 'GET' })).body;
+  const snapshot = (await sandbox.readerRequest(reader, { method: 'GET' }))
+    .body;
   assert.equal(snapshot.wallet.availablePoints, 4200);
   assert.equal(snapshot.wallet.exchangeEligiblePoints, 200);
   const cohort = await sandbox.inspectSyntheticWalletCohort();
@@ -268,10 +284,13 @@ test('gift exchange rejects beta balances even when total Points are sufficient'
 test('AI uses beta Point before new formal Point and idempotent refund restores exact allocation', async () => {
   const sandbox = offline({ formalPoints: 200 });
   const bridge =
-    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings({
-      request: async (input) => (await sandbox.readerRequest(reader, input)).body,
-      nextOperationId: () => aiOperation
-    });
+    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings(
+      {
+        request: async (input) =>
+          (await sandbox.readerRequest(reader, input)).body,
+        nextOperationId: () => aiOperation
+      }
+    );
   const before = await bridge.fetchSnapshot();
   assert.equal(before.wallet.availablePoints, 4200);
   assert.equal(before.wallet.exchangeEligiblePoints, 200);
@@ -324,9 +343,11 @@ test('gift reservation and fulfillment only consume eligible formal Point, with 
   assert.equal(reserved.observed.wallet_reserved_points, 30000);
   assert.equal(reserved.observed.unsettled_ledger_rows, 1);
   assert.equal(reserved.observed.ledger_confirmed_net_points, 37300);
-  const heldSnapshot = (await sandbox.readerRequest(reader, {
-    method: 'GET'
-  })).body;
+  const heldSnapshot = (
+    await sandbox.readerRequest(reader, {
+      method: 'GET'
+    })
+  ).body;
   assert.equal(heldSnapshot.wallet.availablePoints, 4300);
   assert.equal(heldSnapshot.wallet.exchangeEligiblePoints, 300);
   assert.equal(heldSnapshot.wallet.heldPoints, 30000);
@@ -349,7 +370,8 @@ test('gift reservation and fulfillment only consume eligible formal Point, with 
   });
   assert.equal(repeated.body.status, 'already_processed');
   assert.equal(
-    (await sandbox.inspectSyntheticWalletCohort()).observed.wallet_balance_mismatch_users,
+    (await sandbox.inspectSyntheticWalletCohort()).observed
+      .wallet_balance_mismatch_users,
     0
   );
 });
@@ -362,16 +384,21 @@ test('unlinked badge Point is held for review; duplicate source event keys and t
     point_value: 60
   };
   const sandbox = offline({ sourceRows: [...rows, orphan] });
-  const report = (await sandbox.adminRequest({
-    method: 'GET',
-    query: { view: 'badge_history' }
-  })).body;
+  const report = (
+    await sandbox.adminRequest({
+      method: 'GET',
+      query: { view: 'badge_history' }
+    })
+  ).body;
   assert.equal(report.observed.orphan_reader_badge_events, 1);
   assert.equal(report.observed.unclassified_badge_events, 1);
   assert.equal(report.mayIssuePoints, false);
   const altered = clone(rows);
   altered[2].event_key = altered[0].event_key;
-  assert.equal(quoted(altered).status, 'legacy_ledger_identity_or_version_invalid');
+  assert.equal(
+    quoted(altered).status,
+    'legacy_ledger_identity_or_version_invalid'
+  );
   const baseline = quoted();
   const tampered = {
     ...baseline,
@@ -382,15 +409,16 @@ test('unlinked badge Point is held for review; duplicate source event keys and t
     )
   };
   assert.throws(
-    () => createFormalOfflineIntegration({
-      handoff: tampered,
-      betaThresholdRows: thresholds,
-      operatorId: operator,
-      mockBudgets: {
-        external_exchange: { scopeId: 'synthetic-gift', limitPoints: 100000 },
-        ai_direct_use: { scopeId: 'synthetic-ai', limitPoints: 100000 }
-      }
-    }),
+    () =>
+      createFormalOfflineIntegration({
+        handoff: tampered,
+        betaThresholdRows: thresholds,
+        operatorId: operator,
+        mockBudgets: {
+          external_exchange: { scopeId: 'synthetic-gift', limitPoints: 100000 },
+          ai_direct_use: { scopeId: 'synthetic-ai', limitPoints: 100000 }
+        }
+      }),
     TypeError
   );
 });
