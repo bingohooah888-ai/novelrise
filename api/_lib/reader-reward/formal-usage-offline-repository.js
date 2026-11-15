@@ -182,8 +182,7 @@ export function createOfflineFormalUsageRepository({
     try {
       const user = users.get(row.user_id);
       if (!user?.levelState) return { status: 'formal_state_missing' };
-      if (syntheticXpClaims.has(row.id))
-        return { status: 'already_applied' };
+      if (syntheticXpClaims.has(row.id)) return { status: 'already_applied' };
       const state = user.levelState;
       const grant = {
         userId: row.user_id,
