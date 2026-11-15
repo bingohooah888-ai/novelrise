@@ -45,7 +45,7 @@ function fakeFactory({ overlap = true, samePid = false } = {}) {
   return { clients, factory };
 }
 
-test('disabled by default and rejects prod/transaction pooler/non-TLS overrides', () => {
+test('rejects production and unsafe connections by default', () => {
   assert.throws(
     () => validateStagingConnectionConfig({}),
     /nlo_staging_dual_session_disabled/
@@ -74,7 +74,7 @@ test('disabled by default and rejects prod/transaction pooler/non-TLS overrides'
   );
 });
 
-test('two independent, overlapping, read-only transactions produce a proof', async () => {
+test('two read-only sessions produce a verified overlap', async () => {
   const { clients, factory } = fakeFactory();
   const result = await runNloStagingDualSessionOverlap({
     env,
@@ -87,9 +87,7 @@ test('two independent, overlapping, read-only transactions produce a proof', asy
   for (const client of clients) {
     assert.equal(client.closed, true);
     assert.deepEqual(
-      client.statements.filter(
-        (x) => !x.startsWith('SELECT pg_backend_pid()')
-      ),
+      client.statements.filter((x) => !x.startsWith('SELECT pg_backend_pid()')),
       ['BEGIN TRANSACTION READ ONLY', 'SELECT pg_sleep(2)', 'ROLLBACK']
     );
     assert.deepEqual(client.options.ssl, { rejectUnauthorized: true });
@@ -106,7 +104,7 @@ test('serialized windows cannot be falsely accepted', async () => {
   assert.equal(result.overlapMs, 0);
 });
 
-test('same backend PID fails closed and cleans up both transactions', async () => {
+test('same backend PID is denied and rolled back', async () => {
   const { factory, clients } = fakeFactory({ samePid: true });
   await assert.rejects(
     runNloStagingDualSessionOverlap({ env, clientFactory: factory }),
