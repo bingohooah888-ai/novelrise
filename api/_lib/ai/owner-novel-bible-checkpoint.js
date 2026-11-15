@@ -593,7 +593,7 @@ export function createSupabaseOwnerNovelBibleCheckpointRepository({
           : !nextProgress ||
             typeof nextProgress !== 'object' ||
             Array.isArray(nextProgress)) ||
-        (action === 'record'
+        (action === 'record' || action === 'replan'
           ? !Number.isSafeInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= 64
           : chunkIndex !== undefined)
       ) {
