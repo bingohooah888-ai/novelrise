@@ -114,7 +114,7 @@ test('server-verified formal reader sees actual ledger XP and explicitly unverif
   assert.match(rendered, /残りの履歴は別途照合/);
   assert.doesNotMatch(rendered, /300 XP|rankAtSeed|highestRankSeen/);
   assert.equal(panel.getSnapshot().seedEvidence.items.length, 1);
-  assert.equal(walk(root).filter((n) => n.tagName === 'button').length, 4);
+  assert.equal(walk(root).filter((n) => n.tagName === 'button').length, 5);
 });
 
 test('unverified or disabled snapshot hides all actual seed XP and work titles', async () => {
