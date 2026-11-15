@@ -184,14 +184,58 @@
             clear();
             return;
           }
-          // This is only an editable draft; the author explicitly saves
-          // through the existing owner-verified Story Notes RPC separately.
+          // The list may have become stale while the page was open. Ask the
+          // owner-only API to reload the accepted row and current chapter
+          // BEFORE preparing an editable draft. No transfer on failures.
+          if (
+            typeof onAccepted !== 'function' ||
+            item.status !== 'accepted' ||
+            !Number.isSafeInteger(item.revision) ||
+            item.revision < 2
+          ) {
+            throw new Error('TRANSFER_NOT_VERIFIED');
+          }
+          const recheckUrl =
+            url +
+            '&transfer_candidate_id=' +
+            item.id +
+            '&expected_revision=' +
+            item.revision;
+          const response = await fetcher(recheckUrl, {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + token },
+            credentials: 'same-origin',
+            cache: 'no-store'
+          });
+          if (!response.ok || !(await currentSession())) {
+            throw new Error('TRANSFER_NOT_VERIFIED');
+          }
+          const verified = await response.json();
+          const current = verified?.candidate;
+          if (
+            verified?.novelId !== id ||
+            verified?.transferReady !== true ||
+            !validItem(current, 'accepted') ||
+            current.id !== item.id ||
+            current.revision !== item.revision ||
+            current.episodeId !== item.episodeId ||
+            current.kind !== item.kind ||
+            current.key !== item.key ||
+            current.summary !== item.summary ||
+            current.evidence !== item.evidence ||
+            current.replacesOutdatedVersion !== undefined ||
+            !(await currentSession())
+          ) {
+            throw new Error('TRANSFER_NOT_VERIFIED');
+          }
+          // Use only server-revalidated data, never the prior list snapshot.
+          // This fills an UNSAVED draft; saving remains a separate author act.
           const prepared = await onAccepted({
-            kind: item.kind,
-            key: item.key,
-            summary: item.summary,
-            evidence: item.evidence,
-            episodeId: item.episodeId
+            kind: current.kind,
+            key: current.key,
+            summary: current.summary,
+            evidence: current.evidence,
+            episodeId: current.episodeId
           });
           if (!(await currentSession())) {
             clear();
@@ -271,7 +315,13 @@
           // Never perform a second POST automatically.
           row.remove();
           if (action === 'accept' && typeof onAccepted === 'function') {
-            list.appendChild(offerTransfer(item));
+            list.appendChild(
+              offerTransfer({
+                ...item,
+                status: 'accepted',
+                revision: updated.revision
+              })
+            );
           }
         } catch {
           decisionUnconfirmed();
