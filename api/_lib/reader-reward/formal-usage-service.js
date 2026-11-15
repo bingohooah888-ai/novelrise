@@ -33,7 +33,9 @@ export function createFormalRewardUsageService({
   verifyGiftReceipt,
   verifyGiftNonFulfillment,
   verifyGiftRefund,
-  verifyAiRefund
+  verifyAiRefund,
+  getScoutOverview,
+  getAuthorGrowth
 } = {}) {
   if (
     typeof repository?.transact !== 'function' ||
@@ -358,6 +360,18 @@ export function createFormalRewardUsageService({
     const state = await repository.readReader(userId);
     if (!state) return response('wallet_unavailable');
     const enabled = approved();
+    // Only the already trusted, formally enabled backend may augment the
+    // snapshot with the original badge/SEED sources. No beta/public reads.
+    const scout =
+      enabled && typeof getScoutOverview === 'function'
+        ? await getScoutOverview(userId)
+        : null;
+    // The author view reuses the verified reader identity and is kept OFF
+    // until the same formal release and canonical cutover gates approve it.
+    const authorGrowth =
+      enabled && typeof getAuthorGrowth === 'function'
+        ? await getAuthorGrowth(userId)
+        : null;
     return {
       serverVerified: true,
       formalEnabled: enabled,
@@ -369,6 +383,8 @@ export function createFormalRewardUsageService({
         heldPoints: state.wallet.heldPoints ?? 0
       },
       account: state.account || {},
+      scout,
+      authorGrowth,
       history: state.history || [],
       aiFeatures: catalog.map((f) => ({
         id: f.id,

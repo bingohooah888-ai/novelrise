@@ -6,6 +6,16 @@
   const POINTS_PER_YEN = 10;
   const MIN_EXCHANGE_POINTS = 30000;
   const MAINTENANCE_XP = 200;
+  // Exact 10-stage rank names from MASTER §49.22. The formal UI derives
+  // the rank only from a server-verified Level, never from browser XP.
+  const SCOUT_RANK_NAMES = Object.freeze([
+    'NOCTIS', 'VESPER', 'UMBRA', 'ASTRA', 'LUCENT',
+    'AURELIS', 'CELESTIA', 'EMPYREAN', 'SERAPH', 'LUMINARIS'
+  ]);
+  const rankAtLevel = (level) =>
+    Number.isSafeInteger(level) && level >= 1 && level <= 100
+      ? SCOUT_RANK_NAMES[Math.floor((level - 1) / 10)]
+      : null;
   const number = (value) => Number(value).toLocaleString('ja-JP');
   const validPoints = (value) => Number.isSafeInteger(value) && value >= 0;
   const yen = (points) =>
@@ -61,6 +71,7 @@
       verified,
       formalEnabled: verified && s.formalEnabled === true,
       level: verified ? level : null,
+      rank: verified ? rankAtLevel(level) : null,
       progress:
         verified &&
         Number.isSafeInteger(account.progressXp) &&
@@ -92,6 +103,25 @@
           : null,
       held:
         verified && validPoints(wallet.heldPoints) ? wallet.heldPoints : null,
+      scout:
+        verified && s.scout &&
+        Array.isArray(s.scout.badges) &&
+        Array.isArray(s.scout.seeds)
+          ? {
+              badges: s.scout.badges.slice(0, 100),
+              seeds: s.scout.seeds.slice(0, 20)
+            }
+          : null,
+      authorGrowth:
+        verified &&
+        s.formalEnabled === true &&
+        Array.isArray(s.authorGrowth?.works) &&
+        Array.isArray(s.authorGrowth?.events)
+          ? {
+              works: s.authorGrowth.works.slice(0, 30),
+              events: s.authorGrowth.events.slice(0, 80)
+            }
+          : null,
       history:
         verified && Array.isArray(s.history) ? s.history.slice(0, 40) : [],
       aiFeatures: Array.isArray(s.aiFeatures) ? s.aiFeatures.slice(0, 25) : [],
@@ -199,6 +229,11 @@
               : '進捗未確定'
         ),
         metric(
+          'SCOUT RANK',
+          s.rank === null ? '—' : s.rank,
+          s.rank === null ? 'サーバー確認待ち' : '10 Levelごとの正式Rank'
+        ),
+        metric(
           '利用可能',
           s.available === null ? '—' : number(s.available) + ' pt',
           s.available === null
@@ -252,10 +287,11 @@
         : '現在は正式版の準備中です。Pointの交換・AI直接利用はまだできません。';
     }
     function selectTab(name) {
-      if (!['history', 'exchange', 'ai'].includes(name)) return;
+      if (!['history', 'scout', 'exchange', 'ai'].includes(name)) return;
       tab = name;
       tabs.replaceChildren();
       for (const [key, title] of [
+        ['scout', '発掘・称号'],
         ['history', '報酬・利用履歴'],
         ['exchange', 'デジタルギフト交換'],
         ['ai', 'AIに使う']
@@ -268,7 +304,8 @@
         tabs.append(b);
       }
       contents.replaceChildren();
-      if (tab === 'history') drawHistory();
+      if (tab === 'scout') drawScout();
+      else if (tab === 'history') drawHistory();
       else if (tab === 'exchange') drawExchange();
       else drawAi();
     }
@@ -301,6 +338,124 @@
         list.append(row);
       }
       contents.append(heading, list);
+    }
+    function drawScout() {
+      contents.append(el('h3', '', 'SCOUT RECORD / 読者称号と発掘'));
+      if (!latest.scout) {
+        contents.append(el('p', 'rr-muted',
+          '本人認証済みの正式SCOUT実績はまだ取得できません。'));
+        return;
+      }
+      const badges = latest.scout.badges;
+      const seeds = latest.scout.seeds;
+      const earned = badges.filter((b) => b?.earned === true).length;
+      contents.append(el('p', 'rr-muted',
+        '読者称号 ' + number(earned) + ' / ' + number(badges.length) +
+        ' 種達成。既存の獲得記録は重複付与しません。'));
+      const badgeList = el('div', 'rr-history');
+      for (const badge of badges) {
+        if (!badge || typeof badge.name !== 'string' ||
+            typeof badge.id !== 'string') continue;
+        const row = el('div', 'rr-history-row');
+        const body = el('div');
+        body.append(el('strong', '', label(badge.name)));
+        const status = badge.earned === true
+          ? '獲得済み'
+          : badge.enabled === false
+            ? '正式解放待ち'
+            : '未獲得';
+        const progress = Number.isSafeInteger(badge.progress) &&
+                         Number.isSafeInteger(badge.target) &&
+                         badge.target > 0
+          ? number(Math.min(badge.progress, badge.target)) +
+            ' / ' + number(badge.target)
+          : '進捗照合中';
+        body.append(el('small', '', status + ' ・ ' + progress));
+        row.append(body);
+        badgeList.append(row);
+      }
+      if (!badgeList.children.length)
+        badgeList.append(el('p', 'rr-muted', '称号を読み込めません。'));
+      contents.append(badgeList, el('h3', '', 'LIGHT SEED 発掘履歴'));
+      const seedList = el('div', 'rr-history');
+      for (const seed of seeds) {
+        if (!seed || !['GOLD', 'SILVER', 'BRONZE'].includes(seed.type))
+          continue;
+        const row = el('div', 'rr-history-row');
+        const title = typeof seed.workTitle === 'string'
+          ? label(seed.workTitle) : '現在表示できない作品';
+        const growth = Number.isInteger(seed.growth) &&
+          seed.growth >= 0 && seed.growth <= 5 ? seed.growth : null;
+        const summary = seed.novaPrediction === true
+          ? 'NOVA予見' : growth === null
+            ? '成長確認中' : growth >= 2
+              ? '+' + growth + ' Rank 発掘'
+              : '発掘経過観察';
+        const info = el('div');
+        info.append(el('strong', '', title),
+          el('small', '', seed.type + ' LIGHT SEED ・ ' + summary));
+        row.append(info);
+        seedList.append(row);
+      }
+      if (!seedList.children.length)
+        seedList.append(el('p', 'rr-muted', '表示できる発掘履歴はありません。'));
+      contents.append(seedList);
+      if (latest.authorGrowth) {
+        contents.append(el('h3', '', '作者専用 / 自作品のRank・成長履歴'));
+        const workList = el('div', 'rr-history');
+        for (const work of latest.authorGrowth.works) {
+          if (!work || typeof work.title !== 'string' ||
+              !Number.isInteger(work.rank) || work.rank < 1 ||
+              work.rank > 6 || typeof work.rankName !== 'string')
+            continue;
+          const row = el('div', 'rr-history-row');
+          const info = el('div');
+          info.append(
+            el('strong', '', label(work.title)),
+            el('small', '',
+              'Rank ' + work.rank + ' ' + label(work.rankName) +
+              ' ・最高Rank ' + number(work.peakRank))
+          );
+          row.append(info);
+          workList.append(row);
+        }
+        if (!workList.children.length)
+          workList.append(el('p', 'rr-muted', '自作品のRank履歴はありません。'));
+        contents.append(workList);
+        const eventList = el('div', 'rr-history');
+        const titleByWorkId = new Map(
+          latest.authorGrowth.works
+            .filter((work) => work && typeof work.id === 'string')
+            .map((work) => [work.id, work.title])
+        );
+        for (const event of latest.authorGrowth.events) {
+          if (!event || !titleByWorkId.has(event.workId) ||
+              !Number.isInteger(event.toRank) ||
+              event.toRank < 1 || event.toRank > 6)
+            continue;
+          const type = {
+            initial: '初回', promotion: '昇格',
+            demotion: '降格', finalized: '確定'
+          }[event.type];
+          if (!type) continue;
+          const row = el('div', 'rr-history-row');
+          const info = el('div');
+          info.append(
+            el('strong', '', label(titleByWorkId.get(event.workId))),
+            el('small', '',
+              type + ' ・Rank ' + number(event.toRank) +
+              ' ・' + safeDate(event.occurredAt))
+          );
+          row.append(info);
+          eventList.append(row);
+        }
+        if (eventList.children.length) {
+          contents.append(
+            el('h3', '', '作品Rankの更新記録'),
+            eventList
+          );
+        }
+      }
     }
     function drawExchange() {
       const s = latest;
@@ -478,6 +633,7 @@
   }
   globalThis.NovelightFormalScoutReward = Object.freeze({
     POINTS_PER_YEN,
+    rankAtLevel,
     MIN_EXCHANGE_POINTS,
     normalizeSnapshot,
     createRewardReaderPanel

@@ -5,6 +5,8 @@ import { createFormalRewardUsageService } from './formal-usage-service.js';
 import { createFormalUsageHttpHandlers } from './formal-usage-http.js';
 import { createFormalUsagePostgresRepository } from './formal-usage-postgres-repository.js';
 import { createFormalCanonicalReader } from './formal-canonical-reader.js';
+import { createFormalScoutOverviewReader } from './formal-scout-overview-reader.js';
+import { createFormalAuthorGrowthReader } from './formal-author-growth-reader.js';
 
 export function createUnregisteredFormalRewardHost({
   repository,
@@ -18,12 +20,16 @@ export function createUnregisteredFormalRewardHost({
   verifyGiftNonFulfillment,
   verifyGiftRefund,
   verifyAiRefund,
+  getScoutOverview,
+  getAuthorGrowth,
   env,
   initializeNewReader,
   inspectNewReader,
   inspectEarningSource,
   getNewReaderSummary,
-  getAdminRewardOverview
+  getAdminRewardOverview,
+  getAdminBadgeCatalog,
+  getAdminBadgeHistory
 } = {}) {
   const service = createFormalRewardUsageService({
     repository,
@@ -35,7 +41,9 @@ export function createUnregisteredFormalRewardHost({
     verifyGiftReceipt,
     verifyGiftNonFulfillment,
     verifyGiftRefund,
-    verifyAiRefund
+    verifyAiRefund,
+    getScoutOverview,
+    getAuthorGrowth
   });
   const handlers = createFormalUsageHttpHandlers({
     service,
@@ -45,7 +53,9 @@ export function createUnregisteredFormalRewardHost({
     inspectNewReader,
     inspectEarningSource,
     getNewReaderSummary,
-    getAdminRewardOverview
+    getAdminRewardOverview,
+    getAdminBadgeCatalog,
+    getAdminBadgeHistory
   });
   return Object.freeze({ service, handlers });
 }
@@ -72,8 +82,16 @@ export function createUnregisteredFormalPostgresRewardHost({
     readCanonicalPointHistory:
       readCanonicalPointHistory || canonicalReader.readCanonicalPointHistory
   });
+  const scoutReader = createFormalScoutOverviewReader({
+    query: pool.query.bind(pool)
+  });
+  const authorReader = createFormalAuthorGrowthReader({
+    query: pool.query.bind(pool)
+  });
   return createUnregisteredFormalRewardHost({
     ...host,
+    getScoutOverview: scoutReader.read,
+    getAuthorGrowth: authorReader.read,
     repository,
     getAdminRewardOverview: repository.getAdminRewardOverview
   });
