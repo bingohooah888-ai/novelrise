@@ -495,25 +495,31 @@ test('unapproved or unverifiable source cannot enqueue a Point claim', async () 
     launchConfiguration: { ...launch, formalWorkerEnabled: false }
   });
   assert.equal(
-    (await disabled.enqueueCommittedEvent({
-      eventType: 'valid_read_qualified',
-      eventId: readId
-    })).status,
+    (
+      await disabled.enqueueCommittedEvent({
+        eventType: 'valid_read_qualified',
+        eventId: readId
+      })
+    ).status,
     'formal_worker_disabled'
   );
   const runner = create(db);
   assert.equal(
-    (await runner.enqueueCommittedEvent({
-      eventType: 'valid_read_qualified',
-      eventId: readId
-    })).status,
+    (
+      await runner.enqueueCommittedEvent({
+        eventType: 'valid_read_qualified',
+        eventId: readId
+      })
+    ).status,
     'canonical_source_missing'
   );
   assert.equal(
-    (await runner.enqueueCommittedEvent({
-      eventType: 'invalid_event',
-      eventId: readId
-    })).status,
+    (
+      await runner.enqueueCommittedEvent({
+        eventType: 'invalid_event',
+        eventId: readId
+      })
+    ).status,
     'invalid_event'
   );
   assert.equal(writes, 0);
