@@ -51,7 +51,7 @@ function rank(value) {
 }
 function seedCount(value) {
   const n =
-    typeof value === 'string' && /^\\d+$/.test(value)
+    typeof value === 'string' && /^\d+$/.test(value)
       ? Number(value)
       : value;
   if (!Number.isSafeInteger(n) || n < 0)
