@@ -34,6 +34,7 @@ export function createFormalOfflineIntegration({
   syntheticPostReleasePoints = [],
   syntheticEligibleEvents = [],
   syntheticDurableEvents = [],
+  syntheticXpEvents = [],
   syntheticNowIso,
   formalReleaseAtMs
 } = {}) {
@@ -52,15 +53,18 @@ export function createFormalOfflineIntegration({
     !Array.isArray(syntheticPostReleasePoints) ||
     !Array.isArray(syntheticEligibleEvents) ||
     !Array.isArray(syntheticDurableEvents) ||
+    !Array.isArray(syntheticXpEvents) ||
     syntheticEligibleEvents.length > 100 ||
+    syntheticXpEvents.length > 100 ||
     syntheticDurableEvents.length > 100 ||
-    (syntheticDurableEvents.length > 0 &&
+    ((syntheticDurableEvents.length > 0 || syntheticXpEvents.length > 0) &&
       (syntheticPostReleasePoints.length > 0 ||
         syntheticEligibleEvents.length > 0 ||
         typeof syntheticNowIso !== 'string' ||
         !Number.isFinite(Date.parse(syntheticNowIso)))) ||
     ((syntheticEligibleEvents.length > 0 ||
-      syntheticDurableEvents.length > 0) &&
+      syntheticDurableEvents.length > 0 ||
+      syntheticXpEvents.length > 0) &&
       (!Number.isSafeInteger(formalReleaseAtMs) || formalReleaseAtMs < 0))
   )
     throw new TypeError(
@@ -208,6 +212,7 @@ export function createFormalOfflineIntegration({
       userId: s.userId,
       availablePoints: s.availablePoints + formal,
       exchangeEligiblePoints: formal,
+      levelState: s.formalState,
       account: {
         level,
         highestLevel: s.formalState.highestLevel,
@@ -242,16 +247,18 @@ export function createFormalOfflineIntegration({
   if (!opening.length) throw new TypeError('Synthetic account list required');
   const repository = createOfflineFormalUsageRepository({
     readers: opening,
-    budgets: mockBudgets
+    budgets: mockBudgets,
+    openingPointEventKeys: handoff.convertedRows.map((row) => row.eventKey)
   });
   // Exercise the real unregistered runner, canonical source reader and
   // fixed private SQL call shapes against a synthetic DB. Unlike the legacy
   // up-front quote preview, these awards enter Wallet only after the durable
   // claim, delivery and completion steps have actually been invoked.
   const syntheticDb =
-    syntheticDurableEvents.length > 0
+    syntheticDurableEvents.length > 0 || syntheticXpEvents.length > 0
       ? createFormalOfflineDurableDb({
           events: syntheticDurableEvents,
+          xpEvents: syntheticXpEvents,
           readerIds,
           operatorId,
           releaseAtMs: formalReleaseAtMs,
@@ -385,6 +392,15 @@ export function createFormalOfflineIntegration({
     noRealPointOrProvider: true,
     handoffSummary: handoff.summary,
     rewardDecisions: Object.freeze(rewardDecisions),
+    // Match the dormant public.scout_xp_ledger AFTER INSERT handoff with a
+    // synthetic source ID, not caller-supplied XP/Level/Point amounts.
+    applyCommittedXp: ({ xpLedgerId } = {}) =>
+      syntheticDb
+        ? syntheticDb.applyCommittedXp({
+            xpLedgerId,
+            requiredXpByLevel: ladder.requiredXpByLevel
+          })
+        : { status: 'formal_xp_disabled' },
     // Synthetic-only internal post-commit and moderation handoff. Never
     // exposed via readerHttp/adminHttp, beta routes or external credentials.
     enqueueCommittedEarning: (event) =>
