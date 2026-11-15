@@ -103,6 +103,15 @@
           : null,
       held:
         verified && validPoints(wallet.heldPoints) ? wallet.heldPoints : null,
+      scout:
+        verified && s.scout &&
+        Array.isArray(s.scout.badges) &&
+        Array.isArray(s.scout.seeds)
+          ? {
+              badges: s.scout.badges.slice(0, 100),
+              seeds: s.scout.seeds.slice(0, 20)
+            }
+          : null,
       history:
         verified && Array.isArray(s.history) ? s.history.slice(0, 40) : [],
       aiFeatures: Array.isArray(s.aiFeatures) ? s.aiFeatures.slice(0, 25) : [],
@@ -268,10 +277,11 @@
         : '現在は正式版の準備中です。Pointの交換・AI直接利用はまだできません。';
     }
     function selectTab(name) {
-      if (!['history', 'exchange', 'ai'].includes(name)) return;
+      if (!['history', 'scout', 'exchange', 'ai'].includes(name)) return;
       tab = name;
       tabs.replaceChildren();
       for (const [key, title] of [
+        ['scout', '発掘・称号'],
         ['history', '報酬・利用履歴'],
         ['exchange', 'デジタルギフト交換'],
         ['ai', 'AIに使う']
@@ -284,7 +294,8 @@
         tabs.append(b);
       }
       contents.replaceChildren();
-      if (tab === 'history') drawHistory();
+      if (tab === 'scout') drawScout();
+      else if (tab === 'history') drawHistory();
       else if (tab === 'exchange') drawExchange();
       else drawAi();
     }
@@ -317,6 +328,68 @@
         list.append(row);
       }
       contents.append(heading, list);
+    }
+    function drawScout() {
+      contents.append(el('h3', '', 'SCOUT RECORD / 読者称号と発掘'));
+      if (!latest.scout) {
+        contents.append(el('p', 'rr-muted',
+          '本人認証済みの正式SCOUT実績はまだ取得できません。'));
+        return;
+      }
+      const badges = latest.scout.badges;
+      const seeds = latest.scout.seeds;
+      const earned = badges.filter((b) => b?.earned === true).length;
+      contents.append(el('p', 'rr-muted',
+        '読者称号 ' + number(earned) + ' / ' + number(badges.length) +
+        ' 種達成。既存の獲得記録は重複付与しません。'));
+      const badgeList = el('div', 'rr-history');
+      for (const badge of badges) {
+        if (!badge || typeof badge.name !== 'string' ||
+            typeof badge.id !== 'string') continue;
+        const row = el('div', 'rr-history-row');
+        const body = el('div');
+        body.append(el('strong', '', label(badge.name)));
+        const status = badge.earned === true
+          ? '獲得済み'
+          : badge.enabled === false
+            ? '正式解放待ち'
+            : '未獲得';
+        const progress = Number.isSafeInteger(badge.progress) &&
+                         Number.isSafeInteger(badge.target) &&
+                         badge.target > 0
+          ? number(Math.min(badge.progress, badge.target)) +
+            ' / ' + number(badge.target)
+          : '進捗照合中';
+        body.append(el('small', '', status + ' ・ ' + progress));
+        row.append(body);
+        badgeList.append(row);
+      }
+      if (!badgeList.children.length)
+        badgeList.append(el('p', 'rr-muted', '称号を読み込めません。'));
+      contents.append(badgeList, el('h3', '', 'LIGHT SEED 発掘履歴'));
+      const seedList = el('div', 'rr-history');
+      for (const seed of seeds) {
+        if (!seed || !['GOLD', 'SILVER', 'BRONZE'].includes(seed.type))
+          continue;
+        const row = el('div', 'rr-history-row');
+        const title = typeof seed.workTitle === 'string'
+          ? label(seed.workTitle) : '現在表示できない作品';
+        const growth = Number.isInteger(seed.growth) &&
+          seed.growth >= 0 && seed.growth <= 5 ? seed.growth : null;
+        const summary = seed.novaPrediction === true
+          ? 'NOVA予見' : growth === null
+            ? '成長確認中' : growth >= 2
+              ? '+' + growth + ' Rank 発掘'
+              : '発掘経過観察';
+        const info = el('div');
+        info.append(el('strong', '', title),
+          el('small', '', seed.type + ' LIGHT SEED ・ ' + summary));
+        row.append(info);
+        seedList.append(row);
+      }
+      if (!seedList.children.length)
+        seedList.append(el('p', 'rr-muted', '表示できる発掘履歴はありません。'));
+      contents.append(seedList);
     }
     function drawExchange() {
       const s = latest;
