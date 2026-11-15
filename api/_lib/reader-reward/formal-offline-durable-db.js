@@ -343,6 +343,7 @@ export function createFormalOfflineDurableDb({
       )
     ).reduce((total, row) => total + row.wallet.exchangeEligiblePoints, 0);
     const pending = await repository.listPendingExchanges();
+    const settled = repository.getSyntheticUsageTotals();
     return {
       status: 'reward_overview_ready',
       period: 'current_jst_calendar_month',
@@ -351,8 +352,8 @@ export function createFormalOfflineDurableDb({
       issuedTotal: sum(all),
       readMonth: sum(inMonth.filter((entry) => entry.kind === 'read')),
       commentMonth: sum(inMonth.filter((entry) => entry.kind === 'comment')),
-      giftSpentNet: 0,
-      aiSpentNet: 0,
+      giftSpentNet: settled.giftSpentNet,
+      aiSpentNet: settled.aiSpentNet,
       eligibleAvailable,
       eligibleReserved: pending.reduce(
         (total, item) => total + item.eligibleReservedPoints,
