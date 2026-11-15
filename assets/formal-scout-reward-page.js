@@ -11,7 +11,9 @@
     getAccessToken,
     fetchImpl,
     nextOperationId,
-    newReaderOnboardingAvailable = false
+    newReaderOnboardingAvailable = false,
+    adminGiftQueueAvailable = false,
+    adminSettlementActionsAvailable = false
   } = {}) {
     const transport = globalThis.NovelightFormalRewardTransport;
     const mount = globalThis.NovelightFormalRewardMount;
@@ -45,6 +47,8 @@
         mount.mountFormalRewardAdmin({
           root: adminRoot,
           authorized: authorized === true,
+          adminGiftQueueAvailable,
+          adminSettlementActionsAvailable,
           request: transport.createFormalRewardTransport({
             endpoint: adminEndpoint,
             getAccessToken,
