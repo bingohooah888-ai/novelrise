@@ -294,6 +294,15 @@ export function createFormalOfflineDurableDb({
     const complete = relevant.every(
       (fixture) => fixture.sourceFixtureVerified === true
     );
+    // Signed corrections are not governed by the ordinary XP policy.
+    if (
+      relevant.some(
+        (fixture) =>
+          fixture.sourceFixtureVerified === true &&
+          fixture.verifiedXpLedgerRow.xp_value < 0
+      )
+    )
+      return { status: 'xp_adjustment_review' };
     const committed = new Set(
       repository.getSyntheticXpSummary().applied.map(
         (entry) => entry.xpLedgerId
