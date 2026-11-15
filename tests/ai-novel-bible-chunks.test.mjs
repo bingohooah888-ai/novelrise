@@ -167,3 +167,89 @@ test('reject invalid owners, cross-work rows and malformed Unicode', () => {
     /AI_BIBLE_CHUNK_INVALID/
   );
 });
+
+test('verified historical snapshots restrict changed excerpts to the new text', () => {
+  const before = episode(7, '序章🌸旧⏰終章');
+  const after = episode(7, '序章🌸新✨終章');
+  const oldHash = createHash('sha256')
+    .update(JSON.stringify([before.title, before.content]))
+    .digest('hex');
+  const result = plan([after], {
+    analyses: [{ episode_id: 7, source_hash: oldHash }],
+    previousEpisodes: [before]
+  });
+  assert.equal(result.chunks.length, 1);
+  assert.equal(result.chunks[0].reason, 'changed');
+  assert.deepEqual(result.deletionOnlyEpisodes, []);
+  assert.equal(
+    materializeNovelBibleChunk({
+      principal, novel, episode: after, chunk: result.chunks[0]
+    }).text,
+    '新✨'
+  );
+  assert.ok(result.chunks[0].start > 0);
+  assert.doesNotMatch(JSON.stringify(result), /序章|旧|終章|新/u);
+});
+
+test('long insertions use bounded global offsets and preserve Unicode', () => {
+  const before = episode(8, '共通🌸結末');
+  const inserted = '新🌸'.repeat(900);
+  const after = episode(8, '共通🌸' + inserted + '結末');
+  const oldHash = createHash('sha256')
+    .update(JSON.stringify([before.title, before.content]))
+    .digest('hex');
+  const result = plan([after], {
+    analyses: [{ episode_id: 8, source_hash: oldHash }],
+    previousEpisodes: [before]
+  });
+  assert.ok(result.chunks.length > 1);
+  assert.ok(result.chunks.every((part) => part.byteLength <= 4096));
+  assert.equal(
+    result.chunks.map((chunk) => materializeNovelBibleChunk({
+      principal, novel, episode: after, chunk
+    }).text).join(''),
+    inserted
+  );
+});
+
+test('deletion-only changes avoid sending unchanged text to a model', () => {
+  const before = episode(9, '冒頭🌸削除された内容。結末');
+  const after = episode(9, '冒頭🌸結末');
+  const oldHash = createHash('sha256')
+    .update(JSON.stringify([before.title, before.content]))
+    .digest('hex');
+  const result = plan([after], {
+    analyses: [{ episode_id: 9, source_hash: oldHash }],
+    previousEpisodes: [before]
+  });
+  assert.deepEqual(result.deletionOnlyEpisodes, [9]);
+  assert.deepEqual(result.chunks, []);
+  assert.deepEqual(result.emptyChangedEpisodes, []);
+});
+
+test('untrusted historical revisions fail closed; missing history falls back', () => {
+  const before = episode(10, '過去の本文');
+  const after = episode(10, '変更後の本文');
+  const oldHash = createHash('sha256')
+    .update(JSON.stringify([before.title, before.content]))
+    .digest('hex');
+  const analyses = [{ episode_id: 10, source_hash: oldHash }];
+  const fallback = plan([after], { analyses });
+  assert.equal(
+    materializeNovelBibleChunk({
+      principal, novel, episode: after, chunk: fallback.chunks[0]
+    }).text,
+    after.content
+  );
+  for (const historical of [
+    [{ ...before, novel_id: 99 }],
+    [{ ...before, content: '異なる過去' }],
+    [{ ...before, content: '破損\\uD800' }],
+    [before, before]
+  ]) {
+    assert.throws(
+      () => plan([after], { analyses, previousEpisodes: historical }),
+      /AI_BIBLE_CHUNK_INVALID/u
+    );
+  }
+});
