@@ -1,13 +1,23 @@
 // Deterministic in-memory repository for isolated formal-reward development.
 // Never import into a live server. This is not PostgreSQL persistence.
 // A later approved DB adapter must implement the same transaction boundary.
+import {
+  quoteScoutXpLevelUp,
+  recheckScoutXpLevelUp
+} from './xp-progression.js';
+import { validateScoutLevelStateSnapshot } from './state-transition.js';
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const copy = (value) => JSON.parse(JSON.stringify(value));
 
 export function createOfflineFormalUsageRepository({
   readers = [],
-  budgets = {}
+  budgets = {},
+  openingPointEventKeys = []
 } = {}) {
+  if (!Array.isArray(openingPointEventKeys))
+    throw new TypeError('Verified opening Point keys required');
+  const openingPointKeys = new Set(openingPointEventKeys);
   const users = new Map();
   for (const reader of readers) {
     const userId = reader.userId;
@@ -34,6 +44,9 @@ export function createOfflineFormalUsageRepository({
         revision: 0
       },
       account: copy(reader.account || {}),
+      levelState: reader.levelState
+        ? validateScoutLevelStateSnapshot(reader.levelState)
+        : null,
       history: copy(reader.history || [])
     });
   }
@@ -59,6 +72,8 @@ export function createOfflineFormalUsageRepository({
   }
   const operations = new Map();
   const syntheticEarningLedger = new Map();
+  const syntheticXpClaims = new Map();
+  const syntheticXpGrantKeys = new Set();
   let tail = Promise.resolve();
 
   // Only the offline fixture may use this synthetic credit writer. It shares
@@ -122,8 +137,167 @@ export function createOfflineFormalUsageRepository({
         status: 'confirmed',
         at
       });
-      syntheticEarningLedger.set(eventKey, { userId, eventId, points, kind });
+      syntheticEarningLedger.set(eventKey, {
+        userId,
+        eventId,
+        points,
+        kind,
+        at
+      });
       return { status: 'recorded' };
+    } finally {
+      unlock();
+    }
+  }
+
+  // Mirror the already committed public.scout_xp_ledger event in memory.
+  // The genuine formal SQL cutover performs progression, one-time Point
+  // claims and Wallet updates in one transaction. This is ONLY its offline
+  // analog and never writes or replays to a real database.
+  async function applySyntheticXpEvent({
+    verifiedXpLedgerRow: row,
+    sourceFixtureVerified,
+    requiredXpByLevel
+  } = {}) {
+    if (
+      sourceFixtureVerified !== true ||
+      !row ||
+      !UUID.test(row.id || '') ||
+      !UUID.test(row.user_id || '') ||
+      !UUID.test(row.source_event_id || '') ||
+      typeof row.xp_kind !== 'string' ||
+      !Number.isSafeInteger(row.xp_value) ||
+      row.xp_value <= 0 ||
+      !Number.isSafeInteger(Date.parse(row.occurred_at))
+    )
+      return { status: 'canonical_xp_source_invalid' };
+
+    let unlock;
+    const next = new Promise((resolve) => {
+      unlock = resolve;
+    });
+    const prior = tail;
+    tail = next;
+    await prior;
+    try {
+      const user = users.get(row.user_id);
+      if (!user?.levelState) return { status: 'formal_state_missing' };
+      if (syntheticXpClaims.has(row.id))
+        return { status: 'already_applied' };
+      const state = user.levelState;
+      const grant = {
+        userId: row.user_id,
+        sourceEventId: row.source_event_id,
+        xpKind: row.xp_kind,
+        earnedXp: row.xp_value,
+        occurredAtMs: Date.parse(row.occurred_at)
+      };
+      let proposal;
+      try {
+        proposal = quoteScoutXpLevelUp({
+          stateSnapshot: state,
+          xpEvent: grant,
+          evidenceComplete: true,
+          alreadyAppliedToProgress: false,
+          thresholdsApproved: true,
+          requiredXpByLevel
+        });
+      } catch {
+        return { status: 'xp_quote_invalid' };
+      }
+      if (proposal.status !== 'proposal_only')
+        return { status: proposal.status };
+      if (syntheticXpGrantKeys.has(proposal.grantKey))
+        return { status: 'already_applied' };
+      // Match the dormant SQL's unresolved Lv.100 surplus policy.
+      if (state.currentLevel === 100)
+        return { status: 'level_100_surplus_policy_pending' };
+      if (proposal.nextState.currentLevel === 100) {
+        const toCap = Object.keys(requiredXpByLevel)
+          .filter((level) => Number(level) >= state.currentLevel)
+          .reduce((sum, level) => sum + requiredXpByLevel[level], 0);
+        if (row.xp_value + state.levelProgressXp > toCap)
+          return { status: 'level_100_surplus_policy_pending' };
+      }
+      const recheck = recheckScoutXpLevelUp({
+        proposal,
+        currentStateSnapshot: state,
+        grantKeyAlreadyCommitted: false
+      });
+      if (recheck.status !== 'preconditions_match_only')
+        return { status: recheck.status };
+
+      const gained = proposal.levelsGained;
+      const firstLevels = gained.filter((level) => {
+        const key = 'level_up:' + row.user_id + ':' + level;
+        return (
+          level > state.highestLevel &&
+          !openingPointKeys.has(key) &&
+          !syntheticEarningLedger.has(key)
+        );
+      });
+      const awardedPoints = firstLevels.length * 50;
+      const nextAvailable = user.wallet.availablePoints + awardedPoints;
+      const nextEligible = user.wallet.exchangeEligiblePoints + awardedPoints;
+      const nextPeriodXp = user.account.earnedXpInPeriod + row.xp_value;
+      if (
+        ![nextAvailable, nextEligible, nextPeriodXp].every(
+          Number.isSafeInteger
+        ) ||
+        nextEligible > nextAvailable
+      )
+        return { status: 'synthetic_xp_overflow' };
+      const nextUser = copy(user);
+      nextUser.levelState = proposal.nextState;
+      nextUser.account.level = proposal.nextState.currentLevel;
+      nextUser.account.highestLevel = proposal.nextState.highestLevel;
+      nextUser.account.progressXp = proposal.nextState.levelProgressXp;
+      nextUser.account.requiredXp =
+        proposal.nextState.currentLevel === 100
+          ? null
+          : requiredXpByLevel[proposal.nextState.currentLevel];
+      nextUser.account.earnedXpInPeriod = nextPeriodXp;
+      nextUser.wallet.availablePoints = nextAvailable;
+      nextUser.wallet.exchangeEligiblePoints = nextEligible;
+      if (awardedPoints) nextUser.wallet.revision++;
+      for (const level of firstLevels) {
+        nextUser.history.unshift({
+          operationId: row.id + ':level:' + level,
+          kind: 'level_up',
+          points: 50,
+          status: 'confirmed',
+          at: row.occurred_at
+        });
+      }
+      // Single in-memory commit: XP claim + Level + Point ledger + Wallet
+      // and history must either ALL change or remain untouched.
+      users.set(row.user_id, nextUser);
+      syntheticXpClaims.set(row.id, {
+        userId: row.user_id,
+        xpKind: row.xp_kind,
+        points: row.xp_value,
+        at: row.occurred_at,
+        grantKey: proposal.grantKey
+      });
+      syntheticXpGrantKeys.add(proposal.grantKey);
+      for (const level of firstLevels) {
+        syntheticEarningLedger.set('level_up:' + row.user_id + ':' + level, {
+          userId: row.user_id,
+          eventId: row.id,
+          points: 50,
+          kind: 'level_up',
+          level,
+          at: row.occurred_at
+        });
+      }
+      return {
+        status: 'applied',
+        level: proposal.nextState.currentLevel,
+        progressXp: proposal.nextState.levelProgressXp,
+        levelsGained: gained,
+        firstLevelsRewarded: firstLevels,
+        pointsAwarded: awardedPoints
+      };
     } finally {
       unlock();
     }
@@ -221,6 +395,15 @@ export function createOfflineFormalUsageRepository({
   return Object.freeze({
     transact,
     creditSyntheticEarning,
+    applySyntheticXpEvent,
+    getSyntheticXpSummary() {
+      return {
+        applied: [...syntheticXpClaims.values()].map(copy),
+        levelRewards: [...syntheticEarningLedger.values()]
+          .filter((row) => row.kind === 'level_up')
+          .map(copy)
+      };
+    },
     getSyntheticUsageTotals() {
       const settled = [...operations.values()].filter(
         (operation) => operation.phase === 'committed'
