@@ -118,8 +118,7 @@ test('same backend PID is denied and rolled back', async () => {
   );
 });
 
-
-test('direct CLI fails closed without staging opt-in or if given arguments', () => {
+test('CLI rejects disabled staging and extra arguments', () => {
   const scriptPath = fileURLToPath(
     new URL('../scripts/nlo-staging-dual-session.mjs', import.meta.url)
   );
