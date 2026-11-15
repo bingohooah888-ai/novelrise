@@ -192,7 +192,7 @@ test('Production URL is refused and final census is independently mandatory', as
 test('independent census requires explicit bounded claim retention evidence', async () => {
   assert.equal(await fixture({ chunkClaimCount: 0 }).cleanup.finalCensus(), true);
   assert.equal(await fixture({ chunkClaimCount: 1 }).cleanup.finalCensus(), true);
-  for (const count of [undefined, -1, 2, 0.5, '1']) {
+  for (const count of [null, -1, 2, 0.5, '1']) {
     const { cleanup } = fixture({ chunkClaimCount: count });
     await assert.rejects(
       cleanup.finalCensus(),
