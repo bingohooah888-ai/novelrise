@@ -46,6 +46,10 @@ export function createAiRouter({
   providers,
   routes,
   cache = null,
+  // Optional, server-only post-reservation gate. The existing caller's
+  // authorization and kill switch must be checked AGAIN immediately before
+  // a potentially billable provider invocation (including fallback).
+  beforeProviderAttempt = null,
   enabled = false
 }) {
   if (
@@ -55,6 +59,8 @@ export function createAiRouter({
     typeof budget.settle !== 'function' ||
     !audit ||
     typeof audit.record !== 'function' ||
+    (beforeProviderAttempt !== null &&
+      typeof beforeProviderAttempt !== 'function') ||
     !providers ||
     !routes
   ) {
@@ -157,6 +163,20 @@ export function createAiRouter({
       try {
         for (const route of candidates) {
           selectedRoute = route;
+          // This is OUTSIDE the provider try/catch but INSIDE the settlement
+          // finally. A stop after reserve settles 0, never consumes a model
+          // attempt, and cannot be mistaken for a retryable provider failure.
+          if (
+            beforeProviderAttempt &&
+            (await beforeProviderAttempt({
+              feature,
+              principal,
+              workId,
+              readerScope
+            })) !== true
+          ) {
+            throw new AiRouterError('AI_ACCESS_DENIED');
+          }
           try {
             const result = await providers[route.provider].generate({
               model: route.model,

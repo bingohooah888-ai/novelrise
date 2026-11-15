@@ -413,3 +413,28 @@ test('02-07-05 failed attempt plus unknown usage settles full fallback ceiling o
   assert.equal(state.audits[0].outcome, 'success');
   assert.ok(!JSON.stringify(state.audits).includes(REQUEST.user));
 });
+
+test('Router post-reservation stop hook settles zero before external provider, including fallback', async () => {
+  let checks = 0;
+  const { router, state } = fakeRouter({
+    beforeProviderAttempt() {
+      checks += 1;
+      return false;
+    },
+    cache: null
+  });
+  await assert.rejects(router.run(REQUEST), /AI_ACCESS_DENIED/u);
+  assert.equal(checks, 1);
+  assert.equal(state.calls, 0);
+  assert.equal(state.reserves.length, 1);
+  assert.deepEqual(state.settlements.map((s) => s.chargedMicros), [0]);
+  assert.equal(state.audits.length, 1);
+  assert.equal(state.audits[0].outcome, 'failed');
+});
+
+test('Router invalid post-reservation callback fails closed at construction', () => {
+  assert.throws(
+    () => fakeRouter({ beforeProviderAttempt: true }),
+    /AI_SECURITY_BACKEND_REQUIRED/u
+  );
+});

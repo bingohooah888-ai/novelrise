@@ -87,6 +87,51 @@ export function createOwnerNovelBibleTrialRuntime({
       })
     : undefined;
 
+  // Reuse the existing durable runtime kill switch and cost ceilings,
+  // not a browser button or an in-memory flag. Missing DB state fails closed.
+  // This gate is read-only; stop/cleanup writers remain independently owned
+  // by the existing Staging-only detached stop and cleanup components.
+  async function runtimeActive() {
+    try {
+      const result = await serviceClient
+        .from('novelight_ai_runtime_settings')
+        .select(
+          'enabled,user_day_cap_micros,user_month_cap_micros,' +
+            'global_day_cap_micros,global_month_cap_micros'
+        )
+        .eq('singleton', 1)
+        .maybeSingle();
+      const row = result?.data;
+      return (
+        !result?.error &&
+        row?.enabled === true &&
+        [
+          row.user_day_cap_micros,
+          row.user_month_cap_micros,
+          row.global_day_cap_micros,
+          row.global_month_cap_micros
+        ].every(
+          (value) =>
+            Number.isSafeInteger(Number(value)) && Number(value) > 0
+        )
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  // Both the trial Router and the downstream candidate/checkpoint bridge
+  // use this permission checker. A stop after a paid response blocks
+  // candidate persistence but never skips Router budget settlement.
+  async function trialPermission(args) {
+    if (!(await runtimeActive())) return false;
+    try {
+      return (await permissionCheck(args)) === true;
+    } catch {
+      return false;
+    }
+  }
+
   async function verifyOwner(token) {
     if (
       typeof token !== 'string' ||
@@ -131,7 +176,7 @@ export function createOwnerNovelBibleTrialRuntime({
       return false;
     }
     return (
-      (await permissionCheck({
+      (await trialPermission({
         actorId: owner,
         novelId,
         episodeId,
@@ -173,6 +218,12 @@ export function createOwnerNovelBibleTrialRuntime({
     const router = createAiRouter({
       enabled: true,
       authorize: (context) => authorize(context, episode),
+      beforeProviderAttempt: async (context) => {
+        // A stop, revoked consent or changed owner during the budget RPC
+        // must block the provider BEFORE the first network request.
+        await verifyOwner(token);
+        return authorize(context, episode);
+      },
       budget: createSupabaseAiBudget({ serviceClient }),
       audit: createSupabaseAiAudit({ serviceClient }),
       providers,
@@ -187,7 +238,7 @@ export function createOwnerNovelBibleTrialRuntime({
       serviceClient,
       aiRouter: router,
       reviewWorkflow: workflow,
-      permissionCheck,
+      permissionCheck: trialPermission,
       readVerifiedHistory: historyReader,
       checkpoint
     });

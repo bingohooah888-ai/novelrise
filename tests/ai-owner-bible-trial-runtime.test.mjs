@@ -17,6 +17,8 @@ function fixture({
   enabled = true,
   consent = true,
   budgetAllowed = true,
+  runtimeEnabled = true,
+  onReserve = null,
   onModelCall = null,
   historicalText = null,
   currentText = CONTENT,
@@ -28,11 +30,13 @@ function fixture({
   const state = {
     actor,
     consent,
+    runtimeEnabled,
     auth: 0,
     authorClients: 0,
     modelCalls: 0,
     reservations: 0,
     settlements: 0,
+    settlementCharges: [],
     audits: 0,
     staged: 0,
     lastBatch: null,
@@ -82,6 +86,18 @@ function fixture({
           return { data: [], error: null };
         },
         async maybeSingle() {
+          if (table === 'novelight_ai_runtime_settings') {
+            return {
+              data: {
+                enabled: state.runtimeEnabled,
+                user_day_cap_micros: 1000000,
+                user_month_cap_micros: 1000000,
+                global_day_cap_micros: 1000000,
+                global_month_cap_micros: 1000000
+              },
+              error: null
+            };
+          }
           if (table === 'novels') {
             return { data: { id: 41, user_id: OWNER }, error: null };
           }
@@ -128,6 +144,7 @@ function fixture({
       if (name === 'novelight_ai_reserve_usage') {
         state.reservations += 1;
         assert.equal(args.p_actor_id, OWNER);
+        if (onReserve) onReserve(state);
         return {
           data: budgetAllowed ? OWNER : null,
           error: null
@@ -135,6 +152,7 @@ function fixture({
       }
       if (name === 'novelight_ai_settle_usage') {
         state.settlements += 1;
+        state.settlementCharges.push(args.p_charged_micros);
         return { data: true, error: null };
       }
       if (name === 'novelight_ai_review_stage_batch') {
@@ -411,4 +429,62 @@ test('owner trial cannot inspect plans when disabled, unauthenticated or without
   );
   assert.equal(denied.state.modelCalls, 0);
   assert.equal(denied.state.reservations, 0);
+});
+
+test('server stop before reserve blocks provider and candidate writes', async () => {
+  const { runtime, state } = fixture({ runtimeEnabled: false });
+  await assert.rejects(
+    runtime.stage(REQUEST),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(state.reservations, 0);
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.staged, 0);
+});
+
+test('server stop after atomic reserve settles zero and never calls provider', async () => {
+  const { runtime, state } = fixture({
+    onReserve(current) {
+      current.runtimeEnabled = false;
+    }
+  });
+  await assert.rejects(runtime.stage(REQUEST), /AI_ACCESS_DENIED/u);
+  assert.equal(state.reservations, 1);
+  assert.equal(state.settlements, 1);
+  assert.deepEqual(state.settlementCharges, [0]);
+  assert.equal(state.audits, 1);
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.staged, 0);
+});
+
+test('server stop during model invocation settles once, then blocks review storage', async () => {
+  const { runtime, state } = fixture({
+    onModelCall(current) {
+      current.runtimeEnabled = false;
+    }
+  });
+  await assert.rejects(
+    runtime.stage(REQUEST),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(state.reservations, 1);
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.settlements, 1);
+  assert.equal(state.audits, 1);
+  assert.equal(state.staged, 0);
+  assert.ok(state.settlementCharges[0] > 0);
+});
+
+test('revoked consent during atomic reserve also settles safely before sending text', async () => {
+  const { runtime, state } = fixture({
+    onReserve(current) {
+      current.consent = false;
+    }
+  });
+  await assert.rejects(runtime.stage(REQUEST), /AI_ACCESS_DENIED/u);
+  assert.equal(state.reservations, 1);
+  assert.equal(state.settlements, 1);
+  assert.deepEqual(state.settlementCharges, [0]);
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.staged, 0);
 });
