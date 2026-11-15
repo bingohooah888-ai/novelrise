@@ -125,9 +125,7 @@ export function quoteScoutOfflineBetaHandoff({
     // 2026-11-09 changed future awards to 10 Point/yen but did not
     // retroactively convert earlier ledger rows. Never infer an individual
     // row's unit from its amount, timestamp, badge ID or event key.
-    const unit = mixed
-      ? row.sourceUnitVersion
-      : SCOUT_POINT_LEGACY_VERSION;
+    const unit = mixed ? row.sourceUnitVersion : SCOUT_POINT_LEGACY_VERSION;
     let convertedValue;
     if (unit === SCOUT_POINT_LEGACY_VERSION) {
       const quoted = quoteScoutPointTenfoldValue({
@@ -236,7 +234,7 @@ export function quoteScoutOfflineBetaHandoff({
   return Object.freeze({
     status: 'offline_handoff_quote_only',
     readyForOfflinePreview: true,
-    sourceVersion: SCOUT_POINT_LEGACY_VERSION,
+    sourceVersion: ledgerUnitVersion,
     targetVersion: SCOUT_POINT_TARGET_VERSION,
     convertedRows: Object.freeze(convertedRows),
     walletSeeds: Object.freeze(walletSeeds),
