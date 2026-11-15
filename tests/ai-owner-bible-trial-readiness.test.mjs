@@ -257,6 +257,8 @@ test('missing server flag, other actor, absent bearer and cross-origin deny', as
 
 // Retain explicit synthetic event order; no live service or provider access.
 // prettier-ignore
+// Synthetic owner plan contract; no paid model or live connection.
+// prettier-ignore
 test('plan GET stays default OFF and never constructs a provider bridge', async () => {
   const f = fixture();
   const r = await f.call({
@@ -272,6 +274,8 @@ test('plan GET stays default OFF and never constructs a provider bridge', async 
   assert.equal(f.calls.model, 0);
 });
 
+// Synthetic owner plan contract; no paid model or live connection.
+// prettier-ignore
 test('offline plan GET passes fresh owner, consent and budget stop without billing', async () => {
   const f = fixture({ offlinePlanEnabled: true });
   const r = await f.call({
@@ -298,6 +302,8 @@ test('offline plan GET passes fresh owner, consent and budget stop without billi
   assert.ok(!JSON.stringify(r.body).includes(TOKEN));
 });
 
+// Synthetic owner plan contract; no paid model or live connection.
+// prettier-ignore
 test('disabled consent, cost ceiling, foreign owner and malformed plans fail closed', async () => {
   const changes = (f) => ({
     query: { novel_id: '41', episode_id: '11' },
@@ -335,6 +341,8 @@ test('disabled consent, cost ceiling, foreign owner and malformed plans fail clo
   assert.equal(malformed.calls.reserve, 0);
 });
 
+// Synthetic owner plan contract; no paid model or live connection.
+// prettier-ignore
 test('offline browser adapter only stages after plan, and locks ambiguous failure', async () => {
   const f = fixture({ offlinePlanEnabled: true });
   let signedIn = true;
@@ -427,6 +435,8 @@ test('offline browser adapter only stages after plan, and locks ambiguous failur
   assert.equal(f.calls.reserve, 1);
 });
 
+// Synthetic owner plan contract; no paid model or live connection.
+// prettier-ignore
 test('unknown offline transport outcome cannot resend a possibly paid chunk', async () => {
   let attempts = 0;
   const client = {

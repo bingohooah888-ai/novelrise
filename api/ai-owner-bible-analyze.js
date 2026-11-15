@@ -117,6 +117,8 @@ async function ownerTrialReadiness({ env, client, ownerId, novelId }) {
 
 // Strict projection: never send manuscript, budget, session or provider data
 // back to the author UI. This plan is advisory; stage() must recheck all gates.
+// Preserve the strict synthetic transport contract's projection layout.
+// prettier-ignore
 function safeOfflinePlan(value, novelId, episodeId) {
   if (
     !value ||
