@@ -142,15 +142,18 @@ test('cross-reader data, fabricated stage, out-of-window event and duplicate XP 
     fixture([seedRow], [{ ...eventA, credited_xp: '301' }]).reader.read(USER)
   );
   await assert.rejects(() =>
-    fixture([seedRow], [
-      { ...eventA, occurred_at: '2027-01-01T00:00:00Z' }
-    ]).reader.read(USER)
+    fixture(
+      [seedRow],
+      [{ ...eventA, occurred_at: '2027-01-01T00:00:00Z' }]
+    ).reader.read(USER)
   );
   await assert.rejects(() =>
     fixture([seedRow], [eventA, eventA]).reader.read(USER)
   );
   await assert.rejects(() =>
-    fixture([seedRow], [{ ...eventA, event_seed_type: 'SILVER' }]).reader.read(USER)
+    fixture([seedRow], [{ ...eventA, event_seed_type: 'SILVER' }]).reader.read(
+      USER
+    )
   );
 });
 
@@ -187,7 +190,10 @@ test('existing formal snapshot keeps seed evidence OFF until canonical release g
     listPendingExchanges: async () => [],
     findOperation: async () => null
   };
-  const seedEvidence = { status: 'formal_reader_seed_evidence_review_only', items: [] };
+  const seedEvidence = {
+    status: 'formal_reader_seed_evidence_review_only',
+    items: []
+  };
   const make = (approved) =>
     createFormalRewardUsageService({
       repository,
