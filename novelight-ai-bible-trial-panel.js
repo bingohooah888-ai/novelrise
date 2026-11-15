@@ -349,7 +349,7 @@
               action.disabled = true;
               inspectButton.disabled = false;
               status.textContent =
-                '原稿または解析状態が変化しました。解析予定を再確認してください。';
+                '原稿または解析状態が変化しました。解析予定を再確認してください（必要ならページ再読込）。';
               return;
             }
             if (!(await current())) {
