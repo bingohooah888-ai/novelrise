@@ -46,7 +46,11 @@ export function createOwnerNovelBibleVerifiedHistoryReader({
     unavailable();
   }
 
-  return async function readVerifiedHistory({ actorId, novelId, episodeId } = {}) {
+  return async function readVerifiedHistory({
+    actorId,
+    novelId,
+    episodeId
+  } = {}) {
     if (
       typeof actorId !== 'string' ||
       !UUID.test(actorId) ||
