@@ -61,7 +61,9 @@ export function createFormalUsageHttpHandlers({
   inspectNewReader,
   inspectEarningSource,
   getNewReaderSummary,
-  getAdminRewardOverview
+  getAdminRewardOverview,
+  getAdminBadgeCatalog,
+  getAdminBadgeHistory
 } = {}) {
   if (typeof supabase?.auth?.getUser !== 'function')
     throw new TypeError('Trusted existing Supabase Auth client required');
@@ -206,6 +208,25 @@ export function createFormalUsageHttpHandlers({
           if (overview?.status !== 'reward_overview_ready')
             return stop(res, 503, 'FORMAL_ADMIN_OVERVIEW_UNAVAILABLE');
           return res.status(200).json({ ok: true, ...overview });
+        }
+        if (req.query?.view === 'badge_history') {
+          if (typeof getAdminBadgeHistory !== 'function')
+            return stop(res, 503, 'FORMAL_BADGE_HISTORY_UNAVAILABLE');
+          // Aggregate-only report: never return reader IDs or Point event keys.
+          const report = await getAdminBadgeHistory();
+          if (report?.status !== 'formal_badge_history_review_only')
+            return stop(res, 503, 'FORMAL_BADGE_HISTORY_UNAVAILABLE');
+          return res.status(200).json({ ok: true, ...report });
+        }
+        if (req.query?.view === 'badge_catalog') {
+          if (typeof getAdminBadgeCatalog !== 'function')
+            return stop(res, 503, 'FORMAL_BADGE_CATALOG_UNAVAILABLE');
+          // RequireAdmin above is mandatory. Do not expose raw badge awards,
+          // reader identifiers or historical point-event keys to the browser.
+          const report = await getAdminBadgeCatalog();
+          if (report?.status !== 'formal_badge_catalog_review_only')
+            return stop(res, 503, 'FORMAL_BADGE_CATALOG_UNAVAILABLE');
+          return res.status(200).json({ ok: true, ...report });
         }
         if (req.query?.view === 'earning_source') {
           if (typeof inspectEarningSource !== 'function')
