@@ -282,7 +282,7 @@ test('administrator can inspect committed gift refund candidates; no refund with
   assert.equal(match(root, '返金・回収を照合').length, 0);
 });
 
-test('unpublished formal page mounts monitoring without gift requests or actions by default', async () => {
+test('formal admin page defaults to read-only monitoring', async () => {
   await import('../assets/formal-scout-reward-transport.js');
   await import('../assets/formal-scout-reward-mount.js');
   await import('../assets/formal-scout-reward-page.js');
@@ -316,7 +316,10 @@ test('unpublished formal page mounts monitoring without gift requests or actions
   const result = await panel.refresh();
   assert.equal(result.status, 'queue_not_connected');
   assert.equal(match(root, '正式版以降の新規読者').length, 1);
-  assert.equal(match(root, '登録：7人　初期化完了：6人　要確認：1人').length, 1);
+  assert.equal(
+    match(root, '登録：7人　初期化完了：6人　要確認：1人').length,
+    1
+  );
   assert.equal(match(root, '根拠を確認').length, 1);
   assert.equal(
     match(root, '交換キューは未接続です。読み取り専用の正式版監査のみ表示しています。')
@@ -329,12 +332,16 @@ test('unpublished formal page mounts monitoring without gift requests or actions
   assert.ok(calls.every((x) => x.options.method === 'GET'));
   assert.ok(calls.every((x) => x.options.cache === 'no-store'));
   assert.ok(calls.every((x) => x.options.credentials === 'same-origin'));
-  assert.ok(calls.every((x) => x.options.headers.Authorization === 'Bearer synthetic-admin'));
+  assert.ok(
+    calls.every(
+      (x) => x.options.headers.Authorization === 'Bearer synthetic-admin'
+    )
+  );
   assert.ok(calls.every((x) => x.url.includes('?view=')));
   assert.ok(calls.every((x) => !x.url.includes('view=refunds')));
 });
 
-test('page may inspect a gift queue without exposing exchange or refund mutation controls', async () => {
+test('gift queue inspection keeps settlement controls OFF', async () => {
   const root = new Element('main');
   const calls = [];
   const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
@@ -371,7 +378,7 @@ test('page may inspect a gift queue without exposing exchange or refund mutation
   assert.ok(calls.every((x) => x.options.method === 'GET'));
 });
 
-test('settlement actions cannot be requested without independently enabling the gift queue', () => {
+test('settlement actions require a separately enabled gift queue', () => {
   let touched = 0;
   const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
     adminRoot: new Element('main'),
@@ -384,6 +391,9 @@ test('settlement actions cannot be requested without independently enabling the 
       throw Error('NO_NETWORK');
     }
   });
-  assert.throws(page.admin, /Gift settlement requires an approved gift queue/);
+  assert.throws(
+    page.admin,
+    /Gift settlement requires an approved gift queue/
+  );
   assert.equal(touched, 0);
 });
