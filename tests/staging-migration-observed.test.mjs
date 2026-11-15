@@ -38,10 +38,7 @@ test('four archived SQL statements match fixed Staging evidence', async () => {
     observedDir,
     productionDir
   });
-  assert.equal(
-    result.status,
-    'CONTENT_MATCH_ONLY_OWNER_APPROVAL_UNVERIFIED'
-  );
+  assert.equal(result.status, 'CONTENT_MATCH_ONLY_OWNER_APPROVAL_UNVERIFIED');
 });
 
 test('missing, duplicated or corrupted metadata fails closed', async () => {
