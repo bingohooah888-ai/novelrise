@@ -21,7 +21,9 @@ function fixture({
   historicalText = null,
   currentText = CONTENT,
   retainedRevisionText = historicalText,
-  expectedExcerpt = currentText
+  expectedExcerpt = currentText,
+  checkpointEnabled = false,
+  checkpointRepository
 } = {}) {
   const state = {
     actor,
@@ -157,6 +159,8 @@ function fixture({
   const runtime = createOwnerNovelBibleTrialRuntime({
     enabled,
     externalProcessingApproved: true,
+    checkpointEnabled,
+    checkpointRepository,
     ownerId: OWNER,
     authClient: serviceClient,
     serviceClient,
@@ -325,4 +329,46 @@ test('expired or missing retained history fails back to full current chapter', a
   assert.equal(result.stagedCount, 1);
   assert.equal(state.modelCalls, 1);
   assert.equal(state.historyReads, 2);
+});
+
+test('opt-in offline runtime completes one chunk and skips a second paid call', async () => {
+  let row = null;
+  const checkpointRepository = {
+    async readSnapshot() {
+      return row;
+    },
+    async compareAndSwap(change) {
+      if (
+        change.expectedRevision !== (row?.revision ?? null) ||
+        change.expectedSourceHash !== (row?.source_hash ?? null)
+      ) {
+        return null;
+      }
+      row = {
+        episode_id: 11,
+        revision: (row?.revision ?? 0) + 1,
+        source_hash: change.nextSourceHash,
+        summary: change.nextSummary
+      };
+      return row;
+    }
+  };
+  const { runtime, state } = fixture({
+    checkpointEnabled: true,
+    checkpointRepository
+  });
+  const first = await runtime.stage(REQUEST);
+  assert.equal(first.stagedCount, 1);
+  assert.equal(state.reservations, 1);
+  assert.equal(state.modelCalls, 1);
+  assert.equal(row.summary.novelightPhase2.state, 'complete');
+  assert.match(row.source_hash, /^[a-f0-9]{64}$/u);
+  const second = await runtime.stage(REQUEST);
+  assert.deepEqual(second, {
+    novelId: 41,
+    stagedCount: 0,
+    requiresAuthorReview: false
+  });
+  assert.equal(state.reservations, 1);
+  assert.equal(state.modelCalls, 1);
 });
