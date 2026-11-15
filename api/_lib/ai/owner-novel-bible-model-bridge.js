@@ -42,7 +42,8 @@ export function createOwnerNovelBibleModelBridge({
   aiRouter,
   reviewWorkflow,
   permissionCheck,
-  readVerifiedHistory
+  readVerifiedHistory,
+  checkpoint
 } = {}) {
   if (
     typeof ownerId !== 'string' ||
@@ -53,7 +54,10 @@ export function createOwnerNovelBibleModelBridge({
     typeof reviewWorkflow?.stage !== 'function' ||
     typeof permissionCheck !== 'function' ||
     (readVerifiedHistory !== undefined &&
-      typeof readVerifiedHistory !== 'function')
+      typeof readVerifiedHistory !== 'function') ||
+    (checkpoint !== undefined &&
+      (typeof checkpoint?.inspect !== 'function' ||
+        typeof checkpoint?.record !== 'function'))
   ) {
     deny();
   }
@@ -208,7 +212,12 @@ export function createOwnerNovelBibleModelBridge({
       return { chunk: null, source: null, history: historyDigest(checkpoint) };
     }
     const source = materializeNovelBibleChunk({ ...context, chunk });
-    return { chunk, source, history: historyDigest(checkpoint) };
+    return {
+      chunk,
+      source,
+      history: historyDigest(checkpoint),
+      completionPlan: { ...plan, analyses: checkpoint.analyses }
+    };
   }
 
   return Object.freeze({
@@ -229,10 +238,8 @@ export function createOwnerNovelBibleModelBridge({
 
       const original = await scope(token, workId, chapterId);
       await permission(workId, chapterId);
-      const { chunk, source, history } = await chooseChunk(
-        original,
-        chunkIndex
-      );
+      const { chunk, source, history, completionPlan } =
+        await chooseChunk(original, chunkIndex);
       if (!chunk) {
         // This remains authenticated and consent-gated but does not reserve
         // budget, call a provider or save any inferred candidate.
@@ -241,6 +248,28 @@ export function createOwnerNovelBibleModelBridge({
           stagedCount: 0,
           requiresAuthorReview: false
         });
+      }
+      const checkpointRequest = checkpoint
+        ? {
+            actorId: owner,
+            novelId: workId,
+            episodeId: chapterId,
+            plan: completionPlan,
+            chunkIndex
+          }
+        : null;
+      if (checkpointRequest) {
+        // A previous successful one-chunk call must never trigger a second
+        // provider attempt. Only a server-derived plan can reach this hook.
+        const status = await checkpoint.inspect(checkpointRequest);
+        if (status === 'completed') {
+          return Object.freeze({
+            novelId: workId,
+            stagedCount: 0,
+            requiresAuthorReview: false
+          });
+        }
+        if (status !== 'pending') deny();
       }
       const generated = await aiRouter.run({
         featureKey: 'novel-bible',
@@ -300,6 +329,22 @@ export function createOwnerNovelBibleModelBridge({
         staged.stagedCount > reviewed.candidates.length
       ) {
         deny();
+      }
+      // A zero-candidate result is still a successfully checked chunk. Do
+      // not record anything if validation, consent or candidate staging fails.
+      // The repository will atomically mark the source analyzed only when
+      // every chunk is present, and rejects conflicting revisions.
+      if (checkpointRequest) {
+        const receipt = await checkpoint.record(checkpointRequest);
+        if (
+          typeof receipt?.complete !== 'boolean' ||
+          typeof receipt?.alreadyRecorded !== 'boolean' ||
+          !Number.isSafeInteger(receipt.remainingChunks) ||
+          receipt.remainingChunks < 0 ||
+          receipt.remainingChunks > completionPlan.chunks.length
+        ) {
+          deny();
+        }
       }
       // Never return model text, quotations, prompt, private notes or JWT.
       return Object.freeze({
