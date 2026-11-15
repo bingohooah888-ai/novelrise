@@ -230,20 +230,34 @@ export function createAiRouter({
       } finally {
         // On network failure a provider might still bill. Charge the upper
         // bound for uncertain attempts rather than refunding them blindly.
-        await budget.settle({
-          reservationId: reservation.id,
-          chargedMicros: Math.min(ceilingMicros, chargedMicros)
-        });
-        await audit.record({
-          featureKey,
-          actorId: principal.id,
-          workId,
-          provider: selectedRoute?.provider || null,
-          model: selectedRoute?.model || null,
-          chargedMicros: Math.min(ceilingMicros, chargedMicros),
-          cacheHit: false,
-          outcome: response ? 'success' : 'failed'
-        });
+        // Both independent cleanup actions must run even when one backend
+        // fails. A failed settlement must never return model output as if the
+        // paid reservation had been closed; the authoritative durable ledger
+        // remains responsible for reconciliation.
+        let cleanupError = null;
+        try {
+          await budget.settle({
+            reservationId: reservation.id,
+            chargedMicros: Math.min(ceilingMicros, chargedMicros)
+          });
+        } catch (error) {
+          cleanupError = error;
+        }
+        try {
+          await audit.record({
+            featureKey,
+            actorId: principal.id,
+            workId,
+            provider: selectedRoute?.provider || null,
+            model: selectedRoute?.model || null,
+            chargedMicros: Math.min(ceilingMicros, chargedMicros),
+            cacheHit: false,
+            outcome: response ? 'success' : 'failed'
+          });
+        } catch (error) {
+          if (!cleanupError) cleanupError = error;
+        }
+        if (cleanupError) throw cleanupError;
       }
 
       if (!response) {
