@@ -290,10 +290,7 @@ test('verified previous manuscript narrows the synthetic AI prompt to changed te
   }).pending[0].sourceHash;
   const base = fixture();
   const snapshot = fixture({
-    analyses: [
-      ...base.analyses,
-      { episode_id: 11, source_hash: previousHash }
-    ],
+    analyses: [...base.analyses, { episode_id: 11, source_hash: previousHash }],
     previousEpisodes: [before]
   });
   const { factory, state } = trial({
