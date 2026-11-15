@@ -394,14 +394,59 @@ export function createOwnerBibleReviewWorkflow({
     return hashes;
   }
 
-  async function list({ token, novelId }) {
+  async function list({ token, novelId, beforeId = null }) {
+    if (beforeId !== null) positiveId(beforeId);
     const actorId = await authenticate(token);
     const novel = await loadNovel(actorId, novelId);
-    if (typeof repository.listPending !== 'function') denied();
-    const rows = await repository.listPending({
-      actorId,
-      novelId: novel.id
-    });
+    const paged = typeof repository.listReviewPage === 'function';
+    let rows;
+    let acceptedRows;
+    let nextBeforeId = null;
+    if (paged) {
+      const page = await repository.listReviewPage({
+        actorId,
+        novelId: novel.id,
+        beforeId
+      });
+      if (
+        !page ||
+        !Array.isArray(page.rows) ||
+        page.rows.length > 25 ||
+        (page.nextBeforeId !== null &&
+          (page.rows.length !== 25 ||
+            positiveId(page.nextBeforeId) !==
+              positiveId(page.rows[page.rows.length - 1]?.id)))
+      ) {
+        denied();
+      }
+      const seen = new Set();
+      for (const row of page.rows) {
+        const id = positiveId(row?.id);
+        if (
+          seen.has(id) ||
+          (beforeId !== null && id >= beforeId) ||
+          (seen.size > 0 && id >= page.rows[seen.size - 1]?.id) ||
+          !['pending', 'accepted'].includes(row.status)
+        ) {
+          denied();
+        }
+        seen.add(id);
+      }
+      rows = page.rows.filter((row) => row.status === 'pending');
+      acceptedRows = page.rows.filter((row) => row.status === 'accepted');
+      nextBeforeId = page.nextBeforeId;
+    } else {
+      // Legacy bounded in-memory fixtures remain available only on page 1.
+      // The real service repository always exposes listReviewPage.
+      if (beforeId !== null || typeof repository.listPending !== 'function') {
+        denied();
+      }
+      rows = await repository.listPending({ actorId, novelId: novel.id });
+      acceptedRows =
+        typeof repository.listAccepted === 'function'
+          ? await repository.listAccepted({ actorId, novelId: novel.id })
+          : [];
+    }
     if (!Array.isArray(rows) || rows.length > 100) denied();
     function project(rowsToProject, expectedStatus) {
       if (!Array.isArray(rowsToProject) || rowsToProject.length > 100) denied();
@@ -437,10 +482,6 @@ export function createOwnerBibleReviewWorkflow({
       });
     }
     const candidates = project(rows, 'pending');
-    const acceptedRows =
-      typeof repository.listAccepted === 'function'
-        ? await repository.listAccepted({ actorId, novelId: novel.id })
-        : [];
     const acceptedCandidates = project(acceptedRows, 'accepted');
     const known = new Set(candidates.map((item) => item.id));
     if (acceptedCandidates.some((item) => known.has(item.id))) denied();
@@ -489,6 +530,7 @@ export function createOwnerBibleReviewWorkflow({
       candidates: withVersionLabel(activeCandidates),
       acceptedCandidates: withVersionLabel(activeAccepted),
       staleCandidates,
+      ...(paged ? { pagination: { nextBeforeId } } : {}),
       aiGenerated: false
     };
   }
