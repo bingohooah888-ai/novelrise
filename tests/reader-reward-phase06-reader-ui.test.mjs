@@ -765,7 +765,7 @@ test('invalid and maximum reader Levels have bounded guidance', async () => {
   assert.equal(panel.getSnapshot().level, null);
 });
 
-test('author dashboard switches owned works and pages their Rank events', async () => {
+test('author dashboard selects works and pages Rank events', async () => {
   const first = {
     id: '101',
     title: 'はじまりの作品',
@@ -876,7 +876,7 @@ test('author dashboard switches owned works and pages their Rank events', async 
   assert.equal(reads, initialReads);
 });
 
-test('author-only tab disappears immediately after verification is lost', async () => {
+test('author tab vanishes when verification is lost', async () => {
   const first = {
     id: '111',
     title: '非公開の本人作品',
