@@ -580,3 +580,93 @@ test('missing, failed and unverified new-reader evidence never enables initializ
     false
   );
 });
+
+test('reader Point history filters and pages verified records', async () => {
+  const root = new FakeElement('main');
+  const kinds = [
+    { kind: 'read', points: 5, status: 'confirmed' },
+    { kind: 'comment', points: 20, status: 'pending' },
+    { kind: 'exchange', points: -30000, status: 'confirmed' },
+    { kind: 'refund', points: 30000, status: 'confirmed' }
+  ];
+  const sample = {
+    ...base,
+    history: Array.from({ length: 45 }, (_, index) => ({
+      ...kinds[index % kinds.length],
+      at: '2026-11-15T00:00:00.000Z',
+      operationId: 'example-' + index
+    }))
+  };
+  let reads = 0;
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => {
+      reads++;
+      return sample;
+    }
+  });
+  await panel.reload();
+  const initialReads = reads;
+  const buttons = () => byTag(root, 'button');
+  function choose(label) {
+    const button = buttons().find((item) => item.textContent === label);
+    assert.ok(button);
+    button.fire('click');
+  }
+  assert.match(text(root), /取得範囲内の該当履歴：45件/);
+  assert.equal(byTag(root, 'b').length, 20);
+  choose('次の20件');
+  assert.equal(byTag(root, 'b').length, 20);
+  assert.match(text(root), /21〜40件目/);
+  choose('次の20件');
+  assert.equal(byTag(root, 'b').length, 5);
+  const lastPageNext = buttons().find((b) => b.textContent === '次の20件');
+  assert.equal(lastPageNext.disabled, true);
+  choose('獲得');
+  assert.equal(byTag(root, 'b').length, 12);
+  assert.match(text(root), /取得範囲内の該当履歴：12件/);
+  assert.match(text(root), /1〜12件目/);
+  const earningButton = buttons().find((b) => b.textContent === '獲得');
+  assert.equal(earningButton.attributes['aria-pressed'], 'true');
+  const noEarningsNext = buttons().every(
+    (button) => button.textContent !== '次の20件'
+  );
+  assert.equal(noEarningsNext, true);
+  choose('利用・返却');
+  assert.match(text(root), /取得範囲内の該当履歴：22件/);
+  choose('保留・取消');
+  assert.match(text(root), /取得範囲内の該当履歴：11件/);
+  assert.equal(byTag(root, 'b').length, 11);
+  const noReviewNext = buttons().every(
+    (button) => button.textContent !== '次の20件'
+  );
+  assert.equal(noReviewNext, true);
+  assert.equal(reads, initialReads);
+});
+
+test('history hides unverified rows and avoids balance claims', async () => {
+  const root = new FakeElement('main');
+  let snapshot = {
+    ...base,
+    history: Array.from({ length: 81 }, (_, i) => ({
+      kind: 'read',
+      points: 2,
+      status: 'confirmed',
+      at: '2026-11-15T00:00:00.000Z',
+      operationId: 'only-for-history-' + i
+    }))
+  };
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => snapshot
+  });
+  await panel.reload();
+  assert.equal(panel.getSnapshot().history.length, 80);
+  assert.match(text(root), /全期間の台帳や現在残高の合計ではありません/);
+  assert.match(text(root), /取得範囲内の該当履歴：80件/);
+  snapshot = { ...snapshot, serverVerified: false };
+  await panel.reload();
+  assert.equal(panel.getSnapshot().history.length, 0);
+  assert.match(text(root), /取得したPoint履歴はありません/);
+  assert.doesNotMatch(text(root), /取得範囲内の該当履歴：80件/);
+});

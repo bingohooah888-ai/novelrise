@@ -6,6 +6,7 @@
   const POINTS_PER_YEN = 10;
   const MIN_EXCHANGE_POINTS = 30000;
   const MAINTENANCE_XP = 200;
+  const HISTORY_PAGE_SIZE = 20;
   // Exact 10-stage rank names from MASTER §49.22. The formal UI derives
   // the rank only from a server-verified Level, never from browser XP.
   const SCOUT_RANK_NAMES = Object.freeze([
@@ -219,7 +220,7 @@
             }
           : null,
       history:
-        verified && Array.isArray(s.history) ? s.history.slice(0, 40) : [],
+        verified && Array.isArray(s.history) ? s.history.slice(0, 80) : [],
       aiFeatures: Array.isArray(s.aiFeatures) ? s.aiFeatures.slice(0, 25) : [],
       exchangeEnabled: verified && s.exchangeEnabled === true,
       giftProviderReady: verified && s.giftProviderReady === true
@@ -247,6 +248,8 @@
     let lastReloadId = 0;
     let busy = false;
     let tab = 'history';
+    let historyFilter = 'all';
+    let historyPage = 0;
     const shell = el('section', 'rr-shell');
     const h = el('header', 'rr-heading');
     h.append(el('p', 'rr-kicker', 'NOVELIGHT / SCOUT REWARD'));
@@ -447,13 +450,78 @@
       else drawAi();
     }
     function drawHistory() {
-      const heading = el('h3', '', 'Point履歴');
-      const list = el('div', 'rr-history');
-      if (!latest.history.length) {
-        list.append(el('p', 'rr-muted', '表示できる確定履歴がありません。'));
+      contents.append(
+        el('h3', '', 'Point履歴'),
+        el(
+          'p',
+          'rr-muted',
+          'サーバーから取得した履歴の最大80件を表示します。全期間の台帳や現在残高の合計ではありません。'
+        )
+      );
+      const filters = [
+        ['all', 'すべて'],
+        ['earned', '獲得'],
+        ['spending', '利用・返却'],
+        ['review', '保留・取消']
+      ];
+      const filterBar = el('div', 'rr-history-filters');
+      filterBar.setAttribute('aria-label', 'Point履歴の種類');
+      for (const [key, title] of filters) {
+        const button = el('button', '', title);
+        button.type = 'button';
+        button.setAttribute('aria-pressed', String(historyFilter === key));
+        button.addEventListener('click', () => {
+          historyFilter = key;
+          historyPage = 0;
+          selectTab('history');
+        });
+        filterBar.append(button);
       }
-      for (const item of latest.history) {
-        if (!item || !Number.isSafeInteger(item.points)) continue;
+      contents.append(filterBar);
+      const validHistory = latest.history.filter(
+        (item) => item && Number.isSafeInteger(item.points)
+      );
+      const filtered = validHistory.filter((item) => {
+        if (historyFilter === 'earned') {
+          return (
+            item.status === 'confirmed' &&
+            item.points > 0 &&
+            !['exchange', 'ai', 'refund'].includes(item.kind)
+          );
+        }
+        if (historyFilter === 'spending') {
+          return (
+            item.points < 0 ||
+            ['exchange', 'ai', 'refund'].includes(item.kind)
+          );
+        }
+        if (historyFilter === 'review') {
+          return ['pending', 'reserved', 'frozen', 'cancelled'].includes(
+            item.status
+          );
+        }
+        return true;
+      });
+      const totalPages = Math.max(
+        1,
+        Math.ceil(filtered.length / HISTORY_PAGE_SIZE)
+      );
+      historyPage = Math.min(historyPage, totalPages - 1);
+      const start = historyPage * HISTORY_PAGE_SIZE;
+      const pageItems = filtered.slice(start, start + HISTORY_PAGE_SIZE);
+      const list = el('div', 'rr-history');
+      if (!pageItems.length) {
+        list.append(
+          el(
+            'p',
+            'rr-muted',
+            validHistory.length
+              ? 'この種類のPoint履歴は取得した範囲にありません。'
+              : '取得したPoint履歴はありません。'
+          )
+        );
+      }
+      for (const item of pageItems) {
         const row = el('div', 'rr-history-row');
         const left = el('div');
         left.append(el('strong', '', TYPE_NAMES[item.kind] || 'Point変動'));
@@ -474,7 +542,48 @@
         );
         list.append(row);
       }
-      contents.append(heading, list);
+      contents.append(
+        el(
+          'p',
+          'rr-muted',
+          '取得範囲内の該当履歴：' +
+            number(filtered.length) +
+            '件' +
+            (filtered.length
+              ? '（' +
+                number(start + 1) +
+                '〜' +
+                number(start + pageItems.length) +
+                '件目）'
+              : '')
+        ),
+        list
+      );
+      if (totalPages > 1) {
+        const paging = el('div', 'rr-history-paging');
+        const prev = el('button', '', '前の20件');
+        prev.type = 'button';
+        prev.disabled = historyPage === 0;
+        prev.addEventListener('click', () => {
+          if (historyPage === 0) return;
+          historyPage--;
+          selectTab('history');
+        });
+        const next = el('button', '', '次の20件');
+        next.type = 'button';
+        next.disabled = historyPage + 1 >= totalPages;
+        next.addEventListener('click', () => {
+          if (historyPage + 1 >= totalPages) return;
+          historyPage++;
+          selectTab('history');
+        });
+        paging.append(
+          prev,
+          el('span', '', number(historyPage + 1) + ' / ' + number(totalPages)),
+          next
+        );
+        contents.append(paging);
+      }
     }
     function drawScout() {
       contents.append(el('h3', '', 'SCOUT RECORD / 読者称号と発掘'));

@@ -117,6 +117,39 @@
   display: grid;
   gap: 8px;
 }
+.rr-history-filters,
+.rr-history-paging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.rr-history-filters button,
+.rr-history-paging button {
+  border: 1px solid #514577;
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: #28243e;
+  color: #ded7ee;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.rr-history-filters button[aria-pressed='true'] {
+  color: #161426;
+  background: #d7b66e;
+  border-color: #d7b66e;
+}
+.rr-history-paging {
+  justify-content: center;
+  margin: 16px 0 0;
+  font-size: 12px;
+}
+.rr-history-paging button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .rr-history-row,
 .rr-ai-card {
   display: flex;
