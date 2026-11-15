@@ -1,7 +1,10 @@
-// Phase 02-07-04: dormant server-only provider -> review bridge.
+// Phase 02-07-05: dormant server-only provider -> review bridge.
 // No HTTP route imports this module. Production AI/budget remain OFF.
 // A future separately approved operator must provide verified author consent,
 // atomic Router budget/audit, Staging DB admission and an owner-only route.
+// The optional analysis-history reader is trusted server-side input ONLY.
+import { createHash } from 'node:crypto';
+
 import {
   materializeNovelBibleChunk,
   planNovelBibleChangedChunks
@@ -38,7 +41,8 @@ export function createOwnerNovelBibleModelBridge({
   serviceClient,
   aiRouter,
   reviewWorkflow,
-  permissionCheck
+  permissionCheck,
+  readVerifiedHistory
 } = {}) {
   if (
     typeof ownerId !== 'string' ||
@@ -47,7 +51,9 @@ export function createOwnerNovelBibleModelBridge({
     typeof serviceClient?.from !== 'function' ||
     typeof aiRouter?.run !== 'function' ||
     typeof reviewWorkflow?.stage !== 'function' ||
-    typeof permissionCheck !== 'function'
+    typeof permissionCheck !== 'function' ||
+    (readVerifiedHistory !== undefined &&
+      typeof readVerifiedHistory !== 'function')
   ) {
     deny();
   }
@@ -123,19 +129,84 @@ export function createOwnerNovelBibleModelBridge({
     }
   }
 
-  function chooseChunk(context, chunkIndex) {
+  // The callback must use independently authorized server-only storage.
+  // No history, source hash or previous manuscript is accepted from HTTP.
+  // Historical text is never included in model prompts or API responses.
+  async function historicalCheckpoint(context) {
+    if (!readVerifiedHistory) return { analyses: [], previousEpisodes: [] };
+    const result = await readVerifiedHistory({
+      actorId: owner,
+      novelId: context.novel.id,
+      episodeId: context.episode.id
+    });
+    if (result === null) return { analyses: [], previousEpisodes: [] };
+    if (
+      !result ||
+      typeof result !== 'object' ||
+      Array.isArray(result) ||
+      Object.keys(result).some((key) => !['analysis', 'episode'].includes(key)) ||
+      !result.analysis ||
+      typeof result.analysis !== 'object' ||
+      result.analysis.episode_id !== context.episode.id ||
+      typeof result.analysis.source_hash !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(result.analysis.source_hash) ||
+      (result.episode !== null &&
+        result.episode !== undefined &&
+        (typeof result.episode !== 'object' ||
+          Array.isArray(result.episode) ||
+          Number(result.episode.id) !== context.episode.id ||
+          Number(result.episode.novel_id) !== context.novel.id))
+    ) {
+      deny();
+    }
+    return {
+      analyses: [result.analysis],
+      previousEpisodes: result.episode ? [result.episode] : []
+    };
+  }
+
+  function historyDigest(checkpoint) {
+    return createHash('sha256')
+      .update(
+        JSON.stringify([
+          checkpoint.analyses,
+          checkpoint.previousEpisodes.map((row) => [
+            row.id,
+            row.novel_id,
+            row.title,
+            row.content
+          ])
+        ])
+      )
+      .digest('hex');
+  }
+
+  async function chooseChunk(context, chunkIndex) {
+    const checkpoint = await historicalCheckpoint(context);
     const plan = planNovelBibleChangedChunks({
       principal: context.principal,
       novel: context.novel,
       episodes: [context.episode],
-      analyses: [],
+      analyses: checkpoint.analyses,
+      previousEpisodes: checkpoint.previousEpisodes,
       limit: 1
     });
     if (plan.chunks.length > MAX_CHUNKS) deny();
     const chunk = plan.chunks[chunkIndex];
-    if (!chunk) deny();
+    if (!chunk) {
+      // An unchanged or deletion-only chapter has nothing to infer. Refuse
+      // invalid indices and empty new chapters; spend no tokens or writes.
+      if (
+        chunkIndex !== 0 ||
+        (plan.unchangedCount !== 1 &&
+          !plan.deletionOnlyEpisodes.includes(context.episode.id))
+      ) {
+        deny();
+      }
+      return { chunk: null, source: null, history: historyDigest(checkpoint) };
+    }
     const source = materializeNovelBibleChunk({ ...context, chunk });
-    return { chunk, source };
+    return { chunk, source, history: historyDigest(checkpoint) };
   }
 
   return Object.freeze({
@@ -156,7 +227,19 @@ export function createOwnerNovelBibleModelBridge({
 
       const original = await scope(token, workId, chapterId);
       await permission(workId, chapterId);
-      const { chunk, source } = chooseChunk(original, chunkIndex);
+      const { chunk, source, history } = await chooseChunk(
+        original,
+        chunkIndex
+      );
+      if (!chunk) {
+        // This remains authenticated and consent-gated but does not reserve
+        // budget, call a provider or save any inferred candidate.
+        return Object.freeze({
+          novelId: workId,
+          stagedCount: 0,
+          requiresAuthorReview: false
+        });
+      }
       const generated = await aiRouter.run({
         featureKey: 'novel-bible',
         principal: original.principal,
@@ -180,6 +263,7 @@ export function createOwnerNovelBibleModelBridge({
       // change, novel transfer or manuscript revision during the paid call.
       const fresh = await scope(token, workId, chapterId);
       await permission(workId, chapterId);
+      if (historyDigest(await historicalCheckpoint(fresh)) !== history) deny();
       const checked = materializeNovelBibleChunk({
         ...fresh,
         chunk
