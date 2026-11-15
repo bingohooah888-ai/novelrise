@@ -703,7 +703,7 @@ test('reader level guide agrees with formal reward rates', () => {
   assert.equal(quote.nextRankName, 'SERAPH');
 });
 
-test('reader reward guide shows next milestones without Point actions', async () => {
+test('reader guide shows milestones without Point actions', async () => {
   const root = new FakeElement('main');
   let reads = 0;
   let writes = 0;
@@ -733,8 +733,8 @@ test('reader reward guide shows next milestones without Point actions', async ()
   assert.match(text(root), /Lv.81 まで あと9 Lv/);
   assert.match(text(root), /20 pt、月50件まで/);
   assert.match(text(root), /正式報酬は公開OFF/);
-  const elements = flatten(root);
-  const rows = elements.filter((e) => e.className.includes('rr-guide-rate-row'));
+  const nodes = flatten(root);
+  const rows = nodes.filter((e) => e.className.includes('rr-guide-rate-row'));
   const current = rows.filter((r) => r.attributes['aria-current'] === 'true');
   assert.equal(rows.length, 11);
   assert.equal(current.length, 1);
