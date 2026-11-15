@@ -74,6 +74,40 @@ test('MASTER exchange policy stays 10 pt = ¥1, external floor 30000 Point', () 
   assert.equal(ui.MIN_EXCHANGE_POINTS, 30000);
 });
 
+test('formal Scout Rank uses verified Level and exact 10 official bands', async () => {
+  const bands = [
+    [1, 'NOCTIS'], [10, 'NOCTIS'],
+    [11, 'VESPER'], [30, 'UMBRA'],
+    [31, 'ASTRA'], [50, 'LUCENT'],
+    [60, 'AURELIS'], [70, 'CELESTIA'],
+    [71, 'EMPYREAN'], [90, 'SERAPH'],
+    [91, 'LUMINARIS'], [100, 'LUMINARIS']
+  ];
+  for (const [level, expected] of bands) {
+    assert.equal(ui.rankAtLevel(level), expected);
+  }
+  for (const invalid of [0, 101, -1, 1.1, null, undefined, '72']) {
+    assert.equal(ui.rankAtLevel(invalid), null);
+  }
+  assert.equal(ui.normalizeSnapshot(base).rank, 'EMPYREAN');
+  assert.equal(ui.normalizeSnapshot({ ...base, serverVerified: false }).rank, null);
+  const root = new FakeElement('main');
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => base
+  });
+  await panel.reload();
+  assert.match(text(root), /SCOUT RANK/);
+  assert.match(text(root), /EMPYREAN/);
+  const other = new FakeElement('main');
+  const blocked = ui.createRewardReaderPanel({
+    root: other,
+    fetchSnapshot: async () => ({ ...base, serverVerified: false })
+  });
+  await blocked.reload();
+  assert.doesNotMatch(text(other), /EMPYREAN/);
+});
+
 test('unverified wallet cannot display usable balances or activate reward actions', async () => {
   const snapshot = ui.normalizeSnapshot({
     ...base,
