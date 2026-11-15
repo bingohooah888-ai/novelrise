@@ -430,12 +430,7 @@ test('reader page is read-only despite an enabled server snapshot', async () => 
   const panel = page.reader();
   await panel.reload();
   assert.equal(match(root, 'Lv.48').length, 1);
-  const exchangeTab = flatten(root).find(
-    (node) =>
-      node.tagName === 'button' &&
-      node.textContent === 'デジタルギフト交換'
-  );
-  exchangeTab.fire('click');
+  match(root, 'デジタルギフト交換')[0].fire('click');
   const submit = match(root, '交換を申請する')[0];
   assert.equal(submit.disabled, true);
   const form = flatten(root).find((node) => node.tagName === 'form');
