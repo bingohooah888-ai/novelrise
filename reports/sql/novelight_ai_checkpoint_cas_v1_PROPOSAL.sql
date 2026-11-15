@@ -20,7 +20,7 @@ begin
      or not pg_catalog.has_table_privilege('service_role','public.novelight_ai_episode_analysis','UPDATE')
      or not pg_catalog.has_schema_privilege('service_role','extensions','USAGE')
      or pg_catalog.to_regprocedure('extensions.digest(bytea,text)') is null
-     or not pg_catalog.coalesce(pg_catalog.has_function_privilege(
+     or not coalesce(pg_catalog.has_function_privilege(
        'service_role', pg_catalog.to_regprocedure('extensions.digest(bytea,text)'), 'EXECUTE'
      ), false)
   then
@@ -153,7 +153,7 @@ begin
        or v_old ->> 'targetSourceHash' !~ '^[a-f0-9]{64}$'
        or pg_catalog.jsonb_typeof(v_old -> 'fingerprint') is distinct from 'string'
        or v_old ->> 'fingerprint' !~ '^[a-f0-9]{64}$'
-       or pg_catalog.coalesce(pg_catalog.jsonb_typeof(v_old -> 'previousSourceHash'),'missing') not in ('null','string')
+       or coalesce(pg_catalog.jsonb_typeof(v_old -> 'previousSourceHash'),'missing') not in ('null','string')
        or pg_catalog.jsonb_typeof(v_old -> 'chunkCount') is distinct from 'number'
        or v_old ->> 'chunkCount' !~ '^(0|[1-9][0-9]?)$'
        or pg_catalog.jsonb_typeof(v_old -> 'completedIndices') is distinct from 'array'
@@ -170,7 +170,7 @@ begin
          (v_old_previous !~ '^[a-f0-9]{64}$' or v_old_previous = v_sentinel))
        or (v_old_state = 'in_progress' and (
          v_old_count < 1 or v_row.source_hash is distinct from
-           pg_catalog.coalesce(v_old_previous,v_sentinel) or v_old ? 'zeroReason'
+           coalesce(v_old_previous,v_sentinel) or v_old ? 'zeroReason'
        ))
        or (v_old_state = 'complete' and v_row.source_hash is distinct from v_old_target)
        or (v_old_count = 0 and (
@@ -228,7 +228,7 @@ begin
        or p_next_progress ->> 'actorId' is distinct from p_actor_id::text
        or p_next_progress -> 'novelId' is distinct from pg_catalog.to_jsonb(p_novel_id)
        or p_next_progress -> 'episodeId' is distinct from pg_catalog.to_jsonb(p_episode_id)
-       or pg_catalog.coalesce(pg_catalog.jsonb_typeof(p_next_progress -> 'previousSourceHash'),'missing') not in ('null','string')
+       or coalesce(pg_catalog.jsonb_typeof(p_next_progress -> 'previousSourceHash'),'missing') not in ('null','string')
        or pg_catalog.jsonb_typeof(p_next_progress -> 'targetSourceHash') is distinct from 'string'
        or p_next_progress ->> 'targetSourceHash' is distinct from p_target_source_hash
        or pg_catalog.jsonb_typeof(p_next_progress -> 'fingerprint') is distinct from 'string'
@@ -297,7 +297,7 @@ begin
       then
         raise exception using errcode='22023', message='Invalid replan transition';
       end if;
-      v_next_expected_hash := pg_catalog.coalesce(v_next_previous,v_sentinel);
+      v_next_expected_hash := coalesce(v_next_previous,v_sentinel);
     elsif p_action = 'record' or p_action = 'complete_empty' then
       if v_old is not null then
         if v_old_state = 'in_progress' then
@@ -343,14 +343,14 @@ begin
         end if;
       end if;
       v_next_expected_hash := case when v_next_state = 'complete' then
-        v_next_target else pg_catalog.coalesce(v_next_previous,v_sentinel) end;
+        v_next_target else coalesce(v_next_previous,v_sentinel) end;
     end if;
 
     if v_next_expected_hash is distinct from p_next_source_hash then
       raise exception using errcode='22023', message='Checkpoint source hash tampering';
     end if;
     v_next_summary := pg_catalog.jsonb_set(
-      pg_catalog.coalesce(v_row.summary, '{}'::jsonb),
+      coalesce(v_row.summary, '{}'::jsonb),
       '{novelightPhase2}', p_next_progress, true
     );
   end if;
