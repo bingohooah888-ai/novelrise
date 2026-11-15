@@ -581,6 +581,42 @@
               'Rank ' + work.rank + ' ' + label(work.rankName) +
               ' ・最高Rank ' + number(work.peakRank))
           );
+          const received = work.receivedSeeds;
+          const counts =
+            received &&
+            ['total', 'gold', 'silver', 'bronze', 'legacy'].every(
+              (key) => Number.isSafeInteger(received[key]) && received[key] >= 0
+            ) &&
+            Number.isSafeInteger(
+              received.gold +
+                received.silver +
+                received.bronze +
+                received.legacy
+            ) &&
+            received.total ===
+              received.gold +
+                received.silver +
+                received.bronze +
+                received.legacy;
+          info.append(
+            el(
+              'small',
+              '',
+              counts
+                ? '受信 LIGHT SEED ' +
+                    number(received.total) +
+                    '個（GOLD ' +
+                    number(received.gold) +
+                    ' / SILVER ' +
+                    number(received.silver) +
+                    ' / BRONZE ' +
+                    number(received.bronze) +
+                    ' / 旧形式 ' +
+                    number(received.legacy) +
+                    '）'
+                : '受信 LIGHT SEED：履歴照合中'
+            )
+          );
           row.append(info);
           workList.append(row);
         }
