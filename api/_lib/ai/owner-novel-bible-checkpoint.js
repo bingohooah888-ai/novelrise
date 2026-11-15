@@ -28,20 +28,30 @@ function validId(id) {
 // Compare the actual JSON values, never stringify whole objects for CAS proof.
 function equalJson(left, right) {
   if (left === right) return true;
-  if (!left || !right || typeof left !== 'object' ||
-      typeof right !== 'object' || Array.isArray(left) !== Array.isArray(right)) {
+  if (
+    !left ||
+    !right ||
+    typeof left !== 'object' ||
+    typeof right !== 'object' ||
+    Array.isArray(left) !== Array.isArray(right)
+  ) {
     return false;
   }
   if (Array.isArray(left)) {
-    return left.length === right.length &&
-      left.every((item, index) => equalJson(item, right[index]));
+    return (
+      left.length === right.length &&
+      left.every((item, index) => equalJson(item, right[index]))
+    );
   }
   const keys = Object.keys(left);
-  return keys.length === Object.keys(right).length &&
-    keys.every((key) =>
-      Object.prototype.hasOwnProperty.call(right, key) &&
-      equalJson(left[key], right[key])
-    );
+  return (
+    keys.length === Object.keys(right).length &&
+    keys.every(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(right, key) &&
+        equalJson(left[key], right[key])
+    )
+  );
 }
 
 function validPlan(plan, actorId, novelId, episodeId, chunkIndex) {
@@ -567,7 +577,8 @@ export function createSupabaseOwnerNovelBibleCheckpointRepository({
   if (
     typeof serviceClient?.from !== 'function' ||
     typeof serviceClient?.rpc !== 'function'
-  ) unavailable();
+  )
+    unavailable();
 
   return Object.freeze({
     async readSnapshot({ episodeId }) {
@@ -614,7 +625,9 @@ export function createSupabaseOwnerNovelBibleCheckpointRepository({
             typeof nextProgress !== 'object' ||
             Array.isArray(nextProgress)) ||
         (action === 'record' || action === 'replan'
-          ? !Number.isSafeInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= 64
+          ? !Number.isSafeInteger(chunkIndex) ||
+            chunkIndex < 0 ||
+            chunkIndex >= 64
           : chunkIndex !== undefined)
       ) {
         unavailable();
