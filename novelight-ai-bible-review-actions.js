@@ -29,6 +29,8 @@
       Number.isSafeInteger(item?.revision) &&
       item.revision >= (status === 'accepted' ? 2 : 1) &&
       item.status === status &&
+      (item.replacesOutdatedVersion === undefined ||
+        item.replacesOutdatedVersion === true) &&
       FACT_KINDS.has(item.kind) &&
       typeof item.key === 'string' &&
       item.key.trim().length > 0 &&
@@ -72,7 +74,8 @@
         (item) =>
           ['pending', 'accepted'].includes(item?.status) &&
           ['source_changed', 'episode_missing'].includes(item?.staleReason) &&
-          validItem(item, item.status)
+          validItem(item, item.status) &&
+          item.replacesOutdatedVersion === undefined
       )
     ) {
       return false;
@@ -283,6 +286,7 @@
       const row = doc.createElement('div');
       const details = doc.createElement('p');
       details.textContent =
+        (item.replacesOutdatedVersion ? '【改稿後の新版候補】' : '') +
         item.kind +
         '：' +
         item.key +
@@ -313,6 +317,7 @@
         const row = doc.createElement('div');
         const details = doc.createElement('p');
         details.textContent =
+          (item.replacesOutdatedVersion ? '【改稿後の新版候補】' : '') +
           item.kind +
           '：' +
           item.key +
