@@ -12,6 +12,8 @@
     fetchImpl,
     nextOperationId,
     newReaderOnboardingAvailable = false,
+    readerExchangeAvailable = false,
+    readerAiPointAvailable = false,
     adminGiftQueueAvailable = false,
     adminSettlementActionsAvailable = false
   } = {}) {
@@ -28,13 +30,18 @@
     }
     const bindings = {};
     if (readerRoot) {
-      if (typeof nextOperationId !== 'function')
-        throw new TypeError('Reader operation UUID provider required');
+      if (
+        (readerExchangeAvailable === true || readerAiPointAvailable === true) &&
+        typeof nextOperationId !== 'function'
+      )
+        throw new TypeError('Reader Point actions require operation UUIDs');
       bindings.reader = () =>
         mount.mountFormalReaderReward({
           root: readerRoot,
           nextOperationId,
           newReaderOnboardingAvailable,
+          readerExchangeAvailable,
+          readerAiPointAvailable,
           request: transport.createFormalRewardTransport({
             endpoint: readerEndpoint,
             getAccessToken,
