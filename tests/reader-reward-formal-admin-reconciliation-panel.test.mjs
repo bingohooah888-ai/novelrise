@@ -431,7 +431,7 @@ test('malformed reader summary cannot look like initialized accounts', async () 
   assert.doesNotMatch(flatten(element), /初期化完了：10人/);
 });
 
-test('admin 30-day maintenance status stays read-only with gift queue OFF', async () => {
+test('maintenance status stays read-only with Gift OFF', async () => {
   const element = root();
   let calls = 0;
   const panel = createFormalRewardAdminPanel({
@@ -454,13 +454,10 @@ test('admin 30-day maintenance status stays read-only with gift queue OFF', asyn
   assert.match(flatten(element), /DB権限を確認しました/);
   assert.match(flatten(element), /維持判定の実行・正式公開は別途承認/);
   assert.doesNotMatch(flatten(element), /PRIVATE_READER/);
-  assert.equal(
-    descendants(element, (n) => n.tag === 'button').length,
-    0
-  );
+  assert.equal(descendants(element, (n) => n.tag === 'button').length, 0);
 });
 
-test('invalid maintenance readiness never advertises authorization', async () => {
+test('invalid maintenance status is never approved', async () => {
   const element = root();
   const panel = createFormalRewardAdminPanel({
     root: element,
