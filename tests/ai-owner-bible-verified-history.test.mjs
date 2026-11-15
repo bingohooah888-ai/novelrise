@@ -29,7 +29,9 @@ function fixture({
   revisionOwner = OWNER,
   revisionText = before,
   revisionDate = '2026-11-14T00:00:00.000Z',
-  badAnalysis = false
+  badAnalysis = false,
+  analysisHash = sourceHash(before),
+  phase2Summary
 } = {}) {
   const calls = [];
   const episode = {
@@ -82,8 +84,11 @@ function fixture({
               data: analysis
                 ? {
                     episode_id: badAnalysis ? 12 : 11,
-                    source_hash: sourceHash(before),
-                    revision: 1
+                    source_hash: analysisHash,
+                    revision: 1,
+                    ...(phase2Summary === undefined
+                      ? {}
+                      : { summary: { novelightPhase2: phase2Summary } })
                   }
                 : null,
               error: null
@@ -215,4 +220,57 @@ test('reader construction and unscoped calls reject before any database read', a
     /AI_BIBLE_HISTORY_UNAVAILABLE/u
   );
   assert.equal(count, 0);
+});
+
+test('unfinished new-episode checkpoint is never mistaken for completed analysis', async () => {
+  const targetHash = sourceHash(CURRENT);
+  const f = fixture({
+    analysisHash: targetHash,
+    phase2Summary: {
+      version: 1,
+      state: 'in_progress',
+      actorId: OWNER,
+      novelId: 41,
+      episodeId: 11,
+      previousSourceHash: null,
+      targetSourceHash: targetHash
+    }
+  });
+  assert.equal(await f.read(), null);
+  assert.equal(
+    f.calls.some((call) => call[1] === 'episode_revisions'),
+    false
+  );
+});
+
+test('in-progress changed chapter keeps the older confirmed source hash', async () => {
+  const f = fixture({
+    phase2Summary: {
+      version: 1,
+      state: 'in_progress',
+      actorId: OWNER,
+      novelId: 41,
+      episodeId: 11,
+      previousSourceHash: sourceHash(BEFORE),
+      targetSourceHash: sourceHash(CURRENT)
+    }
+  });
+  const result = await f.read();
+  assert.equal(result.analysis.source_hash, sourceHash(BEFORE));
+  assert.equal(result.episode.content, BEFORE);
+});
+
+test('invalid in-progress checkpoint cannot authorize source reuse', async () => {
+  const f = fixture({
+    phase2Summary: {
+      version: 1,
+      state: 'in_progress',
+      actorId: OTHER,
+      novelId: 41,
+      episodeId: 11,
+      previousSourceHash: sourceHash(BEFORE),
+      targetSourceHash: sourceHash(CURRENT)
+    }
+  });
+  await assert.rejects(f.read(), /AI_BIBLE_HISTORY_UNAVAILABLE/u);
 });
