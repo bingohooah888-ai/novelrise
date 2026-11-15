@@ -624,13 +624,17 @@ const durableComment = {
     rule: durableRule
   }
 };
-function durableDemo(events = [durableSource, durableComment], xpEvents = []) {
+function durableDemo(
+  events = [durableSource, durableComment],
+  xpEvents = [],
+  nowIso = '2026-12-03T00:00:00.000Z'
+) {
   return createFormalOfflineIntegration({
     handoff: quote(),
     betaThresholdRows,
     operatorId: operator,
     formalReleaseAtMs: release,
-    syntheticNowIso: '2026-12-03T00:00:00.000Z',
+    syntheticNowIso: nowIso,
     syntheticDurableEvents: events,
     syntheticXpEvents: xpEvents,
     mockBudgets: {
@@ -1151,4 +1155,263 @@ test('offline administrator UI displays source-derived XP and first-level Point 
   assert.match(view, /900 XP/);
   assert.match(view, /level_up：50 pt/);
   assert.match(view, /読書報酬/);
+});
+
+
+const maintenanceEnd = '2026-12-31T00:00:00.000Z';
+const secondMaintenanceEnd = '2027-01-30T00:00:00.000Z';
+function maintenanceXp(id, source, amount, at, verified = true) {
+  return {
+    sourceFixtureVerified: verified,
+    verifiedXpLedgerRow: {
+      id,
+      user_id: reader,
+      source_event_id: source,
+      xp_kind: 'discovery_success',
+      xp_value: amount,
+      occurred_at: at
+    }
+  };
+}
+const xpRowA = maintenanceXp(
+  '00000000-0000-4000-8000-000000000541',
+  '00000000-0000-4000-8000-000000000542',
+  200,
+  '2026-12-30T23:59:59.000Z'
+);
+const xpRowB = maintenanceXp(
+  '00000000-0000-4000-8000-000000000543',
+  '00000000-0000-4000-8000-000000000544',
+  400,
+  maintenanceEnd
+);
+
+test('exact 30-day boundary settles earlier 200 XP and assigns boundary XP to next period', async () => {
+  const sandbox = durableDemo([], [xpRowA, xpRowB], maintenanceEnd);
+  const held = await sandbox.reviewDueSynthetic({ limit: 1 });
+  assert.equal(held.status, 'review_tick_completed');
+  assert.equal(held.held, 1);
+  assert.equal(held.reviewed, 0);
+  assert.equal(sandbox.inspectSyntheticMaintenance().length, 0);
+
+  const replay = await sandbox.resumePendingSyntheticXp({
+    userId: reader,
+    asOfIso: maintenanceEnd
+  });
+  assert.equal(replay.status, 'caught_up');
+  assert.equal(replay.xpApplied, 2);
+  assert.equal(replay.reviews, 1);
+  const reviews = sandbox.inspectSyntheticMaintenance();
+  assert.equal(reviews.length, 1);
+  assert.equal(reviews[0].windowEndMs, Date.parse(maintenanceEnd));
+  assert.equal(reviews[0].earnedXp, 200);
+  assert.equal(reviews[0].demoted, false);
+
+  const snapshot = (await sandbox.readerRequest(reader, { method: 'GET' }))
+    .body;
+  assert.equal(snapshot.account.level, 31);
+  assert.equal(snapshot.account.highestLevel, 31);
+  assert.equal(snapshot.account.progressXp, 200);
+  assert.equal(snapshot.account.earnedXpInPeriod, 400);
+  assert.equal(snapshot.account.nextMaintenanceAt, secondMaintenanceEnd);
+  assert.equal(snapshot.wallet.availablePoints, 35050);
+  assert.equal(snapshot.wallet.exchangeEligiblePoints, 50);
+  assert.equal(
+    snapshot.history.filter((entry) => entry.kind === 'level_up').length,
+    1
+  );
+
+  const report = (await sandbox.adminRequest({
+    method: 'GET',
+    query: { view: 'reward_overview' }
+  })).body;
+  assert.equal(report.maintenanceReviewed, 1);
+  assert.equal(report.maintenanceDemotions, 0);
+  assert.equal(report.xpEventsMonth, 2);
+  assert.equal(report.xpEarnedMonth, 600);
+  assert.equal(report.levelUpTotal, 50);
+  assert.equal(report.issuedTotal, 50);
+
+  assert.deepEqual(
+    await sandbox.resumePendingSyntheticXp({
+      userId: reader,
+      asOfIso: maintenanceEnd
+    }),
+    { status: 'caught_up', xpApplied: 0, reviews: 0 }
+  );
+  assert.equal(
+    (await sandbox.readerRequest(reader, { method: 'GET' })).body.wallet
+      .availablePoints,
+    35050
+  );
+});
+
+test('low 30-day XP causes exactly one demotion and no Point or Wallet mutation', async () => {
+  const xp = maintenanceXp(
+    '00000000-0000-4000-8000-000000000545',
+    '00000000-0000-4000-8000-000000000546',
+    199,
+    '2026-12-15T01:00:00.000Z'
+  );
+  const sandbox = durableDemo([], [xp], maintenanceEnd);
+  const first = await sandbox.resumePendingSyntheticXp({
+    userId: reader
+  });
+  assert.equal(first.status, 'caught_up');
+  assert.equal(first.reviews, 1);
+  const snapshot = (await sandbox.readerRequest(reader, { method: 'GET' }))
+    .body;
+  assert.equal(snapshot.account.level, 29);
+  assert.equal(snapshot.account.highestLevel, 30);
+  assert.equal(snapshot.account.progressXp, 0);
+  assert.equal(snapshot.account.earnedXpInPeriod, 0);
+  assert.equal(snapshot.account.nextMaintenanceAt, secondMaintenanceEnd);
+  assert.equal(snapshot.wallet.availablePoints, 35000);
+  assert.equal(snapshot.wallet.exchangeEligiblePoints, 0);
+  assert.equal(snapshot.history.filter((h) => h.kind === 'level_up').length, 0);
+
+  const replay = await sandbox.resumePendingSyntheticXp({ userId: reader });
+  assert.deepEqual(replay, {
+    status: 'caught_up',
+    xpApplied: 0,
+    reviews: 0
+  });
+  const overview = (await sandbox.adminRequest({
+    method: 'GET',
+    query: { view: 'reward_overview' }
+  })).body;
+  assert.equal(overview.maintenanceReviewed, 1);
+  assert.equal(overview.maintenanceDemotions, 1);
+  assert.equal(overview.issuedTotal, 0);
+  assert.equal(overview.eligibleAvailable, 0);
+});
+
+test('bounded replay leaves old window open until every committed XP event is claimed', async () => {
+  const rows = [30, 40, 50].map((amount, n) =>
+    maintenanceXp(
+      '00000000-0000-4000-8000-00000000055' + (n + 1),
+      '00000000-0000-4000-8000-00000000056' + (n + 1),
+      amount,
+      '2026-12-' + String(10 + n) + 'T02:00:00.000Z'
+    )
+  );
+  const sandbox = durableDemo([], rows, maintenanceEnd);
+  for (const expected of [1, 2]) {
+    const batch = await sandbox.resumePendingSyntheticXp({
+      userId: reader,
+      limit: 1
+    });
+    assert.equal(batch.status, 'more_pending');
+    assert.equal(batch.xpApplied, 1);
+    assert.equal(batch.reviews, 0);
+    assert.equal(sandbox.inspectSyntheticMaintenance().length, 0);
+    assert.equal(
+      (await sandbox.readerRequest(reader, { method: 'GET' })).body.account
+        .earnedXpInPeriod,
+      expected === 1 ? 30 : 70
+    );
+  }
+  const after = await sandbox.resumePendingSyntheticXp({
+    userId: reader,
+    limit: 1
+  });
+  assert.equal(after.status, 'caught_up');
+  assert.equal(after.reviews, 1);
+  assert.equal(sandbox.inspectSyntheticMaintenance()[0].earnedXp, 120);
+  const snapshot = (await sandbox.readerRequest(reader, { method: 'GET' }))
+    .body;
+  assert.equal(snapshot.account.level, 29);
+  assert.equal(snapshot.wallet.availablePoints, 35000);
+  assert.equal(snapshot.wallet.exchangeEligiblePoints, 0);
+});
+
+test('unverified late XP and signed adjustments hold review without demotion or Wallet change', async () => {
+  const unverified = maintenanceXp(
+    '00000000-0000-4000-8000-000000000571',
+    '00000000-0000-4000-8000-000000000572',
+    300,
+    '2026-12-29T12:00:00.000Z',
+    false
+  );
+  const good = maintenanceXp(
+    '00000000-0000-4000-8000-000000000573',
+    '00000000-0000-4000-8000-000000000574',
+    80,
+    '2026-12-20T12:00:00.000Z'
+  );
+  const missing = durableDemo([], [good, unverified], maintenanceEnd);
+  const outcome = await missing.resumePendingSyntheticXp({ userId: reader });
+  assert.equal(outcome.status, 'review_hold');
+  assert.equal(outcome.reason, 'evidence_incomplete');
+  assert.equal(outcome.xpApplied, 1);
+  assert.equal(missing.inspectSyntheticMaintenance().length, 0);
+  assert.equal(
+    (await missing.readerRequest(reader, { method: 'GET' })).body.account
+      .level,
+    30
+  );
+  assert.equal(
+    (await missing.readerRequest(reader, { method: 'GET' })).body.wallet
+      .availablePoints,
+    35000
+  );
+  const correction = maintenanceXp(
+    '00000000-0000-4000-8000-000000000575',
+    '00000000-0000-4000-8000-000000000576',
+    -10,
+    '2026-12-19T12:00:00.000Z'
+  );
+  const adjusted = durableDemo([], [good, correction], maintenanceEnd);
+  const report = await adjusted.reviewDueSynthetic({ limit: 1 });
+  assert.equal(report.status, 'review_tick_completed');
+  assert.equal(report.held, 1);
+  assert.equal(report.reviewed, 0);
+  assert.equal(adjusted.inspectSyntheticMaintenance().length, 0);
+  const attempt = await adjusted.resumePendingSyntheticXp({ userId: reader });
+  assert.equal(attempt.status, 'xp_hold');
+  assert.equal(attempt.reason, 'canonical_xp_source_invalid');
+  assert.equal(adjusted.inspectSyntheticMaintenance().length, 0);
+  assert.equal(
+    (await adjusted.readerRequest(reader, { method: 'GET' })).body.wallet
+      .availablePoints,
+    35000
+  );
+});
+
+test('replay two empty periods from original anchor demotes at most once per 30 days', async () => {
+  const future = maintenanceXp(
+    '00000000-0000-4000-8000-000000000577',
+    '00000000-0000-4000-8000-000000000578',
+    100,
+    '2027-02-03T00:00:00.000Z'
+  );
+  const now = '2027-02-01T00:00:00.000Z';
+  const sandbox = durableDemo([], [future], now);
+  const finished = await sandbox.resumePendingSyntheticXp({
+    userId: reader
+  });
+  assert.equal(finished.status, 'caught_up');
+  assert.equal(finished.xpApplied, 0);
+  assert.equal(finished.reviews, 2);
+  const reviewRows = sandbox.inspectSyntheticMaintenance();
+  assert.deepEqual(
+    reviewRows.map((entry) => entry.windowEndMs),
+    [Date.parse(maintenanceEnd), Date.parse(secondMaintenanceEnd)]
+  );
+  assert.deepEqual(
+    reviewRows.map((entry) => entry.levelAfter),
+    [29, 28]
+  );
+  const view = (await sandbox.readerRequest(reader, { method: 'GET' })).body;
+  assert.equal(view.account.level, 28);
+  assert.equal(view.account.highestLevel, 30);
+  assert.equal(view.wallet.availablePoints, 35000);
+  assert.equal(view.wallet.exchangeEligiblePoints, 0);
+  const secondPass = await sandbox.resumePendingSyntheticXp({ userId: reader });
+  assert.deepEqual(secondPass, {
+    status: 'caught_up',
+    xpApplied: 0,
+    reviews: 0
+  });
+  assert.equal(sandbox.inspectSyntheticMaintenance().length, 2);
 });
