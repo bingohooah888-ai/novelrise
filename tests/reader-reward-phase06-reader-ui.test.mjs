@@ -850,8 +850,8 @@ test('author dashboard selects works and pages Rank events', async () => {
   assert.match(text(root), /取得範囲内の更新記録：13件/);
   assert.match(text(root), /最大30作品・更新履歴は最大80件/);
   function cards() {
-    return byTag(root, 'button').filter(
-      (button) => button.className.includes('rr-author-work-select')
+    return byTag(root, 'button').filter((button) =>
+      button.className.includes('rr-author-work-select')
     );
   }
   assert.equal(cards().length, 2);
