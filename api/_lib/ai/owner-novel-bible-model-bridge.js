@@ -200,16 +200,27 @@ export function createOwnerNovelBibleModelBridge({
     if (plan.chunks.length > MAX_CHUNKS) deny();
     const chunk = plan.chunks[chunkIndex];
     if (!chunk) {
-      // An unchanged or deletion-only chapter has nothing to infer. Refuse
-      // invalid indices and empty new chapters; spend no tokens or writes.
+      // An independently verified zero-excerpt revision can complete without
+      // sending an unchanged passage to a provider. An unchanged episode
+      // needs no checkpoint; every other empty/invalid plan is rejected.
+      const zeroChange = plan.zeroChangedSources?.find(
+        (item) => item.episodeId === context.episode.id
+      );
       if (
         chunkIndex !== 0 ||
-        (plan.unchangedCount !== 1 &&
-          !plan.deletionOnlyEpisodes.includes(context.episode.id))
+        (plan.unchangedCount !== 1 && !zeroChange)
       ) {
         deny();
       }
-      return { chunk: null, source: null, history: historyDigest(checkpoint) };
+      return {
+        chunk: null,
+        source: null,
+        history: historyDigest(checkpoint),
+        zeroChange: zeroChange ?? null,
+        completionPlan: zeroChange
+          ? { ...plan, analyses: checkpoint.analyses }
+          : null
+      };
     }
     const source = materializeNovelBibleChunk({ ...context, chunk });
     return {
@@ -238,13 +249,34 @@ export function createOwnerNovelBibleModelBridge({
 
       const original = await scope(token, workId, chapterId);
       await permission(workId, chapterId);
-      const { chunk, source, history, completionPlan } = await chooseChunk(
-        original,
-        chunkIndex
-      );
+      const { chunk, source, history, completionPlan, zeroChange } =
+        await chooseChunk(original, chunkIndex);
       if (!chunk) {
-        // This remains authenticated and consent-gated but does not reserve
-        // budget, call a provider or save any inferred candidate.
+        if (zeroChange && checkpoint) {
+          if (typeof checkpoint.completeEmpty !== 'function') deny();
+          // Recheck owner, consent and the CURRENT source immediately before
+          // the zero-cost completion CAS. Never accept a client-reported
+          // deletion/title-only reason or a stale manuscript hash.
+          const fresh = await scope(token, workId, chapterId);
+          await permission(workId, chapterId);
+          const current = await chooseChunk(fresh, chunkIndex);
+          if (
+            current.chunk ||
+            history !== current.history ||
+            JSON.stringify(current.zeroChange) !== JSON.stringify(zeroChange)
+          ) {
+            deny();
+          }
+          const receipt = await checkpoint.completeEmpty({
+            actorId: owner,
+            novelId: workId,
+            episodeId: chapterId,
+            plan: completionPlan
+          });
+          if (receipt?.complete !== true || receipt.remainingChunks !== 0) {
+            deny();
+          }
+        }
         return Object.freeze({
           novelId: workId,
           stagedCount: 0,
@@ -263,7 +295,26 @@ export function createOwnerNovelBibleModelBridge({
       if (checkpointRequest) {
         // A previous successful one-chunk call must never trigger a second
         // provider attempt. Only a server-derived plan can reach this hook.
-        const status = await checkpoint.inspect(checkpointRequest);
+        let status = await checkpoint.inspect(checkpointRequest);
+        if (status === 'replan') {
+          if (typeof checkpoint.replan !== 'function') deny();
+          const currentScope = await scope(token, workId, chapterId);
+          await permission(workId, chapterId);
+          const current = await chooseChunk(currentScope, chunkIndex);
+          if (
+            !current.chunk ||
+            current.history !== history ||
+            current.chunk.sourceHash !== chunk.sourceHash ||
+            current.chunk.chunkHash !== chunk.chunkHash
+          ) {
+            deny();
+          }
+          // CAS discards old unfinished indices before this new source can
+          // consume a provider reservation. An old in-flight request cannot
+          // later append to the replaced journal.
+          await checkpoint.replan(checkpointRequest);
+          status = await checkpoint.inspect(checkpointRequest);
+        }
         if (status === 'completed') {
           return Object.freeze({
             novelId: workId,
@@ -277,7 +328,11 @@ export function createOwnerNovelBibleModelBridge({
         featureKey: 'novel-bible',
         principal: original.principal,
         workId,
-        revision: chunk.chunkHash,
+        // An identical excerpt from a different manuscript revision must
+        // not reuse the previous version's budget idempotency fingerprint.
+        revision: createHash('sha256')
+          .update(JSON.stringify([source.sourceHash, source.chunkHash]))
+          .digest('hex'),
         system: NOVEL_BIBLE_INFERENCE_SYSTEM,
         user: JSON.stringify({
           task: 'Extract review candidates from this excerpt only',
