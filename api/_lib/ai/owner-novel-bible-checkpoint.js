@@ -24,6 +24,26 @@ function validId(id) {
   return Number.isSafeInteger(id) && id > 0;
 }
 
+// PostgreSQL jsonb does not preserve JavaScript object's insertion-key order.
+// Compare the actual JSON values, never stringify whole objects for CAS proof.
+function equalJson(left, right) {
+  if (left === right) return true;
+  if (!left || !right || typeof left !== 'object' ||
+      typeof right !== 'object' || Array.isArray(left) !== Array.isArray(right)) {
+    return false;
+  }
+  if (Array.isArray(left)) {
+    return left.length === right.length &&
+      left.every((item, index) => equalJson(item, right[index]));
+  }
+  const keys = Object.keys(left);
+  return keys.length === Object.keys(right).length &&
+    keys.every((key) =>
+      Object.prototype.hasOwnProperty.call(right, key) &&
+      equalJson(left[key], right[key])
+    );
+}
+
 function validPlan(plan, actorId, novelId, episodeId, chunkIndex) {
   if (
     !UUID.test(actorId) ||
@@ -355,7 +375,7 @@ export function createOfflineOwnerNovelBibleCheckpoint({
         (complete
           ? scope.sourceHash
           : (scope.previousSourceHash ?? NOVEL_BIBLE_PENDING_SOURCE_HASH)) ||
-      JSON.stringify(verified.progress) !== JSON.stringify(next)
+      !equalJson(verified.progress, next)
     ) {
       unavailable();
     }
@@ -408,7 +428,7 @@ export function createOfflineOwnerNovelBibleCheckpoint({
       !verified ||
       verified.row.revision !== snapshot.row.revision + 1 ||
       verified.row.source_hash !== nextSourceHash ||
-      JSON.stringify(verified.progress) !== JSON.stringify(next)
+      !equalJson(verified.progress, next)
     ) {
       unavailable();
     }
@@ -463,7 +483,7 @@ export function createOfflineOwnerNovelBibleCheckpoint({
       !verified ||
       verified.row.revision !== (snapshot?.row.revision ?? 0) + 1 ||
       verified.row.source_hash !== scope.sourceHash ||
-      JSON.stringify(verified.progress) !== JSON.stringify(next)
+      !equalJson(verified.progress, next)
     ) {
       unavailable();
     }
@@ -521,7 +541,7 @@ export function createOfflineOwnerNovelBibleCheckpoint({
       verified.progress !== null ||
       verified.row.source_hash !== sourceHash ||
       verified.row.revision !== snapshot.row.revision + 1 ||
-      JSON.stringify(verified.row.summary) !== JSON.stringify(nextSummary)
+      Object.prototype.hasOwnProperty.call(verified.row.summary, KEY)
     ) {
       unavailable();
     }
