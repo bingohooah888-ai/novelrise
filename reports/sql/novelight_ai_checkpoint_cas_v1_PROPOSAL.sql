@@ -153,7 +153,7 @@ begin
        or v_old ->> 'targetSourceHash' !~ '^[a-f0-9]{64}$'
        or pg_catalog.jsonb_typeof(v_old -> 'fingerprint') is distinct from 'string'
        or v_old ->> 'fingerprint' !~ '^[a-f0-9]{64}$'
-       or pg_catalog.jsonb_typeof(v_old -> 'previousSourceHash') not in ('null','string')
+       or pg_catalog.coalesce(pg_catalog.jsonb_typeof(v_old -> 'previousSourceHash'),'missing') not in ('null','string')
        or pg_catalog.jsonb_typeof(v_old -> 'chunkCount') is distinct from 'number'
        or v_old ->> 'chunkCount' !~ '^(0|[1-9][0-9]?)$'
        or pg_catalog.jsonb_typeof(v_old -> 'completedIndices') is distinct from 'array'
@@ -174,7 +174,9 @@ begin
        ))
        or (v_old_state = 'complete' and v_row.source_hash is distinct from v_old_target)
        or (v_old_count = 0 and (
-         v_old_state <> 'complete' or v_old ->> 'zeroReason' not in
+         v_old_state <> 'complete'
+         or pg_catalog.jsonb_typeof(v_old -> 'zeroReason') is distinct from 'string'
+         or v_old ->> 'zeroReason' not in
          ('empty-body','deletion-only','title-only')
        ))
        or (v_old_count > 0 and v_old ? 'zeroReason')
@@ -226,7 +228,7 @@ begin
        or p_next_progress ->> 'actorId' is distinct from p_actor_id::text
        or p_next_progress -> 'novelId' is distinct from pg_catalog.to_jsonb(p_novel_id)
        or p_next_progress -> 'episodeId' is distinct from pg_catalog.to_jsonb(p_episode_id)
-       or pg_catalog.jsonb_typeof(p_next_progress -> 'previousSourceHash') not in ('null','string')
+       or pg_catalog.coalesce(pg_catalog.jsonb_typeof(p_next_progress -> 'previousSourceHash'),'missing') not in ('null','string')
        or pg_catalog.jsonb_typeof(p_next_progress -> 'targetSourceHash') is distinct from 'string'
        or p_next_progress ->> 'targetSourceHash' is distinct from p_target_source_hash
        or pg_catalog.jsonb_typeof(p_next_progress -> 'fingerprint') is distinct from 'string'
