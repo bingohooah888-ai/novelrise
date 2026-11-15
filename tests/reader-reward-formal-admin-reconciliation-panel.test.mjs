@@ -430,3 +430,58 @@ test('malformed reader summary cannot look like initialized accounts', async () 
   assert.match(flatten(element), /新規読者の初期化状況は未確認/);
   assert.doesNotMatch(flatten(element), /初期化完了：10人/);
 });
+
+test('maintenance status stays read-only with Gift OFF', async () => {
+  const element = root();
+  let calls = 0;
+  const panel = createFormalRewardAdminPanel({
+    root: element,
+    authorized: true,
+    loadMaintenanceReadiness: async () => {
+      calls++;
+      return {
+        ok: true,
+        status: 'maintenance_connection_ready',
+        mayRunMaintenance: false,
+        readyForPublicRelease: false,
+        readerId: 'PRIVATE_READER'
+      };
+    }
+  });
+  assert.equal((await panel.refresh()).status, 'queue_not_connected');
+  assert.ok(calls >= 1);
+  assert.match(flatten(element), /30日間Scout Level維持判定/);
+  assert.match(flatten(element), /DB権限を確認しました/);
+  assert.match(flatten(element), /維持判定の実行・正式公開は別途承認/);
+  assert.doesNotMatch(flatten(element), /PRIVATE_READER/);
+  assert.equal(descendants(element, (n) => n.tag === 'button').length, 0);
+});
+
+test('invalid maintenance status is never approved', async () => {
+  const element = root();
+  const panel = createFormalRewardAdminPanel({
+    root: element,
+    authorized: true,
+    loadMaintenanceReadiness: async () => ({
+      ok: true,
+      status: 'maintenance_connection_ready',
+      mayRunMaintenance: true,
+      readyForPublicRelease: true
+    })
+  });
+  assert.equal((await panel.refresh()).status, 'queue_not_connected');
+  assert.match(flatten(element), /維持判定の状態は未確認/);
+  assert.doesNotMatch(flatten(element), /DB権限を確認しました/);
+  let attempts = 0;
+  const hidden = root();
+  const unauthorized = createFormalRewardAdminPanel({
+    root: hidden,
+    authorized: false,
+    loadMaintenanceReadiness: async () => {
+      attempts++;
+      throw Error('AUTH_REQUIRED');
+    }
+  });
+  assert.equal((await unauthorized.refresh()).status, 'admin_not_verified');
+  assert.equal(attempts, 0);
+});

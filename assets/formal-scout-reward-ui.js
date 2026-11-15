@@ -6,6 +6,7 @@
   const POINTS_PER_YEN = 10;
   const MIN_EXCHANGE_POINTS = 30000;
   const MAINTENANCE_XP = 200;
+  const HISTORY_PAGE_SIZE = 20;
   // Exact 10-stage rank names from MASTER §49.22. The formal UI derives
   // the rank only from a server-verified Level, never from browser XP.
   const SCOUT_RANK_NAMES = Object.freeze([
@@ -16,6 +17,53 @@
     Number.isSafeInteger(level) && level >= 1 && level <= 100
       ? SCOUT_RANK_NAMES[Math.floor((level - 1) / 10)]
       : null;
+  const REWARD_LEVEL_BANDS = Object.freeze([
+    [1, 19],
+    [20, 39],
+    [40, 59],
+    [60, 69],
+    [70, 74],
+    [75, 79],
+    [80, 84],
+    [85, 89],
+    [90, 94],
+    [95, 99],
+    [100, 100]
+  ]);
+  // Browser quote only. Authoritative issuance and eligible-read checks stay
+  // exclusively in the future trusted server implementation (rates.js).
+  function quoteFormalRewardGuide(level) {
+    if (!Number.isSafeInteger(level) || level < 1 || level > 100)
+      return null;
+    const points = level < 20
+      ? 1
+      : level < 40
+        ? 2
+        : level < 60
+          ? 3
+          : level < 70
+            ? 4
+            : 5 + Math.floor((level - 70) / 5);
+    const nextRateBand = REWARD_LEVEL_BANDS.find(
+      ([start]) => start > level
+    );
+    const nextRankLevel = Math.floor((level - 1) / 10) * 10 + 11;
+    const nextRateLevel = nextRateBand?.[0] ?? null;
+    return Object.freeze({
+      level,
+      pointsPerEligibleEpisode: points,
+      nextRateLevel,
+      nextRatePoints:
+        nextRateLevel === null
+          ? null
+          : quoteFormalRewardGuide(nextRateLevel).pointsPerEligibleEpisode,
+      nextRankLevel: nextRankLevel <= 100 ? nextRankLevel : null,
+      nextRankName:
+        nextRankLevel <= 100 ? rankAtLevel(nextRankLevel) : null,
+      pointsPerEligibleComment: 20,
+      commentMonthlyLimit: 50
+    });
+  }
   const number = (value) => Number(value).toLocaleString('ja-JP');
   const validPoints = (value) => Number.isSafeInteger(value) && value >= 0;
   const yen = (points) =>
@@ -219,7 +267,7 @@
             }
           : null,
       history:
-        verified && Array.isArray(s.history) ? s.history.slice(0, 40) : [],
+        verified && Array.isArray(s.history) ? s.history.slice(0, 80) : [],
       aiFeatures: Array.isArray(s.aiFeatures) ? s.aiFeatures.slice(0, 25) : [],
       exchangeEnabled: verified && s.exchangeEnabled === true,
       giftProviderReady: verified && s.giftProviderReady === true
@@ -247,6 +295,8 @@
     let lastReloadId = 0;
     let busy = false;
     let tab = 'history';
+    let historyFilter = 'all';
+    let historyPage = 0;
     const shell = el('section', 'rr-shell');
     const h = el('header', 'rr-heading');
     h.append(el('p', 'rr-kicker', 'NOVELIGHT / SCOUT REWARD'));
@@ -424,11 +474,13 @@
         : '現在は正式版の準備中です。Pointの交換・AI直接利用はまだできません。';
     }
     function selectTab(name) {
-      if (!['history', 'scout', 'exchange', 'ai'].includes(name)) return;
+      if (!['history', 'scout', 'guide', 'exchange', 'ai'].includes(name))
+        return;
       tab = name;
       tabs.replaceChildren();
       for (const [key, title] of [
         ['scout', '発掘・称号'],
+        ['guide', '報酬ガイド'],
         ['history', '報酬・利用履歴'],
         ['exchange', 'デジタルギフト交換'],
         ['ai', 'AIに使う']
@@ -442,18 +494,170 @@
       }
       contents.replaceChildren();
       if (tab === 'scout') drawScout();
+      else if (tab === 'guide') drawGuide();
       else if (tab === 'history') drawHistory();
       else if (tab === 'exchange') drawExchange();
       else drawAi();
     }
-    function drawHistory() {
-      const heading = el('h3', '', 'Point履歴');
-      const list = el('div', 'rr-history');
-      if (!latest.history.length) {
-        list.append(el('p', 'rr-muted', '表示できる確定履歴がありません。'));
+    function drawGuide() {
+      contents.append(
+        el('h3', '', 'レベル別・読書報酬の目安'),
+        el(
+          'p',
+          'rr-muted',
+          '正式版の予定レートです。Pointが付くのはサーバーが適格と確認した読書・コメントのみ。閲覧だけでは付与されません。'
+        )
+      );
+      const guide = quoteFormalRewardGuide(latest.level);
+      if (!guide) {
+        contents.append(
+          el(
+            'p',
+            'rr-warning',
+            '本人確認済みのScout Levelを取得できていません。現在の獲得見込は表示しません。'
+          )
+        );
+      } else {
+        const summary = el('div', 'rr-guide-summary');
+        summary.append(
+          metric(
+            '現在の読書報酬目安',
+            number(guide.pointsPerEligibleEpisode) + ' pt / 適格1話',
+            'Lv.' + guide.level + ' の予定レート'
+          ),
+          metric(
+            '次の読書単価',
+            guide.nextRateLevel === null
+              ? '最高レート'
+              : 'Lv.' + guide.nextRateLevel,
+            guide.nextRateLevel === null
+              ? '11 pt / 適格1話'
+              : number(guide.nextRatePoints) +
+                ' pt / 適格1話まで あと' +
+                number(guide.nextRateLevel - guide.level) +
+                ' Lv'
+          ),
+          metric(
+            '次のScout Rank',
+            guide.nextRankLevel === null
+              ? '最高Rank'
+              : guide.nextRankName,
+            guide.nextRankLevel === null
+              ? 'Lv.100まで到達'
+              : 'Lv.' + guide.nextRankLevel +
+                ' まで あと' +
+                number(guide.nextRankLevel - guide.level) +
+                ' Lv'
+          )
+        );
+        contents.append(summary);
       }
-      for (const item of latest.history) {
-        if (!item || !Number.isSafeInteger(item.points)) continue;
+      const rateList = el('div', 'rr-guide-rates');
+      rateList.setAttribute('aria-label', 'レベル別適格読書報酬');
+      for (const [start, end] of REWARD_LEVEL_BANDS) {
+        const row = el('div', 'rr-guide-rate-row');
+        if (guide && guide.level >= start && guide.level <= end) {
+          row.className += ' rr-guide-current';
+          row.setAttribute('aria-current', 'true');
+        }
+        row.append(
+          el('span', '', 'Lv.' + start + (end === start ? '' : '〜' + end)),
+          el(
+            'strong',
+            '',
+            quoteFormalRewardGuide(start).pointsPerEligibleEpisode + ' pt / 話'
+          )
+        );
+        rateList.append(row);
+      }
+      contents.append(
+        el('h3', '', '適格読書のレベル別予定レート'),
+        rateList,
+        el(
+          'p',
+          'rr-muted',
+          '適格コメントは1件20 pt、月50件まで（審査・読書記録などの条件あり）。有効読書・コメントの実際の付与可否はサーバー側で判定します。'
+        ),
+        el(
+          'p',
+          'rr-warning',
+          '正式報酬は公開OFFです。この案内は計算上の目安であり、Pointの付与・予約・交換・AI利用を開始しません。'
+        )
+      );
+    }
+    function drawHistory() {
+      contents.append(
+        el('h3', '', 'Point履歴'),
+        el(
+          'p',
+          'rr-muted',
+          'サーバーから取得した履歴の最大80件を表示します。全期間の台帳や現在残高の合計ではありません。'
+        )
+      );
+      const filters = [
+        ['all', 'すべて'],
+        ['earned', '獲得'],
+        ['spending', '利用・返却'],
+        ['review', '保留・取消']
+      ];
+      const filterBar = el('div', 'rr-history-filters');
+      filterBar.setAttribute('aria-label', 'Point履歴の種類');
+      for (const [key, title] of filters) {
+        const button = el('button', '', title);
+        button.type = 'button';
+        button.setAttribute('aria-pressed', String(historyFilter === key));
+        button.addEventListener('click', () => {
+          historyFilter = key;
+          historyPage = 0;
+          selectTab('history');
+        });
+        filterBar.append(button);
+      }
+      contents.append(filterBar);
+      const validHistory = latest.history.filter(
+        (item) => item && Number.isSafeInteger(item.points)
+      );
+      const filtered = validHistory.filter((item) => {
+        if (historyFilter === 'earned') {
+          return (
+            item.status === 'confirmed' &&
+            item.points > 0 &&
+            !['exchange', 'ai', 'refund'].includes(item.kind)
+          );
+        }
+        if (historyFilter === 'spending') {
+          return (
+            item.points < 0 ||
+            ['exchange', 'ai', 'refund'].includes(item.kind)
+          );
+        }
+        if (historyFilter === 'review') {
+          return ['pending', 'reserved', 'frozen', 'cancelled'].includes(
+            item.status
+          );
+        }
+        return true;
+      });
+      const totalPages = Math.max(
+        1,
+        Math.ceil(filtered.length / HISTORY_PAGE_SIZE)
+      );
+      historyPage = Math.min(historyPage, totalPages - 1);
+      const start = historyPage * HISTORY_PAGE_SIZE;
+      const pageItems = filtered.slice(start, start + HISTORY_PAGE_SIZE);
+      const list = el('div', 'rr-history');
+      if (!pageItems.length) {
+        list.append(
+          el(
+            'p',
+            'rr-muted',
+            validHistory.length
+              ? 'この種類のPoint履歴は取得した範囲にありません。'
+              : '取得したPoint履歴はありません。'
+          )
+        );
+      }
+      for (const item of pageItems) {
         const row = el('div', 'rr-history-row');
         const left = el('div');
         left.append(el('strong', '', TYPE_NAMES[item.kind] || 'Point変動'));
@@ -474,7 +678,48 @@
         );
         list.append(row);
       }
-      contents.append(heading, list);
+      contents.append(
+        el(
+          'p',
+          'rr-muted',
+          '取得範囲内の該当履歴：' +
+            number(filtered.length) +
+            '件' +
+            (filtered.length
+              ? '（' +
+                number(start + 1) +
+                '〜' +
+                number(start + pageItems.length) +
+                '件目）'
+              : '')
+        ),
+        list
+      );
+      if (totalPages > 1) {
+        const paging = el('div', 'rr-history-paging');
+        const prev = el('button', '', '前の20件');
+        prev.type = 'button';
+        prev.disabled = historyPage === 0;
+        prev.addEventListener('click', () => {
+          if (historyPage === 0) return;
+          historyPage--;
+          selectTab('history');
+        });
+        const next = el('button', '', '次の20件');
+        next.type = 'button';
+        next.disabled = historyPage + 1 >= totalPages;
+        next.addEventListener('click', () => {
+          if (historyPage + 1 >= totalPages) return;
+          historyPage++;
+          selectTab('history');
+        });
+        paging.append(
+          prev,
+          el('span', '', number(historyPage + 1) + ' / ' + number(totalPages)),
+          next
+        );
+        contents.append(paging);
+      }
     }
     function drawScout() {
       contents.append(el('h3', '', 'SCOUT RECORD / 読者称号と発掘'));
@@ -876,6 +1121,7 @@
   globalThis.NovelightFormalScoutReward = Object.freeze({
     POINTS_PER_YEN,
     rankAtLevel,
+    quoteFormalRewardGuide,
     MIN_EXCHANGE_POINTS,
     normalizeSnapshot,
     createRewardReaderPanel

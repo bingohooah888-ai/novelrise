@@ -110,7 +110,7 @@ function fixture({
   };
 }
 
-function makeHttp(f, getAdminRewardOverview) {
+function makeHttp(f, getAdminRewardOverview, getAdminMaintenanceReadiness) {
   const supabase = {
     auth: {
       async getUser(token) {
@@ -133,7 +133,8 @@ function makeHttp(f, getAdminRewardOverview) {
     supabase,
     service: f.service,
     env: { NOVELIGHT_ADMIN_USER_IDS: adminId },
-    getAdminRewardOverview
+    getAdminRewardOverview,
+    getAdminMaintenanceReadiness
   });
 }
 function httpReq(token, method = 'GET', body, origin = 'https://novelight.jp') {
@@ -406,4 +407,52 @@ test('admin earning evidence returns only a safe verdict', async () => {
   );
   assert.equal(malformed.statusCode, 400);
   assert.equal(inspections.length, 1);
+});
+
+test('admin maintenance status is sanitized and read-only', async () => {
+  const f = fixture({ enabled: false });
+  const calls = [];
+  const api = makeHttp(f, undefined, async () => {
+    calls.push('inspect_only');
+    return {
+      status: 'maintenance_connection_ready',
+      privateReaderId: first,
+      secretRole: 'private_role'
+    };
+  });
+  const request = (token) => ({
+    ...httpReq(token),
+    query: { view: 'maintenance_readiness' }
+  });
+  const denied = await invoke(api.admin, request('user-1'));
+  assert.equal(denied.statusCode, 403);
+  assert.equal(calls.length, 0);
+  const accepted = await invoke(api.admin, request('admin'));
+  assert.equal(accepted.statusCode, 200);
+  assert.deepEqual(accepted.result, {
+    ok: true,
+    status: 'maintenance_connection_ready',
+    mayRunMaintenance: false,
+    readyForPublicRelease: false
+  });
+  assert.deepEqual(calls, ['inspect_only']);
+  assert.doesNotMatch(
+    JSON.stringify(accepted.result),
+    /privateReaderId|secretRole/
+  );
+
+  const unavailable = makeHttp(f, undefined, async () => ({
+    status: 'review_tick_completed',
+    privatePayload: first
+  }));
+  const rejected = await invoke(unavailable.admin, request('admin'));
+  assert.equal(rejected.statusCode, 503);
+  assert.deepEqual(rejected.result, {
+    ok: false,
+    error: 'FORMAL_MAINTENANCE_UNAVAILABLE'
+  });
+  const notConnected = makeHttp(f);
+  const missing = await invoke(notConnected.admin, request('admin'));
+  assert.equal(missing.statusCode, 503);
+  assert.equal(missing.result.error, 'FORMAL_MAINTENANCE_UNAVAILABLE');
 });
