@@ -222,7 +222,7 @@ test('OFF factory never reads state or charges for AI', async () => {
 });
 
 test('production adapter uses ONLY scoped atomic RPC; never direct table writes', async () => {
-  const current = 'a'.repeat(64);
+  const current = syntheticPlan().chunks[0].sourceHash;
   let row = null;
   const calls = [];
   const client = {
