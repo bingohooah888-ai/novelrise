@@ -372,12 +372,15 @@ test('unlinked badge Point is held for review; duplicate source event keys and t
   const altered = clone(rows);
   altered[2].event_key = altered[0].event_key;
   assert.equal(quoted(altered).status, 'legacy_ledger_identity_or_version_invalid');
-  const tampered = quoted();
-  tampered.walletSeeds = tampered.walletSeeds.map((seed) =>
-    seed.userId === reader
-      ? { ...seed, availablePoints: seed.availablePoints + 1 }
-      : seed
-  );
+  const baseline = quoted();
+  const tampered = {
+    ...baseline,
+    walletSeeds: baseline.walletSeeds.map((seed) =>
+      seed.userId === reader
+        ? { ...seed, availablePoints: seed.availablePoints + 1 }
+        : seed
+    )
+  };
   assert.throws(
     () => createFormalOfflineIntegration({
       handoff: tampered,
