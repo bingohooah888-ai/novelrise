@@ -36,9 +36,7 @@ function uuid(value) {
 }
 function number(value, min, max) {
   const parsed =
-    typeof value === 'string' && /^\d+$/.test(value)
-      ? Number(value)
-      : value;
+    typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
   if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max)
     throw new Error('FORMAL_READER_SEED_VALUE_INVALID');
   return parsed;
@@ -177,8 +175,7 @@ export function createFormalReaderSeedEvidenceReader({ query } = {}) {
           grade: seed.grade,
           workTitle: seed.title,
           growth: seed.growth,
-          novaPrediction:
-            seed.firstRank === 5 && seed.highestRank === 6,
+          novaPrediction: seed.firstRank === 5 && seed.highestRank === 6,
           expiresAt: seed.expires,
           updatedAt: seed.updated,
           stages: Object.freeze(seed.stages),
