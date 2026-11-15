@@ -256,7 +256,11 @@ test('malformed transfer query is rejected before privileged client creation', a
     { expected_revision: '2' },
     { transfer_candidate_id: '44', expected_revision: '1' },
     { transfer_candidate_id: 'x', expected_revision: '2' },
-    { transfer_candidate_id: '44', expected_revision: '2', modelText: 'injected' },
+    {
+      transfer_candidate_id: '44',
+      expected_revision: '2',
+      modelText: 'injected'
+    },
     { transfer_candidate_id: ['44'], expected_revision: '2' },
     { transfer_candidate_id: '44', expected_revision: '2', user_id: 'other' }
   ];
