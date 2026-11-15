@@ -63,7 +63,18 @@ function setup({ unitVerified = true, adminEnabled = false } = {}) {
       throw new Error('Unexpected query: ' + sql);
     },
     async connect() {
-      throw new Error('Transactions are not authorized in this test');
+      return {
+        async query(sql, values) {
+          if (
+            sql === 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY' ||
+            sql === 'COMMIT' ||
+            sql === 'ROLLBACK'
+          )
+            return { rows: [] };
+          return pool.query(sql, values);
+        },
+        release() {}
+      };
     }
   };
   const application = createUnregisteredFormalApplication({
