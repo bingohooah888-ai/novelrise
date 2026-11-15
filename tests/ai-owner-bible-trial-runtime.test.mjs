@@ -1,6 +1,7 @@
 // An offline-only proof. Real providers, credentials, tokens and databases
 // are never accessed by these tests.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 import { createOwnerNovelBibleTrialRuntime } from '../api/_lib/ai/owner-novel-bible-trial-runtime.js';
@@ -16,7 +17,11 @@ function fixture({
   enabled = true,
   consent = true,
   budgetAllowed = true,
-  onModelCall = null
+  onModelCall = null,
+  historicalText = null,
+  currentText = CONTENT,
+  retainedRevisionText = historicalText,
+  expectedExcerpt = currentText
 } = {}) {
   const state = {
     actor,
@@ -28,7 +33,8 @@ function fixture({
     settlements: 0,
     audits: 0,
     staged: 0,
-    lastBatch: null
+    lastBatch: null,
+    historyReads: 0
   };
 
   const serviceClient = {
@@ -51,8 +57,22 @@ function fixture({
           return this;
         },
         limit() {
-          if (table === 'novelight_ai_bible_facts') {
-            return { data: [], error: null };
+          if (table === 'episode_revisions') {
+            state.historyReads += 1;
+            return {
+              data: retainedRevisionText === null
+                ? []
+                : [{
+                    id: '33333333-3333-4333-8333-333333333333',
+                    episode_id: 11,
+                    novel_id: 41,
+                    user_id: OWNER,
+                    title: '第一話',
+                    content: retainedRevisionText,
+                    created_at: new Date().toISOString()
+                  }],
+              error: null
+            };
           }
           return { data: [], error: null };
         },
@@ -65,9 +85,24 @@ function fixture({
               data: {
                 id: 11,
                 novel_id: 41,
+                user_id: OWNER,
                 title: '第一話',
-                content: CONTENT
+                content: currentText
               },
+              error: null
+            };
+          }
+          if (table === 'novelight_ai_episode_analysis') {
+            return {
+              data: historicalText === null
+                ? null
+                : {
+                    episode_id: 11,
+                    source_hash: createHash('sha256')
+                      .update(JSON.stringify(['第一話', historicalText]))
+                      .digest('hex'),
+                    revision: 1
+                  },
               error: null
             };
           }
@@ -140,7 +175,7 @@ function fixture({
           state.modelCalls += 1;
           assert.equal(model, 'offline-mock');
           assert.match(system, /untrusted data/u);
-          assert.equal(JSON.parse(user).untrusted_excerpt, CONTENT);
+          assert.equal(JSON.parse(user).untrusted_excerpt, expectedExcerpt);
           if (onModelCall) onModelCall(state);
           return {
             text: JSON.stringify({
@@ -149,7 +184,7 @@ function fixture({
                   kind: 'character',
                   key: '凛',
                   summary: '青い鍵を持つ人物。',
-                  evidence: CONTENT
+                  evidence: expectedExcerpt
                 }
               ]
             }),
@@ -244,4 +279,46 @@ test('configuration refuses an absent trusted consent provider', () => {
     () => createOwnerNovelBibleTrialRuntime({ enabled: true }),
     /AI_TRIAL_RUNTIME_UNAVAILABLE/u
   );
+});
+
+test('trusted database checkpoint selects only the edited Japanese excerpt in one-shot trial', async () => {
+  const { runtime, state } = fixture({
+    historicalText: '凛は赤い鍵を持っていた。',
+    currentText: '凛は青い鍵を持っていた。',
+    expectedExcerpt: '青'
+  });
+  const result = await runtime.stage(REQUEST);
+  assert.equal(result.stagedCount, 1);
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.staged, 1);
+  assert.equal(state.historyReads, 2);
+  assert.equal(state.lastBatch.p_candidates[0].evidence, '青');
+});
+
+test('trusted checkpoint with unchanged chapter skips model and review RPC', async () => {
+  const { runtime, state } = fixture({
+    historicalText: CONTENT,
+    currentText: CONTENT
+  });
+  const result = await runtime.stage(REQUEST);
+  assert.deepEqual(result, {
+    novelId: 41,
+    stagedCount: 0,
+    requiresAuthorReview: false
+  });
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.reservations, 0);
+  assert.equal(state.staged, 0);
+});
+
+test('expired or missing retained history fails back to full current chapter', async () => {
+  const { runtime, state } = fixture({
+    historicalText: '凛は赤い鍵を持っていた。',
+    retainedRevisionText: null,
+    expectedExcerpt: CONTENT
+  });
+  const result = await runtime.stage(REQUEST);
+  assert.equal(result.stagedCount, 1);
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.historyReads, 2);
 });
