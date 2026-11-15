@@ -624,7 +624,7 @@ const durableComment = {
     rule: durableRule
   }
 };
-function durableDemo(events = [durableSource, durableComment]) {
+function durableDemo(events = [durableSource, durableComment], xpEvents = []) {
   return createFormalOfflineIntegration({
     handoff: quote(),
     betaThresholdRows,
@@ -632,6 +632,7 @@ function durableDemo(events = [durableSource, durableComment]) {
     formalReleaseAtMs: release,
     syntheticNowIso: '2026-12-03T00:00:00.000Z',
     syntheticDurableEvents: events,
+    syntheticXpEvents: xpEvents,
     mockBudgets: {
       external_exchange: {
         scopeId: 'synthetic-gift',
@@ -859,4 +860,295 @@ test('durable claims reject duplicates and unverified source rows', async () => 
     sandbox.inspectSyntheticQueue().every((q) => q.status === 'completed'),
     true
   );
+});
+
+
+const syntheticXpLedgerId = '00000000-0000-4000-8000-000000000519';
+const syntheticXpSourceId = '00000000-0000-4000-8000-000000000520';
+const syntheticXpRow = {
+  id: syntheticXpLedgerId,
+  user_id: reader,
+  source_event_id: syntheticXpSourceId,
+  xp_kind: 'discovery_success',
+  xp_value: 900,
+  occurred_at: '2026-12-02T02:00:00.000Z'
+};
+const syntheticXpFixture = {
+  sourceFixtureVerified: true,
+  verifiedXpLedgerRow: syntheticXpRow
+};
+
+test('canonical synthetic discovery XP reaches level-up, unique 50 Point ledger, Wallet and both HTTP views', async () => {
+  const sandbox = durableDemo([], [syntheticXpFixture]);
+  const readerUi =
+    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings(
+      {
+        request: async (input) =>
+          (await sandbox.readerRequest(reader, input)).body
+      }
+    );
+  const adminUi =
+    globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings({
+      request: async (input) => (await sandbox.adminRequest(input)).body
+    });
+  const before = await readerUi.fetchSnapshot();
+  assert.equal(before.account.level, 30);
+  assert.equal(before.wallet.availablePoints, 35000);
+  assert.equal(before.wallet.exchangeEligiblePoints, 0);
+  assert.equal((await adminUi.loadRewardOverview()).issuedTotal, 0);
+
+  const applied = await sandbox.applyCommittedXp({
+    xpLedgerId: syntheticXpLedgerId
+  });
+  assert.equal(applied.status, 'applied');
+  assert.equal(applied.level, 32);
+  assert.equal(applied.progressXp, 100);
+  assert.deepEqual(applied.levelsGained, [31, 32]);
+  assert.deepEqual(applied.firstLevelsRewarded, [31, 32]);
+  assert.equal(applied.pointsAwarded, 100);
+
+  const after = await readerUi.fetchSnapshot();
+  assert.equal(after.account.level, 32);
+  assert.equal(after.account.highestLevel, 32);
+  assert.equal(after.account.progressXp, 100);
+  assert.equal(after.account.requiredXp, 400);
+  assert.equal(after.account.earnedXpInPeriod, 900);
+  assert.equal(after.wallet.availablePoints, 35100);
+  assert.equal(after.wallet.exchangeEligiblePoints, 100);
+  assert.deepEqual(
+    after.history
+      .filter((entry) => entry.kind === 'level_up')
+      .map((entry) => entry.points),
+    [50, 50]
+  );
+  const overview = await adminUi.loadRewardOverview();
+  assert.equal(overview.issuedTotal, 100);
+  assert.equal(overview.levelUpMonth, 100);
+  assert.equal(overview.levelUpTotal, 100);
+  assert.equal(overview.xpEventsMonth, 1);
+  assert.equal(overview.xpEarnedMonth, 900);
+  assert.equal(overview.eligibleAvailable, 100);
+  assert.deepEqual(
+    overview.recent.map((entry) => entry.kind),
+    ['level_up', 'level_up']
+  );
+  assert.equal(
+    (await sandbox.applyCommittedXp({ xpLedgerId: syntheticXpLedgerId }))
+      .status,
+    'already_applied'
+  );
+  assert.equal(
+    (await sandbox.readerRequest(second, { method: 'GET' })).body.wallet
+      .availablePoints,
+    7000
+  );
+  assert.equal((await adminUi.loadRewardOverview()).issuedTotal, 100);
+});
+
+test('synthetic XP claims serialize duplicates and one-time level rewards across distinct XP sources', async () => {
+  const duplicateSourceId = '00000000-0000-4000-8000-000000000521';
+  const nextSourceId = '00000000-0000-4000-8000-000000000522';
+  const replaySameSource = {
+    sourceFixtureVerified: true,
+    verifiedXpLedgerRow: {
+      ...syntheticXpRow,
+      id: duplicateSourceId
+    }
+  };
+  const another = {
+    sourceFixtureVerified: true,
+    verifiedXpLedgerRow: {
+      ...syntheticXpRow,
+      id: nextSourceId,
+      source_event_id: '00000000-0000-4000-8000-000000000523',
+      xp_value: 350,
+      occurred_at: '2026-12-02T03:00:00.000Z'
+    }
+  };
+  const sandbox = durableDemo([], [
+    syntheticXpFixture,
+    replaySameSource,
+    another
+  ]);
+  const sameTime = await Promise.all([
+    sandbox.applyCommittedXp({ xpLedgerId: syntheticXpLedgerId }),
+    sandbox.applyCommittedXp({ xpLedgerId: syntheticXpLedgerId })
+  ]);
+  assert.deepEqual(
+    sameTime.map((result) => result.status).sort(),
+    ['already_applied', 'applied']
+  );
+  assert.equal(
+    (await sandbox.applyCommittedXp({ xpLedgerId: duplicateSourceId }))
+      .status,
+    'already_applied'
+  );
+  const next = await sandbox.applyCommittedXp({ xpLedgerId: nextSourceId });
+  assert.equal(next.status, 'applied');
+  assert.equal(next.level, 33);
+  assert.equal(next.progressXp, 50);
+  assert.deepEqual(next.firstLevelsRewarded, [33]);
+  assert.equal(next.pointsAwarded, 50);
+  const snapshot = (
+    await sandbox.readerRequest(reader, { method: 'GET' })
+  ).body;
+  assert.equal(snapshot.account.earnedXpInPeriod, 1250);
+  assert.equal(snapshot.wallet.availablePoints, 35150);
+  assert.equal(snapshot.wallet.exchangeEligiblePoints, 150);
+  assert.equal(
+    snapshot.history.filter((entry) => entry.kind === 'level_up').length,
+    3
+  );
+  const report = (await sandbox.adminRequest({
+    method: 'GET',
+    query: { view: 'reward_overview' }
+  })).body;
+  assert.equal(report.xpEventsMonth, 2);
+  assert.equal(report.xpEarnedMonth, 1250);
+  assert.equal(report.levelUpTotal, 150);
+  assert.equal(report.issuedTotal, 150);
+});
+
+test('unverified, pre-release and finalized-window XP never creates Point, XP claim or Level changes', async () => {
+  const beforeReleaseId = '00000000-0000-4000-8000-000000000524';
+  const outsideWindowId = '00000000-0000-4000-8000-000000000525';
+  const unverifiedId = '00000000-0000-4000-8000-000000000526';
+  const sandbox = durableDemo([], [
+    {
+      sourceFixtureVerified: false,
+      verifiedXpLedgerRow: {
+        ...syntheticXpRow,
+        id: unverifiedId
+      }
+    },
+    {
+      sourceFixtureVerified: true,
+      verifiedXpLedgerRow: {
+        ...syntheticXpRow,
+        id: beforeReleaseId,
+        occurred_at: '2026-11-30T23:59:59.000Z'
+      }
+    },
+    {
+      sourceFixtureVerified: true,
+      verifiedXpLedgerRow: {
+        ...syntheticXpRow,
+        id: outsideWindowId,
+        occurred_at: '2027-01-01T00:00:00.000Z'
+      }
+    }
+  ]);
+  assert.equal(
+    (await sandbox.applyCommittedXp({ xpLedgerId: unverifiedId }))
+      .status,
+    'canonical_xp_source_missing'
+  );
+  assert.equal(
+    (await sandbox.applyCommittedXp({ xpLedgerId: beforeReleaseId }))
+      .status,
+    'outside_formal_release_window'
+  );
+  assert.equal(
+    (await sandbox.applyCommittedXp({ xpLedgerId: outsideWindowId }))
+      .status,
+    'review_checkpoint_due_first'
+  );
+  const readerView = (
+    await sandbox.readerRequest(reader, { method: 'GET' })
+  ).body;
+  assert.equal(readerView.account.level, 30);
+  assert.equal(readerView.account.earnedXpInPeriod, 0);
+  assert.equal(readerView.wallet.availablePoints, 35000);
+  const adminView = (await sandbox.adminRequest({
+    method: 'GET',
+    query: { view: 'reward_overview' }
+  })).body;
+  assert.equal(adminView.xpEventsMonth, 0);
+  assert.equal(adminView.levelUpTotal, 0);
+});
+
+test('highest-level history prevents reissuing 50 Point after offline demotion and re-promotion', async () => {
+  const initial = quote();
+  const previouslyReached = {
+    ...initial,
+    walletSeeds: initial.walletSeeds.map((s) =>
+      s.userId === reader
+        ? {
+            ...s,
+            formalState: { ...s.formalState, highestLevel: 32 }
+          }
+        : s
+    )
+  };
+  const sandbox = createFormalOfflineIntegration({
+    handoff: previouslyReached,
+    betaThresholdRows,
+    operatorId: operator,
+    formalReleaseAtMs: release,
+    syntheticNowIso: '2026-12-03T00:00:00.000Z',
+    syntheticXpEvents: [syntheticXpFixture],
+    mockBudgets: {
+      external_exchange: { scopeId: 'synthetic-gift', limitPoints: 100000 },
+      ai_direct_use: { scopeId: 'synthetic-ai', limitPoints: 100000 }
+    }
+  });
+  const result = await sandbox.applyCommittedXp({
+    xpLedgerId: syntheticXpLedgerId
+  });
+  assert.equal(result.status, 'applied');
+  assert.deepEqual(result.levelsGained, [31, 32]);
+  assert.deepEqual(result.firstLevelsRewarded, []);
+  assert.equal(result.pointsAwarded, 0);
+  const snapshot = (
+    await sandbox.readerRequest(reader, { method: 'GET' })
+  ).body;
+  assert.equal(snapshot.account.level, 32);
+  assert.equal(snapshot.account.highestLevel, 32);
+  assert.equal(snapshot.wallet.availablePoints, 35000);
+  assert.equal(snapshot.wallet.exchangeEligiblePoints, 0);
+  assert.equal(snapshot.account.earnedXpInPeriod, 900);
+});
+
+test('offline administrator UI displays source-derived XP and first-level Point counts only with verified shape', async () => {
+  const sandbox = durableDemo([], [syntheticXpFixture]);
+  await sandbox.applyCommittedXp({ xpLedgerId: syntheticXpLedgerId });
+  class Element {
+    constructor(tagName) {
+      this.tagName = tagName;
+      this.textContent = '';
+      this.children = [];
+    }
+    setAttribute() {}
+    addEventListener() {}
+    append(...children) {
+      this.children.push(...children);
+    }
+    replaceChildren(...children) {
+      this.children = [...children];
+    }
+  }
+  globalThis.document = {
+    createElement: (tag) => new Element(tag)
+  };
+  const root = new Element('main');
+  const bindings =
+    globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings({
+      request: async (input) => (await sandbox.adminRequest(input)).body
+    });
+  const panel =
+    globalThis.NovelightFormalRewardAdmin.createFormalRewardAdminPanel({
+      root,
+      authorized: true,
+      loadRewardOverview: bindings.loadRewardOverview
+    });
+  await panel.refresh();
+  const textOf = (el) =>
+    [el.textContent, ...el.children.flatMap((child) => [child.textContent])];
+  const walk = (el) => [el, ...el.children.flatMap(walk)];
+  const view = walk(root).flatMap(textOf).join(' ');
+  assert.match(view, /今月の初回Level到達報酬/);
+  assert.match(view, /今月の獲得XP/);
+  assert.match(view, /900 XP/);
+  assert.match(view, /level_up：50 pt/);
+  assert.match(view, /読書報酬/);
 });
