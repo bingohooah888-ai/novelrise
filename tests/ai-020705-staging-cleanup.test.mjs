@@ -15,7 +15,7 @@ const SYNTHETIC = {
 };
 
 // prettier-ignore
-function fixture({ realUser = false, badCensus = false, failedDisable = false } = {}) {
+function fixture({ realUser = false, badCensus = false, failedDisable = false, chunkClaimCount = 0 } = {}) {
   const calls = [];
   const serviceClient = {
     supabaseUrl: SYNTHETIC.supabaseUrl,
@@ -77,6 +77,7 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false } 
   const census = {
     runtimeDisabledZero: true,
     approvalTombstoneCount: 1,
+    chunkClaimsRetained: chunkClaimCount,
     users: 0,
     identities: 0,
     sessions: 0,
@@ -152,6 +153,7 @@ test('cleanup deletes only synthetic usage rows and the validated novel/user', a
   assert.ok(!deleted.some((c) =>
     c.table === 'novelight_ai_external_consent_action_audit'
   ));
+  assert.ok(!deleted.some((c) => c.table === 'novelight_ai_chunk_claims'));
   assert.ok(calls.some((c) => c.action === 'deleteAuth'));
   assert.ok(calls.some((c) => c.action === 'revokeSessions'));
   assert.ok(calls.findIndex((c) => c.action === 'revokeSessions') < calls.findIndex((c) => c.action === 'deleteAuth'));
@@ -181,4 +183,20 @@ test('Production URL is refused and final census is independently mandatory', as
     cleanup.finalCensus(),
     /AI_020705_STAGING_CLEANUP_DENIED/u
   );
+});
+
+// A claim is deliberately retained even when all synthetic fixtures are gone.
+// The count must be scoped to the synthetic actor+novel by an independent
+// observer; it is not a claim that a model was actually billed.
+// prettier-ignore
+test('independent census requires explicit bounded claim retention evidence', async () => {
+  assert.equal(await fixture({ chunkClaimCount: 0 }).cleanup.finalCensus(), true);
+  assert.equal(await fixture({ chunkClaimCount: 1 }).cleanup.finalCensus(), true);
+  for (const count of [undefined, -1, 2, 0.5, '1']) {
+    const { cleanup } = fixture({ chunkClaimCount: count });
+    await assert.rejects(
+      cleanup.finalCensus(),
+      /AI_020705_STAGING_CLEANUP_DENIED/u
+    );
+  }
 });
