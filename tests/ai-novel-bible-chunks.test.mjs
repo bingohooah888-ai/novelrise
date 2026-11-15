@@ -247,7 +247,10 @@ test('untrusted historical revisions fail closed; missing history falls back', (
   const fallback = plan([after], { analyses });
   assert.equal(
     materializeNovelBibleChunk({
-      principal, novel, episode: after, chunk: fallback.chunks[0]
+      principal,
+      novel,
+      episode: after,
+      chunk: fallback.chunks[0]
     }).text,
     after.content
   );
