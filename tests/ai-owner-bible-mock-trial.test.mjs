@@ -305,22 +305,21 @@ test('verified previous manuscript narrows the synthetic AI prompt to changed te
       state.calls += 1;
       state.prompts.push(input);
       return JSON.stringify({
-        suggestions: [{
-          kind: 'world',
-          key: '鍵の色',
-          summary: '鍵の色が変更された。',
-          evidence: '青'
-        }]
+        suggestions: [
+          {
+            kind: 'world',
+            key: '鍵の色',
+            summary: '鍵の色が変更された。',
+            evidence: '青'
+          }
+        ]
       });
     }
   });
   const result = await factory.preview({ principal, novelId: 41 });
   assert.equal(result.processedChunks, 1);
   assert.equal(result.candidates.length, 1);
-  assert.equal(
-    JSON.parse(state.prompts[0].user).untrusted_excerpt,
-    '青'
-  );
+  assert.equal(JSON.parse(state.prompts[0].user).untrusted_excerpt, '青');
   assert.doesNotMatch(JSON.stringify(state.prompts), /赤い鍵|凛は/u);
   assert.equal(state.reads, 2);
 });
@@ -348,12 +347,14 @@ test('changing the historical checkpoint during inference discards all results',
     },
     async mockGenerate() {
       return JSON.stringify({
-        suggestions: [{
-          kind: 'character',
-          key: '凛',
-          summary: '青い鍵を持っていた。',
-          evidence: '青'
-        }]
+        suggestions: [
+          {
+            kind: 'character',
+            key: '凛',
+            summary: '青い鍵を持っていた。',
+            evidence: '青'
+          }
+        ]
       });
     }
   });
