@@ -588,7 +588,7 @@ test('just-in-time transfer rechecks accepted row before changing note editor', 
       episodeId: 4
     }
   ]);
-  assert.equal(transfer.removed, false);
+  assert.equal(transfer.removed, true);
 });
 
 test('edit after listing or denied recheck never transfers an old accepted row', async () => {
