@@ -74,10 +74,10 @@ export function createFormalCanonicalReader({
     // formal earnings transaction before this wallet permits spending.
     return Object.freeze({ status: 'coherent', confirmedPoints: observed });
   }
-  async function readFormalAccount(userId) {
+  async function readFormalAccount(userId, executor = query) {
     if (!valid(userId)) throw new TypeError('Verified user ID required');
     assertReady();
-    const result = await query(
+    const result = await executor(
       'select user_id,current_level,highest_level,level_progress_xp,' +
         'review_anchor_at,last_review_end_at,revision ' +
         'from novelight_formal_private.scout_level_state where user_id=$1::uuid',
@@ -114,11 +114,11 @@ export function createFormalCanonicalReader({
     const threshold =
       level >= 30
         ? FORMAL_SCOUT_XP_PER_LEVEL_AFTER_30
-        : await readBetaLevelThreshold(level);
+        : await readBetaLevelThreshold(level, executor);
     // If a maintenance checkpoint is overdue, the authoritative review must
     // run first; do not display current state as current/reviewed.
     if (currentTime >= end) throw new Error('FORMAL_LEVEL_REVIEW_DUE');
-    const xpRows = await query(
+    const xpRows = await executor(
       'select coalesce(sum(xp_value),0)::text as earned_xp,' +
         'count(*) filter (where xp_value < 0)::bigint as negative_rows ' +
         'from public.scout_xp_ledger where user_id=$1::uuid and ' +
@@ -150,8 +150,8 @@ export function createFormalCanonicalReader({
       revision: integer(row.revision, 'Level revision')
     });
   }
-  async function readBetaLevelThreshold(level) {
-    const result = await query(
+  async function readBetaLevelThreshold(level, executor = query) {
+    const result = await executor(
       'select level,cumulative_xp from public.scout_level_thresholds ' +
         'where level in ($1::smallint,$2::smallint) order by level',
       [level, level + 1]
@@ -171,10 +171,10 @@ export function createFormalCanonicalReader({
       throw new Error('FORMAL_BETA_THRESHOLDS_INVALID');
     return delta;
   }
-  async function readCanonicalPointHistory(userId) {
+  async function readCanonicalPointHistory(userId, executor = query) {
     if (!valid(userId)) throw new TypeError('Verified user ID required');
     assertReady();
-    const response = await query(
+    const response = await executor(
       'select id,point_kind,point_value,status,occurred_at,event_key,reversal_of ' +
         'from public.scout_point_ledger where user_id=$1::uuid ' +
         'order by occurred_at desc,id desc limit 80',

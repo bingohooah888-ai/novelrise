@@ -358,10 +358,11 @@ export function createFormalUsagePostgresRepository({
     try {
       await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
       begun = true;
+      // Count only formally credited Level-up Points, never legacy beta rewards.
       const ledger = await client.query(
         'select ' +
-          "coalesce(sum(point_value) filter (where status='confirmed' and left(point_kind,7)='formal_' and right(point_kind,7)<>'_refund' and point_value>0),0)::text as issued_total, " +
-          "coalesce(sum(point_value) filter (where status='confirmed' and left(point_kind,7)='formal_' and right(point_kind,7)<>'_refund' and point_value>0 and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as issued_month, " +
+          "coalesce(sum(point_value) filter (where status='confirmed' and ((left(point_kind,7)='formal_' and right(point_kind,7)<>'_refund') or (point_kind='level_up' and exists (select 1 from novelight_formal_private.scout_point_usage_credit_claims c where c.canonical_point_id = public.scout_point_ledger.id))) and point_value>0),0)::text as issued_total, " +
+          "coalesce(sum(point_value) filter (where status='confirmed' and ((left(point_kind,7)='formal_' and right(point_kind,7)<>'_refund') or (point_kind='level_up' and exists (select 1 from novelight_formal_private.scout_point_usage_credit_claims c where c.canonical_point_id = public.scout_point_ledger.id))) and point_value>0 and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as issued_month, " +
           "coalesce(sum(point_value) filter (where status='confirmed' and point_kind='formal_read_reward' and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as read_month, " +
           "coalesce(sum(point_value) filter (where status='confirmed' and point_kind='formal_comment_reward' and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as comment_month, " +
           "coalesce(sum(-point_value) filter (where status='confirmed' and point_kind='formal_external_exchange'),0)::text as gift_spent, " +
@@ -387,7 +388,11 @@ export function createFormalUsagePostgresRepository({
       );
       const activity = await client.query(
         'select id,user_id,point_kind,point_value,status,occurred_at ' +
-          'from public.scout_point_ledger where left(point_kind,7)=$1::text ' +
+          'from public.scout_point_ledger ' +
+          'where left(point_kind,7)=$1::text or ' +
+          "(point_kind='level_up' and status='confirmed' and exists (" +
+          'select 1 from novelight_formal_private.scout_point_usage_credit_claims c ' +
+          'where c.canonical_point_id=public.scout_point_ledger.id)) ' +
           'order by occurred_at desc,id desc limit 30',
         ['formal_']
       );
@@ -413,7 +418,10 @@ export function createFormalUsagePostgresRepository({
           !uuid(row.id) ||
           !uuid(row.user_id) ||
           typeof row.point_kind !== 'string' ||
-          !row.point_kind.startsWith('formal_') ||
+          !(
+            row.point_kind.startsWith('formal_') ||
+            (row.point_kind === 'level_up' && row.status === 'confirmed')
+          ) ||
           !['confirmed', 'pending', 'frozen', 'cancelled'].includes(
             row.status
           ) ||
@@ -468,58 +476,89 @@ export function createFormalUsagePostgresRepository({
     getAdminRewardOverview,
     async readReader(userId) {
       if (!uuid(userId)) return null;
-      const result = await pool.query(
-        'select user_id,available_points,exchange_eligible_points,' +
-          'reserved_points,held_points,revision from ' +
-          TABLE +
-          '.scout_point_usage_wallets where user_id=$1::uuid',
-        [userId]
-      );
-      const wallet = rowWallet(result?.rows?.[0]);
-      if (!wallet) return null;
-      await canonicalReader.assertWalletCoherent(userId, wallet);
-      const [account, history, pending] = await Promise.all([
-        readFormalAccount(userId),
-        readCanonicalPointHistory(userId),
-        pool.query(
-          'select operation_id,purpose,amount_points,phase,created_at ' +
-            'from ' +
+      // Wallet, canonical ledger, Level/XP and pending usage must describe
+      // one database snapshot. Separate pool queries can falsely report a
+      // coherent wallet as out-of-sync during a concurrent Point award.
+      const client = await pool.connect();
+      let begun = false;
+      try {
+        await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+        begun = true;
+        const query = client.query.bind(client);
+        const result = await query(
+          'select user_id,available_points,exchange_eligible_points,' +
+            'reserved_points,held_points,revision from ' +
             TABLE +
-            '.scout_point_usage_operations ' +
-            "where user_id=$1::uuid and phase in ('reserved','released') " +
-            'order by created_at desc limit 40',
+            '.scout_point_usage_wallets where user_id=$1::uuid',
           [userId]
-        )
-      ]);
-      if (!account || !Array.isArray(history) || !Array.isArray(pending?.rows))
-        throw new Error('FORMAL_REWARD_AUTHORITATIVE_READER_UNAVAILABLE');
-      const usageHistory = pending.rows.map((row) => {
+        );
+        const wallet = rowWallet(result?.rows?.[0]);
+        if (!wallet) {
+          await client.query('COMMIT');
+          begun = false;
+          return null;
+        }
+        await canonicalReader.assertWalletCoherent(userId, wallet, query);
+        // The bundled canonical readers accept the transaction executor.
+        // Custom server-injected readers must also honor this executor.
+        const [account, history, pending] = await Promise.all([
+          readFormalAccount(userId, query),
+          readCanonicalPointHistory(userId, query),
+          query(
+            'select operation_id,purpose,amount_points,phase,created_at ' +
+              'from ' +
+              TABLE +
+              '.scout_point_usage_operations ' +
+              "where user_id=$1::uuid and phase in ('reserved','released') " +
+              'order by created_at desc limit 40',
+            [userId]
+          )
+        ]);
         if (
-          !uuid(row.operation_id) ||
-          !PURPOSES.has(row.purpose) ||
-          !['reserved', 'released'].includes(row.phase)
+          !account ||
+          !Array.isArray(history) ||
+          !Array.isArray(pending?.rows)
         )
-          throw new Error('FORMAL_REWARD_OPERATION_HISTORY_INVALID');
-        return {
-          operationId: row.operation_id,
-          kind: row.purpose === 'ai_direct_use' ? 'ai' : 'exchange',
-          points: -int(row.amount_points, 'pending operation'),
-          status: row.phase === 'reserved' ? 'pending' : 'cancelled',
-          at: new Date(row.created_at).toISOString()
+          throw new Error('FORMAL_REWARD_AUTHORITATIVE_READER_UNAVAILABLE');
+        const usageHistory = pending.rows.map((row) => {
+          if (
+            !uuid(row.operation_id) ||
+            !PURPOSES.has(row.purpose) ||
+            !['reserved', 'released'].includes(row.phase)
+          )
+            throw new Error('FORMAL_REWARD_OPERATION_HISTORY_INVALID');
+          return {
+            operationId: row.operation_id,
+            kind: row.purpose === 'ai_direct_use' ? 'ai' : 'exchange',
+            points: -int(row.amount_points, 'pending operation'),
+            status: row.phase === 'reserved' ? 'pending' : 'cancelled',
+            at: new Date(row.created_at).toISOString()
+          };
+        });
+        const totalHeld = wallet.heldPoints + wallet.reservedPoints;
+        if (!Number.isSafeInteger(totalHeld))
+          throw new RangeError('FORMAL_REWARD_HELD_SUM_OVERFLOW');
+        wallet.heldPoints = totalHeld;
+        const snapshot = {
+          wallet,
+          account,
+          history: [...usageHistory, ...history].slice(0, 80)
         };
-      });
-      // The DB bigint fields are parsed as safe integers individually, but
-      // their combined display value can still overflow JavaScript integers.
-      // Never return a rounded Point balance to a reader.
-      const totalHeld = wallet.heldPoints + wallet.reservedPoints;
-      if (!Number.isSafeInteger(totalHeld))
-        throw new RangeError('FORMAL_REWARD_HELD_SUM_OVERFLOW');
-      wallet.heldPoints = totalHeld;
-      return {
-        wallet,
-        account,
-        history: [...usageHistory, ...history].slice(0, 80)
-      };
+        await client.query('COMMIT');
+        begun = false;
+        return snapshot;
+      } catch (error) {
+        if (begun) {
+          try {
+            await client.query('ROLLBACK');
+          } catch {
+            // Retain the original authoritative read failure.
+          }
+        }
+        throw error;
+      } finally {
+        client.release();
+      }
     },
     async findOperation(operationId) {
       if (!uuid(operationId)) return null;
