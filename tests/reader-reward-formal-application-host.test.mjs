@@ -7,11 +7,13 @@ const EVENT = '22222222-2222-4222-8222-222222222222';
 const RELEASE = '2026-11-01T00:00:00.000Z';
 const CLOCK = '2026-11-11T00:00:00.000Z';
 
-function setup({ unitVerified = true } = {}) {
+function setup({ unitVerified = true, adminEnabled = false } = {}) {
   const calls = [];
   const pool = {
     async query(sql, values) {
       calls.push({ sql, values });
+      if (sql.startsWith('select (has_schema_privilege(current_user'))
+        return { rows: [{ ready: false }] };
       if (sql.includes('scout_point_usage_wallets'))
         return {
           rows: [
@@ -97,7 +99,7 @@ function setup({ unitVerified = true } = {}) {
     },
     catalog: [],
     policy: {},
-    env: {}
+    env: adminEnabled ? { NOVELIGHT_ADMIN_USER_IDS: USER } : {}
   });
   function response() {
     return {
@@ -199,4 +201,53 @@ test('composition requires injected trusted pool and Auth; never registers a rou
     'formal_maintenance_disabled'
   );
   assert.equal(Object.hasOwn(application, 'registerApiRoute'), false);
+});
+
+test('unregistered application wires admin maintenance readiness without running review', async () => {
+  const { application, calls } = setup({ adminEnabled: true });
+  const response = {
+    statusCode: 200,
+    body: null,
+    headers: {},
+    setHeader(k, value) {
+      this.headers[k] = value;
+    },
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return this;
+    }
+  };
+  await application.adminHttp(
+    {
+      method: 'GET',
+      query: { view: 'maintenance_readiness' },
+      headers: {
+        authorization: 'Bearer test-session',
+        origin: 'https://novelight.jp',
+        host: 'novelight.jp',
+        'x-forwarded-proto': 'https',
+        'sec-fetch-site': 'same-origin'
+      }
+    },
+    response
+  );
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body, {
+    ok: true,
+    status: 'maintenance_connection_unready',
+    mayRunMaintenance: false,
+    readyForPublicRelease: false
+  });
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].sql, /^select \(has_schema_privilege/);
+  assert.equal(calls[0].values, undefined);
+  assert.equal(
+    (await application.reviewDueMaintenance()).status,
+    'formal_maintenance_disabled'
+  );
+  assert.equal(calls.length, 1);
 });
