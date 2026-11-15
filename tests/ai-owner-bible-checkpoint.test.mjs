@@ -468,3 +468,76 @@ test('CAS conflict blocks a stale replan without silently dropping old progress'
   );
   assert.deepEqual(store.row, snapshot);
 });
+
+test('restored completed manuscript discards only stale partial progress by CAS', async () => {
+  const old = { ...EPISODE, content: '既存の確認済み本文' };
+  const changed = { ...EPISODE, content: '書き換えた本文'.repeat(500) };
+  const plan = changedZeroPlan(old, changed);
+  assert.ok(plan.chunks.length > 1);
+  const originalHash = plan.analyses[0].source_hash;
+  const store = fakeJournal({
+    episode_id: 11,
+    source_hash: originalHash,
+    revision: 5,
+    summary: { authorMetadata: 'keep' }
+  });
+  const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: store.repository
+  });
+  await checkpoint.record(args(plan, 0));
+  assert.equal(store.row.summary.novelightPhase2.state, 'in_progress');
+  assert.deepEqual(
+    await checkpoint.discardRestored({
+      actorId: OWNER,
+      novelId: 41,
+      episodeId: 11,
+      sourceHash: originalHash
+    }),
+    { discarded: true }
+  );
+  assert.equal(store.row.source_hash, originalHash);
+  assert.equal(store.row.summary.authorMetadata, 'keep');
+  assert.equal('novelightPhase2' in store.row.summary, false);
+  assert.equal(store.row.revision, 7);
+  assert.deepEqual(
+    await checkpoint.discardRestored({
+      actorId: OWNER,
+      novelId: 41,
+      episodeId: 11,
+      sourceHash: originalHash
+    }),
+    { discarded: false }
+  );
+  assert.equal(store.calls.cas, 2);
+});
+
+test('restoration cannot erase another source or fake owner progress', async () => {
+  const plan = syntheticPlan();
+  const store = fakeJournal();
+  const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: store.repository
+  });
+  await checkpoint.record(args(plan, 0));
+  const snapshot = store.row;
+  await assert.rejects(
+    checkpoint.discardRestored({
+      actorId: OWNER,
+      novelId: 41,
+      episodeId: 11,
+      sourceHash: plan.chunks[0].sourceHash
+    }),
+    /AI_BIBLE_CHECKPOINT_CONFLICT/u
+  );
+  await assert.rejects(
+    checkpoint.discardRestored({
+      actorId: 'not-a-signed-owner',
+      novelId: 41,
+      episodeId: 11,
+      sourceHash: 'a'.repeat(64)
+    }),
+    /AI_BIBLE_CHECKPOINT_UNAVAILABLE/u
+  );
+  assert.deepEqual(store.row, snapshot);
+});
