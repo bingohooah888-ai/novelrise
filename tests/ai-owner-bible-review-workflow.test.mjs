@@ -492,3 +492,125 @@ test('different episode or different fact key never receives false newer-version
   assert.equal(list.staleCandidates.length, 1);
   assert.equal(list.staleCandidates[0].id, 1);
 });
+
+test('130 mixed review candidates page newest first with all historical rows recoverable', async () => {
+  const records = Array.from({ length: 130 }, (_, index) => {
+    const id = index + 1;
+    const status = id % 4 === 0 ? 'accepted' : 'pending';
+    return {
+      id,
+      actorId: OWNER,
+      novelId: 354,
+      sourceEpisodeId: 41,
+      sourceHash: id % 3 === 0 ? 'b'.repeat(64) : HASH,
+      factKind: 'character',
+      factKey: '凛',
+      summary: '候補 ' + id,
+      evidence: SUGGESTION.evidence,
+      status,
+      provenance: 'ai_inferred',
+      revision: status === 'accepted' ? 2 : 1
+    };
+  });
+  const reads = [];
+  const repository = {
+    listAuthorConfirmed: async () => [],
+    savePendingBatch: async () => ({ count: 0 }),
+    readCandidate: async () => null,
+    compareAndSwapDecision: async () => null,
+    async listReviewPage({ actorId, novelId, beforeId }) {
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 354);
+      reads.push(beforeId);
+      const matches = records
+        .filter((row) => beforeId === null || row.id < beforeId)
+        .sort((a, b) => b.id - a.id);
+      return {
+        rows: matches.slice(0, 25),
+        nextBeforeId: matches.length > 25 ? matches[24].id : null
+      };
+    }
+  };
+  const { workflow, state } = setup({ repository });
+  const ids = [];
+  let cursor = null;
+  let pages = 0;
+  do {
+    const page = await workflow.list({
+      token: TOKEN,
+      novelId: 354,
+      beforeId: cursor
+    });
+    const all = [
+      ...page.candidates,
+      ...page.acceptedCandidates,
+      ...page.staleCandidates
+    ];
+    assert.ok(all.length > 0 && all.length <= 25);
+    assert.equal(new Set(all.map((row) => row.id)).size, all.length);
+    if (pages === 0) assert.equal(Math.max(...all.map((row) => row.id)), 130);
+    for (const item of page.staleCandidates) {
+      assert.equal(item.staleReason, 'source_changed');
+      assert.equal(item.id % 3, 0);
+    }
+    ids.push(...all.map((row) => row.id));
+    cursor = page.pagination.nextBeforeId;
+    pages += 1;
+  } while (cursor !== null && pages <= 6);
+  assert.equal(pages, 6);
+  assert.deepEqual(
+    [...ids].sort((a, b) => b - a),
+    Array.from({ length: 130 }, (_, index) => 130 - index)
+  );
+  assert.equal(new Set(ids).size, 130);
+  assert.deepEqual(reads, [null, 106, 81, 56, 31, 6]);
+  assert.equal(state.records.size, 0);
+});
+
+test('page cursor and forged unordered or repeated candidate rows fail closed', async () => {
+  const row = {
+    id: 40,
+    actorId: OWNER,
+    novelId: 354,
+    sourceEpisodeId: 41,
+    sourceHash: HASH,
+    factKind: 'character',
+    factKey: '凛',
+    summary: '再登場',
+    evidence: SUGGESTION.evidence,
+    provenance: 'ai_inferred',
+    status: 'pending',
+    revision: 1
+  };
+  const make = (rows, nextBeforeId = null) =>
+    setup({
+      repository: {
+        listAuthorConfirmed: async () => [],
+        savePendingBatch: async () => ({ count: 0 }),
+        readCandidate: async () => null,
+        compareAndSwapDecision: async () => null,
+        listReviewPage: async () => ({ rows, nextBeforeId })
+      }
+    }).workflow;
+  for (const rows of [
+    [row, row],
+    [{ ...row, id: 39 }, row],
+    [{ ...row, status: 'rejected' }],
+    [{ ...row, novelId: 999 }],
+    [{ ...row, actorId: OTHER }],
+    [{ ...row, id: 41 }]
+  ]) {
+    await assert.rejects(
+      make(rows).list({ token: TOKEN, novelId: 354, beforeId: 41 }),
+      /AI_OWNER_REVIEW_DENIED/u
+    );
+  }
+  await assert.rejects(
+    make([row], 40).list({ token: TOKEN, novelId: 354 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+  await assert.rejects(
+    make([]).list({ token: OTHER, novelId: 354 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+});
