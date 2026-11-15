@@ -359,3 +359,78 @@ test('only the owner and accepted exact-revision candidate can transfer', async 
   assert.equal(state.accepted[0].revision, 2);
   assert.equal((await workflow.verifyTransfer(input)).transferReady, true);
 });
+
+test('manuscript edited after GET list cannot fill the author note draft', async () => {
+  const { workflow, state } = authorWorkflow();
+  const notes = editor();
+  const host = element('main');
+  const requests = [];
+  let transfers = 0;
+  const client = {
+    auth: {
+      async getSession() {
+        return {
+          data: {
+            session: { user: { id: OWNER }, access_token: TOKEN }
+          },
+          error: null
+        };
+      },
+      onAuthStateChange() {
+        return { data: { subscription: { unsubscribe() {} } } };
+      }
+    }
+  };
+  const mounted = await globalThis.NovelightAiBibleReviewActions.attach({
+    client,
+    ownerId: OWNER,
+    novelId: 354,
+    doc: {
+      getElementById(name) {
+        return name === 'main-content' ? host : null;
+      },
+      createElement: element
+    },
+    fetcher: async (url, options) => {
+      requests.push({ url, method: options.method });
+      const params = new URL(url, 'https://offline.test').searchParams;
+      if (!params.has('transfer_candidate_id')) {
+        return {
+          ok: true,
+          json: () => workflow.list({ token: TOKEN, novelId: 354 })
+        };
+      }
+      try {
+        const response = await workflow.verifyTransfer({
+          token: TOKEN,
+          novelId: 354,
+          candidateId: Number(params.get('transfer_candidate_id')),
+          expectedRevision: Number(params.get('expected_revision'))
+        });
+        return { ok: true, json: async () => response };
+      } catch (error) {
+        assert.match(error.message, /AI_BIBLE_INFERENCE_INVALID/u);
+        return { ok: false, status: 409 };
+      }
+    },
+    onAccepted: async (candidate) => {
+      transfers += 1;
+      return globalThis.NovelightAiBibleNoteTransfer.prepare({
+        candidate,
+        doc: notes.document
+      });
+    }
+  });
+  assert.equal(mounted, true);
+  state.episode.content += '追記された場面';
+  const section = host.children[0];
+  const transfer = section.children[1].children[1].children[1].children[0];
+  await transfer.listeners.click();
+  assert.equal(requests.length, 2);
+  assert.match(requests[1].url, /transfer_candidate_id=77/u);
+  assert.equal(transfers, 0);
+  assert.equal(notes.fields.title.value, '');
+  assert.equal(notes.fields.body.value, '');
+  assert.equal(notes.fields.noteId.value, '');
+  assert.match(section.children[2].textContent, /転記できませんでした/u);
+});
