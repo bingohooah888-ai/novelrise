@@ -88,39 +88,6 @@ export function createUnregisteredFormalApplication({
   // Level, or wallet readiness is later approved. No supplied catalog or
   // provider adapter can activate gift exchange or charge for AI by accident.
   const deferred = holdDeferredFormalChannels({ catalog, policy });
-  // Read Level from scout_level_state and XP ledger; reconcile wallet to the
-  // existing canonical Point ledger. No second source of truth is introduced.
-  const usage = createUnregisteredFormalPostgresRewardHost({
-    initializeNewReader: newReader.initializeOne,
-    inspectNewReader:
-      stagingTestReferenceAt !== undefined
-        ? newReader.inspectVerifiedOne
-        : (user) => newReader.inspectOne(user.id),
-    inspectEarningSource: earningSourceReader.load,
-    getAdminBadgeCatalog: badgeCatalog.inspect,
-    getAdminBadgeHistory: badgeHistory.inspect,
-    getAdminWalletCohort: walletCohort.inspect,
-    getAdminSettlementRecovery: settlementRecovery.inspect,
-    // A single verified Auth user cannot prove cohort totals.
-    getNewReaderSummary:
-      stagingTestReferenceAt === undefined
-        ? newReader.getAdminSummary
-        : undefined,
-    pool,
-    supabase,
-    unitVerification,
-    now,
-    releaseConfiguration,
-    trustedServerAuthorization,
-    env,
-    catalog: deferred.catalog,
-    policy: deferred.policy,
-    aiExecutor: deferred.aiExecutor,
-    verifyGiftReceipt,
-    verifyGiftNonFulfillment,
-    verifyGiftRefund,
-    verifyAiRefund
-  });
   // Formal read/comment earnings reuse the already implemented durable runner.
   // Its own launch gates remain disabled unless a future trusted host approves.
   const earnings =
@@ -160,6 +127,40 @@ export function createUnregisteredFormalApplication({
           trustedServerAuthorization
         });
 
+  // Read Level from scout_level_state and XP ledger; reconcile wallet to the
+  // existing canonical Point ledger. No second source of truth is introduced.
+  const usage = createUnregisteredFormalPostgresRewardHost({
+    initializeNewReader: newReader.initializeOne,
+    inspectNewReader:
+      stagingTestReferenceAt !== undefined
+        ? newReader.inspectVerifiedOne
+        : (user) => newReader.inspectOne(user.id),
+    inspectEarningSource: earningSourceReader.load,
+    getAdminBadgeCatalog: badgeCatalog.inspect,
+    getAdminBadgeHistory: badgeHistory.inspect,
+    getAdminWalletCohort: walletCohort.inspect,
+    getAdminSettlementRecovery: settlementRecovery.inspect,
+    getAdminMaintenanceReadiness: maintenance.inspectConnectionReadiness,
+    // A single verified Auth user cannot prove cohort totals.
+    getNewReaderSummary:
+      stagingTestReferenceAt === undefined
+        ? newReader.getAdminSummary
+        : undefined,
+    pool,
+    supabase,
+    unitVerification,
+    now,
+    releaseConfiguration,
+    trustedServerAuthorization,
+    env,
+    catalog: deferred.catalog,
+    policy: deferred.policy,
+    aiExecutor: deferred.aiExecutor,
+    verifyGiftReceipt,
+    verifyGiftNonFulfillment,
+    verifyGiftRefund,
+    verifyAiRefund
+  });
   const opening =
     stagingTestReferenceAt !== undefined
       ? Object.freeze({
