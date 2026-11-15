@@ -37,7 +37,7 @@ function element(tag) {
   };
 }
 
-function harness({ state = 'ready', nextIndex = 1, revoke = false } = {}) {
+function harness({ state = 'ready', nextIndex = 1 } = {}) {
   let active = true;
   let signedIn = true;
   let inspected = 0;
@@ -169,10 +169,6 @@ function controls(main) {
   return { section, plan, action: buttons[1], review: buttons[2] };
 }
 
-function tick() {
-  return new Promise((resolve) => setImmediate(resolve));
-}
-
 test(
   'offline owner must inspect before one explicit stage and then sees review',
   async () => {
@@ -256,8 +252,7 @@ test(
     completed.signOut();
     assert.equal(completed.main.children[0].removed, true);
     assert.equal(completed.main.children[0].textContent, '');
-    await tick();
-  }
+    }
 );
 
 test(
