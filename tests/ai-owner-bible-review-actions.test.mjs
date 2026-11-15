@@ -612,9 +612,27 @@ test('edit after listing or denied recheck never transfers an old accepted row',
     { transferStatus: 409 },
     { transferStatus: 404 },
     { transferThrows: true },
-    { transferPayload: { novelId: 354, transferReady: false, candidate: accepted } },
-    { transferPayload: { novelId: 354, transferReady: true, candidate: { ...accepted, revision: 3 } } },
-    { transferPayload: { novelId: 354, transferReady: true, candidate: { ...accepted, evidence: '別の本文' } } }
+    {
+      transferPayload: {
+        novelId: 354,
+        transferReady: false,
+        candidate: accepted
+      }
+    },
+    {
+      transferPayload: {
+        novelId: 354,
+        transferReady: true,
+        candidate: { ...accepted, revision: 3 }
+      }
+    },
+    {
+      transferPayload: {
+        novelId: 354,
+        transferReady: true,
+        candidate: { ...accepted, evidence: '別の本文' }
+      }
+    }
   ]) {
     const f = mock({ getPayload: list, ...options });
     let transfers = 0;
@@ -637,10 +655,7 @@ test('edit after listing or denied recheck never transfers an old accepted row',
     await transfer.listeners.click();
     assert.equal(transfers, 0);
     assert.equal(f.requests.length, 2);
-    assert.equal(
-      f.requests.filter((req) => req.method === 'POST').length,
-      0
-    );
+    assert.equal(f.requests.filter((req) => req.method === 'POST').length, 0);
     assert.match(section.children[2].textContent, /転記できませんでした/u);
     assert.equal(transfer.removed, false);
   }
