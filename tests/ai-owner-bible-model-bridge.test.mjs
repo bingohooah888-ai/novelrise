@@ -561,3 +561,33 @@ test('02-07-05 failed candidate staging never acknowledges a paid chunk', async 
   assert.equal(state.reviewCalls, 1);
   assert.equal(journalCalls, 0);
 });
+
+test('02-07-05 revocation during candidate persistence prevents final checkpoint', async () => {
+  const { state, make } = fixture();
+  let committed = 0;
+  const bridge = make({
+    checkpoint: {
+      async inspect() {
+        return 'pending';
+      },
+      async record() {
+        committed += 1;
+        return { complete: true, alreadyRecorded: false, remainingChunks: 0 };
+      }
+    },
+    reviewWorkflow: {
+      async stage() {
+        state.reviewCalls += 1;
+        state.consent = false;
+        return { novelId: 41, stagedCount: 1 };
+      }
+    }
+  });
+  await assert.rejects(
+    bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.reviewCalls, 1);
+  assert.equal(committed, 0);
+});
