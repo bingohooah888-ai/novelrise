@@ -65,7 +65,8 @@ export function createFormalUsageHttpHandlers({
   getAdminBadgeCatalog,
   getAdminBadgeHistory,
   getAdminWalletCohort,
-  getAdminSettlementRecovery
+  getAdminSettlementRecovery,
+  getAdminMaintenanceReadiness
 } = {}) {
   if (typeof supabase?.auth?.getUser !== 'function')
     throw new TypeError('Trusted existing Supabase Auth client required');
@@ -219,6 +220,28 @@ export function createFormalUsageHttpHandlers({
           if (report?.status !== 'formal_settlement_recovery_review_only')
             return stop(res, 503, 'FORMAL_SETTLEMENT_RECOVERY_UNAVAILABLE');
           return res.status(200).json({ ok: true, ...report });
+        }
+        if (req.query?.view === 'maintenance_readiness') {
+          if (typeof getAdminMaintenanceReadiness !== 'function')
+            return stop(res, 503, 'FORMAL_MAINTENANCE_UNAVAILABLE');
+          // A privilege preflight is not permission to run the 30-day writer,
+          // and never proves release readiness. Return only a finite verdict.
+          const result = await getAdminMaintenanceReadiness();
+          if (
+            ![
+              'maintenance_connection_ready',
+              'maintenance_connection_unready',
+              'maintenance_connection_unavailable',
+              'formal_maintenance_disabled'
+            ].includes(result?.status)
+          )
+            return stop(res, 503, 'FORMAL_MAINTENANCE_UNAVAILABLE');
+          return res.status(200).json({
+            ok: true,
+            status: result.status,
+            mayRunMaintenance: false,
+            readyForPublicRelease: false
+          });
         }
         if (req.query?.view === 'wallet_cohort') {
           if (typeof getAdminWalletCohort !== 'function')
