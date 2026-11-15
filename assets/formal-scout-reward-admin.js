@@ -16,6 +16,10 @@
     loadRefunds,
     loadNewReaderSummary,
     loadRewardOverview,
+    loadBadgeCatalog,
+    loadBadgeHistory,
+    loadWalletCohort,
+    loadSettlementRecovery,
     onResolve
   } = {}) {
     if (!root || typeof root.replaceChildren !== 'function')
@@ -34,15 +38,26 @@
     const notice = node('p', 'rr-admin-message');
     notice.setAttribute('role', 'status');
     const records = node('div', 'rr-admin-list');
+    const audits = node('section', 'rr-admin-audits');
     const list = node('div', 'rr-admin-list');
     const refunds = node('div', 'rr-admin-list');
     const newReaders = node('div', 'rr-admin-list');
-    shell.append(title, caption, notice, records, newReaders, list, refunds);
+    shell.append(
+      title,
+      caption,
+      notice,
+      records,
+      audits,
+      newReaders,
+      list,
+      refunds
+    );
     root.replaceChildren(shell);
 
     async function refresh() {
       const requestId = ++latestRequest;
       records.replaceChildren();
+      audits.replaceChildren();
       list.replaceChildren();
       refunds.replaceChildren();
       newReaders.replaceChildren();
@@ -174,6 +189,124 @@
       } else {
         records.append(
           node('p', 'rr-admin-muted', '報酬発行・利用記録の取得は未接続です。')
+        );
+      }
+      // These four aggregate-only reports already have separate, authorized
+      // GET views in the unregistered formal admin host. A missing, stale or
+      // malformed report always remains review-only: no activation controls.
+      audits.append(
+        node('h3', '', '正式報酬 / 公開前の整合性監査'),
+        node(
+          'p',
+          'rr-admin-muted',
+          '公開OFF。表示は診断用で、データ移行・Point付与・交換・返金・復旧を実行しません。'
+        )
+      );
+      const views = [
+        [
+          loadBadgeCatalog,
+          '読者称号100種',
+          'formal_badge_catalog_review_only',
+          [
+            ['称号定義', 'total'],
+            ['有効化済み', 'enabled'],
+            ['理論報酬', 'theoreticalPointReward']
+          ]
+        ],
+        [
+          loadBadgeHistory,
+          '称号獲得・Point履歴',
+          'formal_badge_history_review_only',
+          [
+            ['獲得履歴', 'earned_badges'],
+            ['旧単位イベント', 'legacy_unit_events'],
+            ['付与履歴未照合', 'earned_without_event'],
+            ['紐づかないPoint', 'orphan_reader_badge_events']
+          ]
+        ],
+        [
+          loadWalletCohort,
+          '正式Wallet・正規台帳',
+          'formal_wallet_cohort_review_only',
+          [
+            ['Wallet利用者', 'wallet_users'],
+            ['Wallet未作成', 'ledger_without_wallet_users'],
+            ['残高不一致', 'wallet_balance_mismatch_users'],
+            ['未確定Point行', 'unsettled_ledger_rows']
+          ]
+        ],
+        [
+          loadSettlementRecovery,
+          '決済履歴・停止復旧',
+          'formal_settlement_recovery_review_only',
+          [
+            ['操作件数', 'operations_total'],
+            ['状態履歴不一致', 'history_mismatch_operations'],
+            ['引落し欠落', 'missing_spend_operations'],
+            ['返金欠落', 'missing_refund_operations'],
+            ['孤立した決済Point', 'orphan_settlement_ledger_events']
+          ]
+        ]
+      ];
+      for (const [loader, heading, status, fields] of views) {
+        const panel = node('article', 'rr-admin-request');
+        panel.append(node('strong', '', heading));
+        audits.append(panel);
+        if (typeof loader !== 'function') {
+          panel.append(
+            node('p', 'rr-admin-muted', '監査API未接続・未検証。公開OFFを維持します。')
+          );
+          continue;
+        }
+        let report;
+        try {
+          report = await loader();
+        } catch {
+          report = null;
+        }
+        if (requestId !== latestRequest)
+          return { status: 'stale_queue_response' };
+        const verifiedShape =
+          report?.status === status &&
+          report.readyForPublicRelease === false &&
+          report.mayWriteDb === false &&
+          report.mayIssuePoints === false &&
+          report.observed &&
+          typeof report.observed === 'object' &&
+          !Array.isArray(report.observed) &&
+          Array.isArray(report.blockers) &&
+          report.blockers.length <= 50 &&
+          report.blockers.every(
+            (reason) => typeof reason === 'string' && reason.length <= 160
+          ) &&
+          fields.every(
+            ([, key]) =>
+              Number.isSafeInteger(report.observed[key]) &&
+              report.observed[key] >= 0
+          );
+        if (!verifiedShape) {
+          panel.append(
+            node('p', 'rr-admin-muted', '監査結果が不完全・未検証です。公開OFFを維持します。')
+          );
+          continue;
+        }
+        for (const [label, key] of fields) {
+          panel.append(
+            node(
+              'p',
+              'rr-admin-muted',
+              label + '：' + fmt(report.observed[key])
+            )
+          );
+        }
+        panel.append(
+          node(
+            'p',
+            'rr-admin-muted',
+            '未解決の確認事項：' +
+              fmt(report.blockers.length) +
+              '件。実DBの安全性や公開許可を示す数値ではありません。'
+          )
         );
       }
       let result;
@@ -379,6 +512,14 @@
         request({ method: 'GET', query: { view: 'new_readers' } }),
       loadRewardOverview: () =>
         request({ method: 'GET', query: { view: 'reward_overview' } }),
+      loadBadgeCatalog: () =>
+        request({ method: 'GET', query: { view: 'badge_catalog' } }),
+      loadBadgeHistory: () =>
+        request({ method: 'GET', query: { view: 'badge_history' } }),
+      loadWalletCohort: () =>
+        request({ method: 'GET', query: { view: 'wallet_cohort' } }),
+      loadSettlementRecovery: () =>
+        request({ method: 'GET', query: { view: 'settlement_recovery' } }),
       onResolve: ({ operationId, action }) =>
         request({ method: 'POST', body: { operationId, action } })
     });
