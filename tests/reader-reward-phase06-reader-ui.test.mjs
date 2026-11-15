@@ -628,13 +628,19 @@ test('reader Point history filters and pages verified records', async () => {
   assert.match(text(root), /1〜12件目/);
   const earningButton = buttons().find((b) => b.textContent === '獲得');
   assert.equal(earningButton.attributes['aria-pressed'], 'true');
-  assert.equal(buttons().some((b) => b.textContent === '次の20件'), false);
+  const noEarningsNext = buttons().every(
+    (button) => button.textContent !== '次の20件'
+  );
+  assert.equal(noEarningsNext, true);
   choose('利用・返却');
   assert.match(text(root), /取得範囲内の該当履歴：22件/);
   choose('保留・取消');
   assert.match(text(root), /取得範囲内の該当履歴：11件/);
   assert.equal(byTag(root, 'b').length, 11);
-  assert.equal(buttons().some((b) => b.textContent === '次の20件'), false);
+  const noReviewNext = buttons().every(
+    (button) => button.textContent !== '次の20件'
+  );
+  assert.equal(noReviewNext, true);
   assert.equal(reads, initialReads);
 });
 
