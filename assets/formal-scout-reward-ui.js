@@ -112,6 +112,16 @@
               seeds: s.scout.seeds.slice(0, 20)
             }
           : null,
+      authorGrowth:
+        verified &&
+        s.formalEnabled === true &&
+        Array.isArray(s.authorGrowth?.works) &&
+        Array.isArray(s.authorGrowth?.events)
+          ? {
+              works: s.authorGrowth.works.slice(0, 30),
+              events: s.authorGrowth.events.slice(0, 80)
+            }
+          : null,
       history:
         verified && Array.isArray(s.history) ? s.history.slice(0, 40) : [],
       aiFeatures: Array.isArray(s.aiFeatures) ? s.aiFeatures.slice(0, 25) : [],
@@ -390,6 +400,62 @@
       if (!seedList.children.length)
         seedList.append(el('p', 'rr-muted', '表示できる発掘履歴はありません。'));
       contents.append(seedList);
+      if (latest.authorGrowth) {
+        contents.append(el('h3', '', '作者専用 / 自作品のRank・成長履歴'));
+        const workList = el('div', 'rr-history');
+        for (const work of latest.authorGrowth.works) {
+          if (!work || typeof work.title !== 'string' ||
+              !Number.isInteger(work.rank) || work.rank < 1 ||
+              work.rank > 6 || typeof work.rankName !== 'string')
+            continue;
+          const row = el('div', 'rr-history-row');
+          const info = el('div');
+          info.append(
+            el('strong', '', label(work.title)),
+            el('small', '',
+              'Rank ' + work.rank + ' ' + label(work.rankName) +
+              ' ・最高Rank ' + number(work.peakRank))
+          );
+          row.append(info);
+          workList.append(row);
+        }
+        if (!workList.children.length)
+          workList.append(el('p', 'rr-muted', '自作品のRank履歴はありません。'));
+        contents.append(workList);
+        const eventList = el('div', 'rr-history');
+        const titleByWorkId = new Map(
+          latest.authorGrowth.works
+            .filter((work) => work && typeof work.id === 'string')
+            .map((work) => [work.id, work.title])
+        );
+        for (const event of latest.authorGrowth.events) {
+          if (!event || !titleByWorkId.has(event.workId) ||
+              !Number.isInteger(event.toRank) ||
+              event.toRank < 1 || event.toRank > 6)
+            continue;
+          const type = {
+            initial: '初回', promotion: '昇格',
+            demotion: '降格', finalized: '確定'
+          }[event.type];
+          if (!type) continue;
+          const row = el('div', 'rr-history-row');
+          const info = el('div');
+          info.append(
+            el('strong', '', label(titleByWorkId.get(event.workId))),
+            el('small', '',
+              type + ' ・Rank ' + number(event.toRank) +
+              ' ・' + safeDate(event.occurredAt))
+          );
+          row.append(info);
+          eventList.append(row);
+        }
+        if (eventList.children.length) {
+          contents.append(
+            el('h3', '', '作品Rankの更新記録'),
+            eventList
+          );
+        }
+      }
     }
     function drawExchange() {
       const s = latest;
