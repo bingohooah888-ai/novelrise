@@ -2,6 +2,7 @@
 // Not a DB adapter for production, a route, a scheduler, or an authority proof.
 // Tests exercise the real private-function client and queue/worker control flow.
 import { createHash, randomUUID } from 'node:crypto';
+import { quoteScoutMaintenanceWindow } from './maintenance-review.js';
 import {
   quoteFormalReadPointReward,
   quoteFormalCommentPointReward
@@ -39,7 +40,8 @@ export function createFormalOfflineDurableDb({
   releaseAtMs,
   nowIso,
   repository,
-  legacyEventKeys = []
+  legacyEventKeys = [],
+  syntheticThresholds
 } = {}) {
   if (
     !Array.isArray(events) ||
@@ -57,7 +59,9 @@ export function createFormalOfflineDurableDb({
     typeof repository?.applySyntheticXpEvent !== 'function' ||
     typeof repository?.getSyntheticXpSummary !== 'function' ||
     typeof repository?.readReader !== 'function' ||
-    !Array.isArray(legacyEventKeys)
+    !Array.isArray(legacyEventKeys) ||
+    !syntheticThresholds ||
+    typeof syntheticThresholds !== 'object'
   )
     throw new TypeError('Complete OFFLINE synthetic earning fixture required');
 
@@ -93,6 +97,7 @@ export function createFormalOfflineDurableDb({
   }
   const verifiedXpLedger = new Map();
   const xpIds = new Set();
+  const allXpFixtures = new Map();
   for (const fixture of xpEvents) {
     const row = fixture?.verifiedXpLedgerRow;
     if (
@@ -106,6 +111,7 @@ export function createFormalOfflineDurableDb({
     )
       throw new TypeError('Invalid synthetic canonical XP row');
     xpIds.add(row.id);
+    allXpFixtures.set(row.id, copy(fixture));
     if (fixture.sourceFixtureVerified === true)
       verifiedXpLedger.set(row.id, copy(row));
   }
@@ -242,7 +248,229 @@ export function createFormalOfflineDurableDb({
     return saved;
   }
 
+  const THIRTY_DAY_MS = 30 * 86400000;
+  const nowMs = Date.parse(nowIso);
+
+  async function nextWindow(userId) {
+    const state = await repository.getSyntheticLevelState(userId);
+    if (!state) return null;
+    const ordinal =
+      state.lastReviewedWindowEndMs === null
+        ? 1
+        : 1 +
+          (state.lastReviewedWindowEndMs - state.reviewAnchorMs) /
+            THIRTY_DAY_MS;
+    if (!Number.isSafeInteger(ordinal)) return null;
+    return {
+      state,
+      ...quoteScoutMaintenanceWindow({
+        firstWindowStartMs: state.reviewAnchorMs,
+        reviewOrdinal: ordinal
+      })
+    };
+  }
+
+  async function reviewSyntheticWindow(userId, asOfMs, requiredXpByLevel) {
+    if (
+      !readerIds.has(userId) ||
+      !Number.isSafeInteger(asOfMs) ||
+      asOfMs < 0 ||
+      asOfMs > nowMs
+    )
+      return { status: 'review_request_invalid' };
+    const window = await nextWindow(userId);
+    if (!window) return { status: 'formal_state_missing' };
+    if (asOfMs < window.windowEndMs) return { status: 'not_due' };
+    const relevant = [...allXpFixtures.values()].filter((fixture) => {
+      const row = fixture.verifiedXpLedgerRow;
+      return (
+        row.user_id === userId &&
+        Number.isFinite(Date.parse(row.occurred_at)) &&
+        Date.parse(row.occurred_at) >= window.windowStartMs &&
+        Date.parse(row.occurred_at) < window.windowEndMs
+      );
+    });
+    // A denied/unverified source cannot silently count as ZERO XP.
+    const complete = relevant.every(
+      (fixture) => fixture.sourceFixtureVerified === true
+    );
+    const committed = new Set(
+      repository.getSyntheticXpSummary().applied.map(
+        (entry) => entry.xpLedgerId
+      )
+    );
+    if (
+      relevant.some(
+        (fixture) =>
+          fixture.sourceFixtureVerified === true &&
+          !committed.has(fixture.verifiedXpLedgerRow.id)
+      )
+    ) {
+      return { status: 'xp_pending_review' };
+    }
+    return repository.reviewSyntheticMaintenance({
+      userId,
+      asOfMs,
+      verifiedLedgerRows: relevant
+        .filter((fixture) => fixture.sourceFixtureVerified === true)
+        .map((fixture) => fixture.verifiedXpLedgerRow),
+      ledgerSnapshotComplete: complete,
+      requiredXpByLevel
+    });
+  }
+
+  async function resumePendingXp({
+    userId,
+    asOfIso = nowIso,
+    limit = 100,
+    requiredXpByLevel
+  } = {}) {
+    const asOfMs = Date.parse(asOfIso);
+    if (
+      !readerIds.has(userId) ||
+      !Number.isSafeInteger(asOfMs) ||
+      asOfMs < releaseAtMs ||
+      asOfMs > nowMs ||
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > 100 ||
+      !requiredXpByLevel ||
+      typeof requiredXpByLevel !== 'object'
+    )
+      return { status: 'replay_request_invalid' };
+    const first = await nextWindow(userId);
+    if (!first) return { status: 'formal_state_missing' };
+    const applied = new Set(
+      repository.getSyntheticXpSummary().applied.map(
+        (entry) => entry.xpLedgerId
+      )
+    );
+    const pending = [...verifiedXpLedger.values()]
+      .filter(
+        (row) =>
+          row.user_id === userId &&
+          Date.parse(row.occurred_at) >= first.state.reviewAnchorMs &&
+          Date.parse(row.occurred_at) <= asOfMs &&
+          !applied.has(row.id)
+      )
+      .sort(
+        (left, right) =>
+          Date.parse(left.occurred_at) - Date.parse(right.occurred_at) ||
+          left.id.localeCompare(right.id)
+      );
+    let xpApplied = 0;
+    let reviews = 0;
+    for (const row of pending.slice(0, limit)) {
+      // The XP event occurring EXACTLY at window end belongs to the NEXT.
+      for (let guard = 0; guard < 100; guard += 1) {
+        const window = await nextWindow(userId);
+        if (Date.parse(row.occurred_at) < window.windowEndMs) break;
+        const checked = await reviewSyntheticWindow(
+          userId,
+          asOfMs,
+          requiredXpByLevel
+        );
+        if (checked.status !== 'reviewed')
+          return {
+            status: 'review_hold',
+            reason: checked.status,
+            xpApplied,
+            reviews
+          };
+        reviews++;
+        if (reviews >= 100)
+          return { status: 'review_limit', xpApplied, reviews };
+      }
+      const outcome = await repository.applySyntheticXpEvent({
+        verifiedXpLedgerRow: row,
+        sourceFixtureVerified: true,
+        requiredXpByLevel
+      });
+      if (outcome.status !== 'applied' && outcome.status !== 'already_applied')
+        return {
+          status: 'xp_hold',
+          reason: outcome.status,
+          xpApplied,
+          reviews
+        };
+      if (outcome.status === 'applied') xpApplied++;
+    }
+    // Do not close a window if bounded replay has more unclaimed events.
+    if (pending.length > limit)
+      return { status: 'more_pending', xpApplied, reviews };
+    for (let guard = 0; guard < 100; guard += 1) {
+      const window = await nextWindow(userId);
+      if (window.windowEndMs > asOfMs)
+        return { status: 'caught_up', xpApplied, reviews };
+      const checked = await reviewSyntheticWindow(
+        userId,
+        asOfMs,
+        requiredXpByLevel
+      );
+      if (checked.status !== 'reviewed')
+        return {
+          status: 'review_hold',
+          reason: checked.status,
+          xpApplied,
+          reviews
+        };
+      reviews++;
+    }
+    return { status: 'review_limit', xpApplied, reviews };
+  }
+
   async function query(sql, args = []) {
+    if (sql.startsWith('select (has_schema_privilege(current_user'))
+      return { rows: [{ ready: true }] };
+    if (
+      sql.includes(
+        'from novelight_formal_private.scout_level_state'
+      )
+    ) {
+      const [asOfIso, limit] = args;
+      const asOfMs = Date.parse(asOfIso);
+      if (
+        !Number.isSafeInteger(asOfMs) ||
+        asOfMs > nowMs ||
+        !Number.isSafeInteger(limit) ||
+        limit < 1 ||
+        limit > 25
+      )
+        return { rows: [] };
+      const due = (
+        await Promise.all(
+          [...readerIds].map(async (id) => ({
+            id,
+            window: await nextWindow(id)
+          }))
+        )
+      )
+        .filter(
+          (candidate) =>
+            candidate.window &&
+            candidate.window.windowEndMs <= asOfMs
+        )
+        .sort(
+          (left, right) =>
+            left.window.windowEndMs - right.window.windowEndMs ||
+            left.id.localeCompare(right.id)
+        );
+      return {
+        rows: due.slice(0, limit).map(({ id }) => ({ user_id: id }))
+      };
+    }
+    if (sql.includes('.review_scout_30_days(')) {
+      const review = await reviewSyntheticWindow(
+        args[0],
+        Date.parse(args[1]),
+        syntheticThresholds
+      );
+      return result(
+        review.status === 'xp_adjustment_review'
+          ? { status: 'adjustment_policy_pending' }
+          : review
+      );
+    }
     if (sql.includes('from public.valid_read_events where id='))
       return { rows: reads.has(args[0]) ? [copy(reads.get(args[0]))] : [] };
     if (sql.includes('from public.novel_comments where id='))
@@ -353,6 +581,7 @@ export function createFormalOfflineDurableDb({
   }
 
   async function getAdminRewardOverview() {
+    const maintenance = repository.getSyntheticMaintenanceSummary();
     const xpSummary = repository.getSyntheticXpSummary();
     const all = [...earned.values(), ...xpSummary.levelRewards];
     const month = monthOf(nowIso);
@@ -374,6 +603,8 @@ export function createFormalOfflineDurableDb({
       commentMonth: sum(inMonth.filter((entry) => entry.kind === 'comment')),
       levelUpMonth: sum(inMonth.filter((entry) => entry.kind === 'level_up')),
       levelUpTotal: sum(all.filter((entry) => entry.kind === 'level_up')),
+      maintenanceReviewed: maintenance.length,
+      maintenanceDemotions: maintenance.filter((entry) => entry.demoted).length,
       xpEventsMonth: xpSummary.applied.filter(
         (entry) => monthOf(entry.at) === month
       ).length,
@@ -424,6 +655,10 @@ export function createFormalOfflineDurableDb({
       });
     },
     getAdminRewardOverview,
+    resumePendingXp,
+    reviewSyntheticWindow: ({ userId, asOfIso = nowIso } = {}) =>
+      reviewSyntheticWindow(userId, Date.parse(asOfIso), syntheticThresholds),
+    getSyntheticMaintenanceSummary: repository.getSyntheticMaintenanceSummary,
     // Explicitly test-only: introduce a single transient error, then replay.
     interruptNextSyntheticAward: (count = 1) => {
       if (!Number.isSafeInteger(count) || count < 1 || count > 2)
