@@ -6,21 +6,36 @@
     root,
     request,
     nextOperationId,
-    newReaderOnboardingAvailable = false
+    newReaderOnboardingAvailable = false,
+    readerExchangeAvailable = false,
+    readerAiPointAvailable = false
   }) {
     if (
       !globalThis.NovelightFormalScoutReward ||
       !globalThis.NovelightFormalRewardReaderBindings
     )
       throw new TypeError('Formal reader UI modules must be loaded first');
+    const usesPointOperations =
+      readerExchangeAvailable === true || readerAiPointAvailable === true;
+    if (usesPointOperations && typeof nextOperationId !== 'function')
+      throw new TypeError('Reader Point actions require operation UUIDs');
     const binding =
       globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings(
-        { request, nextOperationId }
+        {
+          request,
+          ...(usesPointOperations ? { nextOperationId } : {})
+        }
       );
+    const { initializeNewReader, onExchange, onAiUse, ...readOnly } = binding;
     return globalThis.NovelightFormalScoutReward.createRewardReaderPanel({
       root,
+      ...readOnly,
       newReaderOnboardingAvailable,
-      ...binding
+      ...(newReaderOnboardingAvailable === true
+        ? { initializeNewReader }
+        : {}),
+      ...(readerExchangeAvailable === true ? { onExchange } : {}),
+      ...(readerAiPointAvailable === true ? { onAiUse } : {})
     });
   }
 
