@@ -36,6 +36,47 @@ export function createFormalEarningRunner({
     trustedServerAuthorization?.verifiedByTrustedServer === true;
   let draining = false;
 
+  // Internal, post-commit handoff to the already existing durable queue.
+  // Only a trusted, separately approved host may invoke this method; the
+  // canonical source is reloaded here rather than trusting caller evidence.
+  async function enqueueCommittedEvent({ eventType, eventId } = {}) {
+    if (!approved()) return Object.freeze({ status: 'formal_worker_disabled' });
+    if (
+      !['valid_read_qualified', 'novel_episode_comment_reviewed'].includes(
+        eventType
+      ) ||
+      typeof eventId !== 'string' ||
+      !UUID.test(eventId)
+    )
+      return Object.freeze({ status: 'invalid_event' });
+    let source;
+    try {
+      source = await sourceReader.load(eventType, eventId);
+    } catch {
+      return Object.freeze({ status: 'canonical_source_unavailable' });
+    }
+    if (source.status !== 'canonical_source_verified')
+      return Object.freeze({ status: source.status });
+    try {
+      const result = await delivery.enqueue(eventType, eventId);
+      const accepted = new Set([
+        'pending',
+        'review_pending',
+        'retry',
+        'leased',
+        'completed',
+        'held'
+      ]);
+      return Object.freeze({
+        status: accepted.has(result?.status)
+          ? result.status
+          : 'queue_result_requires_attention'
+      });
+    } catch {
+      return Object.freeze({ status: 'queue_storage_unavailable' });
+    }
+  }
+
   async function submitModeration({
     commentId,
     eligible,
@@ -222,6 +263,7 @@ export function createFormalEarningRunner({
   }
 
   return Object.freeze({
+    enqueueCommittedEvent,
     submitModeration,
     drainDue,
     bindExistingScheduler

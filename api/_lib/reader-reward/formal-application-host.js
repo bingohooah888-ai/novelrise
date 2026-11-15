@@ -93,6 +93,9 @@ export function createUnregisteredFormalApplication({
   const earnings =
     stagingTestReferenceAt !== undefined
       ? Object.freeze({
+          enqueueCommittedEvent: async () => ({
+            status: 'formal_worker_disabled'
+          }),
           submitModeration: async () => ({ status: 'formal_worker_disabled' }),
           drainDue: async () => ({ status: 'formal_worker_disabled' }),
           bindExistingScheduler: () => {
@@ -216,6 +219,9 @@ export function createUnregisteredFormalApplication({
     inspectWalletCohort: walletCohort.inspect,
     inspectSettlementRecovery: settlementRecovery.inspect,
     getReaderSnapshot: usage.service.getReaderSnapshot,
+    // Trusted future host may hand off a committed canonical event; no
+    // public endpoint or runtime worker is registered by this composition.
+    enqueueCommittedEarning: earnings.enqueueCommittedEvent,
     submitModeration: earnings.submitModeration,
     drainDueEarnings: earnings.drainDue,
     bindExistingScheduler: earnings.bindExistingScheduler,
