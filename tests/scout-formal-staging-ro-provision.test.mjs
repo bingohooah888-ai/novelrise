@@ -265,14 +265,14 @@ async function runSyntheticProvision({
   );
 }
 
-test('synthetic password write failures stay classified as uncertain', async () => {
+test('password write failure stays uncertain', async () => {
   await runSyntheticProvision({
     failPassword: true,
     expectedStage: FORMAL_RO_SAFE_FAILURE_STAGES.PASSWORD_ATTEMPT
   });
 });
 
-test('synthetic Vercel secret write cannot report success on failure', async () => {
+test('secret write failure stays uncertain', async () => {
   await runSyntheticProvision({
     failSecret: true,
     expectedStage: FORMAL_RO_SAFE_FAILURE_STAGES.SECRET_ATTEMPT
