@@ -37,7 +37,7 @@ test('future uninitialized accounts and pending outcomes are not silently advanc
   assert.match(source, /not exists \([\s\S]*scout_level_state/i);
   assert.match(source, /review_due_first/);
   assert.match(source, /closed_or_pre_release_window/);
-  assert.match(source, /level_100_surplus_policy_pending/);
+  assert.match(source, /level_100_progress_invalid/);
   assert.match(source, /adjustment_policy_pending/);
   assert.match(source, /drop trigger if exists scout_xp_level_up_points/i);
   assert.match(
@@ -77,4 +77,31 @@ test('pending XP replay is explicitly invoked and processes review windows in ch
     /Never close a maintenance window while older unclaimed XP/
   );
   assert.doesNotMatch(source, /create\s+extension\s+pg_cron/i);
+});
+
+test('both dormant SQL drafts retain Lv.100 XP claims and count full ledger XP for maintenance', () => {
+  const baseline = readFileSync(
+    new URL('../docs/drafts/SCOUT_FORMAL_LEVEL_STATE_DRAFT.sql', import.meta.url),
+    'utf8'
+  );
+  for (const draft of [baseline, source]) {
+    assert.match(draft, /if v_level=100 then v_progress:=0; end if;/i);
+    assert.match(
+      draft,
+      /insert\s+into\s+novelight_formal_private\.scout_xp_claim/i
+    );
+    assert.match(draft, /scout_xp_ledger/i);
+    assert.match(draft, /review_scout_30_days\(/i);
+    assert.doesNotMatch(draft, /level_100_surplus_policy_pending/i);
+    assert.match(draft, /level_100_progress_invalid/i);
+  }
+  assert.match(
+    source,
+    /for v_promoted in \(v_state\.current_level\+1\)\.\.v_level loop/i
+  );
+  assert.match(source, /on conflict\(event_key\) do nothing/i);
+  assert.match(source, /XP at Lv\.100/i);
+  assert.match(baseline, /FULL XP for 30-day maintenance/i);
+  assert.match(source, /'level_100_progress_invalid'/i);
+  assert.doesNotMatch(source, /'level_100_surplus_policy_pending'/i);
 });
