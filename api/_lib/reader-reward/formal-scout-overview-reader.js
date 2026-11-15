@@ -74,7 +74,10 @@ export function createFormalScoutOverviewReader({ query } = {}) {
         )
           throw new Error('SCOUT_OVERVIEW_BADGE_INVALID');
         seen.add(row.badge_id);
-        const earned = row.status === 'earned' && row.earned_at !== null && row.earned_at !== undefined;
+        const earned =
+          row.status === 'earned' &&
+          row.earned_at !== null &&
+          row.earned_at !== undefined;
         const target = int(row.target_value, 1, Number.MAX_SAFE_INTEGER);
         const progress = int(row.progress_value, 0, Number.MAX_SAFE_INTEGER);
         const title = row.is_hidden && !earned ? '???' : row.display_name;
