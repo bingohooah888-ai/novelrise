@@ -518,6 +518,24 @@ test('130 mixed review candidates page newest first with all historical rows rec
     savePendingBatch: async () => ({ count: 0 }),
     readCandidate: async () => null,
     compareAndSwapDecision: async () => null,
+    async listPriorVersionIds({ actorId, novelId, candidates }) {
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 354);
+      return candidates
+        .filter((item) =>
+          records.some(
+            (old) =>
+              old.id < item.id &&
+              old.actorId === actorId &&
+              old.novelId === novelId &&
+              old.sourceEpisodeId === item.episodeId &&
+              old.factKind === item.factKind &&
+              old.factKey === item.factKey &&
+              old.sourceHash !== item.sourceHash
+          )
+        )
+        .map((item) => item.id);
+    },
     async listReviewPage({ actorId, novelId, beforeId }) {
       assert.equal(actorId, OWNER);
       assert.equal(novelId, 354);
@@ -613,4 +631,105 @@ test('page cursor and forged unordered or repeated candidate rows fail closed', 
     make([]).list({ token: OTHER, novelId: 354 }),
     /AI_OWNER_REVIEW_DENIED/u
   );
+});
+
+test('newest same-key proposal shows revised label even when older chapter version is five pages away', async () => {
+  const records = Array.from({ length: 130 }, (_, i) => ({
+    id: i + 1,
+    actorId: OWNER,
+    novelId: 354,
+    sourceEpisodeId: 41,
+    sourceHash: i === 0 ? 'b'.repeat(64) : HASH,
+    factKind: 'character',
+    factKey: i === 0 || i === 129 ? '凛' : '別の人物 ' + i,
+    summary: '候補 ' + i,
+    evidence: SUGGESTION.evidence,
+    provenance: 'ai_inferred',
+    status: i === 0 ? 'accepted' : 'pending',
+    revision: i === 0 ? 2 : 1
+  }));
+  const repository = {
+    listAuthorConfirmed: async () => [],
+    savePendingBatch: async () => ({ count: 0 }),
+    readCandidate: async () => null,
+    compareAndSwapDecision: async () => null,
+    async listReviewPage({ beforeId }) {
+      const selected = records
+        .filter((row) => beforeId === null || row.id < beforeId)
+        .sort((a, b) => b.id - a.id);
+      return {
+        rows: selected.slice(0, 25),
+        nextBeforeId: selected.length > 25 ? selected[24].id : null
+      };
+    },
+    async listPriorVersionIds({ candidates }) {
+      return candidates
+        .filter((item) =>
+          records.some(
+            (old) =>
+              old.id < item.id &&
+              old.sourceEpisodeId === item.episodeId &&
+              old.factKind === item.factKind &&
+              old.factKey === item.factKey &&
+              old.sourceHash !== item.sourceHash
+          )
+        )
+        .map((item) => item.id);
+    }
+  };
+  const { workflow, state } = setup({ repository });
+  const first = await workflow.list({ token: TOKEN, novelId: 354 });
+  assert.equal(first.candidates.length, 25);
+  assert.equal(first.staleCandidates.length, 0);
+  assert.equal(first.candidates[0].id, 130);
+  assert.equal(first.candidates[0].replacesOutdatedVersion, true);
+  assert.equal(first.candidates[1].replacesOutdatedVersion, undefined);
+  assert.equal(first.pagination.nextBeforeId, 106);
+  const oldest = await workflow.list({
+    token: TOKEN,
+    novelId: 354,
+    beforeId: 6
+  });
+  assert.equal(oldest.staleCandidates.length, 1);
+  assert.equal(oldest.staleCandidates[0].id, 1);
+  assert.equal(oldest.staleCandidates[0].status, 'accepted');
+  assert.equal(oldest.staleCandidates[0].staleReason, 'source_changed');
+  assert.equal(state.records.size, 0);
+  assert.equal(state.storedCanon[0].key, '凛');
+});
+
+test('paged history lookup fails closed on fabricated or foreign candidate IDs', async () => {
+  const row = {
+    id: 30,
+    actorId: OWNER,
+    novelId: 354,
+    sourceEpisodeId: 41,
+    sourceHash: HASH,
+    factKind: 'character',
+    factKey: '凛',
+    summary: '現在の候補',
+    evidence: SUGGESTION.evidence,
+    provenance: 'ai_inferred',
+    status: 'pending',
+    revision: 1
+  };
+  for (const bad of [[29], [30, 30], ['30'], [999]]) {
+    const { workflow } = setup({
+      repository: {
+        listAuthorConfirmed: async () => [],
+        savePendingBatch: async () => ({ count: 0 }),
+        readCandidate: async () => null,
+        compareAndSwapDecision: async () => null,
+        listReviewPage: async () => ({
+          rows: [row],
+          nextBeforeId: null
+        }),
+        listPriorVersionIds: async () => bad
+      }
+    });
+    await assert.rejects(
+      workflow.list({ token: TOKEN, novelId: 354 }),
+      /AI_OWNER_REVIEW_DENIED/u
+    );
+  }
 });
