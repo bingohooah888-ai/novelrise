@@ -89,7 +89,7 @@ export function createOwnerNovelBibleVerifiedHistoryReader({
     }
     const analysisResult = await serviceClient
       .from('novelight_ai_episode_analysis')
-      .select('episode_id,source_hash,revision')
+      .select('episode_id,source_hash,revision,summary')
       .eq('episode_id', episodeId)
       .maybeSingle();
     if (analysisResult?.error) unavailable();
@@ -103,12 +103,44 @@ export function createOwnerNovelBibleVerifiedHistoryReader({
     ) {
       unavailable();
     }
+    // A journal may contain partially processed chunks. Its row.source_hash
+    // is NOT a completed checkpoint until every chunk is acknowledged.
+    // New-episode journals have no previous source at all.
+    const state = analysis.summary?.novelightPhase2;
+    let completedHash = analysis.source_hash;
+    if (state !== undefined) {
+      if (
+        !state ||
+        state.version !== 1 ||
+        !['in_progress', 'complete'].includes(state.state) ||
+        Number(state.episodeId) !== episodeId ||
+        Number(state.novelId) !== novelId ||
+        state.actorId !== owner ||
+        !HASH.test(state.targetSourceHash) ||
+        (state.previousSourceHash !== null &&
+          !HASH.test(state.previousSourceHash))
+      ) {
+        unavailable();
+      }
+      if (state.state === 'in_progress') {
+        if (
+          analysis.source_hash !==
+          (state.previousSourceHash ?? state.targetSourceHash)
+        ) {
+          unavailable();
+        }
+        if (state.previousSourceHash === null) return null;
+        completedHash = state.previousSourceHash;
+      } else if (analysis.source_hash !== state.targetSourceHash) {
+        unavailable();
+      }
+    }
     const acknowledged = {
       episode_id: episodeId,
-      source_hash: analysis.source_hash
+      source_hash: completedHash
     };
     // An unchanged, fully acknowledged episode has no excerpt to process.
-    if (digest(current.title, current.content) === analysis.source_hash) {
+    if (digest(current.title, current.content) === completedHash) {
       return { analysis: acknowledged };
     }
 
@@ -144,7 +176,7 @@ export function createOwnerNovelBibleVerifiedHistoryReader({
       if (modified < now - RETENTION_MS || modified > now + 60000) {
         continue;
       }
-      if (digest(row.title, row.content) === analysis.source_hash) {
+      if (digest(row.title, row.content) === completedHash) {
         return {
           analysis: acknowledged,
           episode: {
