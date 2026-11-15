@@ -183,7 +183,13 @@ test('the deployed author preview cannot silently start using outline RPC', asyn
   );
   assert.doesNotMatch(moduleText, /fetch\s*\(|\.rpc\s*\(/);
   assert.doesNotMatch(previewApi, /novelight_novel_outline/);
-  assert.doesNotMatch(studioHtml, /src="novelight-ai-bible-owner-outline.js"/);
+  assert.match(studioHtml, /src="novelight-ai-bible-owner-outline.js"/);
+  assert.match(studioHtml, /readOutline:outlineReader/);
+  const route = await readFile(
+    new URL('../api/ai-owner-bible-outline.js', import.meta.url),
+    'utf8'
+  );
+  assert.match(route, /enabled = false/);
   assert.doesNotMatch(previewApi, /episodeOutline|outlineRows/);
 });
 
