@@ -63,13 +63,8 @@ const POINT_FIELDS = Object.freeze([
 
 function integer(value, allowNegative = false) {
   const number =
-    typeof value === 'string' && /^-?\d+$/.test(value)
-      ? Number(value)
-      : value;
-  if (
-    !Number.isSafeInteger(number) ||
-    (!allowNegative && number < 0)
-  )
+    typeof value === 'string' && /^-?\d+$/.test(value) ? Number(value) : value;
+  if (!Number.isSafeInteger(number) || (!allowNegative && number < 0))
     throw new Error('FORMAL_WALLET_COHORT_INVALID_AGGREGATE');
   return number;
 }
