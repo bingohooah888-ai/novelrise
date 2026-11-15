@@ -109,10 +109,9 @@ export function quoteScoutOfflineBetaHandoff({
       typeof row.point_kind !== 'string' ||
       !row.point_kind ||
       (mixed
-        ? ![
-            SCOUT_POINT_LEGACY_VERSION,
-            SCOUT_POINT_TARGET_VERSION
-          ].includes(row.sourceUnitVersion)
+        ? ![SCOUT_POINT_LEGACY_VERSION, SCOUT_POINT_TARGET_VERSION].includes(
+            row.sourceUnitVersion
+          )
         : row.sourceUnitVersion !== undefined &&
           row.sourceUnitVersion !== SCOUT_POINT_LEGACY_VERSION)
     )
