@@ -33,17 +33,70 @@
     );
   }
 
+  // Optional unmounted offline trial injection. Production story-notes does
+  // not supply this; it cannot change the deployed HTTP billing boundary.
+  // The plan comes from a trusted owner-scoped server runtime or synthetic
+  // offline fixture. UI does not accept a client-declared owner or consent.
+  function validOfflinePlan(value, novelId, episodeId) {
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      Array.isArray(value) ||
+      Object.keys(value).length !== 5 ||
+      Object.keys(value).some(
+        (key) =>
+          ![
+            'novelId',
+            'episodeId',
+            'chunkCount',
+            'nextChunkIndex',
+            'status'
+          ].includes(key)
+      ) ||
+      value.novelId !== novelId ||
+      value.episodeId !== episodeId ||
+      !Number.isSafeInteger(value.chunkCount) ||
+      value.chunkCount < 0 ||
+      value.chunkCount > 64
+    ) {
+      return false;
+    }
+    const index = value.nextChunkIndex;
+    if (value.status === 'unchanged' || value.status === 'completed') {
+      return index === null;
+    }
+    if (value.status === 'zero_cost_completion') {
+      return value.chunkCount === 0 && (index === null || index === 0);
+    }
+    if (value.status === 'replan_required') {
+      return value.chunkCount > 0 && index === 0;
+    }
+    return (
+      value.status === 'ready' &&
+      Number.isSafeInteger(index) &&
+      index >= 0 &&
+      index < value.chunkCount &&
+      index < 64
+    );
+  }
+
   async function attach({
     client,
     ownerId,
     novelId,
     doc = root.document,
     fetcher = root.fetch,
-    reviewPanel = root.NovelightAiBibleReviewActions
+    reviewPanel = root.NovelightAiBibleReviewActions,
+    offlineTrial
   } = {}) {
     const host = doc?.getElementById?.('main-content');
     const work = positive(novelId);
+    const offline = offlineTrial?.enabled === true;
     if (
+      (offlineTrial !== undefined &&
+        (!offline ||
+          typeof offlineTrial.inspectPlan !== 'function' ||
+          typeof offlineTrial.stage !== 'function')) ||
       !host ||
       !work ||
       attached.has(host) ||
@@ -122,7 +175,75 @@
       const status = doc.createElement('p');
       status.setAttribute('role', 'status');
       status.className = 'status';
-      section.append(heading, description, action, review, status);
+      const inspectButton = offline ? doc.createElement('button') : null;
+      let planned = null;
+      if (inspectButton) {
+        inspectButton.type = 'button';
+        inspectButton.className = 'btn novelight-ai-bible-inspect-plan';
+        inspectButton.textContent = '解析予定・再開位置を確認（課金なし）';
+        action.disabled = true;
+        description.textContent +=
+          ' このオフライン操作は合成データで検証し、公開画面には接続しません。';
+        section.append(heading, description, inspectButton, action, review, status);
+      } else {
+        section.append(heading, description, action, review, status);
+      }
+
+      if (inspectButton) {
+        inspectButton.addEventListener('click', async () => {
+          if (disposed || busy || submitted) return;
+          busy = true;
+          inspectButton.disabled = true;
+          action.disabled = true;
+          planned = null;
+          status.textContent = '解析対象を確認しています（課金なし）。';
+          try {
+            if (!(await current())) {
+              clear();
+              return;
+            }
+            const plan = await offlineTrial.inspectPlan({
+              token,
+              novelId: work,
+              episodeId: ready.episodeId
+            });
+            if (!(await current())) {
+              clear();
+              return;
+            }
+            if (!validOfflinePlan(plan, work, ready.episodeId)) {
+              throw new Error('INVALID_OFFLINE_PLAN');
+            }
+            planned = plan;
+            if (plan.nextChunkIndex !== null) {
+              action.disabled = false;
+              action.textContent =
+                'チャンク ' + (plan.nextChunkIndex + 1) + ' を1回だけ解析';
+              status.textContent =
+                '全 ' +
+                plan.chunkCount +
+                ' チャンク／次の対象 ' +
+                (plan.nextChunkIndex + 1) +
+                '。実行は別の明示操作が必要です。';
+            } else {
+              status.textContent =
+                plan.status === 'completed' || plan.status === 'unchanged'
+                  ? 'この話に追加解析が必要な箇所はありません。'
+                  : '解析対象はありません。';
+            }
+          } catch {
+            if (!disposed) {
+              planned = null;
+              action.disabled = true;
+              status.textContent =
+                '解析予定を確認できませんでした。再確認してください。';
+            }
+          } finally {
+            busy = false;
+            if (!disposed) inspectButton.disabled = false;
+          }
+        });
+      }
 
       async function showReview() {
         if (disposed || reviewMounted) return;
@@ -154,56 +275,108 @@
         void showReview();
       });
       action.addEventListener('click', async () => {
-        if (disposed || busy || submitted) return;
+        if (disposed || busy || submitted || (offline && !planned)) return;
         busy = true;
         submitted = true; // Never automatically retry a potentially billed POST.
         action.disabled = true;
         review.disabled = true;
+        if (inspectButton) inspectButton.disabled = true;
         status.textContent = '本人認証・許諾・原価を確認して解析しています。';
         try {
           if (!(await current())) {
             clear();
             return;
           }
-          const response = await fetcher(endpoint, {
-            method: 'POST',
-            headers: {
-              Authorization: 'Bearer ' + token,
-              'Content-Type': 'application/json',
-              'X-Novelight-Ai-Trial': '1'
-            },
-            credentials: 'same-origin',
-            cache: 'no-store',
-            body: JSON.stringify({
+          let result;
+          if (offline) {
+            // Never trust a previously displayed index for a possibly billed
+            // action. Check the plan and session again before one stage call.
+            const fresh = await offlineTrial.inspectPlan({
+              token,
+              novelId: work,
+              episodeId: ready.episodeId
+            });
+            if (
+              !validOfflinePlan(fresh, work, ready.episodeId) ||
+              fresh.nextChunkIndex !== planned.nextChunkIndex ||
+              fresh.status !== planned.status ||
+              fresh.chunkCount !== planned.chunkCount
+            ) {
+              status.textContent =
+                '原稿または解析状態が変化しました。再読込して確認してください。';
+              return;
+            }
+            if (!(await current())) {
+              clear();
+              return;
+            }
+            result = await offlineTrial.stage({
+              token,
               novelId: work,
               episodeId: ready.episodeId,
-              chunkIndex: 0
-            })
-          });
+              chunkIndex: planned.nextChunkIndex
+            });
+          } else {
+            const response = await fetcher(endpoint, {
+              method: 'POST',
+              headers: {
+                Authorization: 'Bearer ' + token,
+                'Content-Type': 'application/json',
+                'X-Novelight-Ai-Trial': '1'
+              },
+              credentials: 'same-origin',
+              cache: 'no-store',
+              body: JSON.stringify({
+                novelId: work,
+                episodeId: ready.episodeId,
+                chunkIndex: 0
+              })
+            });
+            if (!(await current())) {
+              clear();
+              return;
+            }
+            if (!response.ok) {
+              status.textContent =
+                '解析できませんでした。同意・予算・対象作品を確認してください。自動再試行はしません。';
+              return;
+            }
+            result = await response.json();
+          }
           if (!(await current())) {
             clear();
             return;
           }
-          if (!response.ok) {
-            status.textContent =
-              '解析できませんでした。同意・予算・対象作品を確認してください。自動再試行はしません。';
-            return;
-          }
-          const result = await response.json();
           if (
             result?.novelId !== work ||
             !Number.isSafeInteger(result.stagedCount) ||
             result.stagedCount < 0 ||
             result.stagedCount > 12 ||
-            result.requiresAuthorReview !== true
+            (result.requiresAuthorReview !== true &&
+              !(
+                offline &&
+                result.requiresAuthorReview === false &&
+                result.stagedCount === 0
+              ))
           ) {
             clear();
             return;
           }
+          if (result.requiresAuthorReview === false) {
+            status.textContent =
+              '追加解析は不要でした。課金・候補追加はありません。';
+            return;
+          }
           status.textContent =
             '解析結果を確認待ち候補として保存しました（' +
-            result.stagedCount + '件）。正式設定には自動反映しません。';
-          await showReview();
+            result.stagedCount +
+            '件）。正式設定には自動反映しません。作品カルテは再読込で更新してください。';
+          if (reviewMounted) {
+            status.textContent +=
+              ' すでに開いた候補一覧はページ再読込後に更新されます。';
+          } else {
+            await showReview();
+          }
         } catch {
           if (!disposed) {
             status.textContent =
@@ -211,7 +384,7 @@
           }
         } finally {
           busy = false;
-          review.disabled = false;
+          if (!disposed) review.disabled = false;
         }
       });
 
