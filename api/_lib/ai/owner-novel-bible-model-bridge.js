@@ -144,7 +144,9 @@ export function createOwnerNovelBibleModelBridge({
       !result ||
       typeof result !== 'object' ||
       Array.isArray(result) ||
-      Object.keys(result).some((key) => !['analysis', 'episode'].includes(key)) ||
+      Object.keys(result).some(
+        (key) => !['analysis', 'episode'].includes(key)
+      ) ||
       !result.analysis ||
       typeof result.analysis !== 'object' ||
       result.analysis.episode_id !== context.episode.id ||
