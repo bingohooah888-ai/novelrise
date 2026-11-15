@@ -86,6 +86,7 @@ export function createOwnerBibleReviewApiHandler({
 
     let decision = null;
     let transfer = null;
+    let beforeId = null;
     if (req.method === 'GET') {
       const requestedTransfer =
         req.query?.transfer_candidate_id !== undefined ||
@@ -117,6 +118,22 @@ export function createOwnerBibleReviewApiHandler({
           return fail(res, 400, 'INVALID_TRANSFER_REQUEST');
         }
         transfer = { candidateId, expectedRevision };
+      } else {
+        // The browser only controls a positive keyset cursor, never sort,
+        // offset, owner, status, page size or provider configuration.
+        if (
+          Object.keys(req.query ?? {}).some(
+            (key) => !['novel_id', 'before_id'].includes(key)
+          ) ||
+          (req.query?.before_id !== undefined &&
+            typeof req.query.before_id !== 'string')
+        ) {
+          return fail(res, 400, 'INVALID_REVIEW_PAGE');
+        }
+        if (req.query?.before_id !== undefined) {
+          beforeId = integerId(req.query.before_id);
+          if (!beforeId) return fail(res, 400, 'INVALID_REVIEW_PAGE');
+        }
       }
     }
     if (req.method === 'POST') {
@@ -167,7 +184,7 @@ export function createOwnerBibleReviewApiHandler({
           .json(
             transfer
               ? await workflow.verifyTransfer({ token, novelId, ...transfer })
-              : await workflow.list({ token, novelId })
+              : await workflow.list({ token, novelId, beforeId })
           );
       }
       return res.status(200).json(
