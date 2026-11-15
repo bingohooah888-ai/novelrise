@@ -304,3 +304,113 @@ test('malformed or cross-work review GET responses never mount author actions or
     assert.equal(f.requests[0].method, 'GET');
   }
 });
+
+test('stale pending and accepted candidates are visibly segregated with no actions', async () => {
+  const stalePending = {
+    id: 7,
+    episodeId: 4,
+    revision: 1,
+    kind: 'character',
+    key: '凛',
+    summary: '改稿前の未確認候補',
+    evidence: '青い鍵',
+    status: 'pending',
+    staleReason: 'source_changed'
+  };
+  const staleAccepted = {
+    ...stalePending,
+    id: 8,
+    revision: 2,
+    status: 'accepted',
+    summary: '改稿前の確認済み候補',
+    staleReason: 'episode_missing'
+  };
+  let transferred = 0;
+  const f = mock({
+    getPayload: {
+      novelId: 354,
+      aiGenerated: false,
+      candidates: [],
+      acceptedCandidates: [],
+      staleCandidates: [stalePending, staleAccepted]
+    }
+  });
+  assert.equal(
+    await attach({
+      client: f.client,
+      novelId: 354,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher,
+      onAccepted: async () => {
+        transferred += 1;
+        return true;
+      }
+    }),
+    true
+  );
+  const section = f.host.children[0];
+  const list = section.children[1];
+  const rows = list.children.filter((item) => item.tag === 'div');
+  assert.equal(rows.length, 2);
+  for (const row of rows) {
+    assert.equal(row.children.length, 1);
+    assert.equal(row.children[0].tag, 'p');
+  }
+  assert.match(rows[0].children[0].textContent, /旧版の候補/u);
+  assert.match(rows[1].children[0].textContent, /過去に確認済み/u);
+  assert.match(rows[1].children[0].textContent, /参照話が見つかりません/u);
+  assert.equal(f.requests.length, 1);
+  assert.equal(f.requests[0].method, 'GET');
+  assert.equal(transferred, 0);
+  f.logout();
+  assert.equal(section.removed, true);
+});
+
+test('stale payload cannot forge current accept or notes-transfer controls', async () => {
+  const current = {
+    id: 7,
+    episodeId: 4,
+    revision: 1,
+    kind: 'event',
+    key: '出発',
+    summary: '本文中の旅立ち',
+    evidence: '扉を開いた',
+    status: 'pending'
+  };
+  const stale = {
+    ...current,
+    id: 8,
+    staleReason: 'source_changed'
+  };
+  const root = {
+    novelId: 354,
+    aiGenerated: false,
+    candidates: [current],
+    acceptedCandidates: []
+  };
+  const malformed = [
+    { ...root, staleCandidates: [current] },
+    { ...root, staleCandidates: [{ ...stale, staleReason: 'unknown' }] },
+    { ...root, staleCandidates: [{ ...stale, status: 'rejected' }] },
+    { ...root, staleCandidates: [{ ...stale, revision: 0 }] },
+    { ...root, staleCandidates: [{ ...stale, id: 7 }] },
+    { ...root, staleCandidates: Array.from({ length: 201 }, () => stale) },
+    { ...root, staleCandidates: { ...stale } }
+  ];
+  for (const payload of malformed) {
+    const f = mock({ getPayload: payload });
+    assert.equal(
+      await attach({
+        client: f.client,
+        novelId: 354,
+        ownerId: OWNER,
+        doc: f.doc,
+        fetcher: f.fetcher
+      }),
+      false
+    );
+    assert.equal(f.host.children.length, 0);
+    assert.equal(f.requests.length, 1);
+  }
+});
