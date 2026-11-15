@@ -12,6 +12,7 @@ import {
 import { reviewFormalEpisodeComment } from './formal-comment-eligibility.js';
 import { createFormalOfflineDurableDb } from './formal-offline-durable-db.js';
 import { createFormalEarningRunner } from './formal-earning-runner.js';
+import { createUnregisteredFormalMaintenanceRunner } from './formal-maintenance-runner.js';
 import { createFormalCanonicalSourceReader } from './formal-earning-source-reader.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -264,7 +265,8 @@ export function createFormalOfflineIntegration({
           releaseAtMs: formalReleaseAtMs,
           nowIso: syntheticNowIso,
           repository,
-          legacyEventKeys: handoff.convertedRows.map((row) => row.eventKey)
+          legacyEventKeys: handoff.convertedRows.map((row) => row.eventKey),
+          syntheticThresholds: ladder.requiredXpByLevel
         })
       : null;
   const earningRunner = syntheticDb
@@ -283,6 +285,22 @@ export function createFormalOfflineIntegration({
         verifyModeratorReceipt: syntheticDb.verifyModeratorReceipt
       })
     : null;
+  const maintenanceRunner =
+    syntheticDb && syntheticXpEvents.length
+      ? createUnregisteredFormalMaintenanceRunner({
+          postgresClient: syntheticDb,
+          launchConfiguration: {
+            formalMaintenanceReviewEnabled: true,
+            formalMaintenanceSchedulerEnabled: true,
+            productionCutoverApproved: true
+          },
+          trustedServerAuthorization: {
+            serviceRoleVerified: true,
+            verifiedByTrustedServer: true
+          },
+          now: () => new Date(syntheticNowIso)
+        })
+      : null;
   const sourceInspector = syntheticDb
     ? createFormalCanonicalSourceReader({ postgresClient: syntheticDb })
     : null;
@@ -401,6 +419,22 @@ export function createFormalOfflineIntegration({
             requiredXpByLevel: ladder.requiredXpByLevel
           })
         : { status: 'formal_xp_disabled' },
+    // Reuse the dormant bounded maintenance runner with synthetic SQL only.
+    reviewDueSynthetic: (options) =>
+      maintenanceRunner
+        ? maintenanceRunner.reviewDue(options)
+        : { status: 'formal_maintenance_disabled' },
+    resumePendingSyntheticXp: ({ userId, asOfIso, limit } = {}) =>
+      syntheticDb && syntheticXpEvents.length
+        ? syntheticDb.resumePendingXp({
+            userId,
+            asOfIso,
+            limit,
+            requiredXpByLevel: ladder.requiredXpByLevel
+          })
+        : { status: 'formal_xp_disabled' },
+    inspectSyntheticMaintenance: () =>
+      syntheticDb ? syntheticDb.getSyntheticMaintenanceSummary() : [],
     // Synthetic-only internal post-commit and moderation handoff. Never
     // exposed via readerHttp/adminHttp, beta routes or external credentials.
     enqueueCommittedEarning: (event) =>
