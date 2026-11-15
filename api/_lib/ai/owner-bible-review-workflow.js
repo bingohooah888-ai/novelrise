@@ -511,17 +511,61 @@ export function createOwnerBibleReviewWorkflow({
         activeAccepted.push(item);
       }
     }
-    // A same-named fact can have independent reviews across manuscript
-    // revisions. Link only SAME-EPISODE historical rows in display metadata;
-    // never merge their IDs, decisions or canonical author notes.
-    const olderKeys = new Set(
-      staleCandidates.map((item) =>
-        JSON.stringify([item.episodeId, item.kind, item.key])
-      )
-    );
+    // Only earlier, different-source revisions qualify. In paginated
+    // storage, the related historical row may be on ANY other page, not just
+    // among the current page's stale rows. Never merge candidate decisions.
+    const active = [...activeCandidates, ...activeAccepted];
+    let olderIds;
+    if (paged) {
+      if (typeof repository.listPriorVersionIds !== 'function') denied();
+      const matched = await repository.listPriorVersionIds({
+        actorId,
+        novelId: novel.id,
+        candidates: active.map((item) => {
+          const original = item.status === 'pending' ? rows : acceptedRows;
+          const persisted = original.find((row) => Number(row.id) === item.id);
+          if (!persisted || !SHA256.test(persisted.sourceHash)) denied();
+          return {
+            id: item.id,
+            episodeId: item.episodeId,
+            factKind: item.kind,
+            factKey: item.key,
+            sourceHash: persisted.sourceHash
+          };
+        })
+      });
+      if (
+        !Array.isArray(matched) ||
+        matched.length > active.length ||
+        new Set(matched).size !== matched.length ||
+        matched.some(
+          (candidateId) =>
+            !Number.isSafeInteger(candidateId) ||
+            !active.some((item) => item.id === candidateId)
+        )
+      ) {
+        denied();
+      }
+      olderIds = new Set(matched);
+    } else {
+      // Offline legacy fixtures do not expose the cross-page repository API.
+      olderIds = new Set(
+        active
+          .filter((item) =>
+            staleCandidates.some(
+              (old) =>
+                old.id < item.id &&
+                old.episodeId === item.episodeId &&
+                old.kind === item.kind &&
+                old.key === item.key
+            )
+          )
+          .map((item) => item.id)
+      );
+    }
     const withVersionLabel = (items) =>
       items.map((item) =>
-        olderKeys.has(JSON.stringify([item.episodeId, item.kind, item.key]))
+        olderIds.has(item.id)
           ? { ...item, replacesOutdatedVersion: true }
           : item
       );
