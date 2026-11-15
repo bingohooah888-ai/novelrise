@@ -289,6 +289,73 @@ export function createOwnerBibleReviewWorkflow({
     };
   }
 
+  // Owner-only read for the explicit "transfer to Story Notes" click.
+  // Never trust a list cached in the browser: check the candidate's current
+  // accepted revision, work/episode ownership and manuscript hash afresh.
+  // No notes, canon or review rows are modified here.
+  async function verifyTransfer({
+    token,
+    novelId,
+    candidateId,
+    expectedRevision
+  }) {
+    if (
+      !Number.isSafeInteger(expectedRevision) ||
+      expectedRevision < 2
+    ) {
+      denied();
+    }
+    const actorId = await authenticate(token);
+    const novel = await loadNovel(actorId, novelId);
+    const id = positiveId(candidateId);
+    const row = await repository.readCandidate({
+      actorId,
+      novelId: novel.id,
+      candidateId: id
+    });
+    if (
+      !row ||
+      positiveId(row.id) !== id ||
+      row.actorId !== actorId ||
+      positiveId(row.novelId) !== novel.id ||
+      row.provenance !== 'ai_inferred' ||
+      row.status !== 'accepted' ||
+      row.revision !== expectedRevision ||
+      typeof row.sourceHash !== 'string' ||
+      !SHA256.test(row.sourceHash) ||
+      !KINDS.has(row.factKind)
+    ) {
+      denied();
+    }
+    const episode = await loadEpisode(novel.id, row.sourceEpisodeId);
+    if (
+      typeof episode.title !== 'string' ||
+      typeof episode.content !== 'string' ||
+      Buffer.byteLength(episode.title, 'utf8') > 8192 ||
+      Buffer.byteLength(episode.content, 'utf8') > 1000000
+    ) {
+      denied();
+    }
+    const currentHash = createHash('sha256')
+      .update(JSON.stringify([episode.title, episode.content]))
+      .digest('hex');
+    if (currentHash !== row.sourceHash) {
+      throw new Error('AI_BIBLE_INFERENCE_INVALID');
+    }
+    const candidate = {
+      id,
+      revision: expectedRevision,
+      episodeId: positiveId(row.sourceEpisodeId),
+      kind: row.factKind,
+      key: boundedText(row.factKey, 120),
+      summary: boundedText(row.summary, 320),
+      evidence: boundedText(row.evidence, 160),
+      status: 'accepted'
+    };
+    if (!episode.content.includes(candidate.evidence)) denied();
+    return { novelId: novel.id, transferReady: true, candidate };
+  }
+
   // Candidate listing is still private author data. No inference or write.
   // Resolve each referenced episode once from the authoritative server,
   // never from author-submitted IDs, cached UI data or model output.
@@ -429,5 +496,5 @@ export function createOwnerBibleReviewWorkflow({
     };
   }
 
-  return Object.freeze({ stage, decide, list });
+  return Object.freeze({ stage, decide, list, verifyTransfer });
 }
