@@ -6,6 +6,16 @@
   const POINTS_PER_YEN = 10;
   const MIN_EXCHANGE_POINTS = 30000;
   const MAINTENANCE_XP = 200;
+  // Exact 10-stage rank names from MASTER §49.22. The formal UI derives
+  // the rank only from a server-verified Level, never from browser XP.
+  const SCOUT_RANK_NAMES = Object.freeze([
+    'NOCTIS', 'VESPER', 'UMBRA', 'ASTRA', 'LUCENT',
+    'AURELIS', 'CELESTIA', 'EMPYREAN', 'SERAPH', 'LUMINARIS'
+  ]);
+  const rankAtLevel = (level) =>
+    Number.isSafeInteger(level) && level >= 1 && level <= 100
+      ? SCOUT_RANK_NAMES[Math.floor((level - 1) / 10)]
+      : null;
   const number = (value) => Number(value).toLocaleString('ja-JP');
   const validPoints = (value) => Number.isSafeInteger(value) && value >= 0;
   const yen = (points) =>
@@ -61,6 +71,7 @@
       verified,
       formalEnabled: verified && s.formalEnabled === true,
       level: verified ? level : null,
+      rank: verified ? rankAtLevel(level) : null,
       progress:
         verified &&
         Number.isSafeInteger(account.progressXp) &&
@@ -197,6 +208,11 @@
                 number(Math.max(0, s.required - s.progress)) +
                 ' XP'
               : '進捗未確定'
+        ),
+        metric(
+          'SCOUT RANK',
+          s.rank === null ? '—' : s.rank,
+          s.rank === null ? 'サーバー確認待ち' : '10 Levelごとの正式Rank'
         ),
         metric(
           '利用可能',
@@ -478,6 +494,7 @@
   }
   globalThis.NovelightFormalScoutReward = Object.freeze({
     POINTS_PER_YEN,
+    rankAtLevel,
     MIN_EXCHANGE_POINTS,
     normalizeSnapshot,
     createRewardReaderPanel
