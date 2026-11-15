@@ -225,10 +225,11 @@ test('explicit new reader inspection uses existing authenticated read-only view'
       };
     }
   });
-  const reader = g.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings({
-    request,
-    nextOperationId: () => UUID
-  });
+  const reader =
+    g.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings({
+      request,
+      nextOperationId: () => UUID
+    });
   assert.equal(calls.length, 0);
   const report = await reader.inspectNewReader();
   assert.equal(report.status, 'new_reader_ready_for_initialization');
