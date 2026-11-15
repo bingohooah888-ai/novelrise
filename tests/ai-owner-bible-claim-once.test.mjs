@@ -13,6 +13,7 @@ const OWNER = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
 const TOKEN = 'synthetic-owner-jwt-never-real';
 const TEXT = '凛は青い鍵を持っていた。';
+// prettier-ignore
 const proposal = readFileSync(
   new URL(
     '../reports/sql/novelight_ai_checkpoint_claim_once_v1_PROPOSAL.sql',
@@ -21,6 +22,7 @@ const proposal = readFileSync(
   'utf8'
 );
 
+// prettier-ignore
 test('SQL claim is OFFLINE, unique, service-only and separate from CAS', () => {
   assert.match(proposal, /OFFLINE-ONLY/u);
   assert.match(proposal, /NOT a migration/u);
@@ -76,6 +78,7 @@ test('SQL claim is OFFLINE, unique, service-only and separate from CAS', () => {
 
 // Models a UNIQUE constraint conflict as a single atomic Map insertion.
 // This is NOT evidence for Postgres transactions, locks or RPC privileges.
+// prettier-ignore
 function syntheticClient({ forcedClaimResult, owner = OWNER, body = TEXT } = {}) {
   let row = null;
   const claims = new Set();
@@ -195,6 +198,7 @@ function syntheticClient({ forcedClaimResult, owner = OWNER, body = TEXT } = {})
   return { bridge, checkpoint, client, state, claims };
 }
 
+// prettier-ignore
 const stage = (bridge) =>
   bridge.stage({
     token: TOKEN,
@@ -203,6 +207,7 @@ const stage = (bridge) =>
     chunkIndex: 0
   });
 
+// prettier-ignore
 test('two simultaneous requests enter Router/provider at most once', async () => {
   const { bridge, state } = syntheticClient();
   const results = await Promise.allSettled([stage(bridge), stage(bridge)]);
@@ -215,6 +220,7 @@ test('two simultaneous requests enter Router/provider at most once', async () =>
   assert.equal(state.routerCalls, 1);
 });
 
+// prettier-ignore
 test('duplicate and unknown claims block Router and model', async () => {
   for (const result of ['false', 'unknown']) {
     const { bridge, state } = syntheticClient({ forcedClaimResult: result });
@@ -228,6 +234,7 @@ test('duplicate and unknown claims block Router and model', async () => {
   }
 });
 
+// prettier-ignore
 test('owner mismatch and invalid chunk index cannot enter Router', async () => {
   const foreign = syntheticClient({ owner: OTHER });
   await assert.rejects(
@@ -262,6 +269,7 @@ test('owner mismatch and invalid chunk index cannot enter Router', async () => {
   assert.equal(client.state.routerCalls, 0);
 });
 
+// prettier-ignore
 test('unknown RPC outcome is not automatically replayed', async () => {
   const { client, state, bridge } = syntheticClient({
     forcedClaimResult: 'unknown'
