@@ -117,6 +117,47 @@
   display: grid;
   gap: 8px;
 }
+.rr-guide-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 22px;
+}
+.rr-guide-rates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 22px;
+}
+.rr-guide-rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #383451;
+  border-radius: 10px;
+  background: #141526;
+  font-size: 13px;
+}
+.rr-guide-rate-row strong {
+  color: #e5ca90;
+  white-space: nowrap;
+}
+.rr-guide-current {
+  border-color: #d7b66e;
+  background: #29263b;
+}
+@media (max-width: 740px) {
+  .rr-guide-summary {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 390px) {
+  .rr-guide-rates {
+    grid-template-columns: 1fr;
+  }
+}
 .rr-history-filters,
 .rr-history-paging {
   display: flex;
