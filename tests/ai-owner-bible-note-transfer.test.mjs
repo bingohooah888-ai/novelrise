@@ -90,6 +90,23 @@ function review({ onAccepted, initialActor = OWNER } = {}) {
   };
   const fetcher = async (url, options) => {
     requests.push({ url, method: options.method });
+    if (url.includes('&transfer_candidate_id=')) {
+      return {
+        ok: true,
+        async json() {
+          return {
+            novelId: 354,
+            transferReady: true,
+            candidate: {
+              ...CANDIDATE,
+              id: 7,
+              revision: 2,
+              status: 'accepted'
+            }
+          };
+        }
+      };
+    }
     if (options.method === 'POST') {
       return {
         ok: true,
@@ -266,7 +283,9 @@ test('review acceptance and note preparation each require a separate author clic
   assert.equal(handoffs, 1);
   assert.equal(transfer.removed, true);
   assert.equal(e.items.title.value, '凛');
-  assert.equal(r.requests.length, 2);
+  assert.equal(r.requests.length, 3);
+  assert.equal(r.requests[2].method, 'GET');
+  assert.match(r.requests[2].url, /transfer_candidate_id=7/u);
   assert.match(section.children[2].textContent, /「保存」を押してください/);
 });
 
