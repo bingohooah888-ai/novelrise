@@ -304,9 +304,9 @@ export function createFormalOfflineDurableDb({
     )
       return { status: 'xp_adjustment_review' };
     const committed = new Set(
-      repository.getSyntheticXpSummary().applied.map(
-        (entry) => entry.xpLedgerId
-      )
+      repository
+        .getSyntheticXpSummary()
+        .applied.map((entry) => entry.xpLedgerId)
     );
     if (
       relevant.some(
@@ -350,9 +350,9 @@ export function createFormalOfflineDurableDb({
     const first = await nextWindow(userId);
     if (!first) return { status: 'formal_state_missing' };
     const applied = new Set(
-      repository.getSyntheticXpSummary().applied.map(
-        (entry) => entry.xpLedgerId
-      )
+      repository
+        .getSyntheticXpSummary()
+        .applied.map((entry) => entry.xpLedgerId)
     );
     const pending = [...verifiedXpLedger.values()]
       .filter(
@@ -431,11 +431,7 @@ export function createFormalOfflineDurableDb({
   async function query(sql, args = []) {
     if (sql.startsWith('select (has_schema_privilege(current_user'))
       return { rows: [{ ready: true }] };
-    if (
-      sql.includes(
-        'from novelight_formal_private.scout_level_state'
-      )
-    ) {
+    if (sql.includes('from novelight_formal_private.scout_level_state')) {
       const [asOfIso, limit] = args;
       const asOfMs = Date.parse(asOfIso);
       if (
@@ -456,8 +452,7 @@ export function createFormalOfflineDurableDb({
       )
         .filter(
           (candidate) =>
-            candidate.window &&
-            candidate.window.windowEndMs <= asOfMs
+            candidate.window && candidate.window.windowEndMs <= asOfMs
         )
         .sort(
           (left, right) =>
