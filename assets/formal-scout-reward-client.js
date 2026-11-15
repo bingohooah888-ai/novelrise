@@ -42,6 +42,8 @@
     }
     return Object.freeze({
       // Explicit user action only. There is never an onboarding request on GET.
+      inspectNewReader: () =>
+        request({ method: 'GET', query: { view: 'new_reader' } }),
       initializeNewReader: () =>
         call('POST', { action: 'initialize_new_formal_reader' }),
       fetchSnapshot: async () => {

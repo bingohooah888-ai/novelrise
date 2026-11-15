@@ -119,3 +119,16 @@ test('invalid database rows fail closed instead of fabricating an achievement', 
     }).service.read(USER)
   );
 });
+
+test('reader badge catalog detects definitions beyond 100 instead of hiding overflow', async () => {
+  const badges = Array.from({ length: 101 }, (_, index) => ({
+    ...badge,
+    badge_id: 'reader_oversized_' + String(index).padStart(3, '0')
+  }));
+  const r = reader({ badges });
+  await assert.rejects(
+    () => r.service.read(USER),
+    /SCOUT_OVERVIEW_SOURCE_UNAVAILABLE/
+  );
+  assert.match(r.calls[0].sql, /limit 101$/);
+});

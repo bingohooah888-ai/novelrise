@@ -232,6 +232,7 @@
     onExchange,
     onAiUse,
     initializeNewReader,
+    inspectNewReader,
     newReaderOnboardingAvailable = false
   }) {
     if (
@@ -268,17 +269,52 @@
     feedback.setAttribute('aria-live', 'polite');
     shell.append(h, notice, onboarding, metrics, tabs, contents, feedback);
     root.replaceChildren(shell);
-    // No sign-up, account mutation, or Point issuance on page load.
-    // The future approved host may expose an explicit user-action button.
+    // Never initialize a formal account on load. Inspect only when a future
+    // trusted host explicitly enables the unpublished onboarding view.
     if (
       newReaderOnboardingAvailable === true &&
       typeof initializeNewReader === 'function'
     ) {
+      const state = el('p', 'rr-muted', '正式登録の状態を確認しています。');
       const start = el('button', 'rr-action', '正式スカウトを利用開始');
       start.type = 'button';
+      start.disabled = true;
+      let ready = false;
+      onboarding.append(state, start);
+
+      // An authorized, read-only status check must precede the explicit POST.
+      // Missing / stale / malformed responses never enable initialization.
+      if (typeof inspectNewReader === 'function') {
+        void Promise.resolve()
+          .then(() => inspectNewReader())
+          .then((result) => {
+            if (result?.ok === true &&
+                result.status === 'new_reader_ready_for_initialization') {
+              ready = true;
+              start.disabled = false;
+              state.textContent = '正式登録が可能です。';
+            } else if (
+              result?.ok === true &&
+              result.status === 'new_reader_already_initialized'
+            ) {
+              state.textContent = '正式登録済みです。';
+            } else {
+              state.textContent =
+                '正式登録の状態を確認できません。運営の確認が必要です。';
+            }
+          })
+          .catch(() => {
+            state.textContent =
+              '正式登録の状態を取得できません。運営の確認が必要です。';
+          });
+      } else {
+        state.textContent = '正式登録の確認機能はまだ準備中です。';
+      }
+
       start.addEventListener('click', async () => {
-        if (busy) return;
+        if (busy || !ready) return;
         busy = true;
+        ready = false;
         start.disabled = true;
         try {
           const result = await initializeNewReader();
@@ -286,22 +322,27 @@
             result?.status === 'new_reader_initialized' ||
             result?.status === 'new_reader_already_initialized'
           ) {
+            state.textContent = '正式登録済みです。';
             const snapshot = await reload();
             feedback.textContent = snapshot.verified
               ? '正式スカウトの状態を確認しました。'
               : '初期化後の状態を取得できません。運営の確認が必要です。';
           } else {
+            state.textContent =
+              '正式登録は保留されています。運営の確認が必要です。';
             feedback.textContent =
               '初期化は保留されています。運営の確認が必要です。';
           }
         } catch {
+          state.textContent =
+            '正式登録の処理結果を確認できません。運営の確認が必要です。';
           feedback.textContent = '初期化の状態を確認できませんでした。';
         } finally {
           busy = false;
-          start.disabled = false;
+          // Uncertain result must be inspected again after a page reload.
+          start.disabled = true;
         }
       });
-      onboarding.append(start);
     }
 
     function metric(name, value, detail) {
@@ -580,6 +621,42 @@
             el('small', '',
               'Rank ' + work.rank + ' ' + label(work.rankName) +
               ' ・最高Rank ' + number(work.peakRank))
+          );
+          const received = work.receivedSeeds;
+          const counts =
+            received &&
+            ['total', 'gold', 'silver', 'bronze', 'legacy'].every(
+              (key) => Number.isSafeInteger(received[key]) && received[key] >= 0
+            ) &&
+            Number.isSafeInteger(
+              received.gold +
+                received.silver +
+                received.bronze +
+                received.legacy
+            ) &&
+            received.total ===
+              received.gold +
+                received.silver +
+                received.bronze +
+                received.legacy;
+          info.append(
+            el(
+              'small',
+              '',
+              counts
+                ? '受信 LIGHT SEED ' +
+                    number(received.total) +
+                    '個（GOLD ' +
+                    number(received.gold) +
+                    ' / SILVER ' +
+                    number(received.silver) +
+                    ' / BRONZE ' +
+                    number(received.bronze) +
+                    ' / 旧形式 ' +
+                    number(received.legacy) +
+                    '）'
+                : '受信 LIGHT SEED：履歴照合中'
+            )
           );
           row.append(info);
           workList.append(row);
