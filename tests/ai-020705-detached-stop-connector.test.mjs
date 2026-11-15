@@ -164,6 +164,7 @@ function build({ badKey = false, killFailed = false } = {}) {
         projectRef: scope.stagingProjectRef,
         runtimeDisabledZero: true,
         approvalTombstoneCount: 1,
+        chunkClaimsRetained: 0, // Legacy one-shot fixture has no chunk claim.
         ...Object.fromEntries(COUNTS.map((name) => [name, 0]))
       };
     },
