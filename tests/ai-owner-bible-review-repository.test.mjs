@@ -312,3 +312,118 @@ test('repository rejects malformed or unsafe review cursors before reads', async
     /AI_REVIEW_STORAGE_UNAVAILABLE/u
   );
 });
+
+test('cross-page older revision lookup enforces exact work, chapter and fact identity', async () => {
+  const currentHash = 'c'.repeat(64);
+  const historical = [
+    { id: 1, actor_id: OWNER, novel_id: 354, source_episode_id: 41, fact_kind: 'character', fact_key: '凛', status: 'accepted', source_hash: HASH },
+    { id: 2, actor_id: OWNER, novel_id: 354, source_episode_id: 41, fact_kind: 'character', fact_key: '凛', status: 'pending', source_hash: currentHash },
+    { id: 3, actor_id: OWNER, novel_id: 355, source_episode_id: 41, fact_kind: 'character', fact_key: '凛', status: 'pending', source_hash: HASH },
+    { id: 4, actor_id: OWNER, novel_id: 354, source_episode_id: 42, fact_kind: 'character', fact_key: '凛', status: 'pending', source_hash: HASH },
+    { id: 5, actor_id: OWNER, novel_id: 354, source_episode_id: 41, fact_kind: 'event', fact_key: '凛', status: 'pending', source_hash: HASH },
+    { id: 6, actor_id: OWNER, novel_id: 354, source_episode_id: 41, fact_kind: 'character', fact_key: '別名', status: 'pending', source_hash: HASH },
+    { id: 7, actor_id: '22222222-2222-4222-8222-222222222222', novel_id: 354, source_episode_id: 41, fact_kind: 'character', fact_key: '凛', status: 'pending', source_hash: HASH },
+    { id: 150, actor_id: OWNER, novel_id: 354, source_episode_id: 41, fact_kind: 'character', fact_key: '凛', status: 'pending', source_hash: HASH }
+  ];
+  const searches = [];
+  const serviceClient = {
+    from(name) {
+      assert.equal(name, 'novelight_ai_review_candidates');
+      const filters = [];
+      return {
+        select(columns) {
+          assert.equal(columns, 'id');
+          return this;
+        },
+        eq(column, value) {
+          filters.push((row) => row[column] === value);
+          return this;
+        },
+        in(column, values) {
+          filters.push((row) => values.includes(row[column]));
+          return this;
+        },
+        neq(column, value) {
+          filters.push((row) => row[column] !== value);
+          return this;
+        },
+        lt(column, value) {
+          filters.push((row) => row[column] < value);
+          return this;
+        },
+        order(column, options) {
+          assert.equal(column, 'id');
+          assert.deepEqual(options, { ascending: false });
+          return this;
+        },
+        async limit(size) {
+          assert.equal(size, 1);
+          searches.push(filters.length);
+          return {
+            data: historical
+              .filter((row) => filters.every((testRow) => testRow(row)))
+              .sort((a, b) => b.id - a.id)
+              .slice(0, 1)
+              .map(({ id }) => ({ id })),
+            error: null
+          };
+        }
+      };
+    },
+    rpc() {}
+  };
+  const repo = createSupabaseOwnerBibleReviewRepository({
+    serviceClient,
+    authorClient: { rpc() {} }
+  });
+  const candidates = [
+    { id: 130, episodeId: 41, factKind: 'character', factKey: '凛', sourceHash: currentHash },
+    { id: 131, episodeId: 42, factKind: 'character', factKey: '凛', sourceHash: currentHash },
+    { id: 132, episodeId: 41, factKind: 'event', factKey: '凛', sourceHash: currentHash },
+    { id: 133, episodeId: 41, factKind: 'character', factKey: '別名', sourceHash: currentHash }
+  ];
+  assert.deepEqual(
+    await repo.listPriorVersionIds({ actorId: OWNER, novelId: 354, candidates }),
+    [130, 131, 132, 133]
+  );
+  // False positive controls: matching current source is NOT a prior revision.
+  assert.deepEqual(
+    await repo.listPriorVersionIds({
+      actorId: OWNER,
+      novelId: 354,
+      candidates: [
+        { ...candidates[0], sourceHash: HASH, id: 100 },
+        { ...candidates[0], factKey: '不在の人物', id: 101 },
+        { ...candidates[0], episodeId: 99, id: 102 }
+      ]
+    }),
+    [100]
+  );
+  assert.equal(searches.length, 7);
+  assert.ok(searches.every((count) => count === 8));
+});
+
+test('prior-version lookup rejects malformed values and bound violations before DB', async () => {
+  const { store } = adapter();
+  const current = {
+    id: 130,
+    episodeId: 41,
+    factKind: 'character',
+    factKey: '凛',
+    sourceHash: HASH
+  };
+  const bad = [
+    [current, current],
+    [{ ...current, sourceHash: 'invalid' }],
+    [{ ...current, factKey: '' }],
+    [{ ...current, factKind: 'admin' }],
+    [{ ...current, episodeId: 0 }],
+    Array.from({ length: 26 }, (_, i) => ({ ...current, id: i + 1 }))
+  ];
+  for (const candidates of bad) {
+    await assert.rejects(
+      store.listPriorVersionIds({ actorId: OWNER, novelId: 354, candidates }),
+      /AI_REVIEW_STORAGE_UNAVAILABLE/u
+    );
+  }
+});
