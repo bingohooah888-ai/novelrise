@@ -16,27 +16,41 @@ function fixture({ ledgerPoints = '50000', failXp = false } = {}) {
     if (sql.startsWith('BEGIN') || sql === 'COMMIT' || sql === 'ROLLBACK')
       return { rows: [], rowCount: null };
     if (sql.includes('.scout_point_usage_wallets where user_id='))
-      return { rows: [{
-        user_id: USER, available_points: '50000',
-        exchange_eligible_points: '32000', reserved_points: '0',
-        held_points: '0', revision: '2'
-      }] };
+      return {
+        rows: [
+          {
+            user_id: USER,
+            available_points: '50000',
+            exchange_eligible_points: '32000',
+            reserved_points: '0',
+            held_points: '0',
+            revision: '2'
+          }
+        ]
+      };
     if (sql.includes('as confirmed_points'))
       return { rows: [{ confirmed_points: ledgerPoints }] };
     if (sql.includes('from novelight_formal_private.scout_level_state'))
-      return { rows: [{
-        user_id: USER, current_level: '72', highest_level: '72',
-        level_progress_xp: '120', review_anchor_at: ANCHOR,
-        last_review_end_at: null, revision: '3'
-      }] };
+      return {
+        rows: [
+          {
+            user_id: USER,
+            current_level: '72',
+            highest_level: '72',
+            level_progress_xp: '120',
+            review_anchor_at: ANCHOR,
+            last_review_end_at: null,
+            revision: '3'
+          }
+        ]
+      };
     if (sql.includes('from public.scout_xp_ledger')) {
       if (failXp) throw new Error('SYNTHETIC_XP_READ_INTERRUPTED');
       return { rows: [{ earned_xp: '220', negative_rows: '0' }] };
     }
     if (sql.includes('from public.scout_point_ledger where user_id='))
       return { rows: [] };
-    if (sql.includes('.scout_point_usage_operations'))
-      return { rows: [] };
+    if (sql.includes('.scout_point_usage_operations')) return { rows: [] };
     throw new Error('UNEXPECTED_SQL_' + sql);
   };
   const pool = {
@@ -46,7 +60,9 @@ function fixture({ ledgerPoints = '50000', failXp = false } = {}) {
     },
     connect: async () => ({
       query,
-      release() { releases++; }
+      release() {
+        releases++;
+      }
     })
   };
   const canonicalReader = createFormalCanonicalReader({
@@ -60,14 +76,20 @@ function fixture({ ledgerPoints = '50000', failXp = false } = {}) {
     }
   });
   const repo = createFormalUsagePostgresRepository({
-    pool, canonicalReader,
+    pool,
+    canonicalReader,
     readFormalAccount: canonicalReader.readFormalAccount,
     readCanonicalPointHistory: canonicalReader.readCanonicalPointHistory
   });
   return {
-    repo, calls,
-    get poolQueries() { return poolQueries; },
-    get releases() { return releases; }
+    repo,
+    calls,
+    get poolQueries() {
+      return poolQueries;
+    },
+    get releases() {
+      return releases;
+    }
   };
 }
 
@@ -78,14 +100,28 @@ test('formal reader uses one repeatable-read session for wallet, ledger, XP and 
   assert.equal(state.account.level, 72);
   assert.equal(state.account.earnedXpInPeriod, 220);
   assert.deepEqual(state.history, []);
-  assert.equal(f.calls[0].sql, 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  assert.equal(
+    f.calls[0].sql,
+    'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'
+  );
   assert.equal(f.calls.at(-1).sql, 'COMMIT');
-  assert.equal(f.calls.filter(({ sql }) => sql === 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY').length, 1);
+  assert.equal(
+    f.calls.filter(
+      ({ sql }) => sql === 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'
+    ).length,
+    1
+  );
   assert.equal(f.poolQueries, 0);
   assert.equal(f.releases, 1);
   assert.ok(f.calls.some(({ sql }) => sql.includes('as confirmed_points')));
-  assert.ok(f.calls.some(({ sql }) => sql.includes('from public.scout_xp_ledger')));
-  assert.ok(f.calls.every(({ sql }) => !/^(?:update|insert|delete|alter|drop)/i.test(sql)));
+  assert.ok(
+    f.calls.some(({ sql }) => sql.includes('from public.scout_xp_ledger'))
+  );
+  assert.ok(
+    f.calls.every(
+      ({ sql }) => !/^(?:update|insert|delete|alter|drop)/i.test(sql)
+    )
+  );
 });
 
 test('an inconsistent canonical ledger fails within the same snapshot and rolls back', async () => {
@@ -98,7 +134,10 @@ test('an inconsistent canonical ledger fails within the same snapshot and rolls 
 
 test('a failed XP read never returns a partially verified Point snapshot', async () => {
   const f = fixture({ failXp: true });
-  await assert.rejects(f.repo.readReader(USER), /SYNTHETIC_XP_READ_INTERRUPTED/);
+  await assert.rejects(
+    f.repo.readReader(USER),
+    /SYNTHETIC_XP_READ_INTERRUPTED/
+  );
   assert.equal(f.calls.at(-1).sql, 'ROLLBACK');
   assert.equal(f.releases, 1);
 });
