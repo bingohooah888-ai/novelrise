@@ -60,17 +60,20 @@ function fixture({
           if (table === 'episode_revisions') {
             state.historyReads += 1;
             return {
-              data: retainedRevisionText === null
-                ? []
-                : [{
-                    id: '33333333-3333-4333-8333-333333333333',
-                    episode_id: 11,
-                    novel_id: 41,
-                    user_id: OWNER,
-                    title: '第一話',
-                    content: retainedRevisionText,
-                    created_at: new Date().toISOString()
-                  }],
+              data:
+                retainedRevisionText === null
+                  ? []
+                  : [
+                      {
+                        id: '33333333-3333-4333-8333-333333333333',
+                        episode_id: 11,
+                        novel_id: 41,
+                        user_id: OWNER,
+                        title: '第一話',
+                        content: retainedRevisionText,
+                        created_at: new Date().toISOString()
+                      }
+                    ],
               error: null
             };
           }
@@ -94,15 +97,16 @@ function fixture({
           }
           if (table === 'novelight_ai_episode_analysis') {
             return {
-              data: historicalText === null
-                ? null
-                : {
-                    episode_id: 11,
-                    source_hash: createHash('sha256')
-                      .update(JSON.stringify(['第一話', historicalText]))
-                      .digest('hex'),
-                    revision: 1
-                  },
+              data:
+                historicalText === null
+                  ? null
+                  : {
+                      episode_id: 11,
+                      source_hash: createHash('sha256')
+                        .update(JSON.stringify(['第一話', historicalText]))
+                        .digest('hex'),
+                      revision: 1
+                    },
               error: null
             };
           }
