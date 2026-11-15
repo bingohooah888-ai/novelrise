@@ -58,6 +58,7 @@
               'badge_history',
               'wallet_cohort',
               'settlement_recovery',
+              'maintenance_readiness',
               'new_reader'
             ].includes(query.view)
           )
