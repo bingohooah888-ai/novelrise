@@ -391,8 +391,7 @@ test('mock rejects Point grants for nonexistent reader fixtures and duplicate ev
   );
 });
 
-
-test('canonical synthetic read/comment events flow through existing quotes into private Wallet and reader binding', async () => {
+test('synthetic read/comment awards reach reader Wallet', async () => {
   const readId = '00000000-0000-4000-8000-000000000430';
   const commentId = '00000000-0000-4000-8000-000000000431';
   const duplicateCommentId = '00000000-0000-4000-8000-000000000432';
@@ -489,10 +488,12 @@ test('canonical synthetic read/comment events flow through existing quotes into 
     ]
   );
   const view =
-    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings({
-      request: async (input) =>
-        (await sandbox.readerRequest(reader, input)).body
-    });
+    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings(
+      {
+        request: async (input) =>
+          (await sandbox.readerRequest(reader, input)).body
+      }
+    );
   const snapshot = await view.fetchSnapshot();
   assert.equal(snapshot.serverVerified, true);
   assert.equal(snapshot.wallet.availablePoints, 35022);
@@ -500,16 +501,20 @@ test('canonical synthetic read/comment events flow through existing quotes into 
   assert.equal(snapshot.account.level, 30);
   assert.equal(snapshot.account.requiredXp, 400);
   assert.deepEqual(
-    snapshot.history.filter((entry) => ['read', 'comment'].includes(entry.kind))
+    snapshot.history
+      .filter((entry) => ['read', 'comment'].includes(entry.kind))
       .map((entry) => [entry.kind, entry.points]),
-    [['read', 2], ['comment', 20]]
+    [
+      ['read', 2],
+      ['comment', 20]
+    ]
   );
   const other = await sandbox.readerRequest(second, { method: 'GET' });
   assert.equal(other.body.wallet.availablePoints, 7000);
   assert.equal(other.body.wallet.exchangeEligiblePoints, 0);
 });
 
-test('synthetic earning bridge requires explicit release anchor and cannot mix unverified comment claims', () => {
+test('synthetic earning bridge rejects incomplete comment history', () => {
   const foundation = {
     handoff: quote(),
     betaThresholdRows,
@@ -520,40 +525,46 @@ test('synthetic earning bridge requires explicit release anchor and cannot mix u
     }
   };
   assert.throws(
-    () => createFormalOfflineIntegration({
-      ...foundation,
-      syntheticEligibleEvents: [{ kind: 'read', userId: reader }]
-    }),
+    () =>
+      createFormalOfflineIntegration({
+        ...foundation,
+        syntheticEligibleEvents: [{ kind: 'read', userId: reader }]
+      }),
     /Complete synthetic release fixture required/
   );
   const id = '00000000-0000-4000-8000-000000000435';
   assert.throws(
-    () => createFormalOfflineIntegration({
-      ...foundation,
-      formalReleaseAtMs: release,
-      syntheticPostReleasePoints: [{
-        eventId: 'offline-formal:unverified-existing',
-        userId: reader,
-        amountPoints: 20
-      }],
-      syntheticEligibleEvents: [{
-        kind: 'comment',
-        userId: reader,
-        sourceFixtureVerified: true,
-        verifiedComment: {
-          id,
-          user_id: reader,
-          episode_id: 100,
-          body: '作品の演出が面白かったです',
-          deleted_at: null,
-          author_hidden_at: null,
-          created_at: '2026-12-02T00:01:00.000Z'
-        },
-        verifiedPriorUserComments: [],
-        reviewerDecision: 'eligible',
-        reviewerRule: 'synthetic-reviewed-v1'
-      }]
-    }),
+    () =>
+      createFormalOfflineIntegration({
+        ...foundation,
+        formalReleaseAtMs: release,
+        syntheticPostReleasePoints: [
+          {
+            eventId: 'offline-formal:unverified-existing',
+            userId: reader,
+            amountPoints: 20
+          }
+        ],
+        syntheticEligibleEvents: [
+          {
+            kind: 'comment',
+            userId: reader,
+            sourceFixtureVerified: true,
+            verifiedComment: {
+              id,
+              user_id: reader,
+              episode_id: 100,
+              body: '作品の演出が面白かったです',
+              deleted_at: null,
+              author_hidden_at: null,
+              created_at: '2026-12-02T00:01:00.000Z'
+            },
+            verifiedPriorUserComments: [],
+            reviewerDecision: 'eligible',
+            reviewerRule: 'synthetic-reviewed-v1'
+          }
+        ]
+      }),
     /Mixed synthetic comment history is not verifiable/
   );
 });
