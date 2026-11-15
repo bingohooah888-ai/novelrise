@@ -93,17 +93,30 @@ test('one read-only canonical query diagnoses unseeded Wallet, mismatch and unse
   const { inspector, sqlCalls } = fixture();
   const report = await inspector.inspect();
   assert.equal(report.status, 'formal_wallet_cohort_review_only');
-  assert.deepEqual(report.observed, Object.fromEntries(
-    Object.entries(counts).map(([key, value]) => [key, Number(value)])
-  ));
+  assert.deepEqual(
+    report.observed,
+    Object.fromEntries(
+      Object.entries(counts).map(([key, value]) => [key, Number(value)])
+    )
+  );
   assert.equal(sqlCalls.length, 1);
   assert.match(sqlCalls[0], /^\s*with ledger as \(/i);
   assert.match(sqlCalls[0], /full outer join ledger/);
-  assert.match(sqlCalls[0], /available_points \+ reserved_points <> confirmed_points/);
-  assert.doesNotMatch(sqlCalls[0], /\b(insert|update|delete|drop|alter|truncate)\s+\w+/i);
+  assert.match(
+    sqlCalls[0],
+    /available_points \+ reserved_points <> confirmed_points/
+  );
+  assert.doesNotMatch(
+    sqlCalls[0],
+    /\b(insert|update|delete|drop|alter|truncate)\s+\w+/i
+  );
   assert.ok(report.blockers.includes('canonical_ledger_users_without_wallet'));
-  assert.ok(report.blockers.includes('wallet_and_confirmed_ledger_balance_mismatch'));
-  assert.ok(report.blockers.includes('unsettled_canonical_point_rows_require_review'));
+  assert.ok(
+    report.blockers.includes('wallet_and_confirmed_ledger_balance_mismatch')
+  );
+  assert.ok(
+    report.blockers.includes('unsettled_canonical_point_rows_require_review')
+  );
   assert.equal(report.mayWriteDb, false);
   assert.equal(report.maySpendPoints, false);
   assert.equal(report.mayEnableGift, false);
