@@ -10,6 +10,9 @@ import {
   quoteFormalCommentPointReward
 } from './formal-earning-rewards.js';
 import { reviewFormalEpisodeComment } from './formal-comment-eligibility.js';
+import { createFormalOfflineDurableDb } from './formal-offline-durable-db.js';
+import { createFormalEarningRunner } from './formal-earning-runner.js';
+import { createFormalCanonicalSourceReader } from './formal-earning-source-reader.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const safe = (n) => Number.isSafeInteger(n) && n >= 0;
@@ -30,6 +33,8 @@ export function createFormalOfflineIntegration({
   mockAiCatalog = [],
   syntheticPostReleasePoints = [],
   syntheticEligibleEvents = [],
+  syntheticDurableEvents = [],
+  syntheticNowIso,
   formalReleaseAtMs
 } = {}) {
   const openingCheck =
@@ -46,8 +51,16 @@ export function createFormalOfflineIntegration({
     !Array.isArray(mockAiCatalog) ||
     !Array.isArray(syntheticPostReleasePoints) ||
     !Array.isArray(syntheticEligibleEvents) ||
+    !Array.isArray(syntheticDurableEvents) ||
     syntheticEligibleEvents.length > 100 ||
-    (syntheticEligibleEvents.length > 0 &&
+    syntheticDurableEvents.length > 100 ||
+    (syntheticDurableEvents.length > 0 &&
+      (syntheticPostReleasePoints.length > 0 ||
+        syntheticEligibleEvents.length > 0 ||
+        typeof syntheticNowIso !== 'string' ||
+        !Number.isFinite(Date.parse(syntheticNowIso)))) ||
+    ((syntheticEligibleEvents.length > 0 ||
+      syntheticDurableEvents.length > 0) &&
       (!Number.isSafeInteger(formalReleaseAtMs) || formalReleaseAtMs < 0))
   )
     throw new TypeError(
@@ -231,6 +244,42 @@ export function createFormalOfflineIntegration({
     readers: opening,
     budgets: mockBudgets
   });
+  // Exercise the real unregistered runner, canonical source reader and
+  // fixed private SQL call shapes against a synthetic DB. Unlike the legacy
+  // up-front quote preview, these awards enter Wallet only after the durable
+  // claim, delivery and completion steps have actually been invoked.
+  const syntheticDb =
+    syntheticDurableEvents.length > 0
+      ? createFormalOfflineDurableDb({
+          events: syntheticDurableEvents,
+          readerIds,
+          operatorId,
+          releaseAtMs: formalReleaseAtMs,
+          nowIso: syntheticNowIso,
+          repository,
+          legacyEventKeys: handoff.convertedRows.map((row) => row.eventKey)
+        })
+      : null;
+  const earningRunner = syntheticDb
+    ? createFormalEarningRunner({
+        postgresClient: syntheticDb,
+        releaseTimestampIso: new Date(formalReleaseAtMs).toISOString(),
+        launchConfiguration: {
+          formalEarningsEnabled: true,
+          productionCutoverApproved: true,
+          formalWorkerEnabled: true
+        },
+        trustedServerAuthorization: {
+          serviceRoleVerified: true,
+          verifiedByTrustedServer: true
+        },
+        verifyModeratorReceipt: syntheticDb.verifyModeratorReceipt
+      })
+    : null;
+  const sourceInspector = syntheticDb
+    ? createFormalCanonicalSourceReader({ postgresClient: syntheticDb })
+    : null;
+
   const mockProviderState = new Map();
   let aiInvocations = 0;
   let giftVerifications = 0;
@@ -277,6 +326,8 @@ export function createFormalOfflineIntegration({
       serviceRoleVerified: true
     },
     env: { NOVELIGHT_ADMIN_USER_IDS: operatorId },
+    inspectEarningSource: sourceInspector?.load,
+    getAdminRewardOverview: syntheticDb?.getAdminRewardOverview,
     catalog,
     policy: {
       giftProviderReady: true,
@@ -334,6 +385,26 @@ export function createFormalOfflineIntegration({
     noRealPointOrProvider: true,
     handoffSummary: handoff.summary,
     rewardDecisions: Object.freeze(rewardDecisions),
+    // Synthetic-only internal post-commit and moderation handoff. Never
+    // exposed via readerHttp/adminHttp, beta routes or external credentials.
+    enqueueCommittedEarning: (event) =>
+      earningRunner
+        ? earningRunner.enqueueCommittedEvent(event)
+        : { status: 'formal_worker_disabled' },
+    submitSyntheticModeration: (review) =>
+      earningRunner
+        ? earningRunner.submitModeration(review)
+        : { status: 'formal_worker_disabled' },
+    drainDueEarnings: (options) =>
+      earningRunner
+        ? earningRunner.drainDue(options)
+        : { status: 'formal_worker_disabled', processed: 0 },
+    inspectSyntheticQueue: () =>
+      syntheticDb ? syntheticDb.inspectQueue() : [],
+    interruptNextSyntheticAward: () => {
+      if (!syntheticDb) throw new Error('SYNTHETIC_QUEUE_DISABLED');
+      syntheticDb.interruptNextSyntheticAward();
+    },
     async readerRequest(userId, request) {
       if (!readerIds.has(userId))
         throw new TypeError('Reader not in synthetic fixture');
