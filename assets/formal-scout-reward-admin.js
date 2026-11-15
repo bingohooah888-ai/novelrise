@@ -264,6 +264,24 @@
               metricCards.append(card);
             }
           }
+          if (
+            ['maintenanceReviewed', 'maintenanceDemotions'].every(
+              (key) =>
+                Number.isSafeInteger(overview[key]) && overview[key] >= 0
+            )
+          ) {
+            for (const [label, key] of [
+              ['確定した30日維持判定', 'maintenanceReviewed'],
+              ['維持判定によるLevel降格', 'maintenanceDemotions']
+            ]) {
+              const card = node('article', 'rr-admin-request');
+              card.append(
+                node('strong', '', label),
+                node('p', 'rr-admin-muted', fmt(overview[key]) + ' 件')
+              );
+              metricCards.append(card);
+            }
+          }
           records.append(metricCards);
           records.append(
             node(
