@@ -409,7 +409,7 @@ test('admin earning evidence returns only a safe verdict', async () => {
   assert.equal(inspections.length, 1);
 });
 
-test('admin maintenance readiness exposes only a read-only verdict', async () => {
+test('admin maintenance status is sanitized and read-only', async () => {
   const f = fixture({ enabled: false });
   const calls = [];
   const api = makeHttp(f, undefined, async () => {
@@ -436,7 +436,10 @@ test('admin maintenance readiness exposes only a read-only verdict', async () =>
     readyForPublicRelease: false
   });
   assert.deepEqual(calls, ['inspect_only']);
-  assert.doesNotMatch(JSON.stringify(accepted.result), /privateReaderId|secretRole/);
+  assert.doesNotMatch(
+    JSON.stringify(accepted.result),
+    /privateReaderId|secretRole/
+  );
 
   const unavailable = makeHttp(f, undefined, async () => ({
     status: 'review_tick_completed',
