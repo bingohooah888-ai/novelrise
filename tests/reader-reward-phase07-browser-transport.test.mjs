@@ -250,7 +250,7 @@ test('explicit new reader inspection uses existing authenticated read-only view'
   assert.equal(calls.length, 1);
 });
 
-test('existing admin earning-source GET accepts only exact event type and UUID', async () => {
+test('admin earning-source GET validates event type and UUID', async () => {
   const g = browser();
   const requests = [];
   const request = g.NovelightFormalRewardTransport.createFormalRewardTransport({
@@ -281,13 +281,17 @@ test('existing admin earning-source GET accepts only exact event type and UUID',
   assert.equal(requests.length, 1);
   assert.equal(
     requests[0].url,
-    '/api/formal-reward-admin?view=earning_source&eventType=valid_read_qualified&eventId=' +
+    '/api/formal-reward-admin?view=earning_source' +
+      '&eventType=valid_read_qualified&eventId=' +
       UUID
   );
   assert.equal(requests[0].options.method, 'GET');
   assert.equal(requests[0].options.credentials, 'same-origin');
   assert.equal(requests[0].options.cache, 'no-store');
-  assert.equal(requests[0].options.headers.Authorization, 'Bearer operator-session');
+  assert.equal(
+    requests[0].options.headers.Authorization,
+    'Bearer operator-session'
+  );
   assert.equal(Object.hasOwn(requests[0].options, 'body'), false);
   for (const query of [
     { view: 'earning_source', eventType: 'made_up', eventId: UUID },
