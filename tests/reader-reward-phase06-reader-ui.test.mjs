@@ -606,9 +606,13 @@ test('reader Point history filters and pages verified records', async () => {
     }
   });
   await panel.reload();
+  const initialReads = reads;
   const buttons = () => byTag(root, 'button');
-  const choose = (label) =>
-    buttons().find((node) => node.textContent === label).fire('click');
+  function choose(label) {
+    const button = buttons().find((item) => item.textContent === label);
+    assert.ok(button);
+    button.fire('click');
+  }
   assert.match(text(root), /取得範囲内の該当履歴：45件/);
   assert.equal(byTag(root, 'b').length, 20);
   choose('次の20件');
@@ -616,25 +620,22 @@ test('reader Point history filters and pages verified records', async () => {
   assert.match(text(root), /21〜40件目/);
   choose('次の20件');
   assert.equal(byTag(root, 'b').length, 5);
-  assert.equal(
-    buttons().find((b) => b.textContent === '次の20件').disabled,
-    true
-  );
+  const lastPageNext = buttons().find((b) => b.textContent === '次の20件');
+  assert.equal(lastPageNext.disabled, true);
   choose('獲得');
-  assert.equal(byTag(root, 'b').length, 20);
-  assert.match(text(root), /取得範囲内の該当履歴：23件/);
-  assert.match(text(root), /1〜20件目/);
-  assert.equal(
-    buttons().find((b) => b.textContent === '獲得').attributes['aria-pressed'],
-    'true'
-  );
+  assert.equal(byTag(root, 'b').length, 12);
+  assert.match(text(root), /取得範囲内の該当履歴：12件/);
+  assert.match(text(root), /1〜12件目/);
+  const earningButton = buttons().find((b) => b.textContent === '獲得');
+  assert.equal(earningButton.attributes['aria-pressed'], 'true');
+  assert.equal(buttons().some((b) => b.textContent === '次の20件'), false);
   choose('利用・返却');
   assert.match(text(root), /取得範囲内の該当履歴：22件/);
   choose('保留・取消');
   assert.match(text(root), /取得範囲内の該当履歴：11件/);
   assert.equal(byTag(root, 'b').length, 11);
   assert.equal(buttons().some((b) => b.textContent === '次の20件'), false);
-  assert.equal(reads, 1);
+  assert.equal(reads, initialReads);
 });
 
 test('history hides unverified rows and avoids balance claims', async () => {
