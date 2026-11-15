@@ -386,7 +386,7 @@ test('settlement actions require a separately enabled gift queue', () => {
   assert.equal(touched, 0);
 });
 
-test('reader page renders verified balances without allowing Point actions', async () => {
+test('reader page is read-only despite an enabled server snapshot', async () => {
   await import('../assets/formal-scout-reward-transport.js');
   await import('../assets/formal-scout-reward-ui.js');
   await import('../assets/formal-scout-reward-client.js');
@@ -431,7 +431,8 @@ test('reader page renders verified balances without allowing Point actions', asy
   await panel.reload();
   assert.equal(match(root, 'Lv.48').length, 1);
   const exchangeTab = flatten(root).find(
-    (node) => node.tagName === 'button' &&
+    (node) =>
+      node.tagName === 'button' &&
       node.textContent === 'デジタルギフト交換'
   );
   exchangeTab.fire('click');
@@ -450,7 +451,7 @@ test('reader page renders verified balances without allowing Point actions', asy
   assert.ok(calls.every((call) => !call.options.body));
 });
 
-test('reader Point action gates reject a missing operation ID provider', () => {
+test('Point actions require an operation ID provider', () => {
   const prepare = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage;
   let calls = 0;
   for (const enabled of [
@@ -474,7 +475,7 @@ test('reader Point action gates reject a missing operation ID provider', () => {
   assert.equal(calls, 0);
 });
 
-test('new-reader readiness check works without Point operation IDs', async () => {
+test('new reader status needs no Point operation ID', async () => {
   const root = new Element('main');
   const calls = [];
   const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
