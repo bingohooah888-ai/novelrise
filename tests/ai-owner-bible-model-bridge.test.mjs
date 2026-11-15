@@ -722,9 +722,6 @@ test('02-07-05 mid-run edit CAS-replans before a new one-chunk model call', asyn
     journal.writes[1].summary.novelightPhase2.completedIndices,
     []
   );
-  assert.deepEqual(
-    journal.row.summary.novelightPhase2.completedIndices,
-    [0]
-  );
+  assert.deepEqual(journal.row.summary.novelightPhase2.completedIndices, [0]);
   assert.equal(journal.row.summary.novelightPhase2.state, 'in_progress');
 });
