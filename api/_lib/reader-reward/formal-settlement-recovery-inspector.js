@@ -102,7 +102,7 @@ with histories as (
   ) and o.operation_id is null
 )
 select
-  count(*)::text as operations_total,
+  count(c.operation_id)::text as operations_total,
   count(*) filter (where c.phase = 'reserved')::text as reserved_operations,
   count(*) filter (where c.phase = 'committed')::text as committed_operations,
   count(*) filter (where c.phase = 'released')::text as released_operations,
@@ -123,7 +123,7 @@ select
   )::text as unexpected_refund_operations,
   count(*) filter (where c.invalid_refund)::text as invalid_refund_operations,
   coalesce(max(o.orphan_count), 0)::text as orphan_settlement_ledger_events
-from checked c cross join orphaned o
+from orphaned o left join checked c on true
 `;
 
 const FIELDS = Object.freeze([
