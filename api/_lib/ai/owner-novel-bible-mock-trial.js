@@ -157,8 +157,7 @@ export function createOfflineNovelBibleTrial({
       if (
         JSON.stringify(latest.authorConfirmedFacts) !==
           JSON.stringify(first.authorConfirmedFacts) ||
-        JSON.stringify(latest.analyses) !==
-          JSON.stringify(first.analyses) ||
+        JSON.stringify(latest.analyses) !== JSON.stringify(first.analyses) ||
         JSON.stringify(latest.previousEpisodes ?? []) !==
           JSON.stringify(first.previousEpisodes ?? [])
       ) {
