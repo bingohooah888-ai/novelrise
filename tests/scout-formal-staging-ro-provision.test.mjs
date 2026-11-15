@@ -3,6 +3,8 @@ import test from 'node:test';
 import { URL } from 'node:url';
 import {
   deriveFormalReaderDatabaseUrl,
+  FORMAL_RO_SAFE_FAILURE_STAGES,
+  formalReaderFailureStage,
   makeScramVerifier,
   provisionFormalStagingReader,
   verifyFormalReaderProvisionContext
@@ -119,4 +121,174 @@ test('missing Secret fails before external access', async () => {
     /EXISTING_STAGING_SECRETS_REQUIRED/u
   );
   assert.equal(touchedNetwork, false);
+});
+
+test('diagnostic stage log accepts only fixed codes', () => {
+  const stages = FORMAL_RO_SAFE_FAILURE_STAGES;
+  assert.equal(
+    formalReaderFailureStage({ safeStage: stages.SECRET_ATTEMPT }),
+    'W20_VERCEL_SECRET_WRITE_UNVERIFIED'
+  );
+  assert.equal(
+    formalReaderFailureStage({ safeStage: 'fake-token-private' }),
+    stages.UNKNOWN
+  );
+  assert.equal(formalReaderFailureStage(null), stages.UNKNOWN);
+});
+
+test('prewrite injected errors cannot expose Vercel credentials', async () => {
+  const secret = 'synthetic-secret-must-never-appear';
+  await assert.rejects(
+    provisionFormalStagingReader({
+      env: { ...stage, VERCEL_API_TOKEN: secret },
+      resolveScope: async () => {
+        throw new Error('Failed with credential ' + secret);
+      }
+    }),
+    (error) => {
+      assert.equal(error.safeStage, FORMAL_RO_SAFE_FAILURE_STAGES.SCOPE);
+      assert.equal(error.message.includes(secret), false);
+      assert.equal(error.cause, undefined);
+      return true;
+    }
+  );
+});
+
+function syntheticStagingAdmin({ failPassword, failLogin, failReader }) {
+  return class {
+    constructor(options) {
+      this.isReader = options.user !== 'postgres';
+    }
+
+    async connect() {
+      if (this.isReader && failReader) {
+        throw new Error('synthetic reader connection failure');
+      }
+    }
+
+    async query(sql) {
+      if (sql.includes('pg_stat_ssl')) return { rows: [{ ssl: true }] };
+      if (sql.includes('current_user as name')) {
+        return { rows: [{ name: 'postgres' }] };
+      }
+      if (sql.includes('select rolcanlogin')) {
+        return {
+          rows: [
+            {
+              rolcanlogin: false,
+              rolsuper: false,
+              rolbypassrls: false,
+              rolinherit: false
+            }
+          ]
+        };
+      }
+      if (sql.includes('has_column_privilege')) {
+        return {
+          rows: [
+            {
+              rls: true,
+              column_select: true,
+              broad_select: false,
+              can_write: false,
+              policy: true
+            }
+          ]
+        };
+      }
+      if (sql.includes(' PASSWORD ')) {
+        if (failPassword) throw new Error('synthetic password failure');
+        return { rows: [] };
+      }
+      if (sql.endsWith(' LOGIN')) {
+        if (failLogin) throw new Error('synthetic login uncertainty');
+        return { rows: [] };
+      }
+      if (sql.endsWith(' NOLOGIN')) return { rows: [] };
+      throw new Error('unexpected synthetic SQL query');
+    }
+
+    async end() {}
+  };
+}
+
+async function runSyntheticProvision({
+  failPassword,
+  failSecret,
+  failLogin,
+  failReader,
+  expectedStage
+}) {
+  let secretWasRequested = false;
+  const fetchImpl = async (_url, options) => {
+    if (options?.method === 'POST') {
+      secretWasRequested = true;
+      if (failSecret) throw new Error('synthetic secret mutation uncertainty');
+      return { ok: true };
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        envs: secretWasRequested
+          ? [
+              {
+                key: 'STAGING_FORMAL_RO_DATABASE_URL',
+                gitBranch: BRANCH,
+                type: 'sensitive',
+                target: ['preview']
+              }
+            ]
+          : []
+      })
+    };
+  };
+  await assert.rejects(
+    provisionFormalStagingReader({
+      env: stage,
+      resolveScope: async () => ({
+        projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
+        teamId: 'team_2XFgtRCPJQ6pbrEa4mOLQAEx'
+      }),
+      ClientImpl: syntheticStagingAdmin({
+        failPassword,
+        failLogin,
+        failReader
+      }),
+      fetchImpl
+    }),
+    (error) => {
+      assert.match(error.message, /^FORMAL_RO_PROVISION_HOLD:[A-Z0-9_]+$/u);
+      assert.equal(error.cause, undefined);
+      assert.equal(error.safeStage, expectedStage);
+      return true;
+    }
+  );
+}
+
+test('synthetic password write failures stay classified as uncertain', async () => {
+  await runSyntheticProvision({
+    failPassword: true,
+    expectedStage: FORMAL_RO_SAFE_FAILURE_STAGES.PASSWORD_ATTEMPT
+  });
+});
+
+test('synthetic Vercel secret write cannot report success on failure', async () => {
+  await runSyntheticProvision({
+    failSecret: true,
+    expectedStage: FORMAL_RO_SAFE_FAILURE_STAGES.SECRET_ATTEMPT
+  });
+});
+
+test('synthetic login failure does not claim rollback succeeded', async () => {
+  await runSyntheticProvision({
+    failLogin: true,
+    expectedStage: FORMAL_RO_SAFE_FAILURE_STAGES.LOGIN_ATTEMPT
+  });
+});
+
+test('synthetic reader failure runs the guarded NOLOGIN rollback', async () => {
+  await runSyntheticProvision({
+    failReader: true,
+    expectedStage: FORMAL_RO_SAFE_FAILURE_STAGES.ROLLBACK_DONE
+  });
 });
