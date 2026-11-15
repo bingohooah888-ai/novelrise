@@ -43,7 +43,8 @@ function setup(config = {}) {
     list: 0,
     decide: 0,
     transfer: 0,
-    repository: 0
+    repository: 0,
+    beforeIds: []
   };
   const handler = createOwnerBibleReviewApiHandler({
     env,
@@ -69,6 +70,7 @@ function setup(config = {}) {
           calls.list += 1;
           assert.equal(args.token, token);
           assert.equal(args.novelId, 354);
+          calls.beforeIds.push(args.beforeId);
           return { novelId: 354, candidates: [] };
         },
         async verifyTransfer(args) {
@@ -272,4 +274,54 @@ test('malformed transfer query is rejected before privileged client creation', a
   }
   assert.equal(calls.clients, 0);
   assert.equal(calls.repository, 0);
+});
+
+test('GET accepts a bounded before_id cursor and rejects forced order, status and offsets', async () => {
+  const { handler, request, calls } = setup();
+  const valid = res();
+  await handler(
+    request({ query: { novel_id: '354', before_id: '106' } }),
+    valid
+  );
+  assert.equal(valid.statusCode, 200);
+  assert.deepEqual(calls.beforeIds, [106]);
+  const invalid = [
+    { before_id: '0' },
+    { before_id: '-1' },
+    { before_id: '1.5' },
+    { before_id: ['106', '106'] },
+    { before_id: '106', status: 'accepted' },
+    { before_id: '106', offset: '100' },
+    { before_id: '106', order: 'asc' },
+    { before_id: '106', page_size: '10000' },
+    { before_id: '106', user_id: 'foreign' }
+  ];
+  for (const query of invalid) {
+    const response = res();
+    await handler(request({ query: { novel_id: '354', ...query } }), response);
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.body.error, 'INVALID_REVIEW_PAGE');
+  }
+  assert.deepEqual(calls.beforeIds, [106]);
+  assert.equal(calls.clients, 1);
+});
+
+test('transfer recheck rejects paging cursor rather than bypassing freshness', async () => {
+  const { handler, request, calls } = setup();
+  const response = res();
+  await handler(
+    request({
+      query: {
+        novel_id: '354',
+        transfer_candidate_id: '44',
+        expected_revision: '2',
+        before_id: '100'
+      }
+    }),
+    response
+  );
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.body.error, 'INVALID_TRANSFER_REQUEST');
+  assert.equal(calls.transfer, 0);
+  assert.equal(calls.clients, 0);
 });
