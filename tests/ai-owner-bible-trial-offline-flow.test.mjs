@@ -3,14 +3,15 @@ import test from 'node:test';
 
 import '../novelight-ai-bible-trial-panel.js';
 
+// Isolate the synthetic click-flow fixture without reformatting event order.
+// prettier-ignore
+(function registerOfflineTrialJourney() {
 const { attach } = globalThis.NovelightAiBibleTrialPanel;
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const TOKEN = 'synthetic-author-token-only';
 const work = 41;
 const episode = 11;
 
-// Synthetic in-memory DOM and event fixtures intentionally stay stable.
-// prettier-ignore
 function element(tag) {
   return {
     tag,
@@ -36,8 +37,6 @@ function element(tag) {
   };
 }
 
-// Synthetic in-memory DOM and event fixtures intentionally stay stable.
-// prettier-ignore
 function harness({ state = 'ready', nextIndex = 1, revoke = false } = {}) {
   let active = true;
   let signedIn = true;
@@ -160,8 +159,6 @@ function harness({ state = 'ready', nextIndex = 1, revoke = false } = {}) {
   };
 }
 
-// Synthetic in-memory DOM and event fixtures intentionally stay stable.
-// prettier-ignore
 function controls(main) {
   const section = main.children[0];
   assert.ok(section);
@@ -172,14 +169,10 @@ function controls(main) {
   return { section, plan, action: buttons[1], review: buttons[2] };
 }
 
-// Synthetic in-memory DOM and event fixtures intentionally stay stable.
-// prettier-ignore
 function tick() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
-// Keep the synthetic event-order fixture stable across formatters.
-// prettier-ignore
 test(
   'offline owner must inspect before one explicit stage and then sees review',
   async () => {
@@ -217,8 +210,6 @@ test(
   }
 );
 
-// Keep the synthetic event-order fixture stable across formatters.
-// prettier-ignore
 test(
   'changed plan, completed work or revoked session cannot execute',
   async () => {
@@ -269,8 +260,6 @@ test(
   }
 );
 
-// Keep the synthetic event-order fixture stable across formatters.
-// prettier-ignore
 test(
   'missing offline capability does not change default deployed panel',
   async () => {
@@ -309,3 +298,4 @@ test(
     assert.equal(legacy.fetchCalls.length, 1);
   }
 );
+})();
