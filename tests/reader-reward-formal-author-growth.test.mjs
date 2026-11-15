@@ -118,12 +118,23 @@ test('no owned work does not run received SEED query or infer private statistics
   const result = await reader.read(USER);
   assert.deepEqual(result.works, []);
   assert.equal(calls.length, 2);
-  assert.equal(calls.some((c) => c.sql.includes('light_seeds')), false);
+  assert.equal(
+    calls.some((c) => c.sql.includes('light_seeds')),
+    false
+  );
 });
 
 test('legacy/null seed types stay explicit and are never guessed from Rank', async () => {
-  const rows = [{ ...received, total_count: '2', gold_count: '0',
-    silver_count: '0', bronze_count: '0', legacy_count: '2' }];
+  const rows = [
+    {
+      ...received,
+      total_count: '2',
+      gold_count: '0',
+      silver_count: '0',
+      bronze_count: '0',
+      legacy_count: '2'
+    }
+  ];
   const result = await setup([work], [event], rows).reader.read(USER);
   assert.equal(result.works[0].rank, 4);
   assert.equal(result.works[0].receivedSeeds.legacy, 2);
