@@ -303,14 +303,21 @@ test('atomic adapter denies missing RPC and fails closed on DB errors/conflicts'
   const plan = syntheticPlan();
   const scope = args(plan, 0);
   const read = () => ({
-    select() { return this; },
-    eq() { return this; },
-    async maybeSingle() { return { data: null, error: null }; }
+    select() {
+      return this;
+    },
+    eq() {
+      return this;
+    },
+    async maybeSingle() {
+      return { data: null, error: null };
+    }
   });
   assert.throws(
-    () => createSupabaseOwnerNovelBibleCheckpointRepository({
-      serviceClient: { from: read }
-    }),
+    () =>
+      createSupabaseOwnerNovelBibleCheckpointRepository({
+        serviceClient: { from: read }
+      }),
     /AI_BIBLE_CHECKPOINT_UNAVAILABLE/u
   );
   const errorRepo = createSupabaseOwnerNovelBibleCheckpointRepository({
@@ -359,13 +366,20 @@ test('synthetic owner transfer and manuscript race reject checkpoint commits', a
     const client = {
       from() {
         return {
-          select() { return this; },
-          eq() { return this; },
-          async maybeSingle() { return { data: null, error: null }; }
+          select() {
+            return this;
+          },
+          eq() {
+            return this;
+          },
+          async maybeSingle() {
+            return { data: null, error: null };
+          }
         };
       },
       async rpc(_name, params) {
-        if (change === 'owner') currentOwner = '22222222-2222-4222-8222-222222222222';
+        if (change === 'owner')
+          currentOwner = '22222222-2222-4222-8222-222222222222';
         else currentHash = 'e'.repeat(64);
         if (
           params.p_actor_id !== currentOwner ||
