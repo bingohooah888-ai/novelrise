@@ -43,6 +43,9 @@ function harness({ state = 'ready', nextIndex = 1 } = {}) {
   let inspected = 0;
   let staged = 0;
   let opened = 0;
+  let refreshedReview = 0;
+  let refreshedBible = 0;
+  let rejectReviewRefresh = false;
   let lastIndex = null;
   let lastToken = null;
   let planStatus = state;
@@ -122,6 +125,16 @@ function harness({ state = 'ready', nextIndex = 1 } = {}) {
     async attach() {
       opened += 1;
       return true;
+    },
+    async refresh() {
+      refreshedReview += 1;
+      return rejectReviewRefresh ? false : true;
+    }
+  };
+  const ownerStudio = {
+    async refresh() {
+      refreshedBible += 1;
+      return true;
     }
   };
   return {
@@ -131,6 +144,16 @@ function harness({ state = 'ready', nextIndex = 1 } = {}) {
     fetcher,
     offlineTrial,
     reviewPanel,
+    ownerStudio,
+    get refreshedReview() {
+      return refreshedReview;
+    },
+    get refreshedBible() {
+      return refreshedBible;
+    },
+    rejectRefresh() {
+      rejectReviewRefresh = true;
+    },
     get inspected() {
       return inspected;
     },
@@ -411,6 +434,74 @@ test('same-index replay after success and unknown outcome are locked', async () 
   await ctrl.plan.listeners.get('click')();
   await ctrl.action.listeners.get('click')();
   assert.equal(unknown.staged, 1);
+});
+
+
+test('explicit post-analysis refresh rereads the existing review and saved Bible only', async () => {
+  const f = harness();
+  assert.equal(
+    await attach({
+      client: f.client,
+      novelId: work,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher,
+      reviewPanel: f.reviewPanel,
+      ownerStudio: f.ownerStudio,
+      offlineTrial: f.offlineTrial
+    }),
+    true
+  );
+  const { section, plan, action } = controls(f.main);
+  const refresh = section.children.find(
+    (item) => item.className === 'btn novelight-ai-bible-refresh-views'
+  );
+  assert.ok(refresh);
+  assert.equal(refresh.disabled, true);
+  await refresh.listeners.get('click')();
+  assert.equal(f.refreshedReview, 0);
+  await plan.listeners.get('click')();
+  await action.listeners.get('click')();
+  assert.equal(refresh.disabled, false);
+  assert.equal(f.staged, 1);
+  await refresh.listeners.get('click')();
+  assert.equal(f.refreshedReview, 1);
+  assert.equal(f.refreshedBible, 1);
+  assert.equal(f.staged, 1);
+  assert.equal(f.fetchCalls.length, 1);
+  assert.match(section.children.at(-1).textContent, /再読込しました/u);
+  await refresh.listeners.get('click')();
+  assert.equal(f.refreshedReview, 2);
+  assert.equal(f.staged, 1);
+});
+
+test('review refresh denial never claims to refresh saved checklist', async () => {
+  const f = harness();
+  assert.equal(
+    await attach({
+      client: f.client,
+      novelId: work,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher,
+      reviewPanel: f.reviewPanel,
+      ownerStudio: f.ownerStudio,
+      offlineTrial: f.offlineTrial
+    }),
+    true
+  );
+  const { section, plan, action } = controls(f.main);
+  const refresh = section.children.find(
+    (item) => item.className === 'btn novelight-ai-bible-refresh-views'
+  );
+  await plan.listeners.get('click')();
+  await action.listeners.get('click')();
+  f.rejectRefresh();
+  await refresh.listeners.get('click')();
+  assert.equal(f.refreshedReview, 1);
+  assert.equal(f.refreshedBible, 0);
+  assert.equal(f.staged, 1);
+  assert.match(section.children.at(-1).textContent, /再読み込みしてください/u);
 });
 
 })();

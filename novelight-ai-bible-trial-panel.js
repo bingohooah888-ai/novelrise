@@ -87,6 +87,7 @@
     doc = root.document,
     fetcher = root.fetch,
     reviewPanel = root.NovelightAiBibleReviewActions,
+    ownerStudio = root.NovelightAiBibleOwnerStudio,
     offlineTrial
   } = {}) {
     const host = doc?.getElementById?.('main-content');
@@ -177,6 +178,7 @@
       status.className = 'status';
       const inspectButton = offline ? doc.createElement('button') : null;
       const cancelButton = offline ? doc.createElement('button') : null;
+      const refreshButton = offline ? doc.createElement('button') : null;
       let planned = null;
       // Never issue the same potentially billed chunk twice from one view.
       // A changed manuscript with the same index needs a fresh page.
@@ -186,6 +188,10 @@
         cancelButton.className = 'btn novelight-ai-bible-cancel-plan';
         cancelButton.textContent = '実行前に中止';
         cancelButton.disabled = true;
+        refreshButton.type = 'button';
+        refreshButton.className = 'btn novelight-ai-bible-refresh-views';
+        refreshButton.textContent = '候補一覧・作品カルテを再読込';
+        refreshButton.disabled = true;
         inspectButton.type = 'button';
         inspectButton.className = 'btn novelight-ai-bible-inspect-plan';
         inspectButton.textContent = '解析予定・再開位置を確認（課金なし）';
@@ -199,6 +205,7 @@
           cancelButton,
           action,
           review,
+          refreshButton,
           status
         );
       } else {
@@ -283,15 +290,43 @@
         });
       }
 
-      async function showReview() {
-        if (disposed || reviewMounted) return;
+      async function showReview({ preferRefresh = false } = {}) {
+        if (disposed) return false;
+        if (preferRefresh) {
+          if (typeof reviewPanel?.refresh !== 'function' && reviewMounted) {
+            status.textContent = '候補の再読込機能がありません。ページを再読み込みしてください。';
+            return false;
+          }
+          if (typeof reviewPanel?.refresh === 'function') {
+            const refreshed = await reviewPanel.refresh({
+              client,
+              ownerId,
+              novelId: work,
+              doc
+            });
+            if (!(await current())) {
+              clear();
+              return false;
+            }
+            if (refreshed === true) {
+              reviewMounted = true;
+              return true;
+            }
+            if (refreshed === false || reviewMounted) {
+              status.textContent =
+                '候補の再読込に失敗しました。ページを再読み込みしてください。';
+              return false;
+            }
+          }
+        }
+        if (reviewMounted) return true;
         if (!(await current())) {
           clear();
-          return;
+          return false;
         }
         if (typeof reviewPanel?.attach !== 'function') {
           status.textContent = '候補画面を開けませんでした。';
-          return;
+          return false;
         }
         const opened = await reviewPanel.attach({
           client,
@@ -303,9 +338,65 @@
         if (!opened || !(await current())) {
           if (!(await current())) clear();
           else status.textContent = '候補画面を開けませんでした。';
-          return;
+          return false;
         }
         reviewMounted = true;
+        return true;
+      }
+
+      if (refreshButton) {
+        refreshButton.addEventListener('click', async () => {
+          if (disposed || busy || refreshButton.disabled) return;
+          busy = true;
+          refreshButton.disabled = true;
+          status.textContent =
+            '候補と作品カルテの最新情報を確認しています。未保存の選択は破棄される場合があります。';
+          try {
+            if (!(await current())) {
+              clear();
+              return;
+            }
+            // Read-only, owner-authenticated GETs. No stage/POST, no
+            // automatic author-canon promotion or payment is initiated.
+            const reviewed = await showReview({ preferRefresh: true });
+            if (!reviewed) {
+              if (!(await current())) clear();
+              else status.textContent =
+                '候補を再読込できませんでした。ページを再読み込みしてください。';
+              return;
+            }
+            const bible =
+              typeof ownerStudio?.refresh === 'function'
+                ? await ownerStudio.refresh({
+                    client,
+                    ownerId,
+                    novelId: work,
+                    doc
+                  })
+                : null;
+            if (!(await current())) {
+              clear();
+              return;
+            }
+            if (bible === false) {
+              status.textContent =
+                '作品カルテを再読込できませんでした。保存状態を確認してください。';
+              return;
+            }
+            status.textContent =
+              bible === true
+                ? '候補一覧と作品カルテを再読込しました。確認済み情報は自動変更しません。'
+                : '候補一覧を再読込しました。作品カルテはこの画面に表示されていません。';
+          } catch {
+            if (!disposed) {
+              status.textContent =
+                '再読込に失敗しました。古い候補を採用せず、ページを開き直してください。';
+            }
+          } finally {
+            busy = false;
+            if (!disposed) refreshButton.disabled = false;
+          }
+        });
       }
 
       review.addEventListener('click', () => {
@@ -429,6 +520,7 @@
             cancelButton.disabled = true;
             inspectButton.disabled = false;
           }
+          if (offline) refreshButton.disabled = false;
           if (result.requiresAuthorReview === false) {
             status.textContent =
               '追加解析は不要でした。次の操作前に保存状態を確認してください。';
@@ -443,7 +535,7 @@
               : '');
           if (reviewMounted) {
             status.textContent +=
-              ' すでに開いた候補一覧はページ再読込後に更新されます。';
+              ' 候補一覧・作品カルテの再読込ボタンで最新情報を確認できます。';
           } else {
             await showReview();
           }
