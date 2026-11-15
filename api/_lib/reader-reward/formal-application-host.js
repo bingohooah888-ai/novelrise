@@ -25,7 +25,6 @@ export function createUnregisteredFormalApplication({
   env,
   catalog,
   policy,
-  aiExecutor,
   verifyGiftReceipt,
   verifyGiftNonFulfillment,
   verifyGiftRefund,
