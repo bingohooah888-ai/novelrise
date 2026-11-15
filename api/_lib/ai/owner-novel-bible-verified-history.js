@@ -4,6 +4,8 @@
 // Call ONLY after owner/session verification in the guarded trial bridge.
 import { createHash } from 'node:crypto';
 
+import { NOVEL_BIBLE_PENDING_SOURCE_HASH } from './owner-novel-bible-checkpoint.js';
+
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HASH = /^[a-f0-9]{64}$/;
@@ -125,7 +127,7 @@ export function createOwnerNovelBibleVerifiedHistoryReader({
       if (state.state === 'in_progress') {
         if (
           analysis.source_hash !==
-          (state.previousSourceHash ?? state.targetSourceHash)
+          (state.previousSourceHash ?? NOVEL_BIBLE_PENDING_SOURCE_HASH)
         ) {
           unavailable();
         }
