@@ -924,3 +924,81 @@ test('cross-page version label persists before matching historical row loads', a
   assert.equal(oldest.children.length, 1);
   assert.match(current.children[0].textContent, /改稿後の新版候補/u);
 });
+
+test('owner refresh replaces only a freshly verified review list without POST', async () => {
+  const f = mock();
+  const candidate = {
+    id: 9,
+    episodeId: 4,
+    revision: 1,
+    status: 'pending',
+    kind: 'world',
+    key: '地図',
+    summary: '古い草案',
+    evidence: '古い本文'
+  };
+  let current = {
+    novelId: 354,
+    aiGenerated: false,
+    candidates: [candidate]
+  };
+  let reads = 0;
+  let allow = true;
+  const fetcher = async (_url, options) => {
+    assert.equal(options.method, 'GET');
+    reads += 1;
+    return {
+      ok: allow,
+      async json() {
+        return current;
+      }
+    };
+  };
+  const options = {
+    client: f.client,
+    ownerId: OWNER,
+    novelId: 354,
+    doc: f.doc,
+    fetcher
+  };
+  assert.equal(await attach(options), true);
+  const first = f.host.children[0];
+  assert.match(first.children[1].children[0].children[0].textContent, /古い草案/u);
+  current = {
+    novelId: 354,
+    aiGenerated: false,
+    candidates: [{ ...candidate, id: 10, summary: '新しい草案' }]
+  };
+  const { refresh } = globalThis.NovelightAiBibleReviewActions;
+  assert.equal(await refresh(options), true);
+  const second = f.host.children[1];
+  assert.equal(first.removed, true);
+  assert.match(second.children[1].children[0].children[0].textContent, /新しい草案/u);
+  assert.equal(reads, 2);
+  assert.equal(f.requests.length, 0);
+  allow = false;
+  assert.equal(await refresh(options), false);
+  assert.equal(second.removed, true);
+  assert.equal(await refresh(options), null);
+});
+
+test('cross-account review refresh cannot fetch, replace or mutate a view', async () => {
+  const f = mock();
+  const options = {
+    client: f.client,
+    ownerId: OWNER,
+    novelId: 354,
+    doc: f.doc,
+    fetcher: f.fetcher
+  };
+  assert.equal(await attach(options), true);
+  const section = f.host.children[0];
+  const { refresh } = globalThis.NovelightAiBibleReviewActions;
+  assert.equal(await refresh({ ...options, ownerId: 'other' }), false);
+  assert.equal(await refresh({ ...options, novelId: 355 }), false);
+  assert.equal(f.requests.length, 1);
+  assert.equal(section.removed, false);
+  f.logout();
+  assert.equal(section.removed, true);
+  assert.equal(await refresh(options), null);
+});

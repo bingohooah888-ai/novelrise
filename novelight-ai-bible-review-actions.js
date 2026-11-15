@@ -4,6 +4,8 @@
 (function (root) {
   'use strict';
 
+  const mountedReviews = new WeakMap();
+
   const FACT_KINDS = new Set([
     'character',
     'relationship',
@@ -110,7 +112,8 @@
     novelId,
     doc = root.document,
     fetcher = root.fetch,
-    onAccepted
+    onAccepted,
+    replaceExisting = null
   } = {}) {
     const host = doc?.getElementById?.('main-content');
     const id = positive(novelId);
@@ -124,6 +127,17 @@
     ) {
       return false;
     }
+    const previous = mountedReviews.get(host);
+    if (previous && previous !== replaceExisting) {
+      return (
+        previous.client === client &&
+        previous.ownerId === ownerId &&
+        previous.novelId === id &&
+        previous.fetcher === fetcher &&
+        (await previous.currentSession())
+      );
+    }
+    if (previous && !previous.canReplace()) return false;
     const first = await client.auth.getSession();
     const session = !first.error && first.data?.session;
     const token = session?.access_token;
@@ -177,6 +191,9 @@
       list.textContent = '';
       section.remove();
       subscription?.unsubscribe();
+      if (mountedReviews.get(host)?.section === section) {
+        mountedReviews.delete(host);
+      }
     }
 
     // A failed/ambiguous POST must never look like an accepted candidate.
@@ -521,9 +538,55 @@
       clear();
       return false;
     }
+    if (previous && !previous.canReplace()) return false;
+    // Swap the previous private list only after owner-scoped GET and session
+    // validation. A replacement never mutates candidate decisions or canon.
+    if (previous) previous.clear();
     host.appendChild(section);
+    mountedReviews.set(host, {
+      section,
+      client,
+      ownerId,
+      novelId: id,
+      fetcher,
+      onAccepted,
+      currentSession,
+      canReplace: () => !disposed && !busy,
+      clear
+    });
     return true;
   }
 
-  root.NovelightAiBibleReviewActions = Object.freeze({ attach });
+  // A read-only refresh preserves the existing accepted-draft callback.
+  // null = no view mounted, false = refresh denied; never render stale rows
+  // as if they were freshly fetched.
+  async function refresh({ client, ownerId, novelId, doc = root.document } = {}) {
+    const host = doc?.getElementById?.('main-content');
+    const previous = mountedReviews.get(host);
+    if (!previous) return null;
+    if (
+      previous.client !== client ||
+      previous.ownerId !== ownerId ||
+      previous.novelId !== positive(novelId) ||
+      !previous.canReplace()
+    ) return false;
+    let updated = false;
+    try {
+      updated = await attach({
+        client,
+        ownerId,
+        novelId,
+        doc,
+        fetcher: previous.fetcher,
+        onAccepted: previous.onAccepted,
+        replaceExisting: previous
+      });
+    } catch {
+      updated = false;
+    }
+    if (!updated) previous.clear();
+    return updated;
+  }
+
+  root.NovelightAiBibleReviewActions = Object.freeze({ attach, refresh });
 })(globalThis);
