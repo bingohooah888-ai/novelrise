@@ -568,3 +568,275 @@ test('synthetic earning bridge rejects incomplete comment history', () => {
     /Mixed synthetic comment history is not verifiable/
   );
 });
+
+
+const durableReadId = '00000000-0000-4000-8000-000000000511';
+const durableCommentId = '00000000-0000-4000-8000-000000000512';
+const durableReviewerId = '00000000-0000-4000-8000-000000000513';
+const durableReviewId = '00000000-0000-4000-8000-000000000514';
+const durableAt = '2026-12-02T00:00:00.000Z';
+const durableRule = 'synthetic-human-review-v1';
+const durableSource = {
+  kind: 'read',
+  userId: reader,
+  sourceFixtureVerified: true,
+  verifiedReadEvent: {
+    id: durableReadId,
+    reader_id: reader,
+    episode_id_snapshot: '100',
+    qualified_at: durableAt
+  },
+  verifiedScoutLevel: 30,
+  verifiedReadTimeLevelEvidence: {
+    serverVerified: true,
+    readEventId: durableReadId,
+    readerId: reader,
+    qualifiedAt: durableAt,
+    level: 30,
+    revision: 1
+  }
+};
+const durableComment = {
+  kind: 'comment',
+  userId: reader,
+  sourceFixtureVerified: true,
+  verifiedComment: {
+    id: durableCommentId,
+    user_id: reader,
+    episode_id: 100,
+    body: '伏線の回収が丁寧で最後まで楽しく読みました',
+    created_at: '2026-12-02T00:01:00.000Z',
+    deleted_at: null,
+    author_hidden_at: null
+  },
+  verifiedPriorUserComments: [],
+  verifiedNovelAuthorId: second,
+  verifiedCommentReadEvent: {
+    serverVerified: true,
+    readerId: reader,
+    episodeId: '100',
+    qualifiedAt: durableAt
+  },
+  moderationProof: {
+    reviewerId: durableReviewerId,
+    reviewId: durableReviewId,
+    receiptKey: 'synthetic-proof-01',
+    eligible: true,
+    rule: durableRule
+  }
+};
+function durableDemo(events = [durableSource, durableComment]) {
+  return createFormalOfflineIntegration({
+    handoff: quote(),
+    betaThresholdRows,
+    operatorId: operator,
+    formalReleaseAtMs: release,
+    syntheticNowIso: '2026-12-03T00:00:00.000Z',
+    syntheticDurableEvents: events,
+    mockBudgets: {
+      external_exchange: {
+        scopeId: 'synthetic-gift',
+        limitPoints: 100000
+      },
+      ai_direct_use: { scopeId: 'synthetic-ai', limitPoints: 100000 }
+    }
+  });
+}
+
+test('existing durable queue, private award adapter, Wallet, reader and admin HTTP form one offline flow', async () => {
+  const sandbox = durableDemo();
+  const readerUi =
+    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings(
+      {
+        request: async (input) =>
+          (await sandbox.readerRequest(reader, input)).body
+      }
+    );
+  const adminUi = globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings(
+    {
+      request: async (input) => (await sandbox.adminRequest(input)).body
+    }
+  );
+  const before = await readerUi.fetchSnapshot();
+  assert.equal(before.wallet.availablePoints, 35000);
+  assert.equal(before.wallet.exchangeEligiblePoints, 0);
+  assert.equal(before.account.level, 30);
+  assert.equal(
+    (await adminUi.loadRewardOverview()).issuedTotal,
+    0
+  );
+
+  assert.equal(
+    (await sandbox.enqueueCommittedEarning({
+      eventType: 'valid_read_qualified',
+      eventId: durableReadId
+    })).status,
+    'pending'
+  );
+  assert.equal(
+    (await sandbox.enqueueCommittedEarning({
+      eventType: 'novel_episode_comment_reviewed',
+      eventId: durableCommentId
+    })).status,
+    'review_pending'
+  );
+  assert.equal(
+    (await adminUi.inspectEarningSource({
+      eventType: 'valid_read_qualified',
+      eventId: durableReadId
+    })).status,
+    'canonical_source_verified'
+  );
+  assert.equal(
+    (await sandbox.submitSyntheticModeration({
+      commentId: durableCommentId,
+      eligible: true,
+      rule: durableRule,
+      reviewReceipt: { receiptKey: 'forged' }
+    })).status,
+    'review_provenance_rejected'
+  );
+  assert.equal(
+    (await sandbox.submitSyntheticModeration({
+      commentId: durableCommentId,
+      eligible: true,
+      rule: durableRule,
+      reviewReceipt: { receiptKey: 'synthetic-proof-01' }
+    })).status,
+    'review_recorded'
+  );
+
+  // Both internal delivery attempts fail: queue RETRY and no Point credit.
+  sandbox.interruptNextSyntheticAward(2);
+  const retry = await sandbox.drainDueEarnings({ limit: 1 });
+  assert.equal(retry.retry, 1);
+  assert.equal((await readerUi.fetchSnapshot()).wallet.availablePoints, 35000);
+
+  // A later tick reuses the same canonical key and credits once only.
+  const processed = await sandbox.drainDueEarnings({ limit: 5 });
+  assert.equal(processed.status, 'tick_completed');
+  assert.equal(processed.completed, 2);
+  assert.equal(processed.pointsConfirmedByWorker, 0);
+  const after = await readerUi.fetchSnapshot();
+  assert.equal(after.wallet.availablePoints, 35022);
+  assert.equal(after.wallet.exchangeEligiblePoints, 22);
+  assert.equal(after.account.level, 30);
+  assert.equal(after.account.requiredXp, 400);
+  assert.deepEqual(
+    after.history
+      .filter((entry) => ['read', 'comment'].includes(entry.kind))
+      .map((entry) => [entry.kind, entry.points]),
+    [
+      ['comment', 20],
+      ['read', 2]
+    ]
+  );
+  const admin = await adminUi.loadRewardOverview();
+  assert.equal(admin.status, 'reward_overview_ready');
+  assert.equal(admin.issuedTotal, 22);
+  assert.equal(admin.issuedMonth, 22);
+  assert.equal(admin.readMonth, 2);
+  assert.equal(admin.commentMonth, 20);
+  assert.equal(admin.eligibleAvailable, 22);
+  assert.equal(admin.recent.length, 2);
+  assert.equal(
+    (await sandbox.enqueueCommittedEarning({
+      eventType: 'valid_read_qualified',
+      eventId: durableReadId
+    })).status,
+    'completed'
+  );
+  assert.equal((await sandbox.drainDueEarnings()).processed, 0);
+  assert.equal((await readerUi.fetchSnapshot()).wallet.availablePoints, 35022);
+  assert.equal(
+    (await sandbox.readerRequest(second, { method: 'GET' }))
+      .body.wallet.availablePoints,
+    7000
+  );
+});
+
+test('offline durable claims reject duplicate chapter awards and unverified canonical events', async () => {
+  const newReadId = '00000000-0000-4000-8000-000000000515';
+  const newCommentId = '00000000-0000-4000-8000-000000000516';
+  const unavailableId = '00000000-0000-4000-8000-000000000517';
+  const anotherRead = {
+    ...durableSource,
+    verifiedReadEvent: { ...durableSource.verifiedReadEvent, id: newReadId },
+    verifiedReadTimeLevelEvidence: {
+      ...durableSource.verifiedReadTimeLevelEvidence,
+      readEventId: newReadId
+    }
+  };
+  const anotherComment = {
+    ...durableComment,
+    verifiedComment: { ...durableComment.verifiedComment, id: newCommentId },
+    moderationProof: {
+      ...durableComment.moderationProof,
+      reviewId: '00000000-0000-4000-8000-000000000518',
+      receiptKey: 'synthetic-proof-02'
+    }
+  };
+  const sandbox = durableDemo([
+    durableSource,
+    durableComment,
+    anotherRead,
+    anotherComment,
+    {
+      ...durableSource,
+      sourceFixtureVerified: false,
+      verifiedReadEvent: {
+        ...durableSource.verifiedReadEvent,
+        id: unavailableId
+      }
+    }
+  ]);
+  for (const id of [durableReadId, newReadId]) {
+    assert.equal(
+      (await sandbox.enqueueCommittedEarning({
+        eventType: 'valid_read_qualified',
+        eventId: id
+      })).status,
+      'pending'
+    );
+  }
+  assert.equal(
+    (await sandbox.enqueueCommittedEarning({
+      eventType: 'valid_read_qualified',
+      eventId: unavailableId
+    })).status,
+    'canonical_source_missing'
+  );
+  for (const [id, receiptKey] of [
+    [durableCommentId, 'synthetic-proof-01'],
+    [newCommentId, 'synthetic-proof-02']
+  ]) {
+    assert.equal(
+      (await sandbox.enqueueCommittedEarning({
+        eventType: 'novel_episode_comment_reviewed',
+        eventId: id
+      })).status,
+      'review_pending'
+    );
+    assert.equal(
+      (await sandbox.submitSyntheticModeration({
+        commentId: id,
+        eligible: true,
+        rule: durableRule,
+        reviewReceipt: { receiptKey }
+      })).status,
+      'review_recorded'
+    );
+  }
+  const result = await sandbox.drainDueEarnings({ limit: 8 });
+  assert.equal(result.completed, 4);
+  assert.equal((await sandbox.readerRequest(reader, { method: 'GET' }))
+    .body.wallet.availablePoints, 35022);
+  const overview = await sandbox.adminRequest({
+    method: 'GET',
+    query: { view: 'reward_overview' }
+  });
+  assert.equal(overview.body.issuedTotal, 22);
+  assert.equal(overview.body.recent.length, 2);
+  assert.equal(sandbox.inspectSyntheticQueue().every((q) =>
+    q.status === 'completed'), true);
+});
