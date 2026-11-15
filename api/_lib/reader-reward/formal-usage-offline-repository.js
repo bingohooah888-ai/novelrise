@@ -5,7 +5,15 @@ import {
   quoteScoutXpLevelUp,
   recheckScoutXpLevelUp
 } from './xp-progression.js';
-import { validateScoutLevelStateSnapshot } from './state-transition.js';
+import {
+  validateScoutLevelStateSnapshot,
+  quoteScoutReviewStateTransition,
+  recheckScoutReviewProposal
+} from './state-transition.js';
+import {
+  quoteScoutMaintenanceWindow,
+  quoteScoutMaintenanceReviewDryRun
+} from './maintenance-review.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const copy = (value) => JSON.parse(JSON.stringify(value));
@@ -74,6 +82,7 @@ export function createOfflineFormalUsageRepository({
   const syntheticEarningLedger = new Map();
   const syntheticXpClaims = new Map();
   const syntheticXpGrantKeys = new Set();
+  const syntheticMaintenanceClaims = new Map();
   let tail = Promise.resolve();
 
   // Only the offline fixture may use this synthetic credit writer. It shares
@@ -272,6 +281,7 @@ export function createOfflineFormalUsageRepository({
       // and history must either ALL change or remain untouched.
       users.set(row.user_id, nextUser);
       syntheticXpClaims.set(row.id, {
+        xpLedgerId: row.id,
         userId: row.user_id,
         xpKind: row.xp_kind,
         points: row.xp_value,
@@ -296,6 +306,119 @@ export function createOfflineFormalUsageRepository({
         levelsGained: gained,
         firstLevelsRewarded: firstLevels,
         pointsAwarded: awardedPoints
+      };
+    } finally {
+      unlock();
+    }
+  }
+
+  // OFFLINE counterpart of the existing private review_scout_30_days RPC.
+  // Serializes against XP application and Wallet spending via the SAME tail.
+  // Snapshot completeness must be checked by the synthetic source fixture.
+  async function reviewSyntheticMaintenance({
+    userId,
+    asOfMs,
+    verifiedLedgerRows,
+    ledgerSnapshotComplete,
+    requiredXpByLevel
+  } = {}) {
+    if (
+      !UUID.test(userId || '') ||
+      !Number.isSafeInteger(asOfMs) ||
+      asOfMs < 0 ||
+      !Array.isArray(verifiedLedgerRows)
+    )
+      return { status: 'review_request_invalid' };
+    let unlock;
+    const next = new Promise((resolve) => {
+      unlock = resolve;
+    });
+    const prior = tail;
+    tail = next;
+    await prior;
+    try {
+      const user = users.get(userId);
+      if (!user?.levelState) return { status: 'formal_state_missing' };
+      const state = user.levelState;
+      const last = state.lastReviewedWindowEndMs;
+      const ordinal =
+        last === null
+          ? 1
+          : 1 + (last - state.reviewAnchorMs) / (30 * 86400000);
+      if (!Number.isSafeInteger(ordinal) || ordinal < 1)
+        return { status: 'review_checkpoint_invalid' };
+      let quote;
+      try {
+        quote = quoteScoutMaintenanceReviewDryRun({
+          accountId: userId,
+          firstWindowStartMs: state.reviewAnchorMs,
+          reviewOrdinal: ordinal,
+          asOfMs,
+          lastReviewedWindowEndMs: last,
+          ledgerSnapshotComplete,
+          verifiedLedgerRows,
+          currentLevel: state.currentLevel,
+          verifiedHistoricalMaxLevel: state.highestLevel,
+          currentLevelProgressXp: state.levelProgressXp
+        });
+      } catch {
+        return { status: 'review_evidence_invalid' };
+      }
+      if (quote.status !== 'quotation_only')
+        return { status: quote.status };
+      let proposal;
+      try {
+        proposal = quoteScoutReviewStateTransition({
+          stateSnapshot: state,
+          reviewQuote: quote
+        });
+      } catch {
+        return { status: 'review_transition_invalid' };
+      }
+      if (proposal.status !== 'proposal_only')
+        return { status: proposal.status };
+      const recheck = recheckScoutReviewProposal({
+        proposal,
+        currentStateSnapshot: state,
+        reviewKeyAlreadyCommitted: syntheticMaintenanceClaims.has(
+          proposal.reviewKey
+        )
+      });
+      if (recheck.status !== 'preconditions_match_only')
+        return { status: recheck.status };
+      const nextLevel = proposal.nextState.currentLevel;
+      const nextUser = copy(user);
+      nextUser.levelState = proposal.nextState;
+      nextUser.account.level = nextLevel;
+      nextUser.account.highestLevel = proposal.nextState.highestLevel;
+      nextUser.account.progressXp = proposal.nextState.levelProgressXp;
+      nextUser.account.requiredXp =
+        nextLevel === 100 ? null : requiredXpByLevel[nextLevel];
+      // A review starts a new 30-day interval. The complete XP ledger still
+      // retains all earned XP in the closed interval for audit.
+      nextUser.account.earnedXpInPeriod = 0;
+      nextUser.account.nextMaintenanceAt = new Date(
+        quote.windowEndMs + 30 * 86400000
+      ).toISOString();
+      // Review NEVER credits/debits Point: preserve Wallet revision/history.
+      users.set(userId, nextUser);
+      syntheticMaintenanceClaims.set(proposal.reviewKey, {
+        userId,
+        windowStartMs: quote.windowStartMs,
+        windowEndMs: quote.windowEndMs,
+        earnedXp: quote.earnedXpInCompleted30DayWindow,
+        demoted: nextLevel < state.currentLevel,
+        levelBefore: state.currentLevel,
+        levelAfter: nextLevel
+      });
+      return {
+        status: 'reviewed',
+        ...quote.reviewOrdinal && { reviewOrdinal: quote.reviewOrdinal },
+        windowStartMs: quote.windowStartMs,
+        windowEndMs: quote.windowEndMs,
+        earnedXp: quote.earnedXpInCompleted30DayWindow,
+        demoted: nextLevel < state.currentLevel,
+        level: nextLevel
       };
     } finally {
       unlock();
@@ -395,6 +518,13 @@ export function createOfflineFormalUsageRepository({
     transact,
     creditSyntheticEarning,
     applySyntheticXpEvent,
+    reviewSyntheticMaintenance,
+    async getSyntheticLevelState(userId) {
+      return copy(users.get(userId)?.levelState ?? null);
+    },
+    getSyntheticMaintenanceSummary() {
+      return [...syntheticMaintenanceClaims.values()].map(copy);
+    },
     getSyntheticXpSummary() {
       return {
         applied: [...syntheticXpClaims.values()].map(copy),
