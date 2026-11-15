@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -24,7 +31,10 @@ async function fixture(t) {
   for (const dir of [productionDir, stagingMigrationDir, observedDir]) {
     await mkdir(dir, { recursive: true });
   }
-  await writeFile(join(productionDir, '20261110172000_main.sql'), 'select 42;\n');
+  await writeFile(
+    join(productionDir, '20261110172000_main.sql'),
+    'select 42;\n'
+  );
   const rows = [{ version: '20261110172000' }];
   for (const filename of STAGING_ONLY_SCOUT_FILES) {
     const sql = 'select 42;\n';
@@ -55,11 +65,14 @@ async function fixture(t) {
   return { productionDir, stagingMigrationDir, observedDir, rows };
 }
 
-test('all four observed archive bytes match fixed actual Staging metadata', async () => {
+test('four archived SQL statements match fixed digests', async () => {
   assert.equal(OBSERVED_SCOUT_STAGING_MIGRATIONS.length, 4);
   for (const item of OBSERVED_SCOUT_STAGING_MIGRATIONS) {
     const file = await readFile(
-      new URL('../supabase/staging-migrations-observed/' + item.filename, import.meta.url)
+      new URL(
+        '../supabase/staging-migrations-observed/' + item.filename,
+        import.meta.url
+      )
     );
     assert.equal(file.length, item.bytes, item.version);
     assert.equal(
@@ -70,7 +83,7 @@ test('all four observed archive bytes match fixed actual Staging metadata', asyn
   }
 });
 
-test('four historical SQL blobs match metadata without implying OWNER approval', async (t) => {
+test('metadata match is not OWNER approval', async (t) => {
   const f = await fixture(t);
   const result = await verifyObservedScoutStagingMigrations({
     remoteRows: f.rows,
@@ -84,12 +97,15 @@ test('four historical SQL blobs match metadata without implying OWNER approval',
   );
 });
 
-test('normal Production migration parity stays fail-closed after successful historical match', async (t) => {
+test('Production parity fails closed on observed histories', async (t) => {
   const f = await fixture(t);
   const sink = {};
   await assert.rejects(
     verifyStagingMigrationParity(
-      { STAGING_SUPABASE_URL: stagingUrl, SUPABASE_ACCESS_TOKEN: 'fixture-only' },
+      {
+        STAGING_SUPABASE_URL: stagingUrl,
+        SUPABASE_ACCESS_TOKEN: 'fixture-only'
+      },
       {
         migrationDir: f.productionDir,
         stagingMigrationDir: f.stagingMigrationDir,
@@ -107,17 +123,25 @@ test('normal Production migration parity stays fail-closed after successful hist
   assert.match(sink.url, /wmlzjgvxgoyrovdhbqbg/);
 });
 
-test('missing, duplicate, name, SQL count, hash, and byte drift all fail', async (t) => {
+test('bad observed history metadata fails closed', async (t) => {
   const f = await fixture(t);
   const version = OBSERVED_SCOUT_STAGING_MIGRATIONS[0].version;
   const item = f.rows.find((row) => row.version === version);
   const variants = [
     f.rows.filter((row) => row.version !== version),
     [...f.rows, item],
-    f.rows.map((row) => row === item ? { ...row, migration_name: 'forged' } : row),
-    f.rows.map((row) => row === item ? { ...row, statement_count: 2 } : row),
-    f.rows.map((row) => row === item ? { ...row, statement_sha256: '0'.repeat(64) } : row),
-    f.rows.map((row) => row === item ? { ...row, statement_bytes: 1 } : row)
+    f.rows.map((row) =>
+      row === item ? { ...row, migration_name: 'forged' } : row
+    ),
+    f.rows.map((row) =>
+      row === item ? { ...row, statement_count: 2 } : row
+    ),
+    f.rows.map((row) =>
+      row === item ? { ...row, statement_sha256: '0'.repeat(64) } : row
+    ),
+    f.rows.map((row) =>
+      row === item ? { ...row, statement_bytes: 1 } : row
+    )
   ];
   for (const rows of variants) {
     await assert.rejects(
@@ -131,9 +155,12 @@ test('missing, duplicate, name, SQL count, hash, and byte drift all fail', async
   }
 });
 
-test('tampered archive and unexpected archived file fail closed', async (t) => {
+test('tampered or unexpected archive fails closed', async (t) => {
   const f = await fixture(t);
-  const original = join(f.observedDir, OBSERVED_SCOUT_STAGING_MIGRATIONS[0].filename);
+  const original = join(
+    f.observedDir,
+    OBSERVED_SCOUT_STAGING_MIGRATIONS[0].filename
+  );
   await writeFile(original, 'select false;\n');
   await assert.rejects(
     verifyObservedScoutStagingMigrations({
@@ -157,7 +184,10 @@ test('tampered archive and unexpected archived file fail closed', async (t) => {
 test('observed SQL must never enter Production migrations', async (t) => {
   const f = await fixture(t);
   const filename = OBSERVED_SCOUT_STAGING_MIGRATIONS[0].filename;
-  await copyFile(join(f.observedDir, filename), join(f.productionDir, filename));
+  await copyFile(
+    join(f.observedDir, filename),
+    join(f.productionDir, filename)
+  );
   await assert.rejects(
     verifyObservedScoutStagingMigrations({
       remoteRows: f.rows,
