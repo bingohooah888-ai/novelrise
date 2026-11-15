@@ -368,10 +368,10 @@ export function createFormalUsagePostgresRepository({
       const ledger = await client.query(
         'select ' +
           "coalesce(sum(point_value) filter (where status='confirmed' and " +
-            issuedPredicate +
+          issuedPredicate +
             ' and point_value>0),0)::text as issued_total, ' +
           "coalesce(sum(point_value) filter (where status='confirmed' and " +
-            issuedPredicate +
+          issuedPredicate +
             " and point_value>0 and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as issued_month, " +
           "coalesce(sum(point_value) filter (where status='confirmed' and point_kind='formal_read_reward' and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as read_month, " +
           "coalesce(sum(point_value) filter (where status='confirmed' and point_kind='formal_comment_reward' and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as comment_month, " +
