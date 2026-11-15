@@ -619,3 +619,43 @@ test('author studio rechecks the same session around offline review reads', asyn
   );
   assert.equal(swapped.main.children.length, 0);
 });
+
+test('owner studio refresh reuses authenticated preview and saved-state reader', async () => {
+  const f = rig();
+  const config = args(f);
+  assert.equal(await attach(config), true);
+  const section = f.main.children[0];
+  const { refresh } = globalThis.NovelightAiBibleOwnerStudio;
+  assert.equal(await refresh(config), true);
+  assert.equal(f.reads, 2);
+  f.marker = '最新の保存済み設定';
+  assert.equal(await refresh(config), true);
+  assert.equal(f.reads, 3);
+  assert.match(section.textContent, /最新の保存済み設定/u);
+  assert.doesNotMatch(section.textContent, /初回の非公開メモ/u);
+  assert.equal(
+    await refresh({ ...config, ownerId: 'wrong-owner' }),
+    false
+  );
+  assert.equal(f.reads, 3);
+  f.revoke();
+  assert.equal(await refresh(config), null);
+  assert.equal(section.removed, true);
+});
+
+test('failed private preview refresh cannot retain the old author content', async () => {
+  const f = rig();
+  const config = args(f);
+  assert.equal(await attach(config), true);
+  const section = f.main.children[0];
+  f.fail = true;
+  const { refresh } = globalThis.NovelightAiBibleOwnerStudio;
+  assert.equal(await refresh(config), false);
+  assert.doesNotMatch(section.textContent, /初回の非公開メモ/u);
+  assert.match(section.textContent, /読み込みに失敗しました/u);
+  // The existing reader retains its no-cost retry control after a transient
+  // read error, but it cannot treat stale owner data as a saved snapshot.
+  f.fail = false;
+  assert.equal(await refresh(config), true);
+  assert.match(section.textContent, /初回の非公開メモ/u);
+});
