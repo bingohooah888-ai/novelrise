@@ -224,7 +224,7 @@ test('author-owned Rank history is visible only in verified formal view', async 
   });
   await panel.reload();
   byTag(root, 'button')
-    .find((button) => button.textContent === '発掘・称号')
+    .find((button) => button.textContent === '自作品の成長')
     .fire('click');
   assert.match(text(root), /作者専用/);
   assert.match(text(root), /作者本人の作品/);
@@ -239,9 +239,10 @@ test('author-owned Rank history is visible only in verified formal view', async 
     fetchSnapshot: async () => ({ ...eligible, formalEnabled: false })
   });
   await blocked.reload();
-  byTag(hidden, 'button')
-    .find((button) => button.textContent === '発掘・称号')
-    .fire('click');
+  assert.equal(
+    byTag(hidden, 'button').some((button) => button.textContent === '自作品の成長'),
+    false
+  );
   assert.doesNotMatch(text(hidden), /作者本人の作品/);
   const unverified = ui.normalizeSnapshot({
     ...eligible,
@@ -273,7 +274,7 @@ test('author-owned Rank history is visible only in verified formal view', async 
   });
   await invalidPanel.reload();
   byTag(invalidRoot, 'button')
-    .find((button) => button.textContent === '発掘・称号')
+    .find((button) => button.textContent === '自作品の成長')
     .fire('click');
   assert.match(text(invalidRoot), /受信 LIGHT SEED：履歴照合中/);
   assert.doesNotMatch(text(invalidRoot), /受信 LIGHT SEED 50個/);
