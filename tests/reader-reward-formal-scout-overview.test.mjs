@@ -55,7 +55,10 @@ test('existing canonical title/SEED tables feed verified reader overview without
   for (const call of calls) {
     assert.deepEqual(call.args, [USER]);
     assert.match(call.sql, /where/i);
-    assert.doesNotMatch(call.sql, /\b(insert|update|delete|create|alter|drop)\b/i);
+    assert.doesNotMatch(
+      call.sql,
+      /\b(insert|update|delete|create|alter|drop)\b/i
+    );
   }
 });
 test('unverified identity cannot cause any query', async () => {
