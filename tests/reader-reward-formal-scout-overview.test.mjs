@@ -32,10 +32,8 @@ function reader({ badges = [badge], seeds = [seed] } = {}) {
     service: createFormalScoutOverviewReader({
       query: async (sql, args) => {
         calls.push({ sql, args });
-        if (sql.includes('scout_badge_definitions'))
-          return { rows: badges };
-        if (sql.includes('seed_discovery_state'))
-          return { rows: seeds };
+        if (sql.includes('scout_badge_definitions')) return { rows: badges };
+        if (sql.includes('seed_discovery_state')) return { rows: seeds };
         throw Error('UNEXPECTED_QUERY');
       }
     })
@@ -67,11 +65,18 @@ test('unverified identity cannot cause any query', async () => {
 });
 test('unearned hidden title stays masked, disabled title remains unawarded', async () => {
   const r = reader({
-    badges: [{
-      ...badge, badge_id: 'reader_secret_001', display_name: 'SECRET NAME',
-      is_hidden: true, enabled: false, status: 'in_progress',
-      earned_at: null, progress_value: '0'
-    }]
+    badges: [
+      {
+        ...badge,
+        badge_id: 'reader_secret_001',
+        display_name: 'SECRET NAME',
+        is_hidden: true,
+        enabled: false,
+        status: 'in_progress',
+        earned_at: null,
+        progress_value: '0'
+      }
+    ]
   });
   const result = await r.service.read(USER);
   assert.equal(result.badges[0].name, '???');
@@ -80,8 +85,16 @@ test('unearned hidden title stays masked, disabled title remains unawarded', asy
 });
 test('NOVA prediction is derived server-side without exposing hidden Rank', async () => {
   const r = reader({
-    seeds: [{ ...seed, seed_type: 'BRONZE', rank_at_seed: 5,
-      highest_rank_seen: 6, best_rank_delta: 1, novel_title: null }]
+    seeds: [
+      {
+        ...seed,
+        seed_type: 'BRONZE',
+        rank_at_seed: 5,
+        highest_rank_seen: 6,
+        best_rank_delta: 1,
+        novel_title: null
+      }
+    ]
   });
   const result = await r.service.read(USER);
   assert.equal(result.seeds[0].novaPrediction, true);
@@ -92,10 +105,14 @@ test('invalid database rows fail closed instead of fabricating an achievement', 
   for (const badges of [[{ ...badge, progress_value: '-1' }], [badge, badge]]) {
     await assert.rejects(() => reader({ badges }).service.read(USER));
   }
-  await assert.rejects(() => reader({
-    seeds: [{ ...seed, best_rank_delta: 4, highest_rank_seen: 3 }]
-  }).service.read(USER));
-  await assert.rejects(() => reader({
-    seeds: [{ ...seed, seed_type: 'OTHER' }]
-  }).service.read(USER));
+  await assert.rejects(() =>
+    reader({
+      seeds: [{ ...seed, best_rank_delta: 4, highest_rank_seen: 3 }]
+    }).service.read(USER)
+  );
+  await assert.rejects(() =>
+    reader({
+      seeds: [{ ...seed, seed_type: 'OTHER' }]
+    }).service.read(USER)
+  );
 });
