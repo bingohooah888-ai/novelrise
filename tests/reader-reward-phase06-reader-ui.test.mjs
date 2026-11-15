@@ -689,7 +689,10 @@ test('reader rate guide exactly matches existing formal rate rules', () => {
         quoteEpisodeRewardTenths(quote.nextRateLevel)
       );
       for (let next = level + 1; next < quote.nextRateLevel; next++) {
-        assert.equal(quoteEpisodeRewardTenths(next), quote.pointsPerEligibleEpisode);
+        assert.equal(
+          quoteEpisodeRewardTenths(next),
+          quote.pointsPerEligibleEpisode
+        );
       }
     } else {
       assert.equal(quote.nextRatePoints, null);
@@ -709,7 +712,7 @@ test('reader rate guide exactly matches existing formal rate rules', () => {
   );
 });
 
-test('reward guide shows verified next milestones without Point operations', async () => {
+test('reward guide shows next milestones without Point actions', async () => {
   const root = new FakeElement('main');
   let reads = 0;
   let writes = 0;
@@ -752,7 +755,7 @@ test('reward guide shows verified next milestones without Point operations', asy
   assert.equal(writes, 0);
 });
 
-test('highest Level and unverified snapshots stay non-operational', async () => {
+test('unverified or maximum Level cannot imply rewards', async () => {
   const root = new FakeElement('main');
   let snapshot = {
     ...base,
