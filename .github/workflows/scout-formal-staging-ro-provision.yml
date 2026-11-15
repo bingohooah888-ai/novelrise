@@ -1,0 +1,85 @@
+name: NOVELIGHT Formal Reader Staging Credential Provision (OWNER only)
+
+# Draft-only until a separately approved main merge; never runs on PR/push.
+# This operation changes a Staging login and a single branch-only Vercel Secret.
+on:
+  workflow_dispatch:
+    inputs:
+      main_sha:
+        description: Exact currently approved main SHA
+        type: string
+        required: true
+      scope:
+        description: scout-formal-reader-credential-staging-v1
+        type: string
+        required: true
+      staging_ref:
+        description: Exact approved Staging project ref
+        type: string
+        required: true
+      preview_branch:
+        description: Exact approved Preview branch
+        type: string
+        required: true
+      confirmation:
+        description: STAGING FORMAL RO APPROVED
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-scout-formal-reader-staging-credential
+  cancel-in-progress: false
+
+jobs:
+  provision-staging-reader-credential:
+    if: >-
+      github.repository == 'bingohooah888-ai/novelrise' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      github.event.sender.id == 317436651 &&
+      github.run_attempt == 1 &&
+      inputs.main_sha == github.sha &&
+      inputs.scope == 'scout-formal-reader-credential-staging-v1' &&
+      inputs.staging_ref == 'wmlzjgvxgoyrovdhbqbg' &&
+      inputs.preview_branch == 'feature/scout-formal-last-mile-integrity-off-20261115' &&
+      inputs.confirmation == 'STAGING FORMAL RO APPROVED'
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 8
+    steps:
+      - name: Checkout only the exact trusted main, without persisted token
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact current main before loading Staging credentials
+        shell: bash
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.main_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_MAIN_SHA"
+          test "$GITHUB_SHA" = "$EXPECTED_MAIN_SHA"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN_SHA"
+      - name: Set up pinned Node version
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Provision only Staging reader login and branch-only encrypted Secret
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.main_sha }}
+          FORMAL_STAGING_SCOPE: ${{ inputs.scope }}
+          FORMAL_STAGING_REF: ${{ inputs.staging_ref }}
+          FORMAL_STAGING_PREVIEW_BRANCH: ${{ inputs.preview_branch }}
+          FORMAL_STAGING_CONFIRMATION: ${{ inputs.confirmation }}
+          STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+        run: node scripts/scout-formal-staging-ro-provision.mjs

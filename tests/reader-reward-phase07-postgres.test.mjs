@@ -310,6 +310,14 @@ test('admin overview reads formal issuance, usage, holds and recent ledger witho
               point_value: '5',
               status: 'confirmed',
               occurred_at: '2026-11-12T00:00:00Z'
+            },
+            {
+              id: '00000000-0000-4000-8000-000000000312',
+              user_id: user,
+              point_kind: 'level_up',
+              point_value: '250',
+              status: 'confirmed',
+              occurred_at: '2026-11-13T00:00:00Z'
             }
           ]
         };
@@ -332,6 +340,8 @@ test('admin overview reads formal issuance, usage, holds and recent ledger witho
   assert.equal(result.pendingExchangeCount, 1);
   assert.equal(result.recent[0].userId, user);
   assert.equal(result.recent[0].points, 5);
+  assert.equal(result.recent[1].kind, 'level_up');
+  assert.equal(result.recent[1].points, 250);
   assert.equal(released, true);
   assert.equal(calls[0].sql, 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   assert.equal(calls.at(-1).sql, 'COMMIT');
@@ -341,6 +351,16 @@ test('admin overview reads formal issuance, usage, holds and recent ledger witho
   assert.ok(
     calls.some(({ sql }) => sql.includes("left(point_kind,7)='formal_'"))
   );
+  const issuedQuery = calls.find(({ sql }) =>
+    sql.includes('as issued_total')
+  )?.sql;
+  assert.match(issuedQuery, /point_kind='level_up'/);
+  assert.match(issuedQuery, /scout_point_usage_credit_claims/);
+  const activityQuery = calls.find(({ sql }) =>
+    sql.includes('order by occurred_at desc,id desc limit 30')
+  )?.sql;
+  assert.match(activityQuery, /point_kind='level_up'/);
+  assert.match(activityQuery, /scout_point_usage_credit_claims/);
   assert.ok(calls.some(({ sql }) => sql.includes("time zone 'Asia/Tokyo'")));
 });
 
