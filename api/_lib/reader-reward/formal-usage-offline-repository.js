@@ -643,9 +643,7 @@ export function createOfflineFormalUsageRepository({
         )
           throw new RangeError('Synthetic cohort reconciliation overflow');
         const ledgerExists =
-          opening.events > 0 ||
-          awarded > 0 ||
-          committed.length > 0;
+          opening.events > 0 || awarded > 0 || committed.length > 0;
         if (ledgerExists) values.ledger_users++;
         else values.wallet_without_ledger_users++;
         const duplicateHistory = new Set(history).size !== history.length;
@@ -670,9 +668,7 @@ export function createOfflineFormalUsageRepository({
         values.wallet_eligible_points += state.wallet.exchangeEligiblePoints;
         values.ledger_confirmed_net_points += canonicalNet;
       }
-      if (
-        Object.values(values).some((v) => !Number.isSafeInteger(v))
-      )
+      if (Object.values(values).some((v) => !Number.isSafeInteger(v)))
         throw new RangeError('Synthetic cohort aggregate overflow');
       return values;
     },
