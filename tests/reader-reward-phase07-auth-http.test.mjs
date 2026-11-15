@@ -342,7 +342,7 @@ test('administrator UI binding calls the authenticated admin handler for queue a
   assert.equal((await admin.loadQueue()).items.length, 0);
 });
 
-test('canonical earning source inspector returns only a safe admin verdict', async () => {
+test('admin earning evidence returns only a safe verdict', async () => {
   const f = fixture({ enabled: false });
   const inspections = [];
   const supabase = {
@@ -396,7 +396,10 @@ test('canonical earning source inspector returns only a safe admin verdict', asy
   assert.deepEqual(inspections, [
     { eventType: 'valid_read_qualified', eventId: op1 }
   ]);
-  assert.doesNotMatch(JSON.stringify(report.result), /PRIVATE_COMMENT|readerId/);
+  assert.doesNotMatch(
+    JSON.stringify(report.result),
+    /PRIVATE_COMMENT|readerId/
+  );
   const malformed = await invoke(
     api.admin,
     request('admin', 'unsupported_type', op1)
