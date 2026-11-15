@@ -468,58 +468,85 @@ export function createFormalUsagePostgresRepository({
     getAdminRewardOverview,
     async readReader(userId) {
       if (!uuid(userId)) return null;
-      const result = await pool.query(
-        'select user_id,available_points,exchange_eligible_points,' +
-          'reserved_points,held_points,revision from ' +
-          TABLE +
-          '.scout_point_usage_wallets where user_id=$1::uuid',
-        [userId]
-      );
-      const wallet = rowWallet(result?.rows?.[0]);
-      if (!wallet) return null;
-      await canonicalReader.assertWalletCoherent(userId, wallet);
-      const [account, history, pending] = await Promise.all([
-        readFormalAccount(userId),
-        readCanonicalPointHistory(userId),
-        pool.query(
-          'select operation_id,purpose,amount_points,phase,created_at ' +
-            'from ' +
+      // Wallet, canonical ledger, Level/XP and pending usage must describe
+      // one database snapshot. Separate pool queries can falsely report a
+      // coherent wallet as out-of-sync during a concurrent Point award.
+      const client = await pool.connect();
+      let begun = false;
+      try {
+        await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+        begun = true;
+        const query = client.query.bind(client);
+        const result = await query(
+          'select user_id,available_points,exchange_eligible_points,' +
+            'reserved_points,held_points,revision from ' +
             TABLE +
-            '.scout_point_usage_operations ' +
-            "where user_id=$1::uuid and phase in ('reserved','released') " +
-            'order by created_at desc limit 40',
+            '.scout_point_usage_wallets where user_id=$1::uuid',
           [userId]
-        )
-      ]);
-      if (!account || !Array.isArray(history) || !Array.isArray(pending?.rows))
-        throw new Error('FORMAL_REWARD_AUTHORITATIVE_READER_UNAVAILABLE');
-      const usageHistory = pending.rows.map((row) => {
-        if (
-          !uuid(row.operation_id) ||
-          !PURPOSES.has(row.purpose) ||
-          !['reserved', 'released'].includes(row.phase)
-        )
-          throw new Error('FORMAL_REWARD_OPERATION_HISTORY_INVALID');
-        return {
-          operationId: row.operation_id,
-          kind: row.purpose === 'ai_direct_use' ? 'ai' : 'exchange',
-          points: -int(row.amount_points, 'pending operation'),
-          status: row.phase === 'reserved' ? 'pending' : 'cancelled',
-          at: new Date(row.created_at).toISOString()
+        );
+        const wallet = rowWallet(result?.rows?.[0]);
+        if (!wallet) {
+          await client.query('COMMIT');
+          begun = false;
+          return null;
+        }
+        await canonicalReader.assertWalletCoherent(userId, wallet, query);
+        // The bundled canonical readers accept the transaction executor.
+        // Custom server-injected readers must also honor this executor.
+        const [account, history, pending] = await Promise.all([
+          readFormalAccount(userId, query),
+          readCanonicalPointHistory(userId, query),
+          query(
+            'select operation_id,purpose,amount_points,phase,created_at ' +
+              'from ' +
+              TABLE +
+              '.scout_point_usage_operations ' +
+              "where user_id=$1::uuid and phase in ('reserved','released') " +
+              'order by created_at desc limit 40',
+            [userId]
+          )
+        ]);
+        if (!account || !Array.isArray(history) || !Array.isArray(pending?.rows))
+          throw new Error('FORMAL_REWARD_AUTHORITATIVE_READER_UNAVAILABLE');
+        const usageHistory = pending.rows.map((row) => {
+          if (
+            !uuid(row.operation_id) ||
+            !PURPOSES.has(row.purpose) ||
+            !['reserved', 'released'].includes(row.phase)
+          )
+            throw new Error('FORMAL_REWARD_OPERATION_HISTORY_INVALID');
+          return {
+            operationId: row.operation_id,
+            kind: row.purpose === 'ai_direct_use' ? 'ai' : 'exchange',
+            points: -int(row.amount_points, 'pending operation'),
+            status: row.phase === 'reserved' ? 'pending' : 'cancelled',
+            at: new Date(row.created_at).toISOString()
+          };
+        });
+        const totalHeld = wallet.heldPoints + wallet.reservedPoints;
+        if (!Number.isSafeInteger(totalHeld))
+          throw new RangeError('FORMAL_REWARD_HELD_SUM_OVERFLOW');
+        wallet.heldPoints = totalHeld;
+        const snapshot = {
+          wallet,
+          account,
+          history: [...usageHistory, ...history].slice(0, 80)
         };
-      });
-      // The DB bigint fields are parsed as safe integers individually, but
-      // their combined display value can still overflow JavaScript integers.
-      // Never return a rounded Point balance to a reader.
-      const totalHeld = wallet.heldPoints + wallet.reservedPoints;
-      if (!Number.isSafeInteger(totalHeld))
-        throw new RangeError('FORMAL_REWARD_HELD_SUM_OVERFLOW');
-      wallet.heldPoints = totalHeld;
-      return {
-        wallet,
-        account,
-        history: [...usageHistory, ...history].slice(0, 80)
-      };
+        await client.query('COMMIT');
+        begun = false;
+        return snapshot;
+      } catch (error) {
+        if (begun) {
+          try {
+            await client.query('ROLLBACK');
+          } catch {
+            // Retain the original authoritative read failure.
+          }
+        }
+        throw error;
+      } finally {
+        client.release();
+      }
     },
     async findOperation(operationId) {
       if (!uuid(operationId)) return null;
