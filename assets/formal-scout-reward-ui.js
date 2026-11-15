@@ -17,6 +17,53 @@
     Number.isSafeInteger(level) && level >= 1 && level <= 100
       ? SCOUT_RANK_NAMES[Math.floor((level - 1) / 10)]
       : null;
+  const REWARD_LEVEL_BANDS = Object.freeze([
+    [1, 19],
+    [20, 39],
+    [40, 59],
+    [60, 69],
+    [70, 74],
+    [75, 79],
+    [80, 84],
+    [85, 89],
+    [90, 94],
+    [95, 99],
+    [100, 100]
+  ]);
+  // Browser quote only. Authoritative issuance and eligible-read checks stay
+  // exclusively in the future trusted server implementation (rates.js).
+  function quoteFormalRewardGuide(level) {
+    if (!Number.isSafeInteger(level) || level < 1 || level > 100)
+      return null;
+    const points = level < 20
+      ? 1
+      : level < 40
+        ? 2
+        : level < 60
+          ? 3
+          : level < 70
+            ? 4
+            : 5 + Math.floor((level - 70) / 5);
+    const nextRateBand = REWARD_LEVEL_BANDS.find(
+      ([start]) => start > level
+    );
+    const nextRankLevel = Math.floor((level - 1) / 10) * 10 + 11;
+    const nextRateLevel = nextRateBand?.[0] ?? null;
+    return Object.freeze({
+      level,
+      pointsPerEligibleEpisode: points,
+      nextRateLevel,
+      nextRatePoints:
+        nextRateLevel === null
+          ? null
+          : quoteFormalRewardGuide(nextRateLevel).pointsPerEligibleEpisode,
+      nextRankLevel: nextRankLevel <= 100 ? nextRankLevel : null,
+      nextRankName:
+        nextRankLevel <= 100 ? rankAtLevel(nextRankLevel) : null,
+      pointsPerEligibleComment: 20,
+      commentMonthlyLimit: 50
+    });
+  }
   const number = (value) => Number(value).toLocaleString('ja-JP');
   const validPoints = (value) => Number.isSafeInteger(value) && value >= 0;
   const yen = (points) =>
@@ -427,11 +474,12 @@
         : '現在は正式版の準備中です。Pointの交換・AI直接利用はまだできません。';
     }
     function selectTab(name) {
-      if (!['history', 'scout', 'exchange', 'ai'].includes(name)) return;
+      if (!['history', 'scout', 'guide', 'exchange', 'ai'].includes(name)) return;
       tab = name;
       tabs.replaceChildren();
       for (const [key, title] of [
         ['scout', '発掘・称号'],
+        ['guide', '報酬ガイド'],
         ['history', '報酬・利用履歴'],
         ['exchange', 'デジタルギフト交換'],
         ['ai', 'AIに使う']
@@ -445,9 +493,92 @@
       }
       contents.replaceChildren();
       if (tab === 'scout') drawScout();
+      else if (tab === 'guide') drawGuide();
       else if (tab === 'history') drawHistory();
       else if (tab === 'exchange') drawExchange();
       else drawAi();
+    }
+    function drawGuide() {
+      contents.append(
+        el('h3', '', 'レベル別・読書報酬の目安'),
+        el(
+          'p',
+          'rr-muted',
+          '正式版の予定レートです。Pointが付くのはサーバーが適格と確認した読書・コメントのみ。閲覧だけでは付与されません。'
+        )
+      );
+      const guide = quoteFormalRewardGuide(latest.level);
+      if (!guide) {
+        contents.append(
+          el(
+            'p',
+            'rr-warning',
+            '本人確認済みのScout Levelを取得できていません。現在の獲得見込は表示しません。'
+          )
+        );
+      } else {
+        const summary = el('div', 'rr-guide-summary');
+        summary.append(
+          metric(
+            '現在の読書報酬目安',
+            number(guide.pointsPerEligibleEpisode) + ' pt / 適格1話',
+            'Lv.' + guide.level + ' の予定レート'
+          ),
+          metric(
+            '次の読書単価',
+            guide.nextRateLevel === null
+              ? '最高レート'
+              : 'Lv.' + guide.nextRateLevel,
+            guide.nextRateLevel === null
+              ? '11 pt / 適格1話'
+              : number(guide.nextRatePoints) +
+                ' pt / 適格1話まで あと' +
+                number(guide.nextRateLevel - guide.level) +
+                ' Lv'
+          ),
+          metric(
+            '次のScout Rank',
+            guide.nextRankLevel === null
+              ? '最高Rank'
+              : guide.nextRankName,
+            guide.nextRankLevel === null
+              ? 'Lv.100まで到達'
+              : 'Lv.' + guide.nextRankLevel +
+                ' まで あと' +
+                number(guide.nextRankLevel - guide.level) +
+                ' Lv'
+          )
+        );
+        contents.append(summary);
+      }
+      const rateList = el('div', 'rr-guide-rates');
+      rateList.setAttribute('aria-label', 'レベル別適格読書報酬');
+      for (const [start, end] of REWARD_LEVEL_BANDS) {
+        const row = el('div', 'rr-guide-rate-row');
+        if (guide && guide.level >= start && guide.level <= end) {
+          row.className += ' rr-guide-current';
+          row.setAttribute('aria-current', 'true');
+        }
+        row.append(
+          el('span', '', 'Lv.' + start + (end === start ? '' : '〜' + end)),
+          el('strong', '', quoteFormalRewardGuide(start).pointsPerEligibleEpisode + ' pt / 話')
+        );
+        rateList.append(row);
+      }
+      contents.append(
+        el('h3', '', '適格読書のレベル別予定レート'),
+        rateList,
+        el(
+          'p',
+          'rr-muted',
+          '適格コメントは1件20 pt、月50件まで（審査・読書記録などの条件あり）。有効読書・コメントの実際の付与可否はサーバー側で判定します。'
+        ),
+        el(
+          'p',
+          'rr-warning',
+          '正式報酬は公開OFFです。この案内は計算上の目安であり、Pointの付与・予約・交換・AI利用を開始しません。'
+        )
+      );
     }
     function drawHistory() {
       contents.append(
@@ -985,6 +1116,7 @@
   globalThis.NovelightFormalScoutReward = Object.freeze({
     POINTS_PER_YEN,
     rankAtLevel,
+    quoteFormalRewardGuide,
     MIN_EXCHANGE_POINTS,
     normalizeSnapshot,
     createRewardReaderPanel
