@@ -210,7 +210,17 @@ export function createOfflineOwnerNovelBibleCheckpoint({
       progress?.completedIndices?.includes(chunkIndex) ||
       (!progress && snapshot?.row.source_hash === scope.sourceHash)
     ) {
-      return { complete: true, alreadyRecorded: true };
+      const complete =
+        progress?.completed === true ||
+        progress?.state === 'complete' ||
+        (!progress && snapshot?.row.source_hash === scope.sourceHash);
+      return {
+        complete,
+        alreadyRecorded: true,
+        remainingChunks: complete
+          ? 0
+          : scope.chunkCount - progress.completedIndices.length
+      };
     }
     const completedIndices = [
       ...(progress?.completedIndices ?? []),
