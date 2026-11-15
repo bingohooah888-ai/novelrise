@@ -340,16 +340,22 @@ export function createOwnerBibleAnalyzeApiHandler({
         !Number.isSafeInteger(outcome.stagedCount) ||
         outcome.stagedCount < 0 ||
         outcome.stagedCount > 12 ||
-        outcome.requiresAuthorReview !== true
+        !(
+          outcome.requiresAuthorReview === true ||
+          (outcome.stagedCount === 0 &&
+            outcome.requiresAuthorReview === false)
+        )
       ) {
         return fail(res, 503, 'AI_TRIAL_UNAVAILABLE');
       }
-      // Strict response projection: never echo prompts, unpublished text,
-      // provider output, credentials or private creative notes to browsers.
+      // A server-confirmed, already-completed checkpoint returns a strict
+      // zero-work receipt, not a 503 that invites another paid POST. This is
+      // NOT evidence that a concurrent in-flight duplicate was cancelled.
+      // Never echo prompts, unpublished text, secrets or provider output.
       return res.status(200).json({
         novelId: input.novelId,
         stagedCount: outcome.stagedCount,
-        requiresAuthorReview: true
+        requiresAuthorReview: outcome.requiresAuthorReview
       });
     } catch (error) {
       if (

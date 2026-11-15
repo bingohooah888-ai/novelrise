@@ -206,12 +206,16 @@
           !Number.isSafeInteger(result?.stagedCount) ||
           result.stagedCount < 0 ||
           result.stagedCount > 12 ||
-          result.requiresAuthorReview !== true
+          !(
+            result.requiresAuthorReview === true ||
+            (result.stagedCount === 0 &&
+              result.requiresAuthorReview === false)
+          )
         ) unavailable();
         return Object.freeze({
           novelId: work,
           stagedCount: result.stagedCount,
-          requiresAuthorReview: true
+          requiresAuthorReview: result.requiresAuthorReview
         });
       } catch {
         // Unknown execution outcomes stay locked. This is NOT a provider

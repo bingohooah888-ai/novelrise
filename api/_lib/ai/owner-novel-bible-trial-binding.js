@@ -23,7 +23,11 @@ export function createOwnerNovelBibleTrialBridgeFactory({
   policyRevision,
   providers,
   routes,
-  createClientImpl
+  createClientImpl,
+  // Explicit offline/test-only opt-in to the existing trusted CAS journal.
+  // Omitted by the production guarded trial factory; never enables a route.
+  checkpointEnabled = false,
+  checkpointRepository
 } = {}) {
   if (!enabled || externalProcessingApproved !== true) return null;
 
@@ -37,6 +41,11 @@ export function createOwnerNovelBibleTrialBridgeFactory({
   const selected = routes?.['novel-bible'];
   if (
     !verified ||
+    typeof checkpointEnabled !== 'boolean' ||
+    (checkpointRepository !== undefined &&
+      (checkpointEnabled !== true ||
+        typeof checkpointRepository?.readSnapshot !== 'function' ||
+        typeof checkpointRepository?.compareAndSwap !== 'function')) ||
     typeof policyRevision !== 'string' ||
     !POLICY_REVISION.test(policyRevision) ||
     !Array.isArray(selected) ||
@@ -98,7 +107,9 @@ export function createOwnerNovelBibleTrialBridgeFactory({
       createAuthorClient,
       permissionCheck,
       providers,
-      routes
+      routes,
+      checkpointEnabled,
+      ...(checkpointRepository === undefined ? {} : { checkpointRepository })
     });
   };
 }
