@@ -100,7 +100,7 @@ test('both dormant SQL drafts retain Lv.100 XP claims and count full ledger XP f
     /for v_promoted in \(v_state\.current_level\+1\)\.\.v_level loop/i
   );
   assert.match(source, /on conflict\(event_key\) do nothing/i);
-  assert.match(source, /XP at Lv\.100/i);
+  assert.match(source, /OWNER-approved cap: a Lv\.100 XP ledger event/i);
   assert.match(baseline, /FULL XP for 30-day maintenance/i);
   assert.match(source, /'level_100_progress_invalid'/i);
   assert.doesNotMatch(source, /'level_100_surplus_policy_pending'/i);
