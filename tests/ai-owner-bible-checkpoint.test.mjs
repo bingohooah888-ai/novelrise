@@ -136,9 +136,7 @@ test('existing acknowledged hash is retained until changed chunks all complete',
     await checkpoint.record(args(plan, i));
     assert.equal(
       store.row.source_hash,
-      i === plan.chunks.length - 1
-        ? plan.chunks[0].sourceHash
-        : beforeHash
+      i === plan.chunks.length - 1 ? plan.chunks[0].sourceHash : beforeHash
     );
     assert.equal(store.row.summary.legacySummary, 'keep');
   }
@@ -291,5 +289,8 @@ test('existing analysis table adapter performs insert then version-guarded updat
   });
   assert.equal(updated.revision, 2);
   assert.equal(updated.source_hash, 'c'.repeat(64));
-  assert.deepEqual(writes.map((entry) => entry[0]), ['insert', 'update']);
+  assert.deepEqual(
+    writes.map((entry) => entry[0]),
+    ['insert', 'update']
+  );
 });
