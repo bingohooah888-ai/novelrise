@@ -6,6 +6,7 @@
 import { createOwnerBibleReviewWorkflow } from './owner-bible-review-workflow.js';
 import { createSupabaseOwnerBibleReviewRepository } from './owner-bible-review-repository.js';
 import { createOwnerNovelBibleModelBridge } from './owner-novel-bible-model-bridge.js';
+import { createOwnerNovelBibleVerifiedHistoryReader } from './owner-novel-bible-verified-history.js';
 import { createAiRouter } from './router.js';
 import {
   createSupabaseAiAudit,
@@ -58,6 +59,13 @@ export function createOwnerNovelBibleTrialRuntime({
     unavailable();
   }
   const owner = ownerId.toLowerCase();
+  // The offline trial uses the existing authoritative analysis checkpoint
+  // and revision storage, not HTTP-provided previous chapter text. Tests may
+  // inject a synthetic reader; no public route or paid model is enabled here.
+  const historyReader =
+    readVerifiedHistory === undefined
+      ? createOwnerNovelBibleVerifiedHistoryReader({ serviceClient })
+      : readVerifiedHistory;
 
   async function verifyOwner(token) {
     if (
@@ -171,7 +179,7 @@ export function createOwnerNovelBibleTrialRuntime({
         aiRouter: router,
         reviewWorkflow: workflow,
         permissionCheck,
-        readVerifiedHistory
+        readVerifiedHistory: historyReader
       });
       // Only the bridge sees the request. It must independently verify the
       // live episode and consent and validate all evidence before staging.
