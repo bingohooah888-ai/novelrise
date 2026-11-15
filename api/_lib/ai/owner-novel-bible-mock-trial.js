@@ -36,6 +36,9 @@ function validateFixture(snapshot, actorId, novelId) {
     !Array.isArray(snapshot.episodes) ||
     snapshot.episodes.length > MAX_EPISODES ||
     !Array.isArray(snapshot.analyses) ||
+    (snapshot.previousEpisodes !== undefined &&
+      (!Array.isArray(snapshot.previousEpisodes) ||
+        snapshot.previousEpisodes.length > MAX_EPISODES)) ||
     !Array.isArray(snapshot.authorConfirmedFacts) ||
     snapshot.authorConfirmedFacts.length > 100
   ) {
@@ -85,6 +88,7 @@ export function createOfflineNovelBibleTrial({
         novel: first.novel,
         episodes: first.episodes,
         analyses: first.analyses,
+        previousEpisodes: first.previousEpisodes ?? [],
         limit: MAX_EPISODES
       });
       const selected = plan.chunks.slice(0, maxChunks);
@@ -152,7 +156,11 @@ export function createOfflineNovelBibleTrial({
       );
       if (
         JSON.stringify(latest.authorConfirmedFacts) !==
-        JSON.stringify(first.authorConfirmedFacts)
+          JSON.stringify(first.authorConfirmedFacts) ||
+        JSON.stringify(latest.analyses) !==
+          JSON.stringify(first.analyses) ||
+        JSON.stringify(latest.previousEpisodes ?? []) !==
+          JSON.stringify(first.previousEpisodes ?? [])
       ) {
         denied();
       }
