@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 import { createOwnerBibleAnalyzeApiHandler } from '../api/ai-owner-bible-analyze.js';
 import '../novelight-ai-bible-trial-offline-http.js';
