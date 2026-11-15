@@ -161,3 +161,168 @@ test('admin monitoring query traverses existing same-origin authenticated transp
   );
   assert.equal(urls.length, 1);
 });
+
+test('formal admin badge, wallet and recovery audits reach existing authenticated GET views', async () => {
+  const g = browser();
+  const calls = [];
+  const request = g.NovelightFormalRewardTransport.createFormalRewardTransport({
+    endpoint: '/api/formal-reward-admin',
+    getAccessToken: async () => 'operator-session',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({ ok: true, status: 'review_only' })
+      };
+    }
+  });
+  const admin = g.NovelightFormalRewardAdmin.createFormalAdminBindings({
+    request
+  });
+  for (const [method, view] of [
+    ['loadBadgeCatalog', 'badge_catalog'],
+    ['loadBadgeHistory', 'badge_history'],
+    ['loadWalletCohort', 'wallet_cohort'],
+    ['loadSettlementRecovery', 'settlement_recovery']
+  ]) {
+    await admin[method]();
+    const call = calls.at(-1);
+    assert.equal(call.url, '/api/formal-reward-admin?view=' + view);
+    assert.equal(call.options.method, 'GET');
+    assert.equal(call.options.credentials, 'same-origin');
+    assert.equal(call.options.cache, 'no-store');
+    assert.equal(call.options.headers.Authorization, 'Bearer operator-session');
+    assert.equal(Object.hasOwn(call.options, 'body'), false);
+  }
+  assert.equal(calls.length, 4);
+  await assert.rejects(
+    request({ method: 'GET', query: { view: 'admin_secrets' } }),
+    /query rejected/
+  );
+  await assert.rejects(
+    request({ method: 'POST', query: { view: 'badge_catalog' } }),
+    /POST query rejected/
+  );
+  assert.equal(calls.length, 4);
+});
+
+test('explicit new reader inspection uses existing authenticated read-only view', async () => {
+  const g = browser();
+  const calls = [];
+  const request = g.NovelightFormalRewardTransport.createFormalRewardTransport({
+    endpoint: '/api/formal-reward-reader',
+    getAccessToken: async () => 'synthetic-reader-session',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          status: 'new_reader_ready_for_initialization',
+          initialLevel: 1,
+          initialAvailablePoints: 0
+        })
+      };
+    }
+  });
+  const reader =
+    g.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings({
+      request,
+      nextOperationId: () => UUID
+    });
+  assert.equal(calls.length, 0);
+  const report = await reader.inspectNewReader();
+  assert.equal(report.status, 'new_reader_ready_for_initialization');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, '/api/formal-reward-reader?view=new_reader');
+  assert.equal(calls[0].options.method, 'GET');
+  assert.equal(calls[0].options.credentials, 'same-origin');
+  assert.equal(calls[0].options.cache, 'no-store');
+  assert.equal(
+    calls[0].options.headers.Authorization,
+    'Bearer synthetic-reader-session'
+  );
+  assert.equal(Object.hasOwn(calls[0].options, 'body'), false);
+  await assert.rejects(
+    request({ method: 'POST', query: { view: 'new_reader' } }),
+    /POST query rejected/
+  );
+  assert.equal(calls.length, 1);
+});
+
+test('admin earning-source GET validates event type and UUID', async () => {
+  const g = browser();
+  const requests = [];
+  const request = g.NovelightFormalRewardTransport.createFormalRewardTransport({
+    endpoint: '/api/formal-reward-admin',
+    getAccessToken: async () => 'operator-session',
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          eventType: 'valid_read_qualified',
+          status: 'canonical_source_verified',
+          mayIssuePoints: false
+        })
+      };
+    }
+  });
+  const admin = g.NovelightFormalRewardAdmin.createFormalAdminBindings({
+    request
+  });
+  assert.equal(requests.length, 0);
+  const result = await admin.inspectEarningSource({
+    eventType: 'valid_read_qualified',
+    eventId: UUID
+  });
+  assert.equal(result.status, 'canonical_source_verified');
+  assert.equal(requests.length, 1);
+  assert.equal(
+    requests[0].url,
+    '/api/formal-reward-admin?view=earning_source' +
+      '&eventType=valid_read_qualified&eventId=' +
+      UUID
+  );
+  assert.equal(requests[0].options.method, 'GET');
+  assert.equal(requests[0].options.credentials, 'same-origin');
+  assert.equal(requests[0].options.cache, 'no-store');
+  assert.equal(
+    requests[0].options.headers.Authorization,
+    'Bearer operator-session'
+  );
+  assert.equal(Object.hasOwn(requests[0].options, 'body'), false);
+  for (const query of [
+    { view: 'earning_source', eventType: 'made_up', eventId: UUID },
+    {
+      view: 'earning_source',
+      eventType: 'novel_episode_comment_reviewed',
+      eventId: 'not-a-uuid'
+    },
+    {
+      view: 'earning_source',
+      eventType: 'valid_read_qualified',
+      eventId: UUID,
+      userId: UUID
+    },
+    { view: 'earning_source', eventId: UUID }
+  ]) {
+    await assert.rejects(
+      request({ method: 'GET', query }),
+      /source query rejected/
+    );
+  }
+  await assert.rejects(
+    request({
+      method: 'POST',
+      query: {
+        view: 'earning_source',
+        eventType: 'valid_read_qualified',
+        eventId: UUID
+      }
+    }),
+    /POST query rejected/
+  );
+  assert.equal(requests.length, 1);
+});

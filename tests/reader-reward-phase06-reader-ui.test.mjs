@@ -196,7 +196,14 @@ test('author-owned Rank history is visible only in verified formal view', async 
           title: '作者本人の作品',
           rank: 4,
           rankName: 'BEACON',
-          peakRank: 5
+          peakRank: 5,
+          receivedSeeds: {
+            total: 5,
+            gold: 2,
+            silver: 1,
+            bronze: 1,
+            legacy: 1
+          }
         }
       ],
       events: [
@@ -222,6 +229,8 @@ test('author-owned Rank history is visible only in verified formal view', async 
   assert.match(text(root), /作者本人の作品/);
   assert.match(text(root), /BEACON/);
   assert.match(text(root), /Rank 4/);
+  assert.match(text(root), /受信 LIGHT SEED 5個/);
+  assert.match(text(root), /GOLD 2 \/ SILVER 1 \/ BRONZE 1 \/ 旧形式 1/);
   assert.match(text(root), /昇格/);
   const hidden = new FakeElement('main');
   const blocked = ui.createRewardReaderPanel({
@@ -238,6 +247,35 @@ test('author-owned Rank history is visible only in verified formal view', async 
     serverVerified: false
   });
   assert.equal(unverified.authorGrowth, null);
+  const malformed = {
+    ...eligible,
+    authorGrowth: {
+      ...eligible.authorGrowth,
+      works: [
+        {
+          ...eligible.authorGrowth.works[0],
+          receivedSeeds: {
+            total: 50,
+            gold: 2,
+            silver: 1,
+            bronze: 1,
+            legacy: 1
+          }
+        }
+      ]
+    }
+  };
+  const invalidRoot = new FakeElement('main');
+  const invalidPanel = ui.createRewardReaderPanel({
+    root: invalidRoot,
+    fetchSnapshot: async () => malformed
+  });
+  await invalidPanel.reload();
+  byTag(invalidRoot, 'button')
+    .find((button) => button.textContent === '発掘・称号')
+    .fire('click');
+  assert.match(text(invalidRoot), /受信 LIGHT SEED：履歴照合中/);
+  assert.doesNotMatch(text(invalidRoot), /受信 LIGHT SEED 50個/);
 });
 
 test('unverified wallet cannot display usable balances or activate reward actions', async () => {
@@ -457,4 +495,88 @@ test('out-of-order snapshot responses cannot re-enable expired permissions', asy
   await old;
   assert.equal(panel.getSnapshot().formalEnabled, false);
   assert.equal(panel.getSnapshot().available, null);
+});
+
+test('new reader inspection is GET-only and explicit initialization is gated by verified readiness', async () => {
+  const root = new FakeElement('main');
+  let inspected = 0;
+  let initialized = 0;
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => base,
+    newReaderOnboardingAvailable: true,
+    inspectNewReader: async () => {
+      inspected++;
+      return { ok: true, status: 'new_reader_ready_for_initialization' };
+    },
+    initializeNewReader: async () => {
+      initialized++;
+      return { status: 'new_reader_initialized' };
+    }
+  });
+  const button = byTag(root, 'button').find(
+    (item) => item.textContent === '正式スカウトを利用開始'
+  );
+  assert.equal(button.disabled, true);
+  assert.equal(initialized, 0);
+  await tick();
+  assert.equal(inspected, 1);
+  assert.equal(button.disabled, false);
+  assert.match(text(root), /正式登録が可能です/);
+  await button.fire('click');
+  await panel.reload();
+  assert.equal(initialized, 1);
+  assert.equal(button.disabled, true);
+  assert.match(text(root), /正式登録済みです/);
+  await button.fire('click');
+  assert.equal(initialized, 1);
+});
+
+test('missing, failed and unverified new-reader evidence never enables initialization', async () => {
+  for (const status of [
+    { ok: false, status: 'new_reader_ready_for_initialization' },
+    { ok: true, status: 'new_reader_partial_state_hold' },
+    { ok: true, status: 'new_reader_already_initialized' },
+    null
+  ]) {
+    let initialized = 0;
+    const root = new FakeElement('main');
+    ui.createRewardReaderPanel({
+      root,
+      fetchSnapshot: async () => base,
+      newReaderOnboardingAvailable: true,
+      inspectNewReader: async () => status,
+      initializeNewReader: async () => {
+        initialized++;
+      }
+    });
+    await tick();
+    const button = byTag(root, 'button').find(
+      (item) => item.textContent === '正式スカウトを利用開始'
+    );
+    assert.equal(button.disabled, true);
+    await button.fire('click');
+    assert.equal(initialized, 0);
+  }
+  let inspected = 0;
+  const off = new FakeElement('main');
+  ui.createRewardReaderPanel({
+    root: off,
+    fetchSnapshot: async () => base,
+    inspectNewReader: async () => {
+      inspected++;
+    },
+    newReaderOnboardingAvailable: false,
+    initializeNewReader: async () => {
+      throw Error('MUST_NOT_INITIALIZE');
+    }
+  });
+  await tick();
+  assert.equal(inspected, 0);
+  assert.equal(
+    byTag(off, 'button').some(
+      (item) => item.textContent === '正式スカウトを利用開始'
+    ),
+    false
+  );
 });
