@@ -112,7 +112,12 @@ function changedWindow(previous, current) {
 // Prior snapshots are OPTIONAL, and MUST come from trusted server-side
 // historical records. Each snapshot is tied to the acknowledged analysis hash;
 // an unverified/mismatched history fails closed instead of shaping prompts.
-function checkedHistoricalEpisodes(previousEpisodes, episodes, analyses, novelId) {
+function checkedHistoricalEpisodes(
+  previousEpisodes,
+  episodes,
+  analyses,
+  novelId
+) {
   if (
     !Array.isArray(previousEpisodes) ||
     previousEpisodes.length > episodes.length
@@ -123,12 +128,19 @@ function checkedHistoricalEpisodes(previousEpisodes, episodes, analyses, novelId
   );
   const historical = new Map();
   for (const old of previousEpisodes) {
-    const episodeId = Number(old?.id);
+    if (
+      !old ||
+      typeof old !== 'object' ||
+      Array.isArray(old) ||
+      !['number', 'string'].includes(typeof old.id) ||
+      !['number', 'string'].includes(typeof old.novel_id)
+    ) invalid();
+    const episodeId = Number(old.id);
     if (
       !validId(episodeId) ||
-      !/^[1-9]\\d*$/.test(String(old.id)) ||
+      !/^[1-9]\d*$/.test(String(old.id)) ||
       Number(old.novel_id) !== novelId ||
-      !/^[1-9]\\d*$/.test(String(old.novel_id)) ||
+      !/^[1-9]\d*$/.test(String(old.novel_id)) ||
       !currentIds.has(episodeId) ||
       historical.has(episodeId) ||
       typeof old.title !== 'string' ||
@@ -184,7 +196,7 @@ export function planNovelBibleChangedChunks({
       const window = changedWindow(old.content, episode.content);
       text = episode.content.slice(window.start, window.end);
       offset = window.start;
-      if (text.length === 0 && episode.content.length > 0) {
+      if (text.length === 0) {
         deletionOnlyEpisodes.push(episodeId);
         continue;
       }
