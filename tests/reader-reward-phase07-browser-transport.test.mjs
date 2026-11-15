@@ -249,3 +249,80 @@ test('explicit new reader inspection uses existing authenticated read-only view'
   );
   assert.equal(calls.length, 1);
 });
+
+test('admin earning-source GET validates event type and UUID', async () => {
+  const g = browser();
+  const requests = [];
+  const request = g.NovelightFormalRewardTransport.createFormalRewardTransport({
+    endpoint: '/api/formal-reward-admin',
+    getAccessToken: async () => 'operator-session',
+    fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          eventType: 'valid_read_qualified',
+          status: 'canonical_source_verified',
+          mayIssuePoints: false
+        })
+      };
+    }
+  });
+  const admin = g.NovelightFormalRewardAdmin.createFormalAdminBindings({
+    request
+  });
+  assert.equal(requests.length, 0);
+  const result = await admin.inspectEarningSource({
+    eventType: 'valid_read_qualified',
+    eventId: UUID
+  });
+  assert.equal(result.status, 'canonical_source_verified');
+  assert.equal(requests.length, 1);
+  assert.equal(
+    requests[0].url,
+    '/api/formal-reward-admin?view=earning_source' +
+      '&eventType=valid_read_qualified&eventId=' +
+      UUID
+  );
+  assert.equal(requests[0].options.method, 'GET');
+  assert.equal(requests[0].options.credentials, 'same-origin');
+  assert.equal(requests[0].options.cache, 'no-store');
+  assert.equal(
+    requests[0].options.headers.Authorization,
+    'Bearer operator-session'
+  );
+  assert.equal(Object.hasOwn(requests[0].options, 'body'), false);
+  for (const query of [
+    { view: 'earning_source', eventType: 'made_up', eventId: UUID },
+    {
+      view: 'earning_source',
+      eventType: 'novel_episode_comment_reviewed',
+      eventId: 'not-a-uuid'
+    },
+    {
+      view: 'earning_source',
+      eventType: 'valid_read_qualified',
+      eventId: UUID,
+      userId: UUID
+    },
+    { view: 'earning_source', eventId: UUID }
+  ]) {
+    await assert.rejects(
+      request({ method: 'GET', query }),
+      /source query rejected/
+    );
+  }
+  await assert.rejects(
+    request({
+      method: 'POST',
+      query: {
+        view: 'earning_source',
+        eventType: 'valid_read_qualified',
+        eventId: UUID
+      }
+    }),
+    /POST query rejected/
+  );
+  assert.equal(requests.length, 1);
+});

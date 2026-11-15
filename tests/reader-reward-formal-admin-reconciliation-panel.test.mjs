@@ -198,3 +198,105 @@ test('unavailable, malformed and purported release-ready audits fail closed', as
   assert.doesNotMatch(text, /称号定義：100/);
   assert.equal(descendants(audits[0], (n) => n.tag === 'button').length, 0);
 });
+
+test('admin earning evidence is explicit, redacted and non-issuing', async () => {
+  const eventId = '22222222-2222-4222-8222-222222222222';
+  const calls = [];
+  const element = root();
+  createFormalRewardAdminPanel({
+    root: element,
+    authorized: true,
+    loadQueue: async () => ({ status: 'queue_ready', items: [] }),
+    onResolve: async () => {
+      throw Error('POINT_MUTATION_FORBIDDEN');
+    },
+    inspectEarningSource: async (input) => {
+      calls.push(input);
+      return {
+        ok: true,
+        eventType: input.eventType,
+        status: 'canonical_source_verified',
+        mayIssuePoints: false,
+        verifiedComment: { body: 'PRIVATE_COMMENT_BODY' },
+        readerId: 'PRIVATE_READER_ID'
+      };
+    }
+  });
+  assert.equal(calls.length, 0);
+  const select = descendants(element, (n) => n.tag === 'select')[0];
+  const input = descendants(element, (n) => n.tag === 'input')[0];
+  const lookup = descendants(
+    element,
+    (n) => n.tag === 'button' && n.textContent === '根拠を確認'
+  )[0];
+  assert.ok(select);
+  assert.ok(input);
+  assert.ok(lookup);
+  input.value = 'bad-input';
+  await lookup.handlers.click();
+  assert.equal(calls.length, 0);
+  assert.match(flatten(element), /イベントIDを確認/);
+  input.value = eventId;
+  select.value = 'novel_episode_comment_reviewed';
+  await lookup.handlers.click();
+  assert.deepEqual(calls, [
+    { eventType: 'novel_episode_comment_reviewed', eventId }
+  ]);
+  assert.match(flatten(element), /根拠イベントを確認しました/);
+  assert.match(flatten(element), /Point発行は行っていません/);
+  assert.doesNotMatch(
+    flatten(element),
+    /PRIVATE_COMMENT_BODY|PRIVATE_READER_ID/
+  );
+});
+
+test('unverified source fails closed and hidden panel stays inactive', async () => {
+  let calls = 0;
+  const element = root();
+  createFormalRewardAdminPanel({
+    root: element,
+    authorized: false,
+    loadQueue: async () => {
+      throw Error('NO_ADMIN_READ');
+    },
+    onResolve: async () => {
+      throw Error('NO_ADMIN_WRITE');
+    },
+    inspectEarningSource: async () => {
+      calls++;
+    }
+  });
+  assert.equal(
+    descendants(
+      element,
+      (n) => n.tag === 'button' && n.textContent === '根拠を確認'
+    ).length,
+    0
+  );
+  assert.equal(calls, 0);
+
+  const authorized = root();
+  createFormalRewardAdminPanel({
+    root: authorized,
+    authorized: true,
+    loadQueue: async () => ({ status: 'queue_ready', items: [] }),
+    onResolve: async () => {
+      throw Error('NO_ADMIN_WRITE');
+    },
+    inspectEarningSource: async () => ({
+      ok: true,
+      eventType: 'valid_read_qualified',
+      status: 'canonical_source_verified',
+      mayIssuePoints: true
+    })
+  });
+  const input = descendants(authorized, (n) => n.tag === 'input')[0];
+  input.value = '22222222-2222-4222-8222-222222222222';
+  const lookup = descendants(
+    authorized,
+    (n) => n.tag === 'button' && n.textContent === '根拠を確認'
+  )[0];
+  await lookup.handlers.click();
+  assert.match(flatten(authorized), /確認結果を検証できません/);
+  assert.doesNotMatch(flatten(authorized), /根拠イベントを確認しました/);
+});

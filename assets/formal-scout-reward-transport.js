@@ -30,22 +30,40 @@
         throw new Error('FORMAL_REWARD_SESSION_MISSING');
       const params = new URLSearchParams();
       if (query !== undefined) {
-        if (
-          !query ||
-          Object.keys(query).length !== 1 ||
-          ![
-            'refunds',
-            'new_readers',
-            'reward_overview',
-            'badge_catalog',
-            'badge_history',
-            'wallet_cohort',
-            'settlement_recovery',
-            'new_reader'
-          ].includes(query.view)
-        )
-          throw new TypeError('Formal reward query rejected');
-        params.set('view', query.view);
+        if (query?.view === 'earning_source') {
+          if (
+            Object.keys(query).length !== 3 ||
+            ![
+              'valid_read_qualified',
+              'novel_episode_comment_reviewed'
+            ].includes(query.eventType) ||
+            typeof query.eventId !== 'string' ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              query.eventId
+            )
+          )
+            throw new TypeError('Formal reward source query rejected');
+          params.set('view', 'earning_source');
+          params.set('eventType', query.eventType);
+          params.set('eventId', query.eventId);
+        } else {
+          if (
+            !query ||
+            Object.keys(query).length !== 1 ||
+            ![
+              'refunds',
+              'new_readers',
+              'reward_overview',
+              'badge_catalog',
+              'badge_history',
+              'wallet_cohort',
+              'settlement_recovery',
+              'new_reader'
+            ].includes(query.view)
+          )
+            throw new TypeError('Formal reward query rejected');
+          params.set('view', query.view);
+        }
       }
       const url = endpoint + (params.size ? '?' + params.toString() : '');
       const res = await fetchImpl(url, {

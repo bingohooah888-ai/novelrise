@@ -341,3 +341,69 @@ test('administrator UI binding calls the authenticated admin handler for queue a
   );
   assert.equal((await admin.loadQueue()).items.length, 0);
 });
+
+test('admin earning evidence returns only a safe verdict', async () => {
+  const f = fixture({ enabled: false });
+  const inspections = [];
+  const supabase = {
+    auth: {
+      async getUser(token) {
+        const id =
+          token === 'admin' ? adminId : token === 'user-1' ? first : null;
+        return {
+          data: { user: id ? { id } : null },
+          error: id ? null : new Error('Unauthorized')
+        };
+      }
+    }
+  };
+  const api = createFormalUsageHttpHandlers({
+    supabase,
+    service: f.service,
+    env: { NOVELIGHT_ADMIN_USER_IDS: adminId },
+    inspectEarningSource: async (eventType, eventId) => {
+      inspections.push({ eventType, eventId });
+      return {
+        status: 'canonical_source_verified',
+        eventType,
+        eventId,
+        verifiedComment: { body: 'PRIVATE_COMMENT' },
+        readerId: first
+      };
+    }
+  });
+  const request = (token, eventType, eventId) => ({
+    ...httpReq(token),
+    query: { view: 'earning_source', eventType, eventId }
+  });
+  const denied = await invoke(
+    api.admin,
+    request('user-1', 'valid_read_qualified', op1)
+  );
+  assert.equal(denied.statusCode, 403);
+  assert.equal(inspections.length, 0);
+  const report = await invoke(
+    api.admin,
+    request('admin', 'valid_read_qualified', op1)
+  );
+  assert.equal(report.statusCode, 200);
+  assert.deepEqual(report.result, {
+    ok: true,
+    eventType: 'valid_read_qualified',
+    status: 'canonical_source_verified',
+    mayIssuePoints: false
+  });
+  assert.deepEqual(inspections, [
+    { eventType: 'valid_read_qualified', eventId: op1 }
+  ]);
+  assert.doesNotMatch(
+    JSON.stringify(report.result),
+    /PRIVATE_COMMENT|readerId/
+  );
+  const malformed = await invoke(
+    api.admin,
+    request('admin', 'unsupported_type', op1)
+  );
+  assert.equal(malformed.statusCode, 400);
+  assert.equal(inspections.length, 1);
+});
