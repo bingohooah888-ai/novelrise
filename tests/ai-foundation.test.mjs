@@ -446,6 +446,8 @@ test('Router invalid post-reservation callback fails closed at construction', ()
 
 // Offline-only cleanup proof: a backend failure must not suppress the other
 // already-existing ledger/audit action or return a successful provider result.
+// The synthetic ledger/audit event order is the cleanup contract.
+// prettier-ignore
 test('settlement failure still attempts audit once and rejects generated output', async () => {
   const order = [];
   const { router, state } = fakeRouter({
@@ -462,7 +464,7 @@ test('settlement failure still attempts audit once and rejects generated output'
     audit: {
       async record(entry) {
         order.push('audit');
-        assert.equal(entry.outcome, 'success');
+        assert.equal(entry.outcome, 'failed');
       }
     },
     cache: null
@@ -475,6 +477,8 @@ test('settlement failure still attempts audit once and rejects generated output'
   assert.deepEqual(order, ['reserve', 'settle', 'audit']);
 });
 
+// The synthetic ledger/audit event order is the cleanup contract.
+// prettier-ignore
 test('stopped request still audits if settlement backend rejects', async () => {
   const order = [];
   const { router, state } = fakeRouter({
@@ -507,6 +511,8 @@ test('stopped request still audits if settlement backend rejects', async () => {
   assert.deepEqual(order, ['reserve', 'settle', 'audit']);
 });
 
+// The synthetic ledger/audit event order is the cleanup contract.
+// prettier-ignore
 test('failed audit after a successful settlement never returns model output', async () => {
   const order = [];
   const { router, state } = fakeRouter({

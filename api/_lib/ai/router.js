@@ -252,7 +252,7 @@ export function createAiRouter({
             model: selectedRoute?.model || null,
             chargedMicros: Math.min(ceilingMicros, chargedMicros),
             cacheHit: false,
-            outcome: response ? 'success' : 'failed'
+            outcome: response && !cleanupError ? 'success' : 'failed'
           });
         } catch (error) {
           if (!cleanupError) cleanupError = error;
