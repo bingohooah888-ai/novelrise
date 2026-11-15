@@ -316,16 +316,9 @@ test('formal admin page defaults to read-only monitoring', async () => {
   const result = await panel.refresh();
   assert.equal(result.status, 'queue_not_connected');
   assert.equal(match(root, '正式版以降の新規読者').length, 1);
-  assert.equal(
-    match(root, '登録：7人　初期化完了：6人　要確認：1人').length,
-    1
-  );
+  assert.equal(match(root, '登録：7人　初期化完了：6人　要確認：1人').length, 1);
   assert.equal(match(root, '根拠を確認').length, 1);
-  assert.equal(
-    match(root, '交換キューは未接続です。読み取り専用の正式版監査のみ表示しています。')
-      .length,
-    1
-  );
+  assert.equal(match(root, '交換キューは未接続です。読み取り専用の正式版監査のみ表示しています。').length, 1);
   assert.equal(match(root, '返金・回収を照合').length, 0);
   assert.equal(match(root, '事業者への引渡しを照合').length, 0);
   assert.ok(calls.length >= 1);
@@ -391,9 +384,6 @@ test('settlement actions require a separately enabled gift queue', () => {
       throw Error('NO_NETWORK');
     }
   });
-  assert.throws(
-    page.admin,
-    /Gift settlement requires an approved gift queue/
-  );
+  assert.throws(page.admin, /Gift settlement requires an approved gift queue/);
   assert.equal(touched, 0);
 });
