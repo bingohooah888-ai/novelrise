@@ -38,7 +38,13 @@ function res() {
 }
 
 function setup(config = {}) {
-  const calls = { clients: 0, list: 0, decide: 0, repository: 0 };
+  const calls = {
+    clients: 0,
+    list: 0,
+    decide: 0,
+    transfer: 0,
+    repository: 0
+  };
   const handler = createOwnerBibleReviewApiHandler({
     env,
     createServiceClient(url, key) {
@@ -64,6 +70,20 @@ function setup(config = {}) {
           assert.equal(args.token, token);
           assert.equal(args.novelId, 354);
           return { novelId: 354, candidates: [] };
+        },
+        async verifyTransfer(args) {
+          calls.transfer += 1;
+          assert.deepEqual(args, {
+            token,
+            novelId: 354,
+            candidateId: 44,
+            expectedRevision: 2
+          });
+          return {
+            novelId: 354,
+            transferReady: true,
+            candidate: { id: 44, revision: 2, status: 'accepted' }
+          };
         },
         async decide(args) {
           calls.decide += 1;
@@ -205,4 +225,47 @@ test('unknown owner config never initializes privileged clients', async () => {
   );
   assert.equal(response.statusCode, 503);
   assert.equal(clients, 0);
+});
+
+test('GET transfer revalidates a scoped accepted revision without posting a decision', async () => {
+  const { handler, request, calls } = setup();
+  const response = res();
+  await handler(
+    request({
+      query: {
+        novel_id: '354',
+        transfer_candidate_id: '44',
+        expected_revision: '2'
+      }
+    }),
+    response
+  );
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.transferReady, true);
+  assert.equal(response.body.candidate.id, 44);
+  assert.equal(calls.list, 0);
+  assert.equal(calls.transfer, 1);
+  assert.equal(calls.decide, 0);
+  assert.equal(calls.clients, 1);
+});
+
+test('malformed transfer query is rejected before privileged client creation', async () => {
+  const { handler, request, calls } = setup();
+  const requests = [
+    { transfer_candidate_id: '44' },
+    { expected_revision: '2' },
+    { transfer_candidate_id: '44', expected_revision: '1' },
+    { transfer_candidate_id: 'x', expected_revision: '2' },
+    { transfer_candidate_id: '44', expected_revision: '2', modelText: 'injected' },
+    { transfer_candidate_id: ['44'], expected_revision: '2' },
+    { transfer_candidate_id: '44', expected_revision: '2', user_id: 'other' }
+  ];
+  for (const query of requests) {
+    const response = res();
+    await handler(request({ query: { novel_id: '354', ...query } }), response);
+    assert.equal(response.statusCode, 400);
+    assert.equal(response.body.error, 'INVALID_TRANSFER_REQUEST');
+  }
+  assert.equal(calls.clients, 0);
+  assert.equal(calls.repository, 0);
 });
