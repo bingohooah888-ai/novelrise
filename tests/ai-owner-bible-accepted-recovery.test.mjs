@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 import { createOwnerBibleReviewWorkflow } from '../api/_lib/ai/owner-bible-review-workflow.js';
@@ -7,7 +8,15 @@ import '../novelight-ai-bible-review-actions.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const TOKEN = 'synthetic-session-owner-only';
-const HASH = 'a'.repeat(64);
+const EPISODE = {
+  id: 41,
+  novel_id: 354,
+  title: '第一話',
+  content: '王都の城壁は青かった。'
+};
+const HASH = createHash('sha256')
+  .update(JSON.stringify([EPISODE.title, EPISODE.content]))
+  .digest('hex');
 
 function acceptedRow(extra = {}) {
   return {
@@ -41,7 +50,7 @@ function authorWorkflow({ accepted = [acceptedRow()], pending = [] } = {}) {
   };
   const serviceClient = {
     from(name) {
-      assert.equal(name, 'novels');
+      assert.ok(['novels', 'episodes'].includes(name));
       return {
         select() {
           return this;
@@ -51,7 +60,13 @@ function authorWorkflow({ accepted = [acceptedRow()], pending = [] } = {}) {
         },
         async maybeSingle() {
           state.loads += 1;
-          return { data: { id: 354, user_id: OWNER }, error: null };
+          return {
+            data:
+              name === 'novels'
+                ? { id: 354, user_id: OWNER }
+                : { ...EPISODE },
+            error: null
+          };
         }
       };
     }
@@ -158,6 +173,7 @@ test('accepted reviews are retrieved by owner alongside the pending contract', a
         status: 'accepted'
       }
     ],
+    staleCandidates: [],
     aiGenerated: false
   });
 });
