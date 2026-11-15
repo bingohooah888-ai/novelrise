@@ -238,8 +238,10 @@ export function createOwnerNovelBibleModelBridge({
 
       const original = await scope(token, workId, chapterId);
       await permission(workId, chapterId);
-      const { chunk, source, history, completionPlan } =
-        await chooseChunk(original, chunkIndex);
+      const { chunk, source, history, completionPlan } = await chooseChunk(
+        original,
+        chunkIndex
+      );
       if (!chunk) {
         // This remains authenticated and consent-gated but does not reserve
         // budget, call a provider or save any inferred candidate.
