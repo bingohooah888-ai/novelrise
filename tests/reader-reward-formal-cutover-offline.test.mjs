@@ -662,42 +662,52 @@ test('durable earning reaches private Wallet, reader and admin HTTP', async () =
   assert.equal((await adminUi.loadRewardOverview()).issuedTotal, 0);
 
   assert.equal(
-    (await sandbox.enqueueCommittedEarning({
-      eventType: 'valid_read_qualified',
-      eventId: durableReadId
-    })).status,
+    (
+      await sandbox.enqueueCommittedEarning({
+        eventType: 'valid_read_qualified',
+        eventId: durableReadId
+      })
+    ).status,
     'pending'
   );
   assert.equal(
-    (await sandbox.enqueueCommittedEarning({
-      eventType: 'novel_episode_comment_reviewed',
-      eventId: durableCommentId
-    })).status,
+    (
+      await sandbox.enqueueCommittedEarning({
+        eventType: 'novel_episode_comment_reviewed',
+        eventId: durableCommentId
+      })
+    ).status,
     'review_pending'
   );
   assert.equal(
-    (await adminUi.inspectEarningSource({
-      eventType: 'valid_read_qualified',
-      eventId: durableReadId
-    })).status,
+    (
+      await adminUi.inspectEarningSource({
+        eventType: 'valid_read_qualified',
+        eventId: durableReadId
+      })
+    ).status,
     'canonical_source_verified'
   );
   assert.equal(
-    (await sandbox.submitSyntheticModeration({
-      commentId: durableCommentId,
-      eligible: true,
-      rule: durableRule,
-      reviewReceipt: { receiptKey: 'forged' }
-    })).status,
+    (
+      await sandbox.submitSyntheticModeration({
+        commentId: durableCommentId,
+        eligible: true,
+        rule: durableRule,
+        reviewReceipt: { receiptKey: 'forged' }
+      })
+    ).status,
     'review_provenance_rejected'
   );
   assert.equal(
-    (await sandbox.submitSyntheticModeration({
-      commentId: durableCommentId,
-      eligible: true,
-      rule: durableRule,
-      reviewReceipt: { receiptKey: 'synthetic-proof-01' }
-    })).status,
+    (
+      await sandbox.submitSyntheticModeration({
+        commentId: durableCommentId,
+        eligible: true,
+        rule: durableRule,
+        reviewReceipt: { receiptKey: 'synthetic-proof-01' }
+      })
+    ).status,
     'review_recorded'
   );
 
@@ -735,17 +745,19 @@ test('durable earning reaches private Wallet, reader and admin HTTP', async () =
   assert.equal(admin.eligibleAvailable, 22);
   assert.equal(admin.recent.length, 2);
   assert.equal(
-    (await sandbox.enqueueCommittedEarning({
-      eventType: 'valid_read_qualified',
-      eventId: durableReadId
-    })).status,
+    (
+      await sandbox.enqueueCommittedEarning({
+        eventType: 'valid_read_qualified',
+        eventId: durableReadId
+      })
+    ).status,
     'completed'
   );
   assert.equal((await sandbox.drainDueEarnings()).processed, 0);
   assert.equal((await readerUi.fetchSnapshot()).wallet.availablePoints, 35022);
   assert.equal(
-    (await sandbox.readerRequest(second, { method: 'GET' }))
-      .body.wallet.availablePoints,
+    (await sandbox.readerRequest(second, { method: 'GET' })).body.wallet
+      .availablePoints,
     7000
   );
 });
@@ -787,18 +799,22 @@ test('durable claims reject duplicates and unverified source rows', async () => 
   ]);
   for (const id of [durableReadId, newReadId]) {
     assert.equal(
-      (await sandbox.enqueueCommittedEarning({
-        eventType: 'valid_read_qualified',
-        eventId: id
-      })).status,
+      (
+        await sandbox.enqueueCommittedEarning({
+          eventType: 'valid_read_qualified',
+          eventId: id
+        })
+      ).status,
       'pending'
     );
   }
   assert.equal(
-    (await sandbox.enqueueCommittedEarning({
-      eventType: 'valid_read_qualified',
-      eventId: unavailableId
-    })).status,
+    (
+      await sandbox.enqueueCommittedEarning({
+        eventType: 'valid_read_qualified',
+        eventId: unavailableId
+      })
+    ).status,
     'canonical_source_missing'
   );
   for (const [id, receiptKey] of [
@@ -806,19 +822,23 @@ test('durable claims reject duplicates and unverified source rows', async () => 
     [newCommentId, 'synthetic-proof-02']
   ]) {
     assert.equal(
-      (await sandbox.enqueueCommittedEarning({
-        eventType: 'novel_episode_comment_reviewed',
-        eventId: id
-      })).status,
+      (
+        await sandbox.enqueueCommittedEarning({
+          eventType: 'novel_episode_comment_reviewed',
+          eventId: id
+        })
+      ).status,
       'review_pending'
     );
     assert.equal(
-      (await sandbox.submitSyntheticModeration({
-        commentId: id,
-        eligible: true,
-        rule: durableRule,
-        reviewReceipt: { receiptKey }
-      })).status,
+      (
+        await sandbox.submitSyntheticModeration({
+          commentId: id,
+          eligible: true,
+          rule: durableRule,
+          reviewReceipt: { receiptKey }
+        })
+      ).status,
       'review_recorded'
     );
   }
