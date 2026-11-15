@@ -581,7 +581,7 @@ test('missing, failed and unverified new-reader evidence never enables initializ
   );
 });
 
-test('reader Point history filters and pages existing verified records', async () => {
+test('reader Point history filters and pages verified records', async () => {
   const root = new FakeElement('main');
   const kinds = [
     { kind: 'read', points: 5, status: 'confirmed' },
@@ -616,7 +616,10 @@ test('reader Point history filters and pages existing verified records', async (
   assert.match(text(root), /21〜40件目/);
   choose('次の20件');
   assert.equal(byTag(root, 'b').length, 5);
-  assert.equal(buttons().find((b) => b.textContent === '次の20件').disabled, true);
+  assert.equal(
+    buttons().find((b) => b.textContent === '次の20件').disabled,
+    true
+  );
   choose('獲得');
   assert.equal(byTag(root, 'b').length, 20);
   assert.match(text(root), /取得範囲内の該当履歴：23件/);
@@ -634,7 +637,7 @@ test('reader Point history filters and pages existing verified records', async (
   assert.equal(reads, 1);
 });
 
-test('history filters never infer a full ledger or expose unverified rows', async () => {
+test('history hides unverified rows and avoids balance claims', async () => {
   const root = new FakeElement('main');
   let snapshot = {
     ...base,
