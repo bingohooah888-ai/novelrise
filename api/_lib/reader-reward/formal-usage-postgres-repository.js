@@ -506,7 +506,11 @@ export function createFormalUsagePostgresRepository({
             [userId]
           )
         ]);
-        if (!account || !Array.isArray(history) || !Array.isArray(pending?.rows))
+        if (
+          !account ||
+          !Array.isArray(history) ||
+          !Array.isArray(pending?.rows)
+        )
           throw new Error('FORMAL_REWARD_AUTHORITATIVE_READER_UNAVAILABLE');
         const usageHistory = pending.rows.map((row) => {
           if (
