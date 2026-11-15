@@ -796,17 +796,19 @@ test('plan inspection checks owner, consent and manuscript freshness twice', asy
   );
   const stale = fixture();
   await assert.rejects(
-    stale.make({
-      checkpoint: {
-        async inspect() {
-          stale.state.content = '途中で改稿された';
-          return 'pending';
-        },
-        async record() {
-          throw new Error('MUST_NOT_RECORD');
+    stale
+      .make({
+        checkpoint: {
+          async inspect() {
+            stale.state.content = '途中で改稿された';
+            return 'pending';
+          },
+          async record() {
+            throw new Error('MUST_NOT_RECORD');
+          }
         }
-      }
-    }).inspectPlan({ token: TOKEN, novelId: 41, episodeId: 11 }),
+      })
+      .inspectPlan({ token: TOKEN, novelId: 41, episodeId: 11 }),
     /AI_BIBLE_MODEL_BRIDGE_DENIED/u
   );
   assert.equal(stale.state.modelCalls, 0);
