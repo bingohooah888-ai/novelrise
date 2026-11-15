@@ -1157,7 +1157,6 @@ test('offline administrator UI displays source-derived XP and first-level Point 
   assert.match(view, /読書報酬/);
 });
 
-
 const maintenanceEnd = '2026-12-31T00:00:00.000Z';
 const secondMaintenanceEnd = '2027-01-30T00:00:00.000Z';
 function maintenanceXp(id, source, amount, at, verified = true) {
@@ -1221,10 +1220,12 @@ test('exact 30-day boundary settles earlier 200 XP and assigns boundary XP to ne
     1
   );
 
-  const report = (await sandbox.adminRequest({
-    method: 'GET',
-    query: { view: 'reward_overview' }
-  })).body;
+  const report = (
+    await sandbox.adminRequest({
+      method: 'GET',
+      query: { view: 'reward_overview' }
+    })
+  ).body;
   assert.equal(report.maintenanceReviewed, 1);
   assert.equal(report.maintenanceDemotions, 0);
   assert.equal(report.xpEventsMonth, 2);
@@ -1276,10 +1277,12 @@ test('low 30-day XP causes exactly one demotion and no Point or Wallet mutation'
     xpApplied: 0,
     reviews: 0
   });
-  const overview = (await sandbox.adminRequest({
-    method: 'GET',
-    query: { view: 'reward_overview' }
-  })).body;
+  const overview = (
+    await sandbox.adminRequest({
+      method: 'GET',
+      query: { view: 'reward_overview' }
+    })
+  ).body;
   assert.equal(overview.maintenanceReviewed, 1);
   assert.equal(overview.maintenanceDemotions, 1);
   assert.equal(overview.issuedTotal, 0);
@@ -1346,8 +1349,7 @@ test('unverified late XP and signed adjustments hold review without demotion or 
   assert.equal(outcome.xpApplied, 1);
   assert.equal(missing.inspectSyntheticMaintenance().length, 0);
   assert.equal(
-    (await missing.readerRequest(reader, { method: 'GET' })).body.account
-      .level,
+    (await missing.readerRequest(reader, { method: 'GET' })).body.account.level,
     30
   );
   assert.equal(
@@ -1416,7 +1418,6 @@ test('replay two empty periods from original anchor demotes at most once per 30 
   assert.equal(sandbox.inspectSyntheticMaintenance().length, 2);
 });
 
-
 test('late XP from an already finalized period requires correction policy and never reopens Wallet', async () => {
   const original = quote();
   const handoff = {
@@ -1456,9 +1457,11 @@ test('late XP from an already finalized period requires correction policy and ne
     }
   });
   assert.equal(
-    (await sandbox.applyCommittedXp({
-      xpLedgerId: late.verifiedXpLedgerRow.id
-    })).status,
+    (
+      await sandbox.applyCommittedXp({
+        xpLedgerId: late.verifiedXpLedgerRow.id
+      })
+    ).status,
     'closed_review_window'
   );
   const replay = await sandbox.resumePendingSyntheticXp({ userId: reader });
@@ -1513,18 +1516,17 @@ test('admin panel exposes verified maintenance counts without enabling Point act
       loadRewardOverview: bindings.loadRewardOverview
     });
   await panel.refresh();
-  const gather = (node) => [
-    node.textContent,
-    ...node.children.flatMap(gather)
-  ];
+  const gather = (node) => [node.textContent, ...node.children.flatMap(gather)];
   const view = gather(root).join(' ');
   assert.match(view, /確定した30日維持判定/);
   assert.match(view, /維持判定によるLevel降格/);
   assert.match(view, /1 件/);
   assert.match(view, /発行・利用記録/);
-  const readerView = (await sandbox.readerRequest(reader, {
-    method: 'GET'
-  })).body;
+  const readerView = (
+    await sandbox.readerRequest(reader, {
+      method: 'GET'
+    })
+  ).body;
   assert.equal(readerView.wallet.availablePoints, 35000);
   assert.equal(
     readerView.history.filter((entry) => entry.kind === 'level_up').length,
