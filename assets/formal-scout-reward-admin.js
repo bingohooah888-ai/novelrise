@@ -43,7 +43,7 @@
     const list = node('div', 'rr-admin-list');
     const refunds = node('div', 'rr-admin-list');
     const newReaders = node('div', 'rr-admin-list');
-    const earningReview = node('section', 'rr-admin-audits');
+    const earningReview = node('section', 'rr-admin-earning-review');
     shell.append(
       title,
       caption,
