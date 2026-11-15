@@ -19,6 +19,21 @@ const WORKS_SQL =
   'and n.user_id=r.author_id_snapshot ' +
   'where r.author_id_snapshot=$1::uuid ' +
   'order by r.last_rank_changed_at desc,r.novel_id_snapshot limit 30';
+// Reuse existing light_seeds and the ownership condition of the author Rank
+// reader; never select reader_id, individual seed rows or hidden Rank scores.
+const RECEIVED_SQL =
+  'select n.id::text as novel_id_snapshot,' +
+  'count(s.id)::text as total_count,' +
+  "count(s.id) filter (where s.seed_type='GOLD')::text as gold_count," +
+  "count(s.id) filter (where s.seed_type='SILVER')::text as silver_count," +
+  "count(s.id) filter (where s.seed_type='BRONZE')::text as bronze_count," +
+  "count(s.id) filter (where s.id is not null and (" +
+  "s.seed_type is null or s.seed_type not in ('GOLD','SILVER','BRONZE')))" +
+  '::text as legacy_count ' +
+  'from public.novels n left join public.light_seeds s ' +
+  'on s.novel_id_snapshot=n.id::text and s.author_id_snapshot=n.user_id ' +
+  'where n.user_id=$1::uuid and n.id::text=any($2::text[]) ' +
+  'group by n.id order by n.id';
 const EVENTS_SQL =
   'select e.novel_id_snapshot,e.from_rank,e.to_rank,' +
   'e.event_type,e.occurred_at ' +
@@ -32,6 +47,15 @@ function rank(value) {
     typeof value === 'string' && /^[1-6]$/.test(value) ? Number(value) : value;
   if (!Number.isSafeInteger(n) || n < 1 || n > 6)
     throw new Error('FORMAL_AUTHOR_RANK_INVALID');
+  return n;
+}
+function seedCount(value) {
+  const n =
+    typeof value === 'string' && /^\\d+$/.test(value)
+      ? Number(value)
+      : value;
+  if (!Number.isSafeInteger(n) || n < 0)
+    throw new Error('FORMAL_AUTHOR_RECEIVED_SEED_COUNT_INVALID');
   return n;
 }
 function timestamp(value) {
@@ -95,8 +119,46 @@ export function createFormalAuthorGrowthReader({ query } = {}) {
           occurredAt: timestamp(row.occurred_at)
         });
       });
+      // Only the 30 owned works returned by the Rank reader are eligible.
+      // A legacy/null tier is not guessed from current Rank.
+      const summaries = works.length
+        ? await query(RECEIVED_SQL, [authorId, works.map((work) => work.id)])
+        : { rows: [] };
+      if (
+        !Array.isArray(summaries?.rows) ||
+        summaries.rows.length !== works.length
+      )
+        throw new Error('FORMAL_AUTHOR_RECEIVED_SEED_SOURCE_UNAVAILABLE');
+      const counts = new Map();
+      for (const row of summaries.rows) {
+        const id = workId(row?.novel_id_snapshot);
+        if (
+          !works.some((work) => work.id === id) ||
+          counts.has(id)
+        )
+          throw new Error('FORMAL_AUTHOR_RECEIVED_SEED_SCOPE_INVALID');
+        const receivedSeeds = Object.freeze({
+          total: seedCount(row.total_count),
+          gold: seedCount(row.gold_count),
+          silver: seedCount(row.silver_count),
+          bronze: seedCount(row.bronze_count),
+          legacy: seedCount(row.legacy_count)
+        });
+        const parts =
+          receivedSeeds.gold +
+          receivedSeeds.silver +
+          receivedSeeds.bronze +
+          receivedSeeds.legacy;
+        if (!Number.isSafeInteger(parts) || parts !== receivedSeeds.total)
+          throw new Error('FORMAL_AUTHOR_RECEIVED_SEED_COUNTS_MISMATCH');
+        counts.set(id, receivedSeeds);
+      }
       return Object.freeze({
-        works: Object.freeze(works),
+        works: Object.freeze(
+          works.map((work) =>
+            Object.freeze({ ...work, receivedSeeds: counts.get(work.id) })
+          )
+        ),
         events: Object.freeze(events)
       });
     }
