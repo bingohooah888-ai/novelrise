@@ -7,6 +7,8 @@
 -- episode_analysis FOR UPDATE -> new claim table's unique index.
 -- The JS bridge calls claim BEFORE Router budget reservation and the provider.
 -- A false result, SQL error, timeout, or lost response means NO paid retry.
+-- This includes same-source re-plans: fingerprint and chunk_hash MUST NOT
+-- bypass the permanent claim tombstone for a previously attempted index.
 --
 -- Reconciliation: a persisted claim is intentionally permanent even if the
 -- provider times out or the checkpoint did not advance. An operator must inspect
@@ -59,8 +61,12 @@ create table public.novelight_ai_chunk_claims (
   chunk_index integer not null check (chunk_index between 0 and 63),
   chunk_hash text not null check (chunk_hash ~ '^[a-f0-9]{64}$'),
   claimed_at timestamptz not null default pg_catalog.now(),
+  -- A changed plan fingerprint MUST NOT create a second paid claim for
+  -- the same actor/manuscript/chunk index. Store fingerprint as audit metadata,
+  -- not as part of the uniqueness boundary. A changed chunk mapping with the
+  -- same index requires operator reconciliation, not an automatic retry.
   constraint novelight_ai_chunk_claims_pkey primary key
-    (actor_id,novel_id,episode_id,source_hash,fingerprint,chunk_index)
+    (actor_id,novel_id,episode_id,source_hash,chunk_index)
 );
 
 alter table public.novelight_ai_chunk_claims enable row level security;
