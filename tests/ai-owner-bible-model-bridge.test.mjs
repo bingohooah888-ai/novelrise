@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
@@ -324,6 +325,135 @@ test('02-07-05 post-model episode transfer refuses stale candidate', async () =>
     bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
     /AI_BIBLE_MODEL_BRIDGE_DENIED/u
   );
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.reviewCalls, 0);
+});
+
+test('02-07-05 verified prior manuscript sends changed excerpt only, then saves pending review', async () => {
+  const oldText = '凛は赤い鍵を持っていた。';
+  const checkpoint = {
+    analysis: {
+      episode_id: 11,
+      source_hash: createHash('sha256')
+        .update(JSON.stringify(['第一話', oldText]))
+        .digest('hex')
+    },
+    episode: {
+      id: 11,
+      novel_id: 41,
+      title: '第一話',
+      content: oldText
+    }
+  };
+  const { state, make } = fixture();
+  let reads = 0;
+  const bridge = make({
+    readVerifiedHistory: async ({ actorId, novelId, episodeId }) => {
+      reads += 1;
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 41);
+      assert.equal(episodeId, 11);
+      return checkpoint;
+    }
+  });
+  const result = await bridge.stage({
+    token: TOKEN,
+    novelId: 41,
+    episodeId: 11
+  });
+  assert.equal(result.stagedCount, 1);
+  assert.equal(reads, 2);
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.reviewCalls, 1);
+  assert.equal(JSON.parse(state.prompt.user).untrusted_excerpt, '青');
+  assert.equal(state.reviewInput.modelText.includes('青'), true);
+  assert.equal(state.reviewInput.sourceHash.length, 64);
+  assert.ok(!JSON.stringify(state.prompt).includes(oldText));
+  assert.ok(!JSON.stringify(result).includes(CONTENT));
+});
+
+test('02-07-05 invalid trusted historical revisions fail before any paid call', async () => {
+  const { state, make } = fixture();
+  for (const historical of [
+    { analysis: { episode_id: 12, source_hash: '0'.repeat(64) } },
+    {
+      analysis: { episode_id: 11, source_hash: '0'.repeat(64) },
+      episode: {
+        id: 11,
+        novel_id: 99,
+        title: '第一話',
+        content: '別作品'
+      }
+    },
+    { analysis: { episode_id: 11, source_hash: 'not-a-hash' } }
+  ]) {
+    await assert.rejects(
+      make({ readVerifiedHistory: async () => historical }).stage({
+        token: TOKEN,
+        novelId: 41,
+        episodeId: 11
+      }),
+      /AI_BIBLE_MODEL_BRIDGE_DENIED|AI_BIBLE_CHUNK_INVALID/u
+    );
+  }
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.reviewCalls, 0);
+});
+
+test('02-07-05 identical or deletion-only revisions do not spend AI budget', async () => {
+  for (const [before, after] of [
+    ['凛は青い鍵を持っていた。', '凛は青い鍵を持っていた。'],
+    ['凛は青い鍵を持っていた。', '凛は鍵を持っていた。']
+  ]) {
+    const { state, make } = fixture({ content: after });
+    const checkpoint = {
+      analysis: {
+        episode_id: 11,
+        source_hash: createHash('sha256')
+          .update(JSON.stringify(['第一話', before]))
+          .digest('hex')
+      },
+      episode: { id: 11, novel_id: 41, title: '第一話', content: before }
+    };
+    const result = await make({
+      readVerifiedHistory: async () => checkpoint
+    }).stage({ token: TOKEN, novelId: 41, episodeId: 11 });
+    assert.deepEqual(result, {
+      novelId: 41,
+      stagedCount: 0,
+      requiresAuthorReview: false
+    });
+    assert.equal(state.modelCalls, 0);
+    assert.equal(state.reviewCalls, 0);
+  }
+});
+
+test('02-07-05 history changed during provider response refuses review persistence', async () => {
+  const { state, make } = fixture();
+  const before = '凛は赤い鍵を持っていた。';
+  const historicalHash = createHash('sha256')
+    .update(JSON.stringify(['第一話', before]))
+    .digest('hex');
+  let reads = 0;
+  const bridge = make({
+    readVerifiedHistory: async () => {
+      reads += 1;
+      return {
+        analysis: { episode_id: 11, source_hash: historicalHash },
+        episode: {
+          id: 11,
+          novel_id: 41,
+          title: '第一話',
+          content: reads === 1 ? before : '凛は緑の鍵を持っていた。'
+        }
+      };
+    }
+  });
+  await assert.rejects(
+    bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(reads, 2);
   assert.equal(state.modelCalls, 1);
   assert.equal(state.reviewCalls, 0);
 });
