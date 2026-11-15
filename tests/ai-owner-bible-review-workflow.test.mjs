@@ -92,7 +92,13 @@ function setup(options = {}) {
       assert.equal(actorId, OWNER);
       assert.equal(novelId, 354);
       assert.equal(episodeId, 41);
-      assert.equal(sourceHash, HASH);
+      const currentHash = planNovelBibleEpisodeChanges({
+        principal: { id: OWNER },
+        novel: NOVEL,
+        episodes: [state.episode],
+        analyses: []
+      }).pending[0].sourceHash;
+      assert.equal(sourceHash, currentHash);
       assert.equal(candidates[0].provenance, 'ai_inferred');
       assert.equal(candidates[0].requiresAuthorReview, true);
       assert.doesNotMatch(JSON.stringify(candidates), /author_confirmed/);
@@ -392,4 +398,97 @@ test('foreign-work episode, unauthenticated owner and malformed source reject li
     f.workflow.list({ token: TOKEN, novelId: 354 }),
     /AI_OWNER_REVIEW_DENIED/u
   );
+});
+
+test('same fact kind/key from a revised chapter is independently staged and reviewed', async () => {
+  const { state, stage, decide, workflow } = setup();
+  // Legacy source: explicit review is persisted but NEVER author canon.
+  assert.equal((await stage()).stagedCount, 1);
+  const firstRequestHash = [...state.hashes.keys()][0];
+  await decide();
+  assert.equal(state.records.get(1).status, 'accepted');
+  assert.equal(state.storedCanon[0].key, '凛');
+
+  // Revised source still contains the same cited passage and suggestion.
+  // Its factKind+factKey are unchanged; its chapter content hash differs.
+  state.episode.content += ' そして港を出発した。';
+  const revisedHash = planNovelBibleEpisodeChanges({
+    principal: { id: OWNER },
+    novel: NOVEL,
+    episodes: [state.episode],
+    analyses: []
+  }).pending[0].sourceHash;
+  const latest = await stage({ sourceHash: revisedHash });
+  assert.equal(latest.stagedCount, 1);
+  assert.equal(state.hashes.size, 2);
+  assert.notEqual([...state.hashes.keys()][1], firstRequestHash);
+  assert.equal(state.records.size, 2);
+  assert.equal(state.records.get(1).sourceHash, HASH);
+  assert.equal(state.records.get(2).sourceHash, revisedHash);
+  assert.equal(state.records.get(2).factKind, state.records.get(1).factKind);
+  assert.equal(state.records.get(2).factKey, state.records.get(1).factKey);
+  assert.equal(state.records.get(2).status, 'pending');
+
+  // Replaying the SAME revised source must not create a third record.
+  assert.equal((await stage({ sourceHash: revisedHash })).stagedCount, 0);
+  assert.equal(state.records.size, 2);
+  let list = await workflow.list({ token: TOKEN, novelId: 354 });
+  assert.equal(list.candidates.length, 1);
+  assert.equal(list.candidates[0].id, 2);
+  assert.equal(list.candidates[0].replacesOutdatedVersion, true);
+  assert.equal(list.staleCandidates.length, 1);
+  assert.equal(list.staleCandidates[0].id, 1);
+  assert.equal(list.staleCandidates[0].status, 'accepted');
+  assert.equal(list.staleCandidates[0].staleReason, 'source_changed');
+  assert.equal(list.acceptedCandidates.length, 0);
+
+  // Only the NEW record is reviewable, old review history remains unchanged.
+  await assert.rejects(
+    decide({ candidateId: 1, expectedRevision: 2 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+  assert.equal(
+    (
+      await decide({
+        candidateId: 2,
+        expectedRevision: 1,
+        action: 'accept'
+      })
+    ).status,
+    'accepted'
+  );
+  list = await workflow.list({ token: TOKEN, novelId: 354 });
+  assert.deepEqual(list.candidates, []);
+  assert.equal(list.acceptedCandidates.length, 1);
+  assert.equal(list.acceptedCandidates[0].id, 2);
+  assert.equal(list.acceptedCandidates[0].replacesOutdatedVersion, true);
+  assert.equal(list.staleCandidates[0].id, 1);
+  assert.equal(state.records.get(1).revision, 2);
+  assert.equal(state.records.get(2).revision, 2);
+  assert.deepEqual(state.storedCanon, [{ kind: 'character', key: '凛' }]);
+});
+
+test('different episode or different fact key never receives false newer-version label', async () => {
+  const { state, stage, workflow } = setup();
+  await stage();
+  state.episode.content += '追記。';
+  const revisedHash = planNovelBibleEpisodeChanges({
+    principal: { id: OWNER },
+    novel: NOVEL,
+    episodes: [state.episode],
+    analyses: []
+  }).pending[0].sourceHash;
+  // Simulate a different key in the same revised chapter; both rows are kept.
+  state.records.set(2, {
+    ...state.records.get(1),
+    id: 2,
+    sourceHash: revisedHash,
+    factKey: '別の人物',
+    revision: 1
+  });
+  const list = await workflow.list({ token: TOKEN, novelId: 354 });
+  assert.equal(list.candidates.length, 1);
+  assert.equal(list.candidates[0].replacesOutdatedVersion, undefined);
+  assert.equal(list.staleCandidates.length, 1);
+  assert.equal(list.staleCandidates[0].id, 1);
 });
