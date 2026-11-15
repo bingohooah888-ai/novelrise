@@ -358,21 +358,11 @@ export function createFormalUsagePostgresRepository({
     try {
       await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
       begun = true;
-      // Include Level-up rewards only if a canonical Point was actually
-      // credited to the formal Wallet; old beta level_up rows do not count.
-      const issuedPredicate =
-        "((left(point_kind,7)='formal_' and right(point_kind,7)<>'_refund') or " +
-        "(point_kind='level_up' and exists (" +
-        'select 1 from novelight_formal_private.scout_point_usage_credit_claims ' +
-        'where canonical_point_id = public.scout_point_ledger.id)))';
+      // Count only formally credited Level-up Points, never legacy beta rewards.
       const ledger = await client.query(
         'select ' +
-          "coalesce(sum(point_value) filter (where status='confirmed' and " +
-          issuedPredicate +
-            ' and point_value>0),0)::text as issued_total, ' +
-          "coalesce(sum(point_value) filter (where status='confirmed' and " +
-          issuedPredicate +
-            " and point_value>0 and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as issued_month, " +
+          "coalesce(sum(point_value) filter (where status='confirmed' and ((left(point_kind,7)='formal_' and right(point_kind,7)<>'_refund') or (point_kind='level_up' and exists (select 1 from novelight_formal_private.scout_point_usage_credit_claims c where c.canonical_point_id = public.scout_point_ledger.id))) and point_value>0),0)::text as issued_total, " +
+          "coalesce(sum(point_value) filter (where status='confirmed' and ((left(point_kind,7)='formal_' and right(point_kind,7)<>'_refund') or (point_kind='level_up' and exists (select 1 from novelight_formal_private.scout_point_usage_credit_claims c where c.canonical_point_id = public.scout_point_ledger.id))) and point_value>0 and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as issued_month, " +
           "coalesce(sum(point_value) filter (where status='confirmed' and point_kind='formal_read_reward' and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as read_month, " +
           "coalesce(sum(point_value) filter (where status='confirmed' and point_kind='formal_comment_reward' and occurred_at >= (date_trunc('month', now() at time zone 'Asia/Tokyo') at time zone 'Asia/Tokyo')),0)::text as comment_month, " +
           "coalesce(sum(-point_value) filter (where status='confirmed' and point_kind='formal_external_exchange'),0)::text as gift_spent, " +
