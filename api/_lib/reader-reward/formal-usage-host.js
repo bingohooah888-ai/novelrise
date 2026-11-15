@@ -5,6 +5,7 @@ import { createFormalRewardUsageService } from './formal-usage-service.js';
 import { createFormalUsageHttpHandlers } from './formal-usage-http.js';
 import { createFormalUsagePostgresRepository } from './formal-usage-postgres-repository.js';
 import { createFormalCanonicalReader } from './formal-canonical-reader.js';
+import { createFormalScoutOverviewReader } from './formal-scout-overview-reader.js';
 
 export function createUnregisteredFormalRewardHost({
   repository,
@@ -18,6 +19,7 @@ export function createUnregisteredFormalRewardHost({
   verifyGiftNonFulfillment,
   verifyGiftRefund,
   verifyAiRefund,
+  getScoutOverview,
   env,
   initializeNewReader,
   inspectNewReader,
@@ -35,7 +37,8 @@ export function createUnregisteredFormalRewardHost({
     verifyGiftReceipt,
     verifyGiftNonFulfillment,
     verifyGiftRefund,
-    verifyAiRefund
+    verifyAiRefund,
+    getScoutOverview
   });
   const handlers = createFormalUsageHttpHandlers({
     service,
@@ -72,8 +75,12 @@ export function createUnregisteredFormalPostgresRewardHost({
     readCanonicalPointHistory:
       readCanonicalPointHistory || canonicalReader.readCanonicalPointHistory
   });
+  const scoutReader = createFormalScoutOverviewReader({
+    query: pool.query.bind(pool)
+  });
   return createUnregisteredFormalRewardHost({
     ...host,
+    getScoutOverview: scoutReader.read,
     repository,
     getAdminRewardOverview: repository.getAdminRewardOverview
   });
