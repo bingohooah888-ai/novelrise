@@ -88,7 +88,9 @@ function validCompleted(values, count) {
   return (
     Array.isArray(values) &&
     values.length <= count &&
-    values.every((value) => Number.isSafeInteger(value) && value >= 0 && value < count) &&
+    values.every(
+      (value) => Number.isSafeInteger(value) && value >= 0 && value < count
+    ) &&
     new Set(values).size === values.length
   );
 }
@@ -158,10 +160,7 @@ function requireMatchingPlan(snapshot, scope) {
   ) {
     // Another source revision or plan is in progress: never inherit its
     // partial approvals, even if a later chapter happens to hash alike.
-    if (
-      progress.state === 'complete' &&
-      row.source_hash === scope.sourceHash
-    ) {
+    if (progress.state === 'complete' && row.source_hash === scope.sourceHash) {
       return { completed: true };
     }
     conflict();
