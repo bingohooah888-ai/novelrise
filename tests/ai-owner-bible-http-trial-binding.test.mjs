@@ -108,11 +108,15 @@ function fixture({
               data: {
                 id: 11,
                 novel_id: 41,
+                user_id: OWNER,
                 title: '第一話',
                 content: CONTENT
               },
               error: null
             };
+          }
+          if (table === 'novelight_ai_episode_analysis') {
+            return { data: null, error: null };
           }
           throw new Error('Unexpected private table read');
         },
