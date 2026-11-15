@@ -496,3 +496,87 @@ test('out-of-order snapshot responses cannot re-enable expired permissions', asy
   assert.equal(panel.getSnapshot().formalEnabled, false);
   assert.equal(panel.getSnapshot().available, null);
 });
+
+test('new reader inspection is GET-only and explicit initialization is gated by verified readiness', async () => {
+  const root = new FakeElement('main');
+  let inspected = 0;
+  let initialized = 0;
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => base,
+    newReaderOnboardingAvailable: true,
+    inspectNewReader: async () => {
+      inspected++;
+      return { ok: true, status: 'new_reader_ready_for_initialization' };
+    },
+    initializeNewReader: async () => {
+      initialized++;
+      return { status: 'new_reader_initialized' };
+    }
+  });
+  const button = byTag(root, 'button').find(
+    (item) => item.textContent === '正式スカウトを利用開始'
+  );
+  assert.equal(button.disabled, true);
+  assert.equal(initialized, 0);
+  await tick();
+  assert.equal(inspected, 1);
+  assert.equal(button.disabled, false);
+  assert.match(text(root), /正式登録が可能です/);
+  await button.fire('click');
+  await panel.reload();
+  assert.equal(initialized, 1);
+  assert.equal(button.disabled, true);
+  assert.match(text(root), /正式登録済みです/);
+  await button.fire('click');
+  assert.equal(initialized, 1);
+});
+
+test('missing, failed and unverified new-reader evidence never enables initialization', async () => {
+  for (const status of [
+    { ok: false, status: 'new_reader_ready_for_initialization' },
+    { ok: true, status: 'new_reader_partial_state_hold' },
+    { ok: true, status: 'new_reader_already_initialized' },
+    null
+  ]) {
+    let initialized = 0;
+    const root = new FakeElement('main');
+    ui.createRewardReaderPanel({
+      root,
+      fetchSnapshot: async () => base,
+      newReaderOnboardingAvailable: true,
+      inspectNewReader: async () => status,
+      initializeNewReader: async () => {
+        initialized++;
+      }
+    });
+    await tick();
+    const button = byTag(root, 'button').find(
+      (item) => item.textContent === '正式スカウトを利用開始'
+    );
+    assert.equal(button.disabled, true);
+    await button.fire('click');
+    assert.equal(initialized, 0);
+  }
+  let inspected = 0;
+  const off = new FakeElement('main');
+  ui.createRewardReaderPanel({
+    root: off,
+    fetchSnapshot: async () => base,
+    inspectNewReader: async () => {
+      inspected++;
+    },
+    newReaderOnboardingAvailable: false,
+    initializeNewReader: async () => {
+      throw Error('MUST_NOT_INITIALIZE');
+    }
+  });
+  await tick();
+  assert.equal(inspected, 0);
+  assert.equal(
+    byTag(off, 'button').some(
+      (item) => item.textContent === '正式スカウトを利用開始'
+    ),
+    false
+  );
+});

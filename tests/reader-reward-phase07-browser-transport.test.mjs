@@ -205,3 +205,47 @@ test('formal admin badge, wallet and recovery audits reach existing authenticate
   );
   assert.equal(calls.length, 4);
 });
+
+test('explicit new reader inspection uses existing authenticated read-only view', async () => {
+  const g = browser();
+  const calls = [];
+  const request = g.NovelightFormalRewardTransport.createFormalRewardTransport({
+    endpoint: '/api/formal-reward-reader',
+    getAccessToken: async () => 'synthetic-reader-session',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          status: 'new_reader_ready_for_initialization',
+          initialLevel: 1,
+          initialAvailablePoints: 0
+        })
+      };
+    }
+  });
+  const reader =
+    g.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings({
+      request,
+      nextOperationId: () => UUID
+    });
+  assert.equal(calls.length, 0);
+  const report = await reader.inspectNewReader();
+  assert.equal(report.status, 'new_reader_ready_for_initialization');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, '/api/formal-reward-reader?view=new_reader');
+  assert.equal(calls[0].options.method, 'GET');
+  assert.equal(calls[0].options.credentials, 'same-origin');
+  assert.equal(calls[0].options.cache, 'no-store');
+  assert.equal(
+    calls[0].options.headers.Authorization,
+    'Bearer synthetic-reader-session'
+  );
+  assert.equal(Object.hasOwn(calls[0].options, 'body'), false);
+  await assert.rejects(
+    request({ method: 'POST', query: { view: 'new_reader' } }),
+    /POST query rejected/
+  );
+  assert.equal(calls.length, 1);
+});
