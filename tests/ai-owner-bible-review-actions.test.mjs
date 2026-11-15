@@ -414,3 +414,107 @@ test('stale payload cannot forge current accept or notes-transfer controls', asy
     assert.equal(f.requests.length, 1);
   }
 });
+
+test('same-kind/key revised proposal can be reviewed while old version stays read-only', async () => {
+  const current = {
+    id: 7,
+    episodeId: 4,
+    revision: 1,
+    kind: 'character',
+    key: '凛',
+    summary: '改稿後の本文に基づく候補',
+    evidence: '凛は新しい扉を開いた。',
+    status: 'pending',
+    replacesOutdatedVersion: true
+  };
+  const historical = {
+    id: 8,
+    episodeId: 4,
+    revision: 2,
+    kind: 'character',
+    key: '凛',
+    summary: '改稿前の内容',
+    evidence: '凛は青い鍵を持っていた。',
+    status: 'accepted',
+    staleReason: 'source_changed'
+  };
+  let transfers = 0;
+  const f = mock({
+    getPayload: {
+      novelId: 354,
+      aiGenerated: false,
+      candidates: [current],
+      acceptedCandidates: [],
+      staleCandidates: [historical]
+    }
+  });
+  assert.equal(
+    await attach({
+      client: f.client,
+      novelId: 354,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher,
+      onAccepted: async () => {
+        transfers += 1;
+        return true;
+      }
+    }),
+    true
+  );
+  const list = f.host.children[0].children[1];
+  const newRow = list.children[0];
+  assert.match(newRow.children[0].textContent, /改稿後の新版候補/u);
+  assert.match(newRow.children[0].textContent, /凛/u);
+  assert.equal(newRow.children[1].tag, 'button');
+  assert.equal(newRow.children[2].tag, 'button');
+  const oldRow = list.children[list.children.length - 1];
+  assert.equal(oldRow.children.length, 1);
+  assert.equal(oldRow.children[0].tag, 'p');
+  assert.match(oldRow.children[0].textContent, /旧版の候補/u);
+  assert.match(oldRow.children[0].textContent, /凛/u);
+  assert.equal(f.requests.filter((req) => req.method === 'POST').length, 0);
+  await newRow.children[1].listeners.click();
+  assert.deepEqual(JSON.parse(f.requests[1].body), {
+    candidateId: 7,
+    expectedRevision: 1,
+    action: 'accept'
+  });
+  assert.equal(newRow.removed, true);
+  assert.equal(oldRow.removed, false);
+  assert.equal(transfers, 0);
+});
+
+test('invalid new-version label from API never exposes review controls', async () => {
+  const candidate = {
+    id: 7,
+    episodeId: 4,
+    revision: 1,
+    kind: 'event',
+    key: '開始',
+    summary: '話の始まり',
+    evidence: '扉が開いた。',
+    status: 'pending'
+  };
+  for (const value of [false, 'true', 1, null]) {
+    const f = mock({
+      getPayload: {
+        novelId: 354,
+        aiGenerated: false,
+        candidates: [{ ...candidate, replacesOutdatedVersion: value }],
+        staleCandidates: []
+      }
+    });
+    assert.equal(
+      await attach({
+        client: f.client,
+        novelId: 354,
+        ownerId: OWNER,
+        doc: f.doc,
+        fetcher: f.fetcher
+      }),
+      false
+    );
+    assert.equal(f.host.children.length, 0);
+  }
+});
