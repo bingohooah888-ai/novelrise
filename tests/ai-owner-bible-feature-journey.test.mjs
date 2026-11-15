@@ -149,6 +149,13 @@ function makeJourney({
         .filter((row) => row.status === 'pending')
         .map((row) => ({ ...row }));
     },
+    async listAccepted({ actorId, novelId }) {
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 41);
+      return [...state.pending.values()]
+        .filter((row) => row.status === 'accepted')
+        .map((row) => ({ ...row }));
+    },
     async readCandidate({ actorId, novelId, candidateId }) {
       const row = state.pending.get(candidateId);
       return row?.actorId === actorId && row.novelId === novelId
@@ -315,13 +322,14 @@ function makeJourney({
     bridge,
     workflow,
     root,
-    async attachReviewUi() {
+    async attachReviewUi(onAccepted) {
       return globalThis.NovelightAiBibleReviewActions.attach({
         client,
         doc,
         novelId: 41,
         ownerId: OWNER,
-        fetcher
+        fetcher,
+        onAccepted
       });
     },
     signOut() {
@@ -465,4 +473,36 @@ test('non-owner identity cannot reach the provider or author controls', async ()
   assert.equal(journey.state.modelCalls, 0);
   assert.equal(await journey.attachReviewUi(), false);
   assert.equal(journey.root.children.length, 0);
+});
+
+test('accepted candidate survives author review reload and needs explicit note saving', async () => {
+  const journey = makeJourney();
+  await journey.bridge.stage(request);
+  assert.equal(await journey.attachReviewUi(), true);
+  const firstList = journey.root.children[0].children[1];
+  await firstList.children[0].children[1].listeners.get('click')();
+  assert.equal(journey.state.pending.get(1).status, 'accepted');
+
+  const transferred = [];
+  assert.equal(
+    await journey.attachReviewUi(async (candidate) => {
+      transferred.push(candidate);
+      return true;
+    }),
+    true
+  );
+  const restored = journey.root.children[1];
+  const list = restored.children[1];
+  assert.match(list.children[0].textContent, /確認済み候補/u);
+  assert.match(list.children[1].children[0].textContent, /凛/u);
+  const transfer = list.children[1].children[1].children[0];
+  await transfer.listeners.get('click')();
+  assert.equal(transferred.length, 1);
+  assert.equal(transferred[0].key, '凛');
+  assert.equal(transferred[0].episodeId, 11);
+  assert.match(restored.children[2].textContent, /保存.*押してください/u);
+  assert.deepEqual(journey.state.confirmedCanon, [
+    { kind: 'character', key: '凛' }
+  ]);
+  assert.deepEqual(journey.state.uiRequests, ['GET', 'POST', 'GET']);
 });
