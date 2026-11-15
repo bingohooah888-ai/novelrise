@@ -80,9 +80,10 @@ export function createUnregisteredFormalApplication({
   const walletCohort = createUnregisteredFormalWalletCohortInspector({
     query: pool.query.bind(pool)
   });
-  const settlementRecovery = createUnregisteredFormalSettlementRecoveryInspector({
-    query: pool.query.bind(pool)
-  });
+  const settlementRecovery =
+    createUnregisteredFormalSettlementRecoveryInspector({
+      query: pool.query.bind(pool)
+    });
   // OWNER-held channels remain independently OFF even if formal earning,
   // Level, or wallet readiness is later approved. No supplied catalog or
   // provider adapter can activate gift exchange or charge for AI by accident.
