@@ -74,6 +74,116 @@ test('MASTER exchange policy stays 10 pt = ¥1, external floor 30000 Point', () 
   assert.equal(ui.MIN_EXCHANGE_POINTS, 30000);
 });
 
+test('formal Scout Rank uses verified Level and exact 10 official bands', async () => {
+  const bands = [
+    [1, 'NOCTIS'],
+    [10, 'NOCTIS'],
+    [11, 'VESPER'],
+    [30, 'UMBRA'],
+    [31, 'ASTRA'],
+    [50, 'LUCENT'],
+    [60, 'AURELIS'],
+    [70, 'CELESTIA'],
+    [71, 'EMPYREAN'],
+    [90, 'SERAPH'],
+    [91, 'LUMINARIS'],
+    [100, 'LUMINARIS']
+  ];
+  for (const [level, expected] of bands) {
+    assert.equal(ui.rankAtLevel(level), expected);
+  }
+  for (const invalid of [0, 101, -1, 1.1, null, undefined, '72']) {
+    assert.equal(ui.rankAtLevel(invalid), null);
+  }
+  assert.equal(ui.normalizeSnapshot(base).rank, 'EMPYREAN');
+  assert.equal(
+    ui.normalizeSnapshot({ ...base, serverVerified: false }).rank,
+    null
+  );
+  const root = new FakeElement('main');
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => base
+  });
+  await panel.reload();
+  assert.match(text(root), /SCOUT RANK/);
+  assert.match(text(root), /EMPYREAN/);
+  const other = new FakeElement('main');
+  const blocked = ui.createRewardReaderPanel({
+    root: other,
+    fetchSnapshot: async () => ({ ...base, serverVerified: false })
+  });
+  await blocked.reload();
+  assert.doesNotMatch(text(other), /EMPYREAN/);
+});
+
+test('renders reader badges and SEED growth without internal Rank', async () => {
+  const sample = {
+    ...base,
+    scout: {
+      badges: [
+        {
+          id: 'reader_seed_001',
+          name: 'SEEDBEARER',
+          progress: 1,
+          target: 1,
+          enabled: true,
+          earned: true
+        },
+        {
+          id: 'reader_secret_001',
+          name: '???',
+          progress: 0,
+          target: 5,
+          enabled: false,
+          earned: false
+        }
+      ],
+      seeds: [
+        {
+          type: 'GOLD',
+          workTitle: '夜の物語',
+          growth: 2,
+          novaPrediction: false
+        },
+        {
+          type: 'BRONZE',
+          workTitle: null,
+          growth: 1,
+          novaPrediction: true
+        }
+      ]
+    }
+  };
+  const root = new FakeElement('main');
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => sample
+  });
+  await panel.reload();
+  byTag(root, 'button')
+    .find((b) => b.textContent === '発掘・称号')
+    .fire('click');
+  assert.match(text(root), /SEEDBEARER/);
+  assert.match(text(root), /読者称号 1 \/ 2 種達成/);
+  assert.match(text(root), /\+2 Rank 発掘/);
+  assert.match(text(root), /NOVA予見/);
+  assert.match(text(root), /現在表示できない作品/);
+  assert.doesNotMatch(text(root), /rank_at_seed|rankAtSeed/);
+  const hidden = new FakeElement('main');
+  const blocked = ui.createRewardReaderPanel({
+    root: hidden,
+    fetchSnapshot: async () => ({ ...sample, serverVerified: false })
+  });
+  await blocked.reload();
+  byTag(hidden, 'button')
+    .find((b) => b.textContent === '発掘・称号')
+    .fire('click');
+  assert.doesNotMatch(text(hidden), /SEEDBEARER|夜の物語/);
+  assert.equal(panel.getSnapshot().scout.badges.length, 2);
+  assert.equal(blocked.getSnapshot().scout, null);
+});
+
 test('unverified wallet cannot display usable balances or activate reward actions', async () => {
   const snapshot = ui.normalizeSnapshot({
     ...base,
