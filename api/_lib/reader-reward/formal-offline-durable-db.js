@@ -90,7 +90,7 @@ export function createFormalOfflineDurableDb({
   const queue = new Map();
   const earned = new Map();
   const ledgerKeys = new Set(legacyEventKeys);
-  let interruptOnce = false;
+  let interruptionsRemaining = 0;
 
   const monthOf = (at) =>
     new Date(Date.parse(at) + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
@@ -298,8 +298,8 @@ export function createFormalOfflineDurableDb({
       });
     }
     if (sql.includes('.award_read_points_draft(')) {
-      if (interruptOnce) {
-        interruptOnce = false;
+      if (interruptionsRemaining > 0) {
+        interruptionsRemaining--;
         throw new Error('OFFLINE_AWARD_OUTAGE');
       }
       if (Date.parse(args[1]) !== releaseAtMs)
@@ -307,8 +307,8 @@ export function createFormalOfflineDurableDb({
       return result(await award(VALID_TYPES.read, args[0], args));
     }
     if (sql.includes('.review_comment_and_award_draft(')) {
-      if (interruptOnce) {
-        interruptOnce = false;
+      if (interruptionsRemaining > 0) {
+        interruptionsRemaining--;
         throw new Error('OFFLINE_AWARD_OUTAGE');
       }
       if (Date.parse(args[1]) !== releaseAtMs)
@@ -383,8 +383,10 @@ export function createFormalOfflineDurableDb({
     verifyModeratorReceipt,
     getAdminRewardOverview,
     // Explicitly test-only: introduce a single transient error, then replay.
-    interruptNextSyntheticAward: () => {
-      interruptOnce = true;
+    interruptNextSyntheticAward: (count = 1) => {
+      if (!Number.isSafeInteger(count) || count < 1 || count > 2)
+        throw new TypeError('Bounded synthetic outage count required');
+      interruptionsRemaining = count;
     },
     inspectQueue: () =>
       Object.freeze(
