@@ -63,7 +63,9 @@ export function createFormalUsageHttpHandlers({
   getNewReaderSummary,
   getAdminRewardOverview,
   getAdminBadgeCatalog,
-  getAdminBadgeHistory
+  getAdminBadgeHistory,
+  getAdminWalletCohort,
+  getAdminSettlementRecovery
 } = {}) {
   if (typeof supabase?.auth?.getUser !== 'function')
     throw new TypeError('Trusted existing Supabase Auth client required');
@@ -208,6 +210,24 @@ export function createFormalUsageHttpHandlers({
           if (overview?.status !== 'reward_overview_ready')
             return stop(res, 503, 'FORMAL_ADMIN_OVERVIEW_UNAVAILABLE');
           return res.status(200).json({ ok: true, ...overview });
+        }
+        if (req.query?.view === 'settlement_recovery') {
+          if (typeof getAdminSettlementRecovery !== 'function')
+            return stop(res, 503, 'FORMAL_SETTLEMENT_RECOVERY_UNAVAILABLE');
+          // Admin-only aggregate count: never expose operation keys or user IDs.
+          const report = await getAdminSettlementRecovery();
+          if (report?.status !== 'formal_settlement_recovery_review_only')
+            return stop(res, 503, 'FORMAL_SETTLEMENT_RECOVERY_UNAVAILABLE');
+          return res.status(200).json({ ok: true, ...report });
+        }
+        if (req.query?.view === 'wallet_cohort') {
+          if (typeof getAdminWalletCohort !== 'function')
+            return stop(res, 503, 'FORMAL_WALLET_COHORT_UNAVAILABLE');
+          // Only aggregate totals, never reader IDs or individual balances.
+          const report = await getAdminWalletCohort();
+          if (report?.status !== 'formal_wallet_cohort_review_only')
+            return stop(res, 503, 'FORMAL_WALLET_COHORT_UNAVAILABLE');
+          return res.status(200).json({ ok: true, ...report });
         }
         if (req.query?.view === 'badge_history') {
           if (typeof getAdminBadgeHistory !== 'function')

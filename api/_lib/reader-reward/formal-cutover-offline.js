@@ -10,6 +10,9 @@ import {
 } from './beta-point-tenfold-plan.js';
 import { quoteApprovedScoutBetaFormalState } from './formal-thresholds.js';
 
+export const SCOUT_MIXED_BETA_POINT_UNITS = 'beta_mixed_explicit_row_units';
+const MAX_LEDGER_POINT_VALUE = 1_000_000;
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isRecord = (v) =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -41,7 +44,8 @@ export function quoteScoutOfflineBetaHandoff({
   betaThresholdRows,
   formalReleaseAtMs
 } = {}) {
-  if (ledgerUnitVersion !== SCOUT_POINT_LEGACY_VERSION)
+  const mixed = ledgerUnitVersion === SCOUT_MIXED_BETA_POINT_UNITS;
+  if (ledgerUnitVersion !== SCOUT_POINT_LEGACY_VERSION && !mixed)
     return hold('legacy_point_unit_not_verified');
   if (
     !Array.isArray(canonicalLedgerRows) ||
@@ -53,6 +57,7 @@ export function quoteScoutOfflineBetaHandoff({
   const ids = new Set();
   const keys = new Set();
   const byId = new Map();
+  const convertedById = new Map();
   const users = new Map();
   const convertedRows = [];
   for (const account of accounts) {
@@ -79,6 +84,7 @@ export function quoteScoutOfflineBetaHandoff({
     users.set(account.userId, {
       userId: account.userId,
       openingLegacyPoints: 0,
+      openingAlreadyTenfoldPoints: 0,
       availablePoints: 0,
       exchangeEligiblePoints: 0,
       reservedPoints: 0,
@@ -102,8 +108,12 @@ export function quoteScoutOfflineBetaHandoff({
       !Number.isSafeInteger(row.point_value) ||
       typeof row.point_kind !== 'string' ||
       !row.point_kind ||
-      (row.sourceUnitVersion !== undefined &&
-        row.sourceUnitVersion !== SCOUT_POINT_LEGACY_VERSION)
+      (mixed
+        ? ![SCOUT_POINT_LEGACY_VERSION, SCOUT_POINT_TARGET_VERSION].includes(
+            row.sourceUnitVersion
+          )
+        : row.sourceUnitVersion !== undefined &&
+          row.sourceUnitVersion !== SCOUT_POINT_LEGACY_VERSION)
     )
       return hold('legacy_ledger_identity_or_version_invalid');
     ids.add(row.id);
@@ -111,25 +121,39 @@ export function quoteScoutOfflineBetaHandoff({
     byId.set(row.id, row);
     if (row.status !== 'confirmed')
       return hold('nonconfirmed_legacy_point_requires_review');
-    const quoted = quoteScoutPointTenfoldValue({
-      legacyValue: row.point_value,
-      sourceVersion: SCOUT_POINT_LEGACY_VERSION
+    // 2026-11-09 changed future awards to 10 Point/yen but did not
+    // retroactively convert earlier ledger rows. Never infer an individual
+    // row's unit from its amount, timestamp, badge ID or event key.
+    const unit = mixed ? row.sourceUnitVersion : SCOUT_POINT_LEGACY_VERSION;
+    let convertedValue;
+    if (unit === SCOUT_POINT_LEGACY_VERSION) {
+      const quoted = quoteScoutPointTenfoldValue({
+        legacyValue: row.point_value,
+        sourceVersion: unit
+      });
+      if (quoted.status !== 'tenfold_value_quote_only')
+        return hold('legacy_ledger_point_overflow');
+      convertedValue = quoted.proposedValue;
+    } else {
+      if (Math.abs(row.point_value) > MAX_LEDGER_POINT_VALUE)
+        return hold('already_tenfold_ledger_point_overflow');
+      convertedValue = row.point_value;
+    }
+    const converted = Object.freeze({
+      id: row.id,
+      userId: row.user_id,
+      eventKey: row.event_key,
+      pointKind: row.point_kind,
+      sourceValue: row.point_value,
+      sourceUnitVersion: unit,
+      convertedValue,
+      reversalOf: row.reversal_of ?? null,
+      status: 'confirmed'
     });
-    if (quoted.status !== 'tenfold_value_quote_only')
-      return hold('legacy_ledger_point_overflow');
-    convertedRows.push(
-      Object.freeze({
-        id: row.id,
-        userId: row.user_id,
-        eventKey: row.event_key,
-        pointKind: row.point_kind,
-        sourceValue: row.point_value,
-        convertedValue: quoted.proposedValue,
-        reversalOf: row.reversal_of ?? null,
-        status: 'confirmed'
-      })
-    );
+    convertedRows.push(converted);
+    convertedById.set(row.id, converted);
   }
+  const reversalTotals = new Map();
   for (const row of convertedRows) {
     if (row.reversalOf !== null) {
       const source = byId.get(row.reversalOf);
@@ -142,15 +166,37 @@ export function quoteScoutOfflineBetaHandoff({
         row.id === row.reversalOf
       )
         return hold('unverified_legacy_reversal');
+      // The original and reversal can have different source units.
+      // Compare only their final tenfold values and reject over-reversal.
+      const total =
+        (reversalTotals.get(row.reversalOf) ?? 0) - row.convertedValue;
+      const original = convertedById.get(row.reversalOf);
+      if (!Number.isSafeInteger(total) || total > original.convertedValue)
+        return hold('legacy_reversal_exceeds_original');
+      reversalTotals.set(row.reversalOf, total);
     } else if (row.sourceValue < 0) {
       return hold('legacy_negative_adjustment_policy_pending');
     }
     const account = users.get(row.userId);
-    const oldTotal = account.openingLegacyPoints + row.sourceValue;
+    const oldTotal =
+      account.openingLegacyPoints +
+      (row.sourceUnitVersion === SCOUT_POINT_LEGACY_VERSION
+        ? row.sourceValue
+        : 0);
+    const alreadyTenfold =
+      account.openingAlreadyTenfoldPoints +
+      (row.sourceUnitVersion === SCOUT_POINT_TARGET_VERSION
+        ? row.sourceValue
+        : 0);
     const nextTotal = account.availablePoints + row.convertedValue;
-    if (!Number.isSafeInteger(oldTotal) || !Number.isSafeInteger(nextTotal))
+    if (
+      !Number.isSafeInteger(oldTotal) ||
+      !Number.isSafeInteger(alreadyTenfold) ||
+      !Number.isSafeInteger(nextTotal)
+    )
       return hold('legacy_user_sum_overflow');
     account.openingLegacyPoints = oldTotal;
+    account.openingAlreadyTenfoldPoints = alreadyTenfold;
     account.availablePoints = nextTotal;
   }
   const walletSeeds = [];
@@ -159,7 +205,8 @@ export function quoteScoutOfflineBetaHandoff({
       return hold('legacy_point_debt_requires_review');
     if (
       account.availablePoints !==
-      account.openingLegacyPoints * SCOUT_POINT_UNIT_SCALE
+      account.openingLegacyPoints * SCOUT_POINT_UNIT_SCALE +
+        account.openingAlreadyTenfoldPoints
     )
       return hold('tenfold_reconciliation_mismatch');
     walletSeeds.push(Object.freeze({ ...account }));
@@ -168,23 +215,40 @@ export function quoteScoutOfflineBetaHandoff({
     (sum, s) => sum + s.openingLegacyPoints,
     0
   );
+  const preservedNet = walletSeeds.reduce(
+    (sum, s) => sum + s.openingAlreadyTenfoldPoints,
+    0
+  );
   const convertedNet = walletSeeds.reduce(
     (sum, s) => sum + s.availablePoints,
     0
   );
-  if (!Number.isSafeInteger(originalNet) || !Number.isSafeInteger(convertedNet))
+  if (
+    !Number.isSafeInteger(originalNet) ||
+    !Number.isSafeInteger(preservedNet) ||
+    !Number.isSafeInteger(convertedNet) ||
+    convertedNet !== originalNet * SCOUT_POINT_UNIT_SCALE + preservedNet
+  )
     return hold('all_user_ledger_sum_overflow');
   return Object.freeze({
     status: 'offline_handoff_quote_only',
     readyForOfflinePreview: true,
-    sourceVersion: SCOUT_POINT_LEGACY_VERSION,
+    sourceVersion: ledgerUnitVersion,
     targetVersion: SCOUT_POINT_TARGET_VERSION,
     convertedRows: Object.freeze(convertedRows),
     walletSeeds: Object.freeze(walletSeeds),
     summary: Object.freeze({
       accountCount: walletSeeds.length,
       ledgerRowCount: convertedRows.length,
-      originalConfirmedNet: originalNet,
+      originalConfirmedNet: mixed ? null : originalNet,
+      legacyOriginalConfirmedNet: originalNet,
+      alreadyTenfoldConfirmedNet: preservedNet,
+      legacyRowsConverted: convertedRows.filter(
+        (row) => row.sourceUnitVersion === SCOUT_POINT_LEGACY_VERSION
+      ).length,
+      alreadyTenfoldRowsPreserved: convertedRows.filter(
+        (row) => row.sourceUnitVersion === SCOUT_POINT_TARGET_VERSION
+      ).length,
       convertedConfirmedNet: convertedNet
     }),
     schemaWasChanged: false,
@@ -225,6 +289,7 @@ export function reconcileScoutOfflineOpening({
       b.status !== row.status ||
       b.pointKind !== row.pointKind ||
       b.sourceValue !== row.sourceValue ||
+      b.sourceUnitVersion !== row.sourceUnitVersion ||
       b.reversalOf !== row.reversalOf ||
       b.convertedValue !== row.convertedValue
     )
