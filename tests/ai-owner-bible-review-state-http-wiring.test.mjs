@@ -186,6 +186,35 @@ test('unmounted review-state route defaults OFF even with valid capabilities', a
   assert.deepEqual(res.body, { error: 'NOT_FOUND' });
 });
 
+// The staging service role cannot read/lock auth.sessions. Do not replace
+// an independently trusted private session reader with JWT decoding,
+// auth.getUser alone, or a public SECURITY DEFINER shortcut.
+test('no server-only session observer means no review-state read or write', async () => {
+  let touched = 0;
+  const route = createOfflineOwnerBibleReviewStateHttpWiring({
+    enabled: true,
+    env: ENV,
+    serviceClient: {
+      auth: {
+        getUser() { touched += 1; },
+        getClaims() { touched += 1; }
+      },
+      from() { touched += 1; },
+      rpc() { touched += 1; }
+    },
+    createAuthorClient() { touched += 1; },
+    nowEpochSeconds() { touched += 1; }
+    // Deliberately no privileged lookupOneSession capability.
+  });
+  const res = reply();
+  await route(
+    request('POST', OWNER, { expectedRevision: 0, reviewedIds: [] }),
+    res
+  );
+  assert.equal(res.code, 404);
+  assert.equal(touched, 0);
+});
+
 test('offline owner HTTP composition reads, commits by CAS and resumes', async () => {
   const h = offlineHarness();
   const before = reply();
