@@ -66,6 +66,44 @@ export function createSupabaseOwnerBibleReviewRepository({
   const bible = createSupabaseAiBible({ serviceClient, authorClient });
 
   return Object.freeze({
+    // Stable newest-first keyset page across pending/accepted decisions.
+    // 26th row is lookahead only; it is NEVER returned as a candidate.
+    // No offset scans, schema change, mutation, or user-supplied sort field.
+    async listReviewPage({ actorId, novelId, beforeId = null }) {
+      requireScope(actorId, novelId);
+      if (beforeId !== null && !validId(beforeId)) unavailable();
+      let query = serviceClient
+        .from('novelight_ai_review_candidates')
+        .select(
+          'id,actor_id,novel_id,source_episode_id,source_hash,' +
+            'fact_kind,fact_key,summary,evidence,status,revision'
+        )
+        .eq('actor_id', actorId)
+        .eq('novel_id', novelId)
+        .in('status', ['pending', 'accepted']);
+      if (beforeId !== null) query = query.lt('id', beforeId);
+      const { data, error } = await query
+        .order('id', { ascending: false })
+        .limit(26);
+      if (error || !Array.isArray(data) || data.length > 26) unavailable();
+      const records = data.map(mapRow);
+      if (
+        records.some(
+          (record, i) =>
+            !['pending', 'accepted'].includes(record.status) ||
+            (i > 0 && records[i - 1].id <= record.id) ||
+            (beforeId !== null && record.id >= beforeId)
+        )
+      ) {
+        unavailable();
+      }
+      const rows = records.slice(0, 25);
+      return {
+        rows,
+        nextBeforeId: records.length > 25 ? rows[rows.length - 1].id : null
+      };
+    },
+
     async listAuthorConfirmed({ actorId, novelId }) {
       requireScope(actorId, novelId);
       const canon = await bible.listOwnerCanon({ actorId, novelId });
