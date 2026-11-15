@@ -196,11 +196,29 @@ export function planNovelBibleChangedChunks({
   const chunks = [];
   const emptyChangedEpisodes = [];
   const deletionOnlyEpisodes = [];
+  const titleOnlyEpisodes = [];
+  const zeroChangedSources = [];
   for (const item of base.pending) {
     const episode = byId.get(item.episodeId);
     if (!episode) invalid();
     const { episodeId, sourceHash, reason } = item;
     const old = historical.get(episodeId);
+    if (
+      reason === 'changed' &&
+      old &&
+      old.title !== episode.title &&
+      old.content === episode.content
+    ) {
+      // A verified title-only edit has no new passage to infer. Without an
+      // authenticated prior snapshot, the full current body is still needed.
+      titleOnlyEpisodes.push(episodeId);
+      zeroChangedSources.push({
+        episodeId,
+        sourceHash,
+        reason: 'title-only'
+      });
+      continue;
+    }
     let text = episode.content;
     let offset = 0;
     if (reason === 'changed' && old && old.title === episode.title) {
@@ -209,11 +227,23 @@ export function planNovelBibleChangedChunks({
       offset = window.start;
       if (text.length === 0) {
         deletionOnlyEpisodes.push(episodeId);
+        zeroChangedSources.push({
+          episodeId,
+          sourceHash,
+          reason: 'deletion-only'
+        });
         continue;
       }
     }
     const parts = segments(text, episodeId, sourceHash, reason, offset);
-    if (!parts.length) emptyChangedEpisodes.push(item.episodeId);
+    if (!parts.length) {
+      emptyChangedEpisodes.push(item.episodeId);
+      zeroChangedSources.push({
+        episodeId,
+        sourceHash,
+        reason: 'empty-body'
+      });
+    }
     chunks.push(...parts);
   }
   return {
@@ -223,6 +253,8 @@ export function planNovelBibleChangedChunks({
     deferredEpisodeCount: base.deferredCount,
     emptyChangedEpisodes,
     deletionOnlyEpisodes,
+    titleOnlyEpisodes,
+    zeroChangedSources,
     chunks
   };
 }
