@@ -206,10 +206,7 @@ export function createOwnerNovelBibleModelBridge({
       const zeroChange = plan.zeroChangedSources?.find(
         (item) => item.episodeId === context.episode.id
       );
-      if (
-        chunkIndex !== 0 ||
-        (plan.unchangedCount !== 1 && !zeroChange)
-      ) {
+      if (chunkIndex !== 0 || (plan.unchangedCount !== 1 && !zeroChange)) {
         deny();
       }
       return {
