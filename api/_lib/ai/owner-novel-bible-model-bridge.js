@@ -337,6 +337,20 @@ export function createOwnerNovelBibleModelBridge({
       // The repository will atomically mark the source analyzed only when
       // every chunk is present, and rejects conflicting revisions.
       if (checkpointRequest) {
+        // Candidate review may itself take time. Verify ownership, consent,
+        // current manuscript and the same historical baseline once more
+        // before changing the durable completed-analysis marker.
+        const finalScope = await scope(token, workId, chapterId);
+        await permission(workId, chapterId);
+        if (historyDigest(await historicalCheckpoint(finalScope)) !== history) {
+          deny();
+        }
+        if (
+          materializeNovelBibleChunk({ ...finalScope, chunk }).chunkHash !==
+          source.chunkHash
+        ) {
+          deny();
+        }
         const receipt = await checkpoint.record(checkpointRequest);
         if (
           typeof receipt?.complete !== 'boolean' ||
