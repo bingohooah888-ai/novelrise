@@ -484,6 +484,7 @@
       const filtered = validHistory.filter((item) => {
         if (historyFilter === 'earned') {
           return (
+            item.status === 'confirmed' &&
             item.points > 0 &&
             !['exchange', 'ai', 'refund'].includes(item.kind)
           );
