@@ -101,8 +101,7 @@ function fixture({
   return {
     calls,
     episode,
-    read: () =>
-      read({ actorId: OWNER, novelId: 41, episodeId: 11 })
+    read: () => read({ actorId: OWNER, novelId: 41, episodeId: 11 })
   };
 }
 
