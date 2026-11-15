@@ -18,7 +18,7 @@ const BADGES_SQL =
   'left join public.user_scout_badges b ' +
   'on b.badge_id=d.badge_id and b.user_id=$1::uuid ' +
   "where d.badge_category='reader' " +
-  'order by d.sort_order limit 100';
+  'order by d.sort_order limit 101';
 
 const SEEDS_SQL =
   'select d.seed_type,d.best_rank_delta,d.rank_at_seed,' +

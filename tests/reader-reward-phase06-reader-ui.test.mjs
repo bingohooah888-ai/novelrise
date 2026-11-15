@@ -196,7 +196,14 @@ test('author-owned Rank history is visible only in verified formal view', async 
           title: '作者本人の作品',
           rank: 4,
           rankName: 'BEACON',
-          peakRank: 5
+          peakRank: 5,
+          receivedSeeds: {
+            total: 5,
+            gold: 2,
+            silver: 1,
+            bronze: 1,
+            legacy: 1
+          }
         }
       ],
       events: [
@@ -222,6 +229,8 @@ test('author-owned Rank history is visible only in verified formal view', async 
   assert.match(text(root), /作者本人の作品/);
   assert.match(text(root), /BEACON/);
   assert.match(text(root), /Rank 4/);
+  assert.match(text(root), /受信 LIGHT SEED 5個/);
+  assert.match(text(root), /GOLD 2 \/ SILVER 1 \/ BRONZE 1 \/ 旧形式 1/);
   assert.match(text(root), /昇格/);
   const hidden = new FakeElement('main');
   const blocked = ui.createRewardReaderPanel({
@@ -238,6 +247,35 @@ test('author-owned Rank history is visible only in verified formal view', async 
     serverVerified: false
   });
   assert.equal(unverified.authorGrowth, null);
+  const malformed = {
+    ...eligible,
+    authorGrowth: {
+      ...eligible.authorGrowth,
+      works: [
+        {
+          ...eligible.authorGrowth.works[0],
+          receivedSeeds: {
+            total: 50,
+            gold: 2,
+            silver: 1,
+            bronze: 1,
+            legacy: 1
+          }
+        }
+      ]
+    }
+  };
+  const invalidRoot = new FakeElement('main');
+  const invalidPanel = ui.createRewardReaderPanel({
+    root: invalidRoot,
+    fetchSnapshot: async () => malformed
+  });
+  await invalidPanel.reload();
+  byTag(invalidRoot, 'button')
+    .find((button) => button.textContent === '発掘・称号')
+    .fire('click');
+  assert.match(text(invalidRoot), /受信 LIGHT SEED：履歴照合中/);
+  assert.doesNotMatch(text(invalidRoot), /受信 LIGHT SEED 50個/);
 });
 
 test('unverified wallet cannot display usable balances or activate reward actions', async () => {
