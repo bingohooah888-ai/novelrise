@@ -417,7 +417,7 @@ test('new runner instance can replay a previously persisted retry claim', async 
   assert.equal(result.processed, 1);
 });
 
-test('committed read is checked in canonical DB before entering the existing durable queue', async () => {
+test('verified read enters existing durable queue', async () => {
   const calls = [];
   const runner = create({
     async query(sql, args) {
@@ -444,11 +444,15 @@ test('committed read is checked in canonical DB before entering the existing dur
   });
   assert.equal(result.status, 'pending');
   assert.deepEqual(calls.at(-1)[1], ['valid_read_qualified', readId]);
-  assert.equal(calls.filter(([sql]) => sql.includes('enqueue_earning_draft')).length, 1);
-  assert.equal(calls.some(([sql]) => sql.includes('award_read_points_draft')), false);
+  const enqueues = calls.filter(([sql]) => sql.includes('enqueue_earning_draft'));
+  assert.equal(enqueues.length, 1);
+  assert.equal(
+    calls.some(([sql]) => sql.includes('award_read_points_draft')),
+    false
+  );
 });
 
-test('comment handoff queues review_pending without approving content or issuing Points', async () => {
+test('comment handoff enqueues review without Point award', async () => {
   const calls = [];
   const runner = create({
     async query(sql, args) {
@@ -471,7 +475,10 @@ test('comment handoff queues review_pending without approving content or issuing
     'novel_episode_comment_reviewed',
     commentId
   ]);
-  assert.equal(calls.some(([sql]) => sql.includes('award_comment_points_draft')), false);
+  assert.equal(
+    calls.some(([sql]) => sql.includes('award_comment_points_draft')),
+    false
+  );
 });
 
 test('unapproved or unverifiable source cannot enqueue a Point claim', async () => {
