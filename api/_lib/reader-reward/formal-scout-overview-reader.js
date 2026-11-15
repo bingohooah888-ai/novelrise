@@ -1,8 +1,7 @@
 // Formal Scout Record: read-only projection from the EXISTING badge and SEED
 // source tables. Not an endpoint, job, migration, award or new source of truth.
 // Must be invoked only after a trusted handler verifies the user's JWT.
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SEEDS = new Set(['GOLD', 'SILVER', 'BRONZE']);
 const STATUS = new Set(['in_progress', 'earned', 'revoked']);
 const CATEGORY = new Set(['reader', 'author', 'limited']);
@@ -32,9 +31,7 @@ const SEEDS_SQL =
 
 function int(value, min, max) {
   const n =
-    typeof value === 'string' && /^\d+$/.test(value)
-      ? Number(value)
-      : value;
+    typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
   if (!Number.isSafeInteger(n) || n < min || n > max)
     throw new Error('SCOUT_OVERVIEW_DB_VALUE_INVALID');
   return n;
