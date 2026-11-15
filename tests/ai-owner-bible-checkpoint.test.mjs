@@ -320,9 +320,10 @@ function changedZeroPlan(before, after) {
 
 test('new empty chapter is completed with zero model chunks and no false interim hash', async () => {
   const plan = syntheticPlan({ ...EPISODE, content: '' });
-  assert.deepEqual(plan.zeroChangedSources.map((x) => x.reason), [
-    'empty-body'
-  ]);
+  assert.deepEqual(
+    plan.zeroChangedSources.map((x) => x.reason),
+    ['empty-body']
+  );
   const store = fakeJournal();
   const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
     enabled: true,
@@ -335,10 +336,7 @@ test('new empty chapter is completed with zero model chunks and no false interim
     remainingChunks: 0
   });
   assert.equal(store.calls.cas, 1);
-  assert.equal(
-    store.row.source_hash,
-    plan.zeroChangedSources[0].sourceHash
-  );
+  assert.equal(store.row.source_hash, plan.zeroChangedSources[0].sourceHash);
   assert.equal(store.row.summary.novelightPhase2.chunkCount, 0);
   assert.equal(store.row.summary.novelightPhase2.state, 'complete');
   assert.deepEqual(await checkpoint.completeEmpty(args(plan, 0)), {
@@ -376,7 +374,10 @@ test('deletion-only and verified title-only changes promote source without provi
       enabled: true,
       repository: store.repository
     });
-    assert.equal((await checkpoint.completeEmpty(args(plan, 0))).complete, true);
+    assert.equal(
+      (await checkpoint.completeEmpty(args(plan, 0))).complete,
+      true
+    );
     assert.equal(store.row.revision, 5);
     assert.equal(store.row.summary.oldMetadata, 'preserved');
     assert.equal(store.row.source_hash, plan.zeroChangedSources[0].sourceHash);
@@ -404,8 +405,10 @@ test('mid-analysis manuscript revision drops old incomplete indices through CAS'
   });
   assert.equal(store.row.revision, previousRevision + 1);
   assert.deepEqual(store.row.summary.novelightPhase2.completedIndices, []);
-  assert.equal(store.row.summary.novelightPhase2.targetSourceHash,
-    edited.chunks[0].sourceHash);
+  assert.equal(
+    store.row.summary.novelightPhase2.targetSourceHash,
+    edited.chunks[0].sourceHash
+  );
   await assert.rejects(
     checkpoint.record(args(initial, 1)),
     /AI_BIBLE_CHECKPOINT_CONFLICT/u
