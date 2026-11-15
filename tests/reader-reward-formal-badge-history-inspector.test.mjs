@@ -25,7 +25,9 @@ function fixture(badges = badgeCounts, points = pointCounts) {
     query: async (sql) => {
       calls.push(sql);
       return {
-        rows: [sql.includes('from public.user_scout_badges b') ? badges : points]
+        rows: [
+          sql.includes('from public.user_scout_badges b') ? badges : points
+        ]
       };
     }
   });
@@ -86,9 +88,7 @@ test('aggregates distinguish old/new badge Point units and baseline no-award bad
   assert.equal(report.betaPointTenfoldMigrationVerified, false);
   assert.equal(report.readyForPublicRelease, false);
   assert.ok(
-    report.blockers.includes(
-      'legacy_badge_point_units_require_reconciliation'
-    )
+    report.blockers.includes('legacy_badge_point_units_require_reconciliation')
   );
   assert.ok(
     report.blockers.includes(
@@ -97,7 +97,9 @@ test('aggregates distinguish old/new badge Point units and baseline no-award bad
   );
   assert.equal(calls.length, 2);
   assert.ok(calls.every((sql) => /^select\b/i.test(sql)));
-  assert.ok(calls.every((sql) => !/\b(insert|update|delete|alter|drop)\b/i.test(sql)));
+  assert.ok(
+    calls.every((sql) => !/\b(insert|update|delete|alter|drop)\b/i.test(sql))
+  );
   assert.match(calls[0], /'badge:' \|\| b\.user_id::text/);
   assert.match(calls[1], /p\.metadata->>'badge_id'/);
   assert.equal(JSON.stringify(report).includes(ADMIN), false);
@@ -128,7 +130,10 @@ test('even clean synthetic history does not approve whole Point conversion', asy
 
 test('invalid, missing and inconsistent aggregates fail closed', async () => {
   await assert.rejects(() =>
-    fixture({ ...badgeCounts, legacy_unit_events: 'not-a-count' }).reader.inspect()
+    fixture({
+      ...badgeCounts,
+      legacy_unit_events: 'not-a-count'
+    }).reader.inspect()
   );
   await assert.rejects(() =>
     fixture({ ...badgeCounts, linked_events: '2' }).reader.inspect()
@@ -145,9 +150,11 @@ test('existing unregistered formal application exposes history read without DB w
       query: async (sql) => {
         calls.push(sql);
         return {
-          rows: [sql.includes('from public.user_scout_badges b')
-            ? badgeCounts
-            : pointCounts]
+          rows: [
+            sql.includes('from public.user_scout_badges b')
+              ? badgeCounts
+              : pointCounts
+          ]
         };
       },
       connect: async () => {
@@ -178,9 +185,13 @@ test('existing unregistered formal application exposes history read without DB w
 test('history GET requires trusted admin identity before any aggregate query', async () => {
   const { reader, calls } = fixture();
   const names = [
-    'getReaderSnapshot', 'requestExchange', 'requestAiUse',
-    'listPendingExchanges', 'listRefundCandidates',
-    'resolveExchange', 'refundCommitted'
+    'getReaderSnapshot',
+    'requestExchange',
+    'requestAiUse',
+    'listPendingExchanges',
+    'listRefundCandidates',
+    'resolveExchange',
+    'refundCommitted'
   ];
   const service = Object.fromEntries(
     names.map((name) => [name, async () => ({ status: 'formal_use_disabled' })])
