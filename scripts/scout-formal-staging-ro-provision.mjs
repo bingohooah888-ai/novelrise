@@ -13,6 +13,60 @@ import {
 } from './scout-point10x-staging-identity-readonly.mjs';
 
 const { Client } = pg;
+export const FORMAL_RO_SAFE_FAILURE_STAGES = Object.freeze({
+  CONTEXT: 'C00_CONTEXT_PREWRITE',
+  CA: 'C01_CA_PIN_PREWRITE',
+  SCOPE: 'C02_VERCEL_SCOPE_PREWRITE',
+  INVENTORY: 'C03_VERCEL_INVENTORY_PREWRITE',
+  DB_CONNECT: 'C04_DB_CONNECT_PREWRITE',
+  DB_TLS: 'C05_DB_TLS_PREWRITE',
+  DB_IDENTITY: 'C06_DB_IDENTITY_PREWRITE',
+  DB_ACL: 'C07_DB_ACL_PREWRITE',
+  PASSWORD_PREP: 'C08_PASSWORD_PREP_PREWRITE',
+  PASSWORD_ATTEMPT: 'W10_PASSWORD_WRITE_UNVERIFIED',
+  PASSWORD_DONE: 'W11_PASSWORD_WRITE_CONFIRMED',
+  SECRET_ATTEMPT: 'W20_VERCEL_SECRET_WRITE_UNVERIFIED',
+  SECRET_VERIFY: 'W21_VERCEL_SECRET_POSTCHECK_UNVERIFIED',
+  LOGIN_ATTEMPT: 'W30_LOGIN_WRITE_UNVERIFIED',
+  READER_CONNECT: 'W31_READER_CONNECT_AFTER_LOGIN',
+  READER_CHECK: 'W32_READER_CHECK_AFTER_LOGIN',
+  ROLLBACK_ATTEMPT: 'W40_LOGIN_ROLLBACK_UNVERIFIED',
+  ROLLBACK_DONE: 'W41_LOGIN_ROLLBACK_CONFIRMED',
+  UNKNOWN: 'X99_UNCLASSIFIED'
+});
+
+const KNOWN_HOLD_CODES = new Set([
+  'UNTRUSTED_APPROVAL_CONTEXT',
+  'EXISTING_STAGING_SECRETS_REQUIRED',
+  'STAGING_DATABASE_IDENTITY_UNVERIFIED',
+  'GENERATED_PASSWORD_INVALID',
+  'DATABASE_ROUTE_INVALID',
+  'SCRAM_INPUT_INVALID',
+  'TLS_NOT_VERIFIED',
+  'ROLE_NOT_DORMANT_OR_UNSAFE',
+  'STAGING_READER_ACL_DRIFT',
+  'VERCEL_INVENTORY_UNAVAILABLE',
+  'VERCEL_INVENTORY_INCOMPLETE',
+  'VERCEL_SECRET_WRITE_UNVERIFIED',
+  'READONLY_LOGIN_NOT_VERIFIED',
+  'VERCEL_PROJECT_IDENTITY_MISMATCH',
+  'VERCEL_EXISTING_SECRET_REFUSED',
+  'PRIVILEGED_STAGING_ROLE_UNVERIFIED',
+  'VERCEL_POSTWRITE_METADATA_UNVERIFIED',
+  'ROLE_DISABLE_UNVERIFIED',
+  'PROVISION_FAILED_SAFE_REVIEW_REQUIRED'
+]);
+
+const FIXED_STAGE_SET = new Set(
+  Object.values(FORMAL_RO_SAFE_FAILURE_STAGES)
+);
+
+export function formalReaderFailureStage(error) {
+  return FIXED_STAGE_SET.has(error?.safeStage)
+    ? error.safeStage
+    : FORMAL_RO_SAFE_FAILURE_STAGES.UNKNOWN;
+}
+
 const REPO = 'bingohooah888-ai/novelrise';
 const STAGING_REF = 'wmlzjgvxgoyrovdhbqbg';
 const STAGING_URL = 'https://' + STAGING_REF + '.supabase.co';
@@ -262,15 +316,19 @@ async function verifyNewRole(client) {
   }
 }
 
-export async function provisionFormalStagingReader({
+async function provisionFormalStagingReaderCore({
   env = process.env,
   fetchImpl = globalThis.fetch,
   resolveScope = resolveVercelProjectScope,
-  ClientImpl = Client
+  ClientImpl = Client,
+  setStage = () => {}
 } = {}) {
+  setStage(FORMAL_RO_SAFE_FAILURE_STAGES.CONTEXT);
   verifyFormalReaderProvisionContext(env);
+  setStage(FORMAL_RO_SAFE_FAILURE_STAGES.CA);
   const ca = readFileSync(OFFICIAL_SUPABASE_CA_FILE_PATH, 'utf8');
   verifyPinnedSupabaseRootCa(ca);
+  setStage(FORMAL_RO_SAFE_FAILURE_STAGES.SCOPE);
   const scope = await resolveScope({
     fetchImpl,
     token: env.VERCEL_API_TOKEN,
@@ -279,18 +337,24 @@ export async function provisionFormalStagingReader({
   if (scope.projectId !== PROJECT || scope.teamId !== TEAM) {
     hold('VERCEL_PROJECT_IDENTITY_MISMATCH');
   }
+  setStage(FORMAL_RO_SAFE_FAILURE_STAGES.INVENTORY);
   if ((await fetchEnvInventory(env.VERCEL_API_TOKEN, fetchImpl)).length !== 0) {
     hold('VERCEL_EXISTING_SECRET_REFUSED');
   }
+  setStage(FORMAL_RO_SAFE_FAILURE_STAGES.DB_CONNECT);
   const admin = new ClientImpl(connectionOptions(env.STAGING_DATABASE_URL, ca));
   let loginActivated = false;
   try {
     await admin.connect();
+    setStage(FORMAL_RO_SAFE_FAILURE_STAGES.DB_TLS);
     await verifyTls(admin);
+    setStage(FORMAL_RO_SAFE_FAILURE_STAGES.DB_IDENTITY);
     const who = await admin.query('select current_user as name');
     if (who.rows[0]?.name !== 'postgres') hold('PRIVILEGED_STAGING_ROLE_UNVERIFIED');
+    setStage(FORMAL_RO_SAFE_FAILURE_STAGES.DB_ACL);
     await verifyDormantRole(admin);
 
+    setStage(FORMAL_RO_SAFE_FAILURE_STAGES.PASSWORD_PREP);
     // Generate only in this trusted runner. Never echo the password or hash.
     const password = randomBytes(48).toString('base64url');
     const verifier = makeScramVerifier(password, randomBytes(16));
@@ -300,8 +364,12 @@ export async function provisionFormalStagingReader({
     );
     // A password is set while the role remains NOLOGIN: a failed Vercel
     // write cannot produce a publicly usable partial credential.
+    setStage(FORMAL_RO_SAFE_FAILURE_STAGES.PASSWORD_ATTEMPT);
     await admin.query('ALTER ROLE ' + ROLE + " PASSWORD '" + verifier + "'");
+    setStage(FORMAL_RO_SAFE_FAILURE_STAGES.PASSWORD_DONE);
+    setStage(FORMAL_RO_SAFE_FAILURE_STAGES.SECRET_ATTEMPT);
     await storeBranchOnlySecret(env.VERCEL_API_TOKEN, readerUrl, fetchImpl);
+    setStage(FORMAL_RO_SAFE_FAILURE_STAGES.SECRET_VERIFY);
     const created = await fetchEnvInventory(env.VERCEL_API_TOKEN, fetchImpl);
     if (
       created.length !== 1 ||
@@ -312,11 +380,14 @@ export async function provisionFormalStagingReader({
       hold('VERCEL_POSTWRITE_METADATA_UNVERIFIED');
     }
     // Authorization is still OFF: only the isolated reader login is enabled.
+    setStage(FORMAL_RO_SAFE_FAILURE_STAGES.LOGIN_ATTEMPT);
     await admin.query('ALTER ROLE ' + ROLE + ' LOGIN');
     loginActivated = true;
+    setStage(FORMAL_RO_SAFE_FAILURE_STAGES.READER_CONNECT);
     const reader = new ClientImpl(connectionOptions(readerUrl, ca));
     try {
       await reader.connect();
+      setStage(FORMAL_RO_SAFE_FAILURE_STAGES.READER_CHECK);
       await verifyNewRole(reader);
     } finally {
       await reader.end().catch(() => {});
@@ -331,9 +402,11 @@ export async function provisionFormalStagingReader({
     if (loginActivated) {
       // Do not silently claim a safe rollback when disabling login failed.
       let disabled = false;
+      setStage(FORMAL_RO_SAFE_FAILURE_STAGES.ROLLBACK_ATTEMPT);
       try {
         await admin.query('ALTER ROLE ' + ROLE + ' NOLOGIN');
         disabled = true;
+        setStage(FORMAL_RO_SAFE_FAILURE_STAGES.ROLLBACK_DONE);
       } catch {
         // A credential may still be active: require explicit operator review.
       }
@@ -345,14 +418,38 @@ export async function provisionFormalStagingReader({
   }
 }
 
+// Only fixed codes cross the exception/log boundary. Never propagate
+// dependency errors: PostgreSQL or Vercel messages can contain credentials.
+export async function provisionFormalStagingReader(options = {}) {
+  let stage = FORMAL_RO_SAFE_FAILURE_STAGES.CONTEXT;
+  try {
+    return await provisionFormalStagingReaderCore({
+      ...options,
+      setStage: (next) => {
+        stage = FIXED_STAGE_SET.has(next)
+          ? next
+          : FORMAL_RO_SAFE_FAILURE_STAGES.UNKNOWN;
+      }
+    });
+  } catch (error) {
+    const reason = KNOWN_HOLD_CODES.has(error?.safeCode)
+      ? error.safeCode
+      : 'PROVISION_FAILED_SAFE_REVIEW_REQUIRED';
+    const sanitized = new Error('FORMAL_RO_PROVISION_HOLD:' + reason);
+    sanitized.safeCode = reason;
+    sanitized.safeStage = stage;
+    throw sanitized;
+  }
+}
+
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   provisionFormalStagingReader()
     .then(() => console.log('FORMAL_RO_STAGING_CREDENTIAL_READY'))
-    .catch(() => {
-      console.error('FORMAL_RO_STAGING_PROVISION_STOPPED');
+    .catch((error) => {
+      console.error('FORMAL_RO_STAGING_PROVISION_STOPPED:' + formalReaderFailureStage(error));
       process.exitCode = 1;
     });
 }
