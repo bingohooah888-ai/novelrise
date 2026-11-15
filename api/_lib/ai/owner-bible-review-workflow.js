@@ -169,8 +169,20 @@ export function createOwnerBibleReviewWorkflow({
     if (!result.candidates.length) {
       return { novelId: novel.id, stagedCount: 0 };
     }
+    // The per-batch idempotency key includes the authoritative chapter
+    // revision, not just factKind/factKey. An identical suggestion from a
+    // revised manuscript is a NEW proposal, while replaying the exact same
+    // source remains idempotent in the existing SQL RPC.
     const identity = createHash('sha256')
-      .update(JSON.stringify([actorId, novel.id, result.candidates]))
+      .update(
+        JSON.stringify([
+          actorId,
+          novel.id,
+          positiveId(episodeId),
+          sourceHash,
+          result.candidates
+        ])
+      )
       .digest('hex');
     const saved = await repository.savePendingBatch({
       actorId,
@@ -394,10 +406,24 @@ export function createOwnerBibleReviewWorkflow({
         activeAccepted.push(item);
       }
     }
+    // A same-named fact can have independent reviews across manuscript
+    // revisions. Link only SAME-EPISODE historical rows in display metadata;
+    // never merge their IDs, decisions or canonical author notes.
+    const olderKeys = new Set(
+      staleCandidates.map((item) =>
+        JSON.stringify([item.episodeId, item.kind, item.key])
+      )
+    );
+    const withVersionLabel = (items) =>
+      items.map((item) =>
+        olderKeys.has(JSON.stringify([item.episodeId, item.kind, item.key]))
+          ? { ...item, replacesOutdatedVersion: true }
+          : item
+      );
     return {
       novelId: novel.id,
-      candidates: activeCandidates,
-      acceptedCandidates: activeAccepted,
+      candidates: withVersionLabel(activeCandidates),
+      acceptedCandidates: withVersionLabel(activeAccepted),
       staleCandidates,
       aiGenerated: false
     };
