@@ -416,3 +416,96 @@ test('new runner instance can replay a previously persisted retry claim', async 
   assert.equal(result.completed, 1);
   assert.equal(result.processed, 1);
 });
+
+test('committed read is checked in canonical DB before entering the existing durable queue', async () => {
+  const calls = [];
+  const runner = create({
+    async query(sql, args) {
+      calls.push([sql, args]);
+      if (sql.includes('from public.valid_read_events'))
+        return {
+          rows: [
+            {
+              id: readId,
+              reader_id: userId,
+              episode_id_snapshot: 9,
+              qualified_at: '2027-02-01T00:00:00Z'
+            }
+          ]
+        };
+      if (sql.includes('enqueue_earning_draft'))
+        return { rows: [{ result: { status: 'pending' } }] };
+      throw new Error('unexpected SQL');
+    }
+  });
+  const result = await runner.enqueueCommittedEvent({
+    eventType: 'valid_read_qualified',
+    eventId: readId
+  });
+  assert.equal(result.status, 'pending');
+  assert.deepEqual(calls.at(-1)[1], ['valid_read_qualified', readId]);
+  assert.equal(calls.filter(([sql]) => sql.includes('enqueue_earning_draft')).length, 1);
+  assert.equal(calls.some(([sql]) => sql.includes('award_read_points_draft')), false);
+});
+
+test('comment handoff queues review_pending without approving content or issuing Points', async () => {
+  const calls = [];
+  const runner = create({
+    async query(sql, args) {
+      calls.push([sql, args]);
+      if (sql.includes('from public.novel_comments where id='))
+        return { rows: [comment] };
+      if (sql.includes('from public.novel_comments where user_id='))
+        return { rows: [] };
+      if (sql.includes('enqueue_earning_draft'))
+        return { rows: [{ result: { status: 'review_pending' } }] };
+      throw new Error('unexpected SQL');
+    }
+  });
+  const result = await runner.enqueueCommittedEvent({
+    eventType: 'novel_episode_comment_reviewed',
+    eventId: commentId
+  });
+  assert.equal(result.status, 'review_pending');
+  assert.deepEqual(calls.at(-1)[1], [
+    'novel_episode_comment_reviewed',
+    commentId
+  ]);
+  assert.equal(calls.some(([sql]) => sql.includes('award_comment_points_draft')), false);
+});
+
+test('unapproved or unverifiable source cannot enqueue a Point claim', async () => {
+  let writes = 0;
+  const db = {
+    async query(sql) {
+      if (sql.includes('enqueue_earning_draft')) writes++;
+      return { rows: [] };
+    }
+  };
+  const disabled = create(db, {
+    launchConfiguration: { ...launch, formalWorkerEnabled: false }
+  });
+  assert.equal(
+    (await disabled.enqueueCommittedEvent({
+      eventType: 'valid_read_qualified',
+      eventId: readId
+    })).status,
+    'formal_worker_disabled'
+  );
+  const runner = create(db);
+  assert.equal(
+    (await runner.enqueueCommittedEvent({
+      eventType: 'valid_read_qualified',
+      eventId: readId
+    })).status,
+    'canonical_source_missing'
+  );
+  assert.equal(
+    (await runner.enqueueCommittedEvent({
+      eventType: 'invalid_event',
+      eventId: readId
+    })).status,
+    'invalid_event'
+  );
+  assert.equal(writes, 0);
+});
