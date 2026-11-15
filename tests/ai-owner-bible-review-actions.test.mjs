@@ -31,7 +31,10 @@ function mock({
   postStatus = 200,
   postPayload = null,
   getPayload = null,
-  postThrows = false
+  postThrows = false,
+  transferPayload = null,
+  transferStatus = 200,
+  transferThrows = false
 } = {}) {
   const host = element('main');
   let listener;
@@ -57,6 +60,15 @@ function mock({
   async function fetcher(_url, options) {
     requests.push(options);
     if (!allow) return { ok: false };
+    if (_url.includes('&transfer_candidate_id=')) {
+      if (transferThrows) throw new Error('offline transfer failure');
+      return {
+        ok: transferStatus === 200,
+        async json() {
+          return transferPayload;
+        }
+      };
+    }
     if (options.method === 'POST') {
       if (postThrows) throw new Error('offline POST failure');
       return {
@@ -517,4 +529,165 @@ test('invalid new-version label from API never exposes review controls', async (
     );
     assert.equal(f.host.children.length, 0);
   }
+});
+
+test('just-in-time transfer rechecks accepted row before changing note editor', async () => {
+  const accepted = {
+    id: 7,
+    episodeId: 4,
+    revision: 2,
+    kind: 'world',
+    key: '青い王都',
+    summary: '青い城壁を持つ。',
+    evidence: '王都の城壁は青い。',
+    status: 'accepted'
+  };
+  const f = mock({
+    getPayload: {
+      novelId: 354,
+      aiGenerated: false,
+      candidates: [],
+      acceptedCandidates: [accepted]
+    },
+    transferPayload: {
+      novelId: 354,
+      transferReady: true,
+      candidate: accepted
+    }
+  });
+  const drafts = [];
+  assert.equal(
+    await attach({
+      client: f.client,
+      novelId: 354,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher,
+      onAccepted: async (candidate) => {
+        drafts.push(candidate);
+        return true;
+      }
+    }),
+    true
+  );
+  const list = f.host.children[0].children[1];
+  const transfer = list.children[2].children[1].children[0];
+  assert.equal(f.requests.length, 1);
+  await transfer.listeners.click();
+  assert.equal(f.requests.length, 2);
+  assert.equal(f.requests[1].method, 'GET');
+  assert.equal(f.requests[1].cache, 'no-store');
+  assert.equal(f.requests[1].headers.Authorization, 'Bearer offline-token');
+  assert.equal(f.requests.filter((req) => req.method === 'POST').length, 0);
+  assert.deepEqual(drafts, [
+    {
+      kind: 'world',
+      key: '青い王都',
+      summary: '青い城壁を持つ。',
+      evidence: '王都の城壁は青い。',
+      episodeId: 4
+    }
+  ]);
+  assert.equal(transfer.removed, false);
+});
+
+test('edit after listing or denied recheck never transfers an old accepted row', async () => {
+  const accepted = {
+    id: 7,
+    episodeId: 4,
+    revision: 2,
+    kind: 'world',
+    key: '青い王都',
+    summary: '青い城壁を持つ。',
+    evidence: '王都の城壁は青い。',
+    status: 'accepted'
+  };
+  const list = {
+    novelId: 354,
+    aiGenerated: false,
+    candidates: [],
+    acceptedCandidates: [accepted]
+  };
+  for (const options of [
+    { transferStatus: 409 },
+    { transferStatus: 404 },
+    { transferThrows: true },
+    { transferPayload: { novelId: 354, transferReady: false, candidate: accepted } },
+    { transferPayload: { novelId: 354, transferReady: true, candidate: { ...accepted, revision: 3 } } },
+    { transferPayload: { novelId: 354, transferReady: true, candidate: { ...accepted, evidence: '別の本文' } } }
+  ]) {
+    const f = mock({ getPayload: list, ...options });
+    let transfers = 0;
+    assert.equal(
+      await attach({
+        client: f.client,
+        novelId: 354,
+        ownerId: OWNER,
+        doc: f.doc,
+        fetcher: f.fetcher,
+        onAccepted: async () => {
+          transfers += 1;
+          return true;
+        }
+      }),
+      true
+    );
+    const section = f.host.children[0];
+    const transfer = section.children[1].children[2].children[1].children[0];
+    await transfer.listeners.click();
+    assert.equal(transfers, 0);
+    assert.equal(f.requests.length, 2);
+    assert.equal(
+      f.requests.filter((req) => req.method === 'POST').length,
+      0
+    );
+    assert.match(section.children[2].textContent, /転記できませんでした/u);
+    assert.equal(transfer.removed, false);
+  }
+});
+
+test('newly accepted candidate transfers only after fresh revision-two verification', async () => {
+  const pending = {
+    id: 7,
+    episodeId: 4,
+    revision: 1,
+    kind: 'character',
+    key: '凛',
+    summary: '青い鍵を持っている。',
+    evidence: '凛は青い鍵を持っていた。',
+    status: 'pending'
+  };
+  const verified = { ...pending, revision: 2, status: 'accepted' };
+  const f = mock({
+    getPayload: {
+      novelId: 354,
+      aiGenerated: false,
+      candidates: [pending]
+    },
+    transferPayload: {
+      novelId: 354,
+      transferReady: true,
+      candidate: verified
+    }
+  });
+  let transfers = 0;
+  await attach({
+    client: f.client,
+    novelId: 354,
+    ownerId: OWNER,
+    doc: f.doc,
+    fetcher: f.fetcher,
+    onAccepted: async () => {
+      transfers += 1;
+      return true;
+    }
+  });
+  const list = f.host.children[0].children[1];
+  await list.children[0].children[1].listeners.click();
+  const transfer = list.children[1].children[0];
+  await transfer.listeners.click();
+  assert.equal(transfers, 1);
+  assert.equal(f.requests.length, 3);
+  assert.equal(f.requests[2].method, 'GET');
+  assert.equal(f.requests.filter((req) => req.method === 'POST').length, 1);
 });
