@@ -784,8 +784,8 @@ test('130 mixed active, accepted and stale candidates load only by explicit olde
   assert.equal(next.hidden, true);
   assert.equal(list.children.filter((node) => node.tag === 'div').length, 130);
   const historical = list.children.filter(
-    (node) => node.tag === 'div' &&
-      node.children[0].textContent.includes('旧版の候補')
+    (node) =>
+      node.tag === 'div' && node.children[0].textContent.includes('旧版の候補')
   );
   assert.equal(historical.length, 43);
   assert.ok(historical.every((node) => node.children.length === 1));
