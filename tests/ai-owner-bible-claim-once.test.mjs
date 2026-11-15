@@ -30,7 +30,7 @@ test('SQL claim is OFFLINE, unique, service-only and separate from CAS', () => {
   assert.match(proposal, /create table public\.novelight_ai_chunk_claims/u);
   assert.match(
     proposal,
-    /primary key\s*\(actor_id,novel_id,episode_id,source_hash,fingerprint,chunk_index\)/u
+    /primary key\s*\(actor_id,novel_id,episode_id,source_hash,chunk_index\)/u
   );
   assert.match(proposal, /enable row level security/u);
   assert.match(
@@ -125,7 +125,6 @@ function syntheticClient({ forcedClaimResult, owner = OWNER, body = TEXT } = {})
           p.p_novel_id,
           p.p_episode_id,
           p.p_source_hash,
-          p.p_fingerprint,
           p.p_chunk_index
         ].join(':');
         if (claims.has(key)) return { data: false, error: null };
@@ -219,6 +218,46 @@ test('two simultaneous requests enter Router/provider at most once', async () =>
   assert.equal(state.claims, 2);
   await stage(bridge); // Completed journal must not invoke the provider again.
   assert.equal(state.routerCalls, 1);
+});
+
+// The same source/index cannot be re-billed by changing the planned excerpt.
+// Synthetic Map contention only; actual Postgres uniqueness remains unproven.
+// prettier-ignore
+test('a changed fingerprint or chunk hash cannot bypass a consumed claim', async () => {
+  const { client, state, claims } = syntheticClient();
+  const request = {
+    p_actor_id: OWNER,
+    p_novel_id: 41,
+    p_episode_id: 11,
+    p_source_hash: 'a'.repeat(64),
+    p_previous_source_hash: null,
+    p_fingerprint: 'b'.repeat(64),
+    p_chunk_index: 0,
+    p_chunk_hash: 'c'.repeat(64)
+  };
+  assert.deepEqual(
+    await client.rpc('novelight_ai_checkpoint_claim_once_v1', request),
+    { data: true, error: null }
+  );
+  assert.deepEqual(
+    await client.rpc('novelight_ai_checkpoint_claim_once_v1', {
+      ...request,
+      p_fingerprint: 'd'.repeat(64),
+      p_chunk_hash: 'e'.repeat(64)
+    }),
+    { data: false, error: null }
+  );
+  assert.equal(claims.size, 1);
+  // A genuinely new manuscript source remains a distinct claim scope.
+  assert.deepEqual(
+    await client.rpc('novelight_ai_checkpoint_claim_once_v1', {
+      ...request,
+      p_source_hash: 'f'.repeat(64)
+    }),
+    { data: true, error: null }
+  );
+  assert.equal(claims.size, 2);
+  assert.equal(state.routerCalls, 0);
 });
 
 // prettier-ignore
