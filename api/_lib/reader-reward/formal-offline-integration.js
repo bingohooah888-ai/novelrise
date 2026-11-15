@@ -5,7 +5,10 @@ import { createOfflineFormalUsageRepository } from './formal-usage-offline-repos
 import { createUnregisteredFormalRewardHost } from './formal-usage-host.js';
 import { reconcileScoutOfflineOpening } from './formal-cutover-offline.js';
 import { compileApprovedScoutFormalXpLadder } from './formal-thresholds.js';
-import { quoteFormalReadPointReward, quoteFormalCommentPointReward } from './formal-earning-rewards.js';
+import {
+  quoteFormalReadPointReward,
+  quoteFormalCommentPointReward
+} from './formal-earning-rewards.js';
 import { reviewFormalEpisodeComment } from './formal-comment-eligibility.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -75,7 +78,7 @@ export function createFormalOfflineIntegration({
   // calculate the rewards; arbitrary client-supplied amounts are not accepted.
   // The unique Point event key, not the delivery attempt, prevents replay.
   // This is NOT a database writer and cannot be mounted as a public route.
-  const awardedKeys = new Set();
+  const awardedKeys = new Set(handoff.convertedRows.map((row) => row.eventKey));
   const monthlyClaims = new Map();
   const rewardDecisions = [];
   for (const event of syntheticEligibleEvents) {
@@ -108,12 +111,14 @@ export function createFormalOfflineIntegration({
         reviewerRule: event.reviewerRule
       });
       if (moderation.mayAward !== true) {
-        rewardDecisions.push(Object.freeze({
-          kind: event.kind,
-          sourceEventId: event.verifiedComment?.id ?? null,
-          status: moderation.status,
-          points: 0
-        }));
+        rewardDecisions.push(
+          Object.freeze({
+            kind: event.kind,
+            sourceEventId: event.verifiedComment?.id ?? null,
+            status: moderation.status,
+            points: 0
+          })
+        );
         continue;
       }
       // The 50-comment cap must be counted from the accepted synthetic
@@ -144,21 +149,24 @@ export function createFormalOfflineIntegration({
       if (verdict.status === 'reward_quote_only')
         monthlyClaims.set(countKey, (monthlyClaims.get(countKey) ?? 0) + 1);
     }
-    rewardDecisions.push(Object.freeze({
-      kind: event.kind,
-      sourceEventId:
-        verdict.sourceEventId ??
-        event.verifiedReadEvent?.id ??
-        event.verifiedComment?.id ??
-        null,
-      status: verdict.status,
-      points: verdict.status === 'reward_quote_only' ? verdict.points : 0
-    }));
+    rewardDecisions.push(
+      Object.freeze({
+        kind: event.kind,
+        sourceEventId:
+          verdict.sourceEventId ??
+          event.verifiedReadEvent?.id ??
+          event.verifiedComment?.id ??
+          null,
+        status: verdict.status,
+        points: verdict.status === 'reward_quote_only' ? verdict.points : 0
+      })
+    );
     if (verdict.status !== 'reward_quote_only') continue;
     if (awardedKeys.has(verdict.eventKey))
       throw new Error('Synthetic Point event key collision');
     awardedKeys.add(verdict.eventKey);
-    const awardId = 'offline-formal:' + event.kind + '-' + verdict.sourceEventId.toLowerCase();
+    const awardId =
+      'offline-formal:' + event.kind + '-' + verdict.sourceEventId.toLowerCase();
     if (formalAddition.has(awardId))
       throw new Error('Synthetic Point event ID collision');
     formalAddition.set(awardId, {
