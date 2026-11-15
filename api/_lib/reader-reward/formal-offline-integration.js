@@ -14,6 +14,8 @@ import { createFormalOfflineDurableDb } from './formal-offline-durable-db.js';
 import { createFormalEarningRunner } from './formal-earning-runner.js';
 import { createUnregisteredFormalMaintenanceRunner } from './formal-maintenance-runner.js';
 import { createFormalCanonicalSourceReader } from './formal-earning-source-reader.js';
+import { createUnregisteredFormalBadgeHistoryInspector } from './formal-badge-history-inspector.js';
+import { createUnregisteredFormalWalletCohortInspector } from './formal-wallet-cohort-inspector.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const safe = (n) => Number.isSafeInteger(n) && n >= 0;
@@ -26,6 +28,84 @@ const policyApproved = Object.freeze({
 });
 const copy = (v) => JSON.parse(JSON.stringify(v));
 
+// Exercise the existing read-only badge history inspector against explicitly
+// supplied synthetic badge states and ORIGINAL canonical beta Point units.
+// A missing Point claim is reported, never minted or backfilled.
+function syntheticBadgeHistorySource(handoff, readerIds, badges) {
+  if (badges === null) return null;
+  if (!Array.isArray(badges) || badges.length > 100)
+    throw new TypeError('Bounded synthetic badge history required');
+  const byKey = new Map();
+  const claims = new Map(
+    handoff.convertedRows
+      .filter((entry) => entry.pointKind === 'badge')
+      .map((entry) => [entry.eventKey, entry])
+  );
+  const counts = {
+    earned_badges: 0,
+    linked_events: 0,
+    earned_without_event: 0,
+    current_unit_events: 0,
+    legacy_unit_events: 0,
+    anomalous_events: 0,
+    event_without_earned_status: 0
+  };
+  for (const badge of badges) {
+    if (
+      !badge ||
+      !readerIds.has(badge.userId) ||
+      !/^reader_[a-z0-9_]+$/.test(badge.badgeId || '') ||
+      !['earned', 'in_progress', 'revoked'].includes(badge.status) ||
+      !safe(badge.pointReward) ||
+      badge.sourceFixtureVerified !== true
+    )
+      throw new TypeError('Verified synthetic reader badge row required');
+    const key = 'badge:' + badge.userId + ':' + badge.badgeId;
+    if (byKey.has(key))
+      throw new TypeError('Duplicate synthetic reader badge identity');
+    byKey.set(key, badge);
+    const claim = claims.get(key);
+    if (badge.status === 'earned') counts.earned_badges++;
+    if (!claim) {
+      if (badge.status === 'earned' && badge.pointReward > 0)
+        counts.earned_without_event++;
+      continue;
+    }
+    counts.linked_events++;
+    if (badge.status !== 'earned') counts.event_without_earned_status++;
+    if (
+      claim.status !== 'confirmed' ||
+      claim.userId !== badge.userId ||
+      claim.pointKind !== 'badge'
+    )
+      counts.anomalous_events++;
+    else if (claim.sourceValue === badge.pointReward)
+      counts.current_unit_events++;
+    else if (
+      claim.sourceValue * 10 === badge.pointReward &&
+      claim.sourceValue !== badge.pointReward
+    )
+      counts.legacy_unit_events++;
+    else counts.anomalous_events++;
+  }
+  const unmatched = [...claims.values()].filter(
+    (entry) => !byKey.has(entry.eventKey)
+  ).length;
+  const orphans = {
+    unclassified_badge_events: unmatched,
+    orphan_reader_badge_events: unmatched
+  };
+  return createUnregisteredFormalBadgeHistoryInspector({
+    query: async (sql) => ({
+      rows: [
+        sql.includes('from public.user_scout_badges b')
+          ? counts
+          : orphans
+      ]
+    })
+  });
+}
+
 export function createFormalOfflineIntegration({
   handoff,
   betaThresholdRows,
@@ -36,6 +116,7 @@ export function createFormalOfflineIntegration({
   syntheticEligibleEvents = [],
   syntheticDurableEvents = [],
   syntheticXpEvents = [],
+  syntheticBadgeHistory = null,
   syntheticNowIso,
   formalReleaseAtMs
 } = {}) {
@@ -55,6 +136,8 @@ export function createFormalOfflineIntegration({
     !Array.isArray(syntheticEligibleEvents) ||
     !Array.isArray(syntheticDurableEvents) ||
     !Array.isArray(syntheticXpEvents) ||
+    (syntheticBadgeHistory !== null &&
+      !Array.isArray(syntheticBadgeHistory)) ||
     syntheticEligibleEvents.length > 100 ||
     syntheticXpEvents.length > 100 ||
     syntheticDurableEvents.length > 100 ||
@@ -74,6 +157,11 @@ export function createFormalOfflineIntegration({
   if (handoff.walletSeeds.some((s) => s.userId === operatorId))
     throw new TypeError('Synthetic operator cannot be a reader fixture');
   const readerIds = new Set(handoff.walletSeeds.map((s) => s.userId));
+  const badgeHistory = syntheticBadgeHistorySource(
+    handoff,
+    readerIds,
+    syntheticBadgeHistory
+  );
   const ladder = compileApprovedScoutFormalXpLadder({ betaThresholdRows });
   const formalAddition = new Map();
   for (const e of syntheticPostReleasePoints) {
@@ -249,7 +337,22 @@ export function createFormalOfflineIntegration({
   const repository = createOfflineFormalUsageRepository({
     readers: opening,
     budgets: mockBudgets,
-    openingPointEventKeys: handoff.convertedRows.map((row) => row.eventKey)
+    openingPointEventKeys: handoff.convertedRows.map((row) => row.eventKey),
+    openingEvidence: {
+      canonicalRows: handoff.convertedRows.map((row) => ({
+        userId: row.userId,
+        eventKey: row.eventKey,
+        points: row.convertedValue,
+        status: row.status,
+        formal: false
+      })),
+      formalCredits: [...formalAddition.values()].map((entry) => ({
+        userId: entry.userId,
+        eventKey: entry.eventKey || 'offline-formal-credit:' + entry.eventId,
+        points: entry.amountPoints,
+        formal: true
+      }))
+    }
   });
   // Exercise the real unregistered runner, canonical source reader and
   // fixed private SQL call shapes against a synthetic DB. Unlike the legacy
@@ -305,6 +408,11 @@ export function createFormalOfflineIntegration({
     ? createFormalCanonicalSourceReader({ postgresClient: syntheticDb })
     : null;
 
+  const walletCohort = createUnregisteredFormalWalletCohortInspector({
+    query: async () => ({
+      rows: [repository.getSyntheticWalletCohortAggregate()]
+    })
+  });
   const mockProviderState = new Map();
   let aiInvocations = 0;
   let giftVerifications = 0;
@@ -353,6 +461,8 @@ export function createFormalOfflineIntegration({
     env: { NOVELIGHT_ADMIN_USER_IDS: operatorId },
     inspectEarningSource: sourceInspector?.load,
     getAdminRewardOverview: syntheticDb?.getAdminRewardOverview,
+    getAdminBadgeHistory: badgeHistory?.inspect,
+    getAdminWalletCohort: walletCohort.inspect,
     catalog,
     policy: {
       giftProviderReady: true,
@@ -410,6 +520,10 @@ export function createFormalOfflineIntegration({
     noRealPointOrProvider: true,
     handoffSummary: handoff.summary,
     rewardDecisions: Object.freeze(rewardDecisions),
+    // The existing admin-only GET views receive these aggregate-only
+    // read-only inspectors; no beta ledger write or reward re-issue.
+    inspectSyntheticWalletCohort: walletCohort.inspect,
+    inspectSyntheticBadgeHistory: badgeHistory?.inspect,
     // Match the dormant public.scout_xp_ledger AFTER INSERT handoff with a
     // synthetic source ID, not caller-supplied XP/Level/Point amounts.
     applyCommittedXp: ({ xpLedgerId } = {}) =>
