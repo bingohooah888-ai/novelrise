@@ -209,3 +209,106 @@ test('proposed SQL is restricted to service_role and not in migrations', async (
   assert.match(sql, /p_expected_revision/);
   assert.match(sql, /status = 'pending'/);
 });
+
+test('service repository keyset pages 130 rows without ever skipping or repeating', async () => {
+  const records = Array.from({ length: 130 }, (_, i) => ({
+    id: i + 1,
+    actor_id: OWNER,
+    novel_id: 354,
+    source_episode_id: 41,
+    source_hash: HASH,
+    fact_kind: 'character',
+    fact_key: '凛',
+    summary: '候補 ' + (i + 1),
+    evidence: '鍵を持っていた',
+    status: i % 2 ? 'accepted' : 'pending',
+    revision: i % 2 ? 2 : 1
+  }));
+  const queries = [];
+  const serviceClient = {
+    from(table) {
+      assert.equal(table, 'novelight_ai_review_candidates');
+      const filters = [];
+      let beforeId = null;
+      return {
+        select() {
+          return this;
+        },
+        eq(key, value) {
+          filters.push([key, value]);
+          return this;
+        },
+        in(key, values) {
+          assert.equal(key, 'status');
+          assert.deepEqual(values, ['pending', 'accepted']);
+          return this;
+        },
+        lt(key, value) {
+          assert.equal(key, 'id');
+          beforeId = value;
+          return this;
+        },
+        order(key, options) {
+          assert.equal(key, 'id');
+          assert.deepEqual(options, { ascending: false });
+          return this;
+        },
+        async limit(number) {
+          assert.equal(number, 26);
+          assert.deepEqual(filters, [
+            ['actor_id', OWNER],
+            ['novel_id', 354]
+          ]);
+          queries.push(beforeId);
+          return {
+            data: records
+              .filter((row) => beforeId === null || row.id < beforeId)
+              .sort((a, b) => b.id - a.id)
+              .slice(0, number),
+            error: null
+          };
+        }
+      };
+    },
+    rpc() {}
+  };
+  const store = createSupabaseOwnerBibleReviewRepository({
+    serviceClient,
+    authorClient: { rpc() {} }
+  });
+  let beforeId = null;
+  const ids = [];
+  do {
+    const page = await store.listReviewPage({
+      actorId: OWNER,
+      novelId: 354,
+      beforeId
+    });
+    assert.ok(page.rows.length > 0 && page.rows.length <= 25);
+    ids.push(...page.rows.map((row) => row.id));
+    beforeId = page.nextBeforeId;
+  } while (beforeId !== null);
+  assert.deepEqual(
+    ids,
+    Array.from({ length: 130 }, (_, i) => 130 - i)
+  );
+  assert.deepEqual(queries, [null, 106, 81, 56, 31, 6]);
+});
+
+test('repository rejects malformed or unsafe review cursors before reads', async () => {
+  const { store } = adapter();
+  for (const beforeId of [-1, 0, 'NaN', {}, 1.5]) {
+    await assert.rejects(
+      store.listReviewPage({ actorId: OWNER, novelId: 354, beforeId }),
+      /AI_REVIEW_STORAGE_UNAVAILABLE/u
+    );
+  }
+  await assert.rejects(
+    store.listReviewPage({
+      actorId: 'not-an-owner',
+      novelId: 354,
+      beforeId: null
+    }),
+    /AI_REVIEW_STORAGE_UNAVAILABLE/u
+  );
+});
