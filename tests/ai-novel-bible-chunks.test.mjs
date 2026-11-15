@@ -209,13 +209,14 @@ test('long insertions use bounded global offsets and preserve Unicode', () => {
   assert.ok(result.chunks.every((part) => part.byteLength <= 4096));
   assert.equal(
     result.chunks
-      .map((chunk) =>
-        materializeNovelBibleChunk({
-          principal,
-          novel,
-          episode: after,
-          chunk
-        }).text
+      .map(
+        (chunk) =>
+          materializeNovelBibleChunk({
+            principal,
+            novel,
+            episode: after,
+            chunk
+          }).text
       )
       .join(''),
     inserted
