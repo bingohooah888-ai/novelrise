@@ -33,6 +33,7 @@ const copy = (value) => JSON.parse(JSON.stringify(value));
 
 export function createFormalOfflineDurableDb({
   events,
+  xpEvents = [],
   readerIds,
   operatorId,
   releaseAtMs,
@@ -42,8 +43,10 @@ export function createFormalOfflineDurableDb({
 } = {}) {
   if (
     !Array.isArray(events) ||
-    events.length === 0 ||
+    (events.length === 0 && xpEvents.length === 0) ||
     events.length > 100 ||
+    !Array.isArray(xpEvents) ||
+    xpEvents.length > 100 ||
     !(readerIds instanceof Set) ||
     !UUID.test(operatorId || '') ||
     !Number.isSafeInteger(releaseAtMs) ||
@@ -51,6 +54,8 @@ export function createFormalOfflineDurableDb({
     typeof nowIso !== 'string' ||
     !Number.isFinite(Date.parse(nowIso)) ||
     typeof repository?.creditSyntheticEarning !== 'function' ||
+    typeof repository?.applySyntheticXpEvent !== 'function' ||
+    typeof repository?.getSyntheticXpSummary !== 'function' ||
     typeof repository?.readReader !== 'function' ||
     !Array.isArray(legacyEventKeys)
   )
@@ -85,6 +90,24 @@ export function createFormalOfflineDurableDb({
       if (event.kind === 'read') reads.set(source.id, source);
       else comments.set(source.id, source);
     }
+  }
+  const verifiedXpLedger = new Map();
+  const xpIds = new Set();
+  for (const fixture of xpEvents) {
+    const row = fixture?.verifiedXpLedgerRow;
+    if (
+      !row ||
+      !UUID.test(row.id || '') ||
+      !UUID.test(row.user_id || '') ||
+      !UUID.test(row.source_event_id || '') ||
+      !readerIds.has(row.user_id) ||
+      row.user_id === operatorId ||
+      xpIds.has(row.id)
+    )
+      throw new TypeError('Invalid synthetic canonical XP row');
+    xpIds.add(row.id);
+    if (fixture.sourceFixtureVerified === true)
+      verifiedXpLedger.set(row.id, copy(row));
   }
   const queue = new Map();
   const earned = new Map();
@@ -330,7 +353,8 @@ export function createFormalOfflineDurableDb({
   }
 
   async function getAdminRewardOverview() {
-    const all = [...earned.values()];
+    const xpSummary = repository.getSyntheticXpSummary();
+    const all = [...earned.values(), ...xpSummary.levelRewards];
     const month = monthOf(nowIso);
     const inMonth = all.filter((entry) => monthOf(entry.at) === month);
     const sum = (rows) =>
@@ -348,6 +372,14 @@ export function createFormalOfflineDurableDb({
       issuedTotal: sum(all),
       readMonth: sum(inMonth.filter((entry) => entry.kind === 'read')),
       commentMonth: sum(inMonth.filter((entry) => entry.kind === 'comment')),
+      levelUpMonth: sum(inMonth.filter((entry) => entry.kind === 'level_up')),
+      levelUpTotal: sum(all.filter((entry) => entry.kind === 'level_up')),
+      xpEventsMonth: xpSummary.applied.filter(
+        (entry) => monthOf(entry.at) === month
+      ).length,
+      xpEarnedMonth: xpSummary.applied
+        .filter((entry) => monthOf(entry.at) === month)
+        .reduce((total, entry) => total + entry.points, 0),
       giftSpentNet: settled.giftSpentNet,
       aiSpentNet: settled.aiSpentNet,
       eligibleAvailable,
@@ -369,7 +401,9 @@ export function createFormalOfflineDurableDb({
           kind:
             entry.kind === 'read'
               ? 'formal_read_reward'
-              : 'formal_comment_reward',
+              : entry.kind === 'comment'
+                ? 'formal_comment_reward'
+                : 'level_up',
           points: entry.points,
           status: 'confirmed',
           occurredAt: entry.at
@@ -380,6 +414,15 @@ export function createFormalOfflineDurableDb({
   return Object.freeze({
     query,
     verifyModeratorReceipt,
+    async applyCommittedXp({ xpLedgerId, requiredXpByLevel } = {}) {
+      if (!UUID.test(xpLedgerId || '') || !verifiedXpLedger.has(xpLedgerId))
+        return { status: 'canonical_xp_source_missing' };
+      return repository.applySyntheticXpEvent({
+        verifiedXpLedgerRow: verifiedXpLedger.get(xpLedgerId),
+        sourceFixtureVerified: true,
+        requiredXpByLevel
+      });
+    },
     getAdminRewardOverview,
     // Explicitly test-only: introduce a single transient error, then replay.
     interruptNextSyntheticAward: (count = 1) => {
