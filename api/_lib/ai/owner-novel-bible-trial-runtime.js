@@ -4,6 +4,10 @@
 // Live activation requires a separately approved runtime, authenticated
 // author-JWT adapter, explicit consent and atomic budget/storage verification.
 import { createOwnerBibleReviewWorkflow } from './owner-bible-review-workflow.js';
+import {
+  createOfflineOwnerNovelBibleCheckpoint,
+  createSupabaseOwnerNovelBibleCheckpointRepository
+} from './owner-novel-bible-checkpoint.js';
 import { createSupabaseOwnerBibleReviewRepository } from './owner-bible-review-repository.js';
 import { createOwnerNovelBibleModelBridge } from './owner-novel-bible-model-bridge.js';
 import { createOwnerNovelBibleVerifiedHistoryReader } from './owner-novel-bible-verified-history.js';
@@ -38,6 +42,8 @@ export function createOwnerNovelBibleTrialRuntime({
   createAuthorClient,
   permissionCheck,
   readVerifiedHistory,
+  checkpointEnabled = false,
+  checkpointRepository,
   providers,
   routes,
   cache = null
@@ -53,6 +59,9 @@ export function createOwnerNovelBibleTrialRuntime({
     typeof permissionCheck !== 'function' ||
     (readVerifiedHistory !== undefined &&
       typeof readVerifiedHistory !== 'function') ||
+    (checkpointRepository !== undefined &&
+      (typeof checkpointRepository?.readSnapshot !== 'function' ||
+        typeof checkpointRepository?.compareAndSwap !== 'function')) ||
     !providers ||
     !routes
   ) {
@@ -66,6 +75,17 @@ export function createOwnerNovelBibleTrialRuntime({
     readVerifiedHistory === undefined
       ? createOwnerNovelBibleVerifiedHistoryReader({ serviceClient })
       : readVerifiedHistory;
+  // The existing owner-only bridge remains one-call/one-chunk. A separately
+  // enabled checkpoint journal records only verified successful chunks and
+  // never starts an extra paid call or enables the deployed HTTP endpoint.
+  const checkpoint = checkpointEnabled
+    ? createOfflineOwnerNovelBibleCheckpoint({
+        enabled: true,
+        repository:
+          checkpointRepository ??
+          createSupabaseOwnerNovelBibleCheckpointRepository({ serviceClient })
+      })
+    : undefined;
 
   async function verifyOwner(token) {
     if (
@@ -179,7 +199,8 @@ export function createOwnerNovelBibleTrialRuntime({
         aiRouter: router,
         reviewWorkflow: workflow,
         permissionCheck,
-        readVerifiedHistory: historyReader
+        readVerifiedHistory: historyReader,
+        checkpoint
       });
       // Only the bridge sees the request. It must independently verify the
       // live episode and consent and validate all evidence before staging.
