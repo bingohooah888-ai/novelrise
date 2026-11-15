@@ -593,3 +593,138 @@ test('02-07-05 revocation during candidate persistence prevents final checkpoint
   assert.equal(state.reviewCalls, 1);
   assert.equal(committed, 0);
 });
+
+function checkpointFixture() {
+  let row = null;
+  const writes = [];
+  const repository = {
+    async readSnapshot() {
+      return row === null ? null : cloneSnapshot(row);
+    },
+    async compareAndSwap(change) {
+      if (
+        change.expectedRevision !== (row?.revision ?? null) ||
+        change.expectedSourceHash !== (row?.source_hash ?? null)
+      ) {
+        return null;
+      }
+      row = {
+        episode_id: 11,
+        source_hash: change.nextSourceHash,
+        revision: (row?.revision ?? 0) + 1,
+        summary: cloneSnapshot(change.nextSummary)
+      };
+      writes.push(cloneSnapshot(row));
+      return cloneSnapshot(row);
+    }
+  };
+  return {
+    checkpoint: createOfflineOwnerNovelBibleCheckpoint({
+      enabled: true,
+      repository
+    }),
+    writes,
+    get row() {
+      return row;
+    }
+  };
+}
+
+test('02-07-05 empty body completes without model or review and never double writes', async () => {
+  const journal = checkpointFixture();
+  const { state, make } = fixture({ content: '' });
+  const bridge = make({ checkpoint: journal.checkpoint });
+  const first = await bridge.stage({
+    token: TOKEN,
+    novelId: 41,
+    episodeId: 11
+  });
+  assert.deepEqual(first, {
+    novelId: 41,
+    stagedCount: 0,
+    requiresAuthorReview: false
+  });
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.reviewCalls, 0);
+  assert.equal(journal.writes.length, 1);
+  assert.equal(journal.row.summary.novelightPhase2.zeroReason, 'empty-body');
+  await bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 });
+  assert.equal(journal.writes.length, 1);
+});
+
+test('02-07-05 verified deletion or title-only is cost-free but checkpointed', async () => {
+  for (const [title, before, after, reason] of [
+    ['第一話', '凛が赤い鍵を持つ。', '凛が鍵を持つ。', 'deletion-only'],
+    ['改題', '本文そのまま', '本文そのまま', 'title-only']
+  ]) {
+    const journal = checkpointFixture();
+    const oldTitle = reason === 'title-only' ? '第一話' : title;
+    const { state, make } = fixture({ title, content: after });
+    const previous = {
+      analysis: {
+        episode_id: 11,
+        source_hash: createHash('sha256')
+          .update(JSON.stringify([oldTitle, before]))
+          .digest('hex')
+      },
+      episode: { id: 11, novel_id: 41, title: oldTitle, content: before }
+    };
+    const bridge = make({
+      checkpoint: journal.checkpoint,
+      readVerifiedHistory: async () => previous
+    });
+    const result = await bridge.stage({
+      token: TOKEN,
+      novelId: 41,
+      episodeId: 11
+    });
+    assert.equal(result.stagedCount, 0);
+    assert.equal(state.modelCalls, 0);
+    assert.equal(state.reviewCalls, 0);
+    assert.equal(journal.writes.length, 1);
+    assert.equal(journal.row.summary.novelightPhase2.zeroReason, reason);
+  }
+});
+
+test('02-07-05 mid-run edit CAS-replans before a new one-chunk model call', async () => {
+  const journal = checkpointFixture();
+  const { state, make } = fixture({
+    content: '青'.repeat(3100)
+  });
+  const bridge = make({
+    checkpoint: journal.checkpoint,
+    aiRouter: {
+      async run() {
+        state.modelCalls += 1;
+        return { text: '{"suggestions":[]}' };
+      }
+    },
+    reviewWorkflow: {
+      async stage() {
+        state.reviewCalls += 1;
+        return { novelId: 41, stagedCount: 0 };
+      }
+    }
+  });
+  await bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 });
+  const initialSource = journal.row.summary.novelightPhase2.targetSourceHash;
+  assert.deepEqual(journal.row.summary.novelightPhase2.completedIndices, [0]);
+  state.content = '赤' + '青'.repeat(3100);
+  await bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 });
+  assert.equal(state.modelCalls, 2);
+  assert.equal(state.reviewCalls, 2);
+  assert.equal(journal.writes.length, 3);
+  assert.notEqual(
+    journal.row.summary.novelightPhase2.targetSourceHash,
+    initialSource
+  );
+  assert.deepEqual(
+    journal.writes[1].summary.novelightPhase2.completedIndices,
+    []
+  );
+  assert.deepEqual(
+    journal.row.summary.novelightPhase2.completedIndices,
+    [0]
+  );
+  assert.equal(journal.row.summary.novelightPhase2.state, 'in_progress');
+});
