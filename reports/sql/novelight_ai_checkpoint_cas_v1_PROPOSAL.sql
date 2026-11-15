@@ -363,7 +363,7 @@ begin
       insert into public.novelight_ai_episode_analysis as a
         (episode_id,source_hash,revision,summary)
       values (p_episode_id,p_next_source_hash,1,v_next_summary)
-      on conflict (episode_id) do nothing
+      on conflict on constraint novelight_ai_episode_analysis_pkey do nothing
       returning a.episode_id,a.source_hash,a.revision,a.summary;
     return;
   end if;
