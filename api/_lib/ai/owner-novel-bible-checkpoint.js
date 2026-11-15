@@ -471,12 +471,7 @@ export function createOfflineOwnerNovelBibleCheckpoint({
   // only the stale in-progress marker while retaining the prior source hash
   // and unrelated summary fields. Both auth and source equality are checked
   // by the trusted caller immediately before this atomic CAS.
-  async function discardRestored({
-    actorId,
-    novelId,
-    episodeId,
-    sourceHash
-  }) {
+  async function discardRestored({ actorId, novelId, episodeId, sourceHash }) {
     if (!enabled) throw new Error('AI_BIBLE_CHECKPOINT_DISABLED');
     if (
       typeof actorId !== 'string' ||
