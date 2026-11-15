@@ -38,14 +38,10 @@
       adminGiftQueueAvailable !== true
     )
       throw new TypeError('Gift settlement requires an approved gift queue');
-    const {
-      loadQueue,
-      loadRefunds,
-      onResolve,
-      ...monitoring
-    } = globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings({
-      request
-    });
+    const { loadQueue, loadRefunds, onResolve, ...monitoring } =
+      globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings({
+        request
+      });
     return globalThis.NovelightFormalRewardAdmin.createFormalRewardAdminPanel({
       root,
       authorized,
