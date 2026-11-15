@@ -221,81 +221,175 @@ test('OFF factory never reads state or charges for AI', async () => {
   assert.equal(reads, 0);
 });
 
-test('existing analysis table adapter performs insert then version-guarded update', async () => {
-  let state = null;
-  const writes = [];
-  const serviceClient = {
+test('production adapter uses ONLY scoped atomic RPC; never direct table writes', async () => {
+  const current = 'a'.repeat(64);
+  let row = null;
+  const calls = [];
+  const client = {
     from(table) {
       assert.equal(table, 'novelight_ai_episode_analysis');
       return {
         select() {
           return this;
         },
-        eq(field, value) {
-          this.constraints ??= {};
-          this.constraints[field] = value;
+        eq(key, value) {
+          assert.equal(key, 'episode_id');
+          assert.equal(value, 11);
           return this;
         },
         async maybeSingle() {
-          return { data: state, error: null };
+          return { data: row, error: null };
         },
-        insert(next) {
-          writes.push(['insert', next]);
-          assert.equal(state, null);
-          state = next;
-          return {
-            select: () => ({
-              maybeSingle: async () => ({ data: next, error: null })
-            })
-          };
+        insert() {
+          assert.fail('direct INSERT would bypass the source lock');
         },
-        update(next) {
-          writes.push(['update', next]);
-          return {
-            select() {
-              return this;
-            },
-            eq(field, value) {
-              if (field === 'revision') assert.equal(value, 1);
-              if (field === 'source_hash') {
-                assert.equal(value, 'b'.repeat(64));
-              }
-              return this;
-            },
-            async maybeSingle() {
-              state = { ...state, ...next };
-              return { data: state, error: null };
-            }
-          };
+        update() {
+          assert.fail('direct UPDATE would bypass the source lock');
         }
       };
+    },
+    async rpc(name, params) {
+      assert.equal(name, 'novelight_ai_checkpoint_cas_v1');
+      assert.equal(params.p_actor_id, OWNER);
+      assert.equal(params.p_novel_id, 41);
+      assert.equal(params.p_episode_id, 11);
+      assert.equal(params.p_target_source_hash, current);
+      calls.push(params);
+      if (
+        params.p_expected_revision !== (row?.revision ?? null) ||
+        params.p_expected_source_hash !== (row?.source_hash ?? null)
+      ) {
+        return { data: [], error: null };
+      }
+      row = {
+        episode_id: 11,
+        source_hash: params.p_next_source_hash,
+        revision: (row?.revision ?? 0) + 1,
+        summary: {
+          ...(row?.summary ?? {}),
+          ...(params.p_next_progress
+            ? { novelightPhase2: params.p_next_progress }
+            : {})
+        }
+      };
+      return { data: [row], error: null };
     }
   };
   const repo = createSupabaseOwnerNovelBibleCheckpointRepository({
-    serviceClient
+    serviceClient: client
   });
   assert.equal(await repo.readSnapshot({ episodeId: 11 }), null);
-  const inserted = await repo.compareAndSwap({
-    episodeId: 11,
-    expectedRevision: null,
-    expectedSourceHash: null,
-    nextSourceHash: 'b'.repeat(64),
-    nextSummary: { novelightPhase2: { state: 'in_progress' } }
+  const plan = syntheticPlan();
+  const ownerCheckpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: repo
   });
-  assert.equal(inserted.revision, 1);
-  const updated = await repo.compareAndSwap({
-    episodeId: 11,
-    expectedRevision: 1,
-    expectedSourceHash: 'b'.repeat(64),
-    nextSourceHash: 'c'.repeat(64),
-    nextSummary: { novelightPhase2: { state: 'complete' } }
+  const first = await ownerCheckpoint.record(args(plan, 0));
+  assert.equal(first.complete, false);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].p_action, 'record');
+  assert.equal(calls[0].p_chunk_index, 0);
+  assert.equal(calls[0].p_expected_revision, null);
+  assert.equal(calls[0].p_next_source_hash, '0'.repeat(64));
+  for (let i = 1; i < plan.chunks.length; i += 1) {
+    await ownerCheckpoint.record(args(plan, i));
+  }
+  assert.equal(row.source_hash, plan.chunks[0].sourceHash);
+  assert.equal(row.summary.novelightPhase2.state, 'complete');
+  assert.equal(row.revision, plan.chunks.length);
+});
+
+test('atomic adapter denies missing RPC and fails closed on DB errors/conflicts', async () => {
+  const plan = syntheticPlan();
+  const scope = args(plan, 0);
+  const read = () => ({
+    select() { return this; },
+    eq() { return this; },
+    async maybeSingle() { return { data: null, error: null }; }
   });
-  assert.equal(updated.revision, 2);
-  assert.equal(updated.source_hash, 'c'.repeat(64));
-  assert.deepEqual(
-    writes.map((entry) => entry[0]),
-    ['insert', 'update']
+  assert.throws(
+    () => createSupabaseOwnerNovelBibleCheckpointRepository({
+      serviceClient: { from: read }
+    }),
+    /AI_BIBLE_CHECKPOINT_UNAVAILABLE/u
   );
+  const errorRepo = createSupabaseOwnerNovelBibleCheckpointRepository({
+    serviceClient: {
+      from: read,
+      async rpc() {
+        return { data: null, error: { message: 'RPC missing' } };
+      }
+    }
+  });
+  const errorCheckpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: errorRepo
+  });
+  await assert.rejects(
+    errorCheckpoint.record(scope),
+    /AI_BIBLE_CHECKPOINT_UNAVAILABLE/u
+  );
+  const conflictRepo = createSupabaseOwnerNovelBibleCheckpointRepository({
+    serviceClient: {
+      from: read,
+      async rpc() {
+        return { data: [], error: null };
+      }
+    }
+  });
+  const conflictCheckpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: conflictRepo
+  });
+  await assert.rejects(
+    conflictCheckpoint.record(scope),
+    /AI_BIBLE_CHECKPOINT_CONFLICT/u
+  );
+});
+
+test('synthetic owner transfer and manuscript race reject checkpoint commits', async () => {
+  // This tests the adapter contract, NOT PostgreSQL locking. Independent
+  // database-session locks must be verified in isolated Staging separately.
+  const plan = syntheticPlan();
+  const source = plan.chunks[0].sourceHash;
+  for (const change of ['owner', 'content']) {
+    let currentOwner = OWNER;
+    let currentHash = source;
+    let writes = 0;
+    const client = {
+      from() {
+        return {
+          select() { return this; },
+          eq() { return this; },
+          async maybeSingle() { return { data: null, error: null }; }
+        };
+      },
+      async rpc(_name, params) {
+        if (change === 'owner') currentOwner = '22222222-2222-4222-8222-222222222222';
+        else currentHash = 'e'.repeat(64);
+        if (
+          params.p_actor_id !== currentOwner ||
+          params.p_target_source_hash !== currentHash
+        ) {
+          return { data: null, error: { message: 'stale/foreign' } };
+        }
+        writes += 1;
+        return { data: [], error: null };
+      }
+    };
+    const repository = createSupabaseOwnerNovelBibleCheckpointRepository({
+      serviceClient: client
+    });
+    const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+      enabled: true,
+      repository
+    });
+    await assert.rejects(
+      checkpoint.record(args(plan, 0)),
+      /AI_BIBLE_CHECKPOINT_UNAVAILABLE/u
+    );
+    assert.equal(writes, 0);
+  }
 });
 
 function changedZeroPlan(before, after) {
