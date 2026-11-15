@@ -194,10 +194,7 @@ test('unavailable, malformed and purported release-ready audits fail closed', as
   );
   assert.equal(audits.length, 1);
   const text = flatten(audits[0]);
-  assert.equal(
-    (text.match(/監査結果が不完全・未検証です/g) || []).length,
-    4
-  );
+  assert.equal((text.match(/監査結果が不完全・未検証です/g) || []).length, 4);
   assert.doesNotMatch(text, /称号定義：100/);
   assert.equal(descendants(audits[0], (n) => n.tag === 'button').length, 0);
 });
