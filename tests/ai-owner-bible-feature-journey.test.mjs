@@ -493,9 +493,9 @@ test('accepted candidate survives author review reload and needs explicit note s
   );
   const restored = journey.root.children[1];
   const list = restored.children[1];
-  assert.match(list.children[0].textContent, /確認済み候補/u);
-  assert.match(list.children[1].children[0].textContent, /凛/u);
-  const transfer = list.children[1].children[1].children[0];
+  assert.match(list.children[1].textContent, /確認済み候補/u);
+  assert.match(list.children[2].children[0].textContent, /凛/u);
+  const transfer = list.children[2].children[1].children[0];
   await transfer.listeners.get('click')();
   assert.equal(transferred.length, 1);
   assert.equal(transferred[0].key, '凛');
