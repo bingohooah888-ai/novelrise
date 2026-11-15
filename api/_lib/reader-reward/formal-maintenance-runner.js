@@ -112,9 +112,11 @@ export function createUnregisteredFormalMaintenanceRunner({
         else if (result?.status === 'already_reviewed')
           counts.alreadyReviewed++;
         else if (
-          ['adjustment_policy_pending', 'xp_pending_review', 'evidence_incomplete'].includes(
-            result?.status
-          )
+          [
+            'adjustment_policy_pending',
+            'xp_pending_review',
+            'evidence_incomplete'
+          ].includes(result?.status)
         )
           counts.held++;
         else
