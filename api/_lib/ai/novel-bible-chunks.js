@@ -102,7 +102,9 @@ function changedWindow(previous, current) {
     if (
       previous.slice(priorEnd - previousWidth, priorEnd) !==
       current.slice(currentEnd - currentWidth, currentEnd)
-    ) break;
+    ) {
+      break;
+    }
     priorEnd -= previousWidth;
     currentEnd -= currentWidth;
   }
@@ -121,7 +123,9 @@ function checkedHistoricalEpisodes(
   if (
     !Array.isArray(previousEpisodes) ||
     previousEpisodes.length > episodes.length
-  ) invalid();
+  ) {
+    invalid();
+  }
   const currentIds = new Set(episodes.map((item) => Number(item.id)));
   const analysisHashes = new Map(
     analyses.map((row) => [Number(row.episode_id), row.source_hash])
@@ -134,7 +138,9 @@ function checkedHistoricalEpisodes(
       Array.isArray(old) ||
       !['number', 'string'].includes(typeof old.id) ||
       !['number', 'string'].includes(typeof old.novel_id)
-    ) invalid();
+    ) {
+      invalid();
+    }
     const episodeId = Number(old.id);
     if (
       !validId(episodeId) ||
@@ -149,7 +155,9 @@ function checkedHistoricalEpisodes(
       Buffer.byteLength(old.content, 'utf8') > 1000000 ||
       analysisHashes.get(episodeId) !==
         sha256(JSON.stringify([old.title, old.content]))
-    ) invalid();
+    ) {
+      invalid();
+    }
     ensureUnicodeScalar(old.content);
     historical.set(episodeId, old);
   }
@@ -180,7 +188,10 @@ export function planNovelBibleChangedChunks({
     byId.set(Number(episode.id), episode);
   }
   const historical = checkedHistoricalEpisodes(
-    previousEpisodes, episodes, analyses, base.novelId
+    previousEpisodes,
+    episodes,
+    analyses,
+    base.novelId
   );
   const chunks = [];
   const emptyChangedEpisodes = [];
