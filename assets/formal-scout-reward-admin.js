@@ -20,6 +20,7 @@
     loadBadgeHistory,
     loadWalletCohort,
     loadSettlementRecovery,
+    loadMaintenanceReadiness,
     inspectEarningSource,
     onResolve
   } = {}) {
@@ -34,6 +35,7 @@
         loadBadgeHistory,
         loadWalletCohort,
         loadSettlementRecovery,
+        loadMaintenanceReadiness,
         inspectEarningSource
       ].some((handler) => typeof handler === 'function')
     )
@@ -301,6 +303,43 @@
           '公開OFF。表示は診断用で、データ移行・Point付与・交換・返金・復旧を実行しません。'
         )
       );
+      if (typeof loadMaintenanceReadiness === 'function') {
+        const panel = node('article', 'rr-admin-request');
+        panel.append(node('strong', '', '30日間Scout Level維持判定・接続状況'));
+        audits.append(panel);
+        let readiness = null;
+        try {
+          readiness = await loadMaintenanceReadiness();
+        } catch {
+          // A failed status check must not imply maintenance can run.
+        }
+        if (requestId !== latestRequest)
+          return { status: 'stale_queue_response' };
+        const labels = {
+          maintenance_connection_ready:
+            'DB権限を確認しました。維持判定の実行・正式公開は別途承認が必要です。',
+          maintenance_connection_unready:
+            '維持判定に必要なDB権限がまだ揃っていません。',
+          maintenance_connection_unavailable:
+            'DB接続権限の状態を確認できません。',
+          formal_maintenance_disabled:
+            '正式版の維持判定はOFFです。'
+        };
+        const safe =
+          readiness?.ok === true &&
+          readiness?.mayRunMaintenance === false &&
+          readiness?.readyForPublicRelease === false &&
+          Object.hasOwn(labels, readiness?.status);
+        panel.append(
+          node(
+            'p',
+            'rr-admin-muted',
+            safe
+              ? labels[readiness.status]
+              : '維持判定の状態は未確認です。実行・公開はOFFのままです。'
+          )
+        );
+      }
       const views = [
         [
           loadBadgeCatalog,
@@ -634,6 +673,8 @@
         request({ method: 'GET', query: { view: 'wallet_cohort' } }),
       loadSettlementRecovery: () =>
         request({ method: 'GET', query: { view: 'settlement_recovery' } }),
+      loadMaintenanceReadiness: () =>
+        request({ method: 'GET', query: { view: 'maintenance_readiness' } }),
       inspectEarningSource: ({ eventType, eventId }) =>
         request({
           method: 'GET',
