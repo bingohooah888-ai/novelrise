@@ -581,6 +581,9 @@
     let reviewedIds = new Set(snapshot?.reviewedIds ?? []);
     let revision = snapshot?.revision ?? 0;
     let saving = false;
+    // A failed/ambiguous CAS may have committed despite transport failure.
+    // Never offer a second POST with an unverified revision: reload first.
+    let reloadRequired = false;
     const reviewButtons = [];
     const isCurrentView = () => !target.hidden && target.children?.[0] === wrap;
 
@@ -601,7 +604,7 @@
           '件（保存されません）';
       for (const { button, id } of reviewButtons) {
         const reviewed = reviewedIds.has(id);
-        button.disabled = saving;
+        button.disabled = saving || reloadRequired;
         button.setAttribute('aria-pressed', String(reviewed));
         button.textContent = snapshot
           ? reviewed
@@ -624,7 +627,7 @@
       reviewedButton.type = 'button';
       reviewButtons.push({ button: reviewedButton, id: item.id });
       reviewedButton.addEventListener('click', async () => {
-        if (saving) return;
+        if (saving || reloadRequired) return;
         const next = new Set(reviewedIds);
         if (next.has(item.id)) next.delete(item.id);
         else next.add(item.id);
@@ -663,8 +666,9 @@
           saveStatus.textContent = '確認状態を保存しました。';
         } catch {
           if (isCurrentView()) {
+            reloadRequired = true;
             saveStatus.textContent =
-              '保存に失敗しました。変更は反映していません。';
+              '保存に失敗しました。結果が不明なため再読込して確認してください。';
           }
         } finally {
           saving = false;
