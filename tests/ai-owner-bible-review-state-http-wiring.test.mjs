@@ -196,14 +196,26 @@ test('no server-only session observer means no review-state read or write', asyn
     env: ENV,
     serviceClient: {
       auth: {
-        getUser() { touched += 1; },
-        getClaims() { touched += 1; }
+        getUser() {
+          touched += 1;
+        },
+        getClaims() {
+          touched += 1;
+        }
       },
-      from() { touched += 1; },
-      rpc() { touched += 1; }
+      from() {
+        touched += 1;
+      },
+      rpc() {
+        touched += 1;
+      }
     },
-    createAuthorClient() { touched += 1; },
-    nowEpochSeconds() { touched += 1; }
+    createAuthorClient() {
+      touched += 1;
+    },
+    nowEpochSeconds() {
+      touched += 1;
+    }
     // Deliberately no privileged lookupOneSession capability.
   });
   const res = reply();
