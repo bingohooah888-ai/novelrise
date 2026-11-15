@@ -183,7 +183,10 @@ test('verified historical snapshots restrict changed excerpts to the new text', 
   assert.deepEqual(result.deletionOnlyEpisodes, []);
   assert.equal(
     materializeNovelBibleChunk({
-      principal, novel, episode: after, chunk: result.chunks[0]
+      principal,
+      novel,
+      episode: after,
+      chunk: result.chunks[0]
     }).text,
     '新✨'
   );
@@ -205,9 +208,16 @@ test('long insertions use bounded global offsets and preserve Unicode', () => {
   assert.ok(result.chunks.length > 1);
   assert.ok(result.chunks.every((part) => part.byteLength <= 4096));
   assert.equal(
-    result.chunks.map((chunk) => materializeNovelBibleChunk({
-      principal, novel, episode: after, chunk
-    }).text).join(''),
+    result.chunks
+      .map((chunk) =>
+        materializeNovelBibleChunk({
+          principal,
+          novel,
+          episode: after,
+          chunk
+        }).text
+      )
+      .join(''),
     inserted
   );
 });
@@ -244,7 +254,7 @@ test('untrusted historical revisions fail closed; missing history falls back', (
   for (const historical of [
     [{ ...before, novel_id: 99 }],
     [{ ...before, content: '異なる過去' }],
-    [{ ...before, content: '破損\\uD800' }],
+    [{ ...before, content: '破損' + String.fromCharCode(0xd800) }],
     [before, before]
   ]) {
     assert.throws(
