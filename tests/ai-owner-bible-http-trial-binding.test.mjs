@@ -68,6 +68,8 @@ function fixture({
   enabled = true,
   checkpointEnabled = false,
   checkpointRepository,
+  atomicAdmissionEnabled = false,
+  beforeModel = null,
   offlinePlanEnabled = false,
   episodeContent = CONTENT
 } = {}) {
@@ -198,11 +200,13 @@ function fixture({
     policyRevision: 'offline-policy-v1',
     routes: ROUTES,
     checkpointEnabled,
+    atomicAdmissionEnabled,
     ...(checkpointRepository === undefined ? {} : { checkpointRepository }),
     providers: {
       openai: {
         async generate() {
           state.modelCalls += 1;
+          if (beforeModel) await beforeModel();
           return {
             text: JSON.stringify({
               suggestions: [
@@ -407,10 +411,29 @@ test('missing policy or approved routes fail closed', () => {
 function checkpointStore() {
   let row = null;
   let writes = 0;
+  const claims = new Set();
   return {
     snapshot: () => row,
     get writes() { return writes; },
+    get claims() { return claims.size; },
     async readSnapshot() { return row; },
+    async claimOnce(scope) {
+      // Atomic in-memory test double: there is deliberately no await between
+      // checking and recording. Actual DB uniqueness is NOT proved here.
+      if (
+        scope.actorId !== OWNER ||
+        scope.novelId !== 41 ||
+        scope.episodeId !== 11 ||
+        !/^[a-f0-9]{64}$/u.test(scope.fingerprint) ||
+        !/^[a-f0-9]{64}$/u.test(scope.chunkHash) ||
+        !Number.isSafeInteger(scope.chunkIndex)
+      ) return false;
+      const key = scope.actorId + ':' + scope.episodeId + ':' +
+        scope.fingerprint + ':' + scope.chunkIndex;
+      if (claims.has(key)) return false;
+      claims.add(key);
+      return true;
+    },
     async compareAndSwap(change) {
       if (
         change.actorId !== OWNER ||
@@ -520,4 +543,92 @@ test('checkpoint HTTP plan remains OFF by default and rejects invalid injection'
     ...config, checkpointEnabled: true,
     checkpointRepository: { readSnapshot() {} }
   }), /AI_TRIAL_BINDING_UNAVAILABLE/u);
+});
+
+// Synthetic pre-provider claim: two independent HTTP handler/runtime
+// instances attempt the same not-yet-completed chunk concurrently.
+// prettier-ignore
+test('concurrent owner HTTP calls permit only one provider and one reservation when durable admission is opted in', async () => {
+  const checkpointRepository = checkpointStore();
+  let resume;
+  let entered;
+  const providerStarted = new Promise((resolve) => { entered = resolve; });
+  const providerGate = new Promise((resolve) => { resume = resolve; });
+  const make = (block = false) => fixture({
+    checkpointEnabled: true,
+    atomicAdmissionEnabled: true,
+    checkpointRepository,
+    episodeContent: '青'.repeat(3100),
+    beforeModel: block
+      ? async () => {
+          entered();
+          await providerGate;
+        }
+      : null
+  });
+  const leader = make(true);
+  const follower = make(false);
+  const running = leader.invoke({ chunkIndex: 0 });
+  await providerStarted;
+  try {
+    assert.equal(checkpointRepository.claims, 1);
+    assert.equal(checkpointRepository.writes, 0);
+    const denied = await follower.invoke({ chunkIndex: 0 });
+    assert.equal(denied.statusCode, 503);
+    assert.equal(follower.state.modelCalls, 0);
+    assert.equal(follower.state.reserveCalls, 0);
+    assert.equal(follower.state.stageCalls, 0);
+    assert.equal(checkpointRepository.claims, 1);
+  } finally {
+    resume();
+  }
+  const completed = await running;
+  assert.equal(completed.statusCode, 200);
+  assert.equal(leader.state.modelCalls, 1);
+  assert.equal(leader.state.reserveCalls, 1);
+  assert.equal(checkpointRepository.writes, 1);
+  const replay = make();
+  assert.equal((await replay.invoke({ chunkIndex: 0 })).statusCode, 200);
+  assert.equal(replay.state.modelCalls, 0);
+  assert.equal(replay.state.reserveCalls, 0);
+  assert.equal(checkpointRepository.claims, 1);
+});
+
+test('invalid or uncertain atomic admission must not reach budget or model', async () => {
+  const options = {
+    enabled: true,
+    externalProcessingApproved: true,
+    config: { id: OWNER, url: ENV.SUPABASE_URL, key: KEY },
+    policyRevision: 'offline-policy-v1',
+    routes: ROUTES,
+    providers: { openai: { async generate() { throw Error('MODEL_NEVER'); } } }
+  };
+  assert.throws(
+    () => createOwnerNovelBibleTrialBridgeFactory({
+      ...options,
+      checkpointEnabled: true,
+      atomicAdmissionEnabled: true,
+      checkpointRepository: {
+        readSnapshot() { return null; },
+        compareAndSwap() { return null; }
+      }
+    }),
+    /AI_TRIAL_BINDING_UNAVAILABLE/u
+  );
+  const journal = checkpointStore();
+  journal.claimOnce = async () => {
+    throw new Error('SYNTHETIC_UNCERTAIN_CLAIM');
+  };
+  const trial = fixture({
+    checkpointEnabled: true,
+    atomicAdmissionEnabled: true,
+    checkpointRepository: journal,
+    episodeContent: '青'.repeat(3100)
+  });
+  const result = await trial.invoke({ chunkIndex: 0 });
+  assert.equal(result.statusCode, 503);
+  assert.equal(trial.state.modelCalls, 0);
+  assert.equal(trial.state.reserveCalls, 0);
+  assert.equal(trial.state.stageCalls, 0);
+  assert.equal(journal.writes, 0);
 });
