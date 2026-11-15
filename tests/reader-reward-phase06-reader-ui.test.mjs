@@ -239,10 +239,10 @@ test('author-owned Rank history is visible only in verified formal view', async 
     fetchSnapshot: async () => ({ ...eligible, formalEnabled: false })
   });
   await blocked.reload();
-  assert.equal(
-    byTag(hidden, 'button').some((button) => button.textContent === '自作品の成長'),
-    false
+  const hiddenAuthorTab = byTag(hidden, 'button').find(
+    (button) => button.textContent === '自作品の成長'
   );
+  assert.equal(hiddenAuthorTab, undefined);
   assert.doesNotMatch(text(hidden), /作者本人の作品/);
   const unverified = ui.normalizeSnapshot({
     ...eligible,
@@ -849,10 +849,11 @@ test('author dashboard selects works and pages Rank events', async () => {
   assert.match(text(root), /受信 LIGHT SEED 12個/);
   assert.match(text(root), /取得範囲内の更新記録：13件/);
   assert.match(text(root), /最大30作品・更新履歴は最大80件/);
-  const cards = () =>
-    byTag(root, 'button').filter((b) =>
-      b.className.includes('rr-author-work-select')
+  function cards() {
+    return byTag(root, 'button').filter(
+      (button) => button.className.includes('rr-author-work-select')
     );
+  }
   assert.equal(cards().length, 2);
   assert.equal(cards()[0].attributes['aria-pressed'], 'true');
   click('次の10件');
@@ -862,10 +863,10 @@ test('author dashboard selects works and pages Rank events', async () => {
   assert.equal(remaining.length, 3);
   click('昇格');
   assert.match(text(root), /取得範囲内の更新記録：7件/);
-  assert.equal(
-    byTag(root, 'button').some((b) => b.textContent === '次の10件'),
-    false
+  const nextPageButton = byTag(root, 'button').find(
+    (button) => button.textContent === '次の10件'
   );
+  assert.equal(nextPageButton, undefined);
   cards()[1].fire('click');
   assert.equal(cards()[1].attributes['aria-pressed'], 'true');
   assert.match(text(root), /受信 LIGHT SEED 2個/);
@@ -909,9 +910,9 @@ test('author tab vanishes when verification is lost', async () => {
   data = { ...data, serverVerified: false };
   await panel.reload();
   assert.equal(panel.getSnapshot().authorGrowth, null);
-  assert.equal(
-    byTag(root, 'button').some((b) => b.textContent === '自作品の成長'),
-    false
+  const authorTab = byTag(root, 'button').find(
+    (button) => button.textContent === '自作品の成長'
   );
+  assert.equal(authorTab, undefined);
   assert.doesNotMatch(text(root), /非公開の本人作品/);
 });
