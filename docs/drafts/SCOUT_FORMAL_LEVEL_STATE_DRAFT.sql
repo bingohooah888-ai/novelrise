@@ -145,9 +145,10 @@ begin
     v_progress := v_progress - v_required;
     v_level := v_level+1;
   end loop;
-  -- OWNER: at Lv.100 all surplus is excluded from progression, but the
-  -- original verified scout_xp_ledger row remains for 30-day maintenance.
-  -- The xp_id claim is still inserted to prevent applying the source twice.
+  -- OWNER-approved Lv.100 policy: progress stops with zero carryover, but
+  -- the verified scout_xp_ledger row retains FULL XP for 30-day maintenance.
+  -- Record the xp_id claim exactly once, even for events earned at Lv.100.
+  -- The formal cutover writer separately credits only first-time Level gains.
   if v_level=100 then v_progress:=0; end if;
   insert into novelight_formal_private.scout_xp_claim(xp_id,user_id)
     values(p_xp_id,v_xp.user_id);
