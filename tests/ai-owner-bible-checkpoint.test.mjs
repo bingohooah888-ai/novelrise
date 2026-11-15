@@ -1,5 +1,6 @@
 // Synthetic-only checkpoint tests. No service credentials or hosted DB.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 const cloneSnapshot = (value) => JSON.parse(JSON.stringify(value));
@@ -295,4 +296,175 @@ test('existing analysis table adapter performs insert then version-guarded updat
     writes.map((entry) => entry[0]),
     ['insert', 'update']
   );
+});
+
+function changedZeroPlan(before, after) {
+  const previous = {
+    episode_id: 11,
+    source_hash: createHash('sha256')
+      .update(JSON.stringify([before.title, before.content]))
+      .digest('hex')
+  };
+  return {
+    ...planNovelBibleChangedChunks({
+      principal: { id: OWNER },
+      novel: NOVEL,
+      episodes: [after],
+      analyses: [previous],
+      previousEpisodes: [before],
+      limit: 1
+    }),
+    analyses: [previous]
+  };
+}
+
+test('new empty chapter is completed with zero model chunks and no false interim hash', async () => {
+  const plan = syntheticPlan({ ...EPISODE, content: '' });
+  assert.deepEqual(plan.zeroChangedSources.map((x) => x.reason), [
+    'empty-body'
+  ]);
+  const store = fakeJournal();
+  const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: store.repository
+  });
+  const change = await checkpoint.completeEmpty(args(plan, 0));
+  assert.deepEqual(change, {
+    complete: true,
+    alreadyRecorded: false,
+    remainingChunks: 0
+  });
+  assert.equal(store.calls.cas, 1);
+  assert.equal(
+    store.row.source_hash,
+    plan.zeroChangedSources[0].sourceHash
+  );
+  assert.equal(store.row.summary.novelightPhase2.chunkCount, 0);
+  assert.equal(store.row.summary.novelightPhase2.state, 'complete');
+  assert.deepEqual(await checkpoint.completeEmpty(args(plan, 0)), {
+    complete: true,
+    alreadyRecorded: true,
+    remainingChunks: 0
+  });
+  assert.equal(store.calls.cas, 1);
+});
+
+test('deletion-only and verified title-only changes promote source without provider', async () => {
+  for (const [before, after, reason] of [
+    [
+      { ...EPISODE, content: '冒頭と削除対象と結末' },
+      { ...EPISODE, content: '冒頭と結末' },
+      'deletion-only'
+    ],
+    [
+      { ...EPISODE, content: '同じ本文', title: '旧題' },
+      { ...EPISODE, content: '同じ本文', title: '新題' },
+      'title-only'
+    ]
+  ]) {
+    const plan = changedZeroPlan(before, after);
+    assert.deepEqual(plan.chunks, []);
+    assert.equal(plan.zeroChangedSources[0].reason, reason);
+    const previousHash = plan.analyses[0].source_hash;
+    const store = fakeJournal({
+      episode_id: 11,
+      source_hash: previousHash,
+      revision: 4,
+      summary: { oldMetadata: 'preserved' }
+    });
+    const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+      enabled: true,
+      repository: store.repository
+    });
+    assert.equal((await checkpoint.completeEmpty(args(plan, 0))).complete, true);
+    assert.equal(store.row.revision, 5);
+    assert.equal(store.row.summary.oldMetadata, 'preserved');
+    assert.equal(store.row.source_hash, plan.zeroChangedSources[0].sourceHash);
+  }
+});
+
+test('mid-analysis manuscript revision drops old incomplete indices through CAS', async () => {
+  const initial = syntheticPlan();
+  const edited = syntheticPlan({
+    ...EPISODE,
+    content: EPISODE.content + '改稿'
+  });
+  const store = fakeJournal();
+  let checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: store.repository
+  });
+  await checkpoint.record(args(initial, 0));
+  const previousRevision = store.row.revision;
+  assert.deepEqual(store.row.summary.novelightPhase2.completedIndices, [0]);
+  assert.equal(await checkpoint.inspect(args(edited, 0)), 'replan');
+  assert.deepEqual(await checkpoint.replan(args(edited, 0)), {
+    replanned: true,
+    remainingChunks: edited.chunks.length
+  });
+  assert.equal(store.row.revision, previousRevision + 1);
+  assert.deepEqual(store.row.summary.novelightPhase2.completedIndices, []);
+  assert.equal(store.row.summary.novelightPhase2.targetSourceHash,
+    edited.chunks[0].sourceHash);
+  await assert.rejects(
+    checkpoint.record(args(initial, 1)),
+    /AI_BIBLE_CHECKPOINT_CONFLICT/u
+  );
+  assert.equal(await checkpoint.inspect(args(edited, 0)), 'pending');
+
+  checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: store.repository
+  });
+  for (let i = 0; i < edited.chunks.length; i += 1) {
+    const receipt = await checkpoint.record(args(edited, i));
+    assert.equal(receipt.complete, i === edited.chunks.length - 1);
+  }
+  assert.equal(store.row.summary.novelightPhase2.state, 'complete');
+  assert.equal(store.row.source_hash, edited.chunks[0].sourceHash);
+});
+
+test('a new zero-text revision discards a stale partial journal in one CAS', async () => {
+  const initial = syntheticPlan();
+  const store = fakeJournal();
+  const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: store.repository
+  });
+  await checkpoint.record(args(initial, 0));
+  const zero = syntheticPlan({ ...EPISODE, content: '' });
+  assert.equal((await checkpoint.completeEmpty(args(zero, 0))).complete, true);
+  assert.equal(store.calls.cas, 2);
+  assert.equal(store.row.summary.novelightPhase2.chunkCount, 0);
+  assert.deepEqual(store.row.summary.novelightPhase2.completedIndices, []);
+  await assert.rejects(
+    checkpoint.record(args(initial, 1)),
+    /AI_BIBLE_CHECKPOINT_CONFLICT/u
+  );
+});
+
+test('CAS conflict blocks a stale replan without silently dropping old progress', async () => {
+  const initial = syntheticPlan();
+  const edited = syntheticPlan({
+    ...EPISODE,
+    content: EPISODE.content + '変更'
+  });
+  const store = fakeJournal();
+  await createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: store.repository
+  }).record(args(initial, 0));
+  const snapshot = store.row;
+  const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository: {
+      readSnapshot: store.repository.readSnapshot,
+      compareAndSwap: async () => null
+    }
+  });
+  await assert.rejects(
+    checkpoint.replan(args(edited, 0)),
+    /AI_BIBLE_CHECKPOINT_CONFLICT/u
+  );
+  assert.deepEqual(store.row, snapshot);
 });
