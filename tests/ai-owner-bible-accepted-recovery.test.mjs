@@ -60,13 +60,10 @@ function authorWorkflow({ accepted = [acceptedRow()], pending = [] } = {}) {
         },
         async maybeSingle() {
           state.loads += 1;
-          return {
-            data:
-              name === 'novels'
-                ? { id: 354, user_id: OWNER }
-                : { ...EPISODE },
-            error: null
-          };
+          if (name === 'novels') {
+            return { data: { id: 354, user_id: OWNER }, error: null };
+          }
+          return { data: { ...EPISODE }, error: null };
         }
       };
     }
