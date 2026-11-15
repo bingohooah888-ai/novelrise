@@ -484,7 +484,7 @@ export function createFormalOfflineIntegration({
       body,
       query,
       headers: {
-        authorization: '***' + user,
+        authorization: ['Bearer', 'mock:' + user].join(' '),
         origin: 'https://novelight.jp',
         host: 'novelight.jp',
         'x-forwarded-proto': 'https',
