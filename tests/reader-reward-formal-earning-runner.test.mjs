@@ -444,7 +444,9 @@ test('verified read enters existing durable queue', async () => {
   });
   assert.equal(result.status, 'pending');
   assert.deepEqual(calls.at(-1)[1], ['valid_read_qualified', readId]);
-  const enqueues = calls.filter(([sql]) => sql.includes('enqueue_earning_draft'));
+  const enqueues = calls.filter(([sql]) =>
+    sql.includes('enqueue_earning_draft')
+  );
   assert.equal(enqueues.length, 1);
   assert.equal(
     calls.some(([sql]) => sql.includes('award_read_points_draft')),
