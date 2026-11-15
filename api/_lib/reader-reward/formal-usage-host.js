@@ -28,7 +28,8 @@ export function createUnregisteredFormalRewardHost({
   inspectEarningSource,
   getNewReaderSummary,
   getAdminRewardOverview,
-  getAdminBadgeCatalog
+  getAdminBadgeCatalog,
+  getAdminBadgeHistory
 } = {}) {
   const service = createFormalRewardUsageService({
     repository,
@@ -53,7 +54,8 @@ export function createUnregisteredFormalRewardHost({
     inspectEarningSource,
     getNewReaderSummary,
     getAdminRewardOverview,
-    getAdminBadgeCatalog
+    getAdminBadgeCatalog,
+    getAdminBadgeHistory
   });
   return Object.freeze({ service, handlers });
 }
