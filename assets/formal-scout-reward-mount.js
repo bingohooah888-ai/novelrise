@@ -24,17 +24,37 @@
     });
   }
 
-  function mountFormalRewardAdmin({ root, authorized, request }) {
+  function mountFormalRewardAdmin({
+    root,
+    authorized,
+    request,
+    adminGiftQueueAvailable = false,
+    adminSettlementActionsAvailable = false
+  }) {
     if (!globalThis.NovelightFormalRewardAdmin)
       throw new TypeError('Formal admin module must be loaded first');
-    const binding =
-      globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings({
-        request
-      });
+    if (
+      adminSettlementActionsAvailable === true &&
+      adminGiftQueueAvailable !== true
+    )
+      throw new TypeError('Gift settlement requires an approved gift queue');
+    const {
+      loadQueue,
+      loadRefunds,
+      onResolve,
+      ...monitoring
+    } = globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings({
+      request
+    });
     return globalThis.NovelightFormalRewardAdmin.createFormalRewardAdminPanel({
       root,
       authorized,
-      ...binding
+      ...monitoring,
+      ...(adminGiftQueueAvailable === true ? { loadQueue, loadRefunds } : {}),
+      ...(adminGiftQueueAvailable === true &&
+      adminSettlementActionsAvailable === true
+        ? { onResolve }
+        : {})
     });
   }
 
