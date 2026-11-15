@@ -25,16 +25,27 @@
   } = {}) {
     if (!root || typeof root.replaceChildren !== 'function')
       throw new TypeError('Admin panel root required');
-    if (typeof loadQueue !== 'function' || typeof onResolve !== 'function')
-      throw new TypeError('Injected admin operations required');
+    if (
+      ![
+        loadQueue,
+        loadNewReaderSummary,
+        loadRewardOverview,
+        loadBadgeCatalog,
+        loadBadgeHistory,
+        loadWalletCohort,
+        loadSettlementRecovery,
+        inspectEarningSource
+      ].some((handler) => typeof handler === 'function')
+    )
+      throw new TypeError('Injected admin monitoring or queue required');
     let inflight = false;
     let latestRequest = 0;
     const shell = node('section', 'rr-admin-shell');
-    const title = node('h2', '', 'SCOUT REWARD / 交換申請管理');
+    const title = node('h2', '', 'SCOUT REWARD / 正式版管理');
     const caption = node(
       'p',
       'rr-admin-muted',
-      'デジタルギフトの申請を確認します。引渡し判定にはサーバー側の事業者照合が必要です。'
+      '報酬・称号・新規読者の状態を確認します。ギフト交換操作には別途公開承認が必要です。'
     );
     const notice = node('p', 'rr-admin-message');
     notice.setAttribute('role', 'status');
@@ -397,23 +408,6 @@
           )
         );
       }
-      let result;
-      try {
-        result = await loadQueue();
-      } catch {
-        if (requestId !== latestRequest)
-          return { status: 'stale_queue_response' };
-        notice.textContent = '申請一覧を取得できませんでした。';
-        return { status: 'queue_unavailable' };
-      }
-      if (requestId !== latestRequest)
-        return { status: 'stale_queue_response' };
-      if (result?.status !== 'queue_ready' || !Array.isArray(result.items)) {
-        notice.textContent = '申請一覧は現在利用できません。';
-        return { status: 'queue_unavailable' };
-      }
-      notice.textContent =
-        '未完了の交換申請：' + fmt(result.items.length) + '件';
       if (typeof loadNewReaderSummary === 'function') {
         let overview = null;
         try {
@@ -451,6 +445,30 @@
           );
         }
       }
+      // Separate diagnostic monitoring from the still-disabled gift queue.
+      // Admin authorization remains enforced by the existing server handler.
+      if (typeof loadQueue !== 'function') {
+        notice.textContent =
+          '交換キューは未接続です。読み取り専用の正式版監査のみ表示しています。';
+        return { status: 'queue_not_connected' };
+      }
+      let result;
+      try {
+        result = await loadQueue();
+      } catch {
+        if (requestId !== latestRequest)
+          return { status: 'stale_queue_response' };
+        notice.textContent = '申請一覧を取得できませんでした。';
+        return { status: 'queue_unavailable' };
+      }
+      if (requestId !== latestRequest)
+        return { status: 'stale_queue_response' };
+      if (result?.status !== 'queue_ready' || !Array.isArray(result.items)) {
+        notice.textContent = '申請一覧は現在利用できません。';
+        return { status: 'queue_unavailable' };
+      }
+      notice.textContent =
+        '未完了の交換申請：' + fmt(result.items.length) + '件';
       for (const item of result.items) {
         if (
           !item ||
@@ -480,6 +498,7 @@
           ['confirm_fulfilled', '事業者への引渡しを照合'],
           ['release_unfulfilled', '未引渡しを照合して予約解除']
         ]) {
+          if (typeof onResolve !== 'function') continue;
           const button = node('button', 'rr-admin-action', label);
           button.type = 'button';
           button.addEventListener('click', async () => {
@@ -552,6 +571,13 @@
                   : 'デジタルギフト交換'
               )
             );
+            // Read-only monitoring may show candidate information without
+            // ever exposing a settlement mutation control.
+            if (typeof onResolve !== 'function') {
+              card.append(detail);
+              refunds.append(card);
+              continue;
+            }
             const button = node(
               'button',
               'rr-admin-action',
