@@ -361,9 +361,10 @@ export function createFormalRewardUsageService({
     const enabled = approved();
     // Only the already trusted, formally enabled backend may augment the
     // snapshot with the original badge/SEED sources. No beta/public reads.
-    const scout = enabled && typeof getScoutOverview === 'function'
-      ? await getScoutOverview(userId)
-      : null;
+    const scout =
+      enabled && typeof getScoutOverview === 'function'
+        ? await getScoutOverview(userId)
+        : null;
     return {
       serverVerified: true,
       formalEnabled: enabled,
