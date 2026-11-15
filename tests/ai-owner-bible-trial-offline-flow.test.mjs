@@ -170,7 +170,9 @@ function tick() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
-test('offline owner must inspect before one explicit stage and then sees review', async () => {
+test(
+  'offline owner must inspect before one explicit stage and then sees review',
+  async () => {
   const f = harness();
   assert.equal(
     await attach({
@@ -204,7 +206,9 @@ test('offline owner must inspect before one explicit stage and then sees review'
   assert.equal(f.staged, 1);
 });
 
-test('changed plan, completed work or revoked session cannot execute', async () => {
+test(
+  'changed plan, completed work or revoked session cannot execute',
+  async () => {
   const changed = harness();
   assert.equal(
     await attach({
@@ -251,7 +255,9 @@ test('changed plan, completed work or revoked session cannot execute', async () 
   await tick();
 });
 
-test('missing offline capability does not change default deployed panel', async () => {
+test(
+  'missing offline capability does not change default deployed panel',
+  async () => {
   const invalid = harness();
   assert.equal(
     await attach({
