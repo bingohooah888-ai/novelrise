@@ -162,11 +162,13 @@ export function createOwnerBibleReviewApiHandler({
         repository
       });
       if (req.method === 'GET') {
-        return res.status(200).json(
-          transfer
-            ? await workflow.verifyTransfer({ token, novelId, ...transfer })
-            : await workflow.list({ token, novelId })
-        );
+        return res
+          .status(200)
+          .json(
+            transfer
+              ? await workflow.verifyTransfer({ token, novelId, ...transfer })
+              : await workflow.list({ token, novelId })
+          );
       }
       return res.status(200).json(
         await workflow.decide({
