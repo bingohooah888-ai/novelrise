@@ -195,8 +195,7 @@ export function createFormalOfflineDurableDb({
       )
     )
       return { status: 'already_recorded_for_episode' };
-    const at =
-      event.kind === 'read' ? source.qualified_at : source.created_at;
+    const at = event.kind === 'read' ? source.qualified_at : source.created_at;
     const saved = await repository.creditSyntheticEarning({
       userId: event.userId,
       eventId: source.id,
@@ -227,7 +226,9 @@ export function createFormalOfflineDurableDb({
     if (sql.includes('from public.valid_read_events where id='))
       return { rows: reads.has(args[0]) ? [copy(reads.get(args[0]))] : [] };
     if (sql.includes('from public.novel_comments where id='))
-      return { rows: comments.has(args[0]) ? [copy(comments.get(args[0]))] : [] };
+      return {
+        rows: comments.has(args[0]) ? [copy(comments.get(args[0]))] : []
+      };
     if (sql.includes('from public.novel_comments where user_id=')) {
       const entry = [...byKey.values()].find(
         ({ event, source }) =>
@@ -239,11 +240,11 @@ export function createFormalOfflineDurableDb({
     }
     if (sql.includes('.enqueue_earning_draft(')) {
       const [type, id] = args;
-      if (!lookup(type, id)) return result({ status: 'canonical_source_missing' });
+      if (!lookup(type, id))
+        return result({ status: 'canonical_source_missing' });
       const key = type + ':' + id;
       if (queue.has(key)) return result({ status: queue.get(key).status });
-      const status =
-        type === VALID_TYPES.read ? 'pending' : 'review_pending';
+      const status = type === VALID_TYPES.read ? 'pending' : 'review_pending';
       queue.set(key, { type, id, status, review: null, lease: null });
       return result({ status });
     }
@@ -335,8 +336,7 @@ export function createFormalOfflineDurableDb({
     const all = [...earned.values()];
     const month = monthOf(nowIso);
     const inMonth = all.filter((entry) => monthOf(entry.at) === month);
-    const sum = (rows) =>
-      rows.reduce((total, entry) => total + entry.points, 0);
+    const sum = (rows) => rows.reduce((total, entry) => total + entry.points, 0);
     const eligibleAvailable = (
       await Promise.all(
         [...readerIds].map((id) => repository.readReader(id))
