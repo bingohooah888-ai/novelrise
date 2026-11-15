@@ -443,7 +443,6 @@ test('Router invalid post-reservation callback fails closed at construction', ()
   );
 });
 
-
 // Offline-only cleanup proof: a backend failure must not suppress the other
 // already-existing ledger/audit action or return a successful provider result.
 // The synthetic ledger/audit event order is the cleanup contract.
