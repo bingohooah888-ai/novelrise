@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+
+const cloneSnapshot = (value) => JSON.parse(JSON.stringify(value));
 import { URL } from 'node:url';
 
 import { createOfflineOwnerNovelBibleCheckpoint } from '../api/_lib/ai/owner-novel-bible-checkpoint.js';
@@ -465,7 +467,7 @@ test('02-07-05 one-call bridge resumes confirmed chunks without repeated AI expe
   let recorded = 0;
   const repository = {
     async readSnapshot() {
-      return row === null ? null : structuredClone(row);
+      return row === null ? null : cloneSnapshot(row);
     },
     async compareAndSwap(change) {
       recorded += 1;
@@ -478,10 +480,10 @@ test('02-07-05 one-call bridge resumes confirmed chunks without repeated AI expe
       row = {
         episode_id: 11,
         source_hash: change.nextSourceHash,
-        summary: structuredClone(change.nextSummary),
+        summary: cloneSnapshot(change.nextSummary),
         revision: (row?.revision ?? 0) + 1
       };
-      return structuredClone(row);
+      return cloneSnapshot(row);
     }
   };
   const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
