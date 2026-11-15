@@ -229,6 +229,80 @@ export function createOwnerNovelBibleModelBridge({
   }
 
   return Object.freeze({
+    // Read-only, owner-authenticated preview of the NEXT one-chunk request.
+    // No budget reserve, provider call, candidate write or checkpoint mutation.
+    // Status is advisory; stage() independently revalidates all permissions,
+    // manuscript hashes, checkpoint CAS and budget before any paid operation.
+    async inspectPlan({ token, novelId, episodeId } = {}) {
+      if (!enabled || externalProcessingApproved !== true) {
+        throw new Error('AI_BIBLE_MODEL_BRIDGE_DISABLED');
+      }
+      const workId = positiveId(novelId);
+      const chapterId = positiveId(episodeId);
+      const original = await scope(token, workId, chapterId);
+      await permission(workId, chapterId);
+      const initial = await chooseChunk(original, 0);
+      const chunkCount = initial.completionPlan?.chunks.length ?? 0;
+      let nextChunkIndex = null;
+      let status;
+      if (!initial.chunk) {
+        status = initial.zeroChange ? 'zero_cost_completion' : 'unchanged';
+        // The existing checkpoint.completeEmpty is invoked by stage(0).
+        // Without checkpoint persistence there is nothing to acknowledge.
+        if (initial.zeroChange && checkpoint) nextChunkIndex = 0;
+      } else if (!checkpoint) {
+        status = 'ready';
+        nextChunkIndex = 0;
+      } else {
+        const plan = initial.completionPlan;
+        for (let index = 0; index < chunkCount; index += 1) {
+          const observed = await checkpoint.inspect({
+            actorId: owner,
+            novelId: workId,
+            episodeId: chapterId,
+            plan,
+            chunkIndex: index
+          });
+          if (observed === 'replan') {
+            // A new revision requires the existing stage() CAS replan path.
+            status = 'replan_required';
+            nextChunkIndex = 0;
+            break;
+          }
+          if (observed === 'pending') {
+            status = 'ready';
+            nextChunkIndex = index;
+            break;
+          }
+          if (observed !== 'completed') deny();
+        }
+        if (!status) status = 'completed';
+      }
+
+      // An inspection must not report a stale work/session or old manuscript
+      // after a potentially slow checkpoint read. No private text is returned.
+      const fresh = await scope(token, workId, chapterId);
+      await permission(workId, chapterId);
+      const current = await chooseChunk(fresh, 0);
+      if (
+        initial.history !== current.history ||
+        initial.chunk?.sourceHash !== current.chunk?.sourceHash ||
+        initial.chunk?.chunkHash !== current.chunk?.chunkHash ||
+        (initial.completionPlan?.chunks.length ?? 0) !==
+          (current.completionPlan?.chunks.length ?? 0) ||
+        JSON.stringify(initial.zeroChange) !==
+          JSON.stringify(current.zeroChange)
+      ) {
+        deny();
+      }
+      return Object.freeze({
+        novelId: workId,
+        episodeId: chapterId,
+        chunkCount,
+        nextChunkIndex,
+        status
+      });
+    },
     async stage({ token, novelId, episodeId, chunkIndex = 0 } = {}) {
       // Independent gates; no provider invocation is allowed without both.
       if (!enabled || externalProcessingApproved !== true) {

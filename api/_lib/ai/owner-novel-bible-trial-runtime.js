@@ -140,7 +140,71 @@ export function createOwnerNovelBibleTrialRuntime({
     );
   }
 
+  // Reuse exactly the existing authenticated owner/Router/repository
+  // composition for both one-chunk staging and the non-paid plan inspection.
+  // In particular, no author client or budget adapter exists before Auth.
+  async function openOwnerBridge(token, episode) {
+    // Do not instantiate any token-bound author client, Router, budget
+    // adapter, model provider or repository before fresh owner Auth.
+    await verifyOwner(token);
+    const authorClient = await createAuthorClient({
+      token,
+      actorId: owner
+    });
+    if (
+      !authorClient ||
+      authorClient === serviceClient ||
+      typeof authorClient.rpc !== 'function'
+    ) {
+      unavailable();
+    }
+
+    const repository = createSupabaseOwnerBibleReviewRepository({
+      serviceClient,
+      authorClient
+    });
+    const workflow = createOwnerBibleReviewWorkflow({
+      enabled: true,
+      ownerId: owner,
+      authClient,
+      serviceClient,
+      repository
+    });
+    const router = createAiRouter({
+      enabled: true,
+      authorize: (context) => authorize(context, episode),
+      budget: createSupabaseAiBudget({ serviceClient }),
+      audit: createSupabaseAiAudit({ serviceClient }),
+      providers,
+      routes,
+      cache
+    });
+    const bridge = createOwnerNovelBibleModelBridge({
+      enabled: true,
+      externalProcessingApproved: true,
+      ownerId: owner,
+      authClient,
+      serviceClient,
+      aiRouter: router,
+      reviewWorkflow: workflow,
+      permissionCheck,
+      readVerifiedHistory: historyReader,
+      checkpoint
+    });
+
+    return bridge;
+  }
+
   return Object.freeze({
+    async inspectPlan({ token, novelId, episodeId } = {}) {
+      if (!enabled || externalProcessingApproved !== true) {
+        throw new Error('AI_TRIAL_RUNTIME_DISABLED');
+      }
+      const work = workId(novelId);
+      const episode = workId(episodeId);
+      const bridge = await openOwnerBridge(token, episode);
+      return bridge.inspectPlan({ token, novelId: work, episodeId: episode });
+    },
     async stage({ token, novelId, episodeId, chunkIndex = 0 } = {}) {
       if (!enabled || externalProcessingApproved !== true) {
         throw new Error('AI_TRIAL_RUNTIME_DISABLED');
@@ -154,56 +218,7 @@ export function createOwnerNovelBibleTrialRuntime({
       ) {
         denied();
       }
-
-      // Do not instantiate any token-bound author client, Router, budget
-      // adapter, model provider or repository before fresh owner Auth.
-      await verifyOwner(token);
-      const authorClient = await createAuthorClient({
-        token,
-        actorId: owner
-      });
-      if (
-        !authorClient ||
-        authorClient === serviceClient ||
-        typeof authorClient.rpc !== 'function'
-      ) {
-        unavailable();
-      }
-
-      const repository = createSupabaseOwnerBibleReviewRepository({
-        serviceClient,
-        authorClient
-      });
-      const workflow = createOwnerBibleReviewWorkflow({
-        enabled: true,
-        ownerId: owner,
-        authClient,
-        serviceClient,
-        repository
-      });
-      const router = createAiRouter({
-        enabled: true,
-        authorize: (context) => authorize(context, episode),
-        budget: createSupabaseAiBudget({ serviceClient }),
-        audit: createSupabaseAiAudit({ serviceClient }),
-        providers,
-        routes,
-        cache
-      });
-      const bridge = createOwnerNovelBibleModelBridge({
-        enabled: true,
-        externalProcessingApproved: true,
-        ownerId: owner,
-        authClient,
-        serviceClient,
-        aiRouter: router,
-        reviewWorkflow: workflow,
-        permissionCheck,
-        readVerifiedHistory: historyReader,
-        checkpoint
-      });
-      // Only the bridge sees the request. It must independently verify the
-      // live episode and consent and validate all evidence before staging.
+      const bridge = await openOwnerBridge(token, episode);
       return bridge.stage({
         token,
         novelId: work,

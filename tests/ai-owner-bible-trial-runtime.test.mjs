@@ -372,3 +372,43 @@ test('opt-in offline runtime completes one chunk and skips a second paid call', 
   assert.equal(state.reservations, 1);
   assert.equal(state.modelCalls, 1);
 });
+
+test('owner trial can inspect the next chunk without reserving budget or AI calls', async () => {
+  const { runtime, state } = fixture({ currentText: '青'.repeat(3100) });
+  const result = await runtime.inspectPlan(REQUEST);
+  assert.deepEqual(result, {
+    novelId: 41,
+    episodeId: 11,
+    chunkCount: 3,
+    nextChunkIndex: 0,
+    status: 'ready'
+  });
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.reservations, 0);
+  assert.equal(state.settlements, 0);
+  assert.equal(state.staged, 0);
+  assert.equal(state.audits, 0);
+  assert.ok(!JSON.stringify(result).includes(TOKEN));
+});
+
+test('owner trial cannot inspect plans when disabled, unauthenticated or without consent', async () => {
+  const disabled = fixture({ enabled: false });
+  await assert.rejects(
+    disabled.runtime.inspectPlan(REQUEST),
+    /AI_TRIAL_RUNTIME_DISABLED/u
+  );
+  assert.equal(disabled.state.authorClients, 0);
+  const other = fixture({ actor: OTHER });
+  await assert.rejects(
+    other.runtime.inspectPlan(REQUEST),
+    /AI_TRIAL_RUNTIME_DENIED/u
+  );
+  assert.equal(other.state.authorClients, 0);
+  const denied = fixture({ consent: false });
+  await assert.rejects(
+    denied.runtime.inspectPlan(REQUEST),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(denied.state.modelCalls, 0);
+  assert.equal(denied.state.reservations, 0);
+});

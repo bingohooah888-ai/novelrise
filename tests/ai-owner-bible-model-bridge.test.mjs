@@ -725,3 +725,110 @@ test('02-07-05 mid-run edit CAS-replans before a new one-chunk model call', asyn
   assert.deepEqual(journal.row.summary.novelightPhase2.completedIndices, [0]);
   assert.equal(journal.row.summary.novelightPhase2.state, 'in_progress');
 });
+
+test('read-only chunk plan finds the next index without any paid AI or candidate writes', async () => {
+  const { state, make } = fixture({ content: '青'.repeat(3100) });
+  const checkpoint = {
+    async inspect({ chunkIndex }) {
+      return chunkIndex === 0 ? 'completed' : 'pending';
+    },
+    async record() {
+      throw new Error('INSPECTION_MUST_NOT_RECORD');
+    }
+  };
+  const response = await make({ checkpoint }).inspectPlan({
+    token: TOKEN,
+    novelId: 41,
+    episodeId: 11
+  });
+  assert.deepEqual(response, {
+    novelId: 41,
+    episodeId: 11,
+    chunkCount: 3,
+    nextChunkIndex: 1,
+    status: 'ready'
+  });
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.reviewCalls, 0);
+  assert.ok(!JSON.stringify(response).includes('青'));
+  assert.ok(!JSON.stringify(response).includes(TOKEN));
+});
+
+test('read-only plan reports completed and CAS replan without mutating journals', async () => {
+  for (const [response, expected] of [
+    ['completed', { nextChunkIndex: null, status: 'completed' }],
+    ['replan', { nextChunkIndex: 0, status: 'replan_required' }]
+  ]) {
+    const { state, make } = fixture();
+    const checkpoint = {
+      async inspect() {
+        return response;
+      },
+      async record() {
+        throw new Error('MUST_NOT_WRITE');
+      },
+      async replan() {
+        throw new Error('MUST_NOT_REPLAN_DURING_READ');
+      }
+    };
+    const observed = await make({ checkpoint }).inspectPlan({
+      token: TOKEN,
+      novelId: 41,
+      episodeId: 11
+    });
+    assert.equal(observed.nextChunkIndex, expected.nextChunkIndex);
+    assert.equal(observed.status, expected.status);
+    assert.equal(observed.chunkCount, 1);
+    assert.equal(state.modelCalls, 0);
+  }
+});
+
+test('plan inspection checks owner, consent and manuscript freshness twice', async () => {
+  const forbidden = fixture({ owner: OTHER });
+  await assert.rejects(
+    forbidden.make().inspectPlan({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  const noConsent = fixture({ consent: false });
+  await assert.rejects(
+    noConsent.make().inspectPlan({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  const stale = fixture();
+  await assert.rejects(
+    stale.make({
+      checkpoint: {
+        async inspect() {
+          stale.state.content = '途中で改稿された';
+          return 'pending';
+        },
+        async record() {
+          throw new Error('MUST_NOT_RECORD');
+        }
+      }
+    }).inspectPlan({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(stale.state.modelCalls, 0);
+  assert.equal(stale.state.reviewCalls, 0);
+});
+
+test('unmodified chapter plan reports no provider work', async () => {
+  const { state, make } = fixture();
+  const sourceHash = createHash('sha256')
+    .update(JSON.stringify(['第一話', CONTENT]))
+    .digest('hex');
+  const response = await make({
+    readVerifiedHistory: async () => ({
+      analysis: { episode_id: 11, source_hash: sourceHash }
+    })
+  }).inspectPlan({ token: TOKEN, novelId: 41, episodeId: 11 });
+  assert.deepEqual(response, {
+    novelId: 41,
+    episodeId: 11,
+    chunkCount: 0,
+    nextChunkIndex: null,
+    status: 'unchanged'
+  });
+  assert.equal(state.modelCalls, 0);
+});
