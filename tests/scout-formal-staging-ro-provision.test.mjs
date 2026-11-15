@@ -9,7 +9,9 @@ import {
 
 const REF = 'wmlzjgvxgoyrovdhbqbg';
 const BRANCH = 'feature/scout-formal-last-mile-integrity-off-20261115';
-const admin = new URL('postgresql://postgres:synthetic@localhost:5432/postgres');
+const admin = new URL(
+  'postgresql://postgres:synthetic@localhost:5432/postgres'
+);
 admin.hostname = 'db.' + REF + '.supabase.co';
 const ADMIN_DSN = admin.toString();
 
@@ -51,7 +53,10 @@ test('only the OWNER trusted-main context is allowed', () => {
     ['GITHUB_WORKFLOW_REF', 'different-workflow'],
     ['STAGING_SUPABASE_URL', 'https://other.supabase.co']
   ]) {
-    assert.throws(() => verify({ [key]: value }), /UNTRUSTED_APPROVAL_CONTEXT/u);
+    assert.throws(
+      () => verify({ [key]: value }),
+      /UNTRUSTED_APPROVAL_CONTEXT/u
+    );
   }
   assert.throws(
     () => verify({ VERCEL_API_TOKEN: '' }),
@@ -70,7 +75,10 @@ test('reader URL is limited to the dedicated Staging database', () => {
   pooler.hostname = 'aws-0-ap-northeast-1.pooler.supabase.com';
   pooler.username = 'postgres.' + REF;
   const poolerDsn = deriveFormalReaderDatabaseUrl(pooler.toString(), password);
-  assert.equal(new URL(poolerDsn).username, 'novelight_formal_reader_ro.' + REF);
+  assert.equal(
+    new URL(poolerDsn).username,
+    'novelight_formal_reader_ro.' + REF
+  );
 
   const wrong = new URL(ADMIN_DSN);
   wrong.hostname = 'db.fiepaguycecrredwrcwx.supabase.co';
