@@ -40,8 +40,7 @@ export function createFormalEarningRunner({
   // Only a trusted, separately approved host may invoke this method; the
   // canonical source is reloaded here rather than trusting caller evidence.
   async function enqueueCommittedEvent({ eventType, eventId } = {}) {
-    if (!approved())
-      return Object.freeze({ status: 'formal_worker_disabled' });
+    if (!approved()) return Object.freeze({ status: 'formal_worker_disabled' });
     if (
       !['valid_read_qualified', 'novel_episode_comment_reviewed'].includes(
         eventType
