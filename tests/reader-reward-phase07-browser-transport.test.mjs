@@ -161,3 +161,47 @@ test('admin monitoring query traverses existing same-origin authenticated transp
   );
   assert.equal(urls.length, 1);
 });
+
+test('formal admin badge, wallet and recovery audits reach existing authenticated GET views', async () => {
+  const g = browser();
+  const calls = [];
+  const request = g.NovelightFormalRewardTransport.createFormalRewardTransport({
+    endpoint: '/api/formal-reward-admin',
+    getAccessToken: async () => 'operator-session',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({ ok: true, status: 'review_only' })
+      };
+    }
+  });
+  const admin = g.NovelightFormalRewardAdmin.createFormalAdminBindings({
+    request
+  });
+  for (const [method, view] of [
+    ['loadBadgeCatalog', 'badge_catalog'],
+    ['loadBadgeHistory', 'badge_history'],
+    ['loadWalletCohort', 'wallet_cohort'],
+    ['loadSettlementRecovery', 'settlement_recovery']
+  ]) {
+    await admin[method]();
+    const call = calls.at(-1);
+    assert.equal(call.url, '/api/formal-reward-admin?view=' + view);
+    assert.equal(call.options.method, 'GET');
+    assert.equal(call.options.credentials, 'same-origin');
+    assert.equal(call.options.cache, 'no-store');
+    assert.equal(call.options.headers.Authorization, 'Bearer operator-session');
+    assert.equal(Object.hasOwn(call.options, 'body'), false);
+  }
+  assert.equal(calls.length, 4);
+  await assert.rejects(
+    request({ method: 'GET', query: { view: 'admin_secrets' } }),
+    /query rejected/
+  );
+  await assert.rejects(
+    request({ method: 'POST', query: { view: 'badge_catalog' } }),
+    /POST query rejected/
+  );
+  assert.equal(calls.length, 4);
+});
