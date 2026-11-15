@@ -706,3 +706,148 @@ test('newly accepted candidate transfers only after fresh revision-two verificat
   assert.equal(f.requests[2].method, 'GET');
   assert.equal(f.requests.filter((req) => req.method === 'POST').length, 1);
 });
+
+test('130 mixed active, accepted and stale candidates load only by explicit older-page clicks', async () => {
+  const records = Array.from({ length: 130 }, (_, i) => {
+    const id = i + 1;
+    const status = id % 4 === 0 ? 'accepted' : 'pending';
+    return {
+      id,
+      episodeId: 4,
+      revision: status === 'accepted' ? 2 : 1,
+      kind: 'character',
+      key: '凛',
+      summary: '候補 ' + id,
+      evidence: '青い鍵',
+      status,
+      ...(id % 3 === 0 ? { staleReason: 'source_changed' } : {})
+    };
+  });
+  const urls = [];
+  const f = mock();
+  const fetcher = async (url, options) => {
+    assert.equal(options.method, 'GET');
+    assert.equal(options.cache, 'no-store');
+    urls.push(url);
+    const match = url.match(/[?&]before_id=(\d+)/u);
+    const before = match ? Number(match[1]) : null;
+    const batch = records
+      .filter((row) => before === null || row.id < before)
+      .sort((a, b) => b.id - a.id);
+    const selected = batch.slice(0, 25);
+    return {
+      ok: true,
+      async json() {
+        return {
+          novelId: 354,
+          aiGenerated: false,
+          candidates: selected.filter(
+            (row) => row.status === 'pending' && !row.staleReason
+          ),
+          acceptedCandidates: selected.filter(
+            (row) => row.status === 'accepted' && !row.staleReason
+          ),
+          staleCandidates: selected.filter((row) => row.staleReason),
+          pagination: {
+            nextBeforeId:
+              batch.length > 25 ? selected[selected.length - 1].id : null
+          }
+        };
+      }
+    };
+  };
+  assert.equal(
+    await attach({
+      client: f.client,
+      ownerId: OWNER,
+      novelId: 354,
+      doc: f.doc,
+      fetcher,
+      onAccepted: async () => true
+    }),
+    true
+  );
+  const section = f.host.children[0];
+  const list = section.children[1];
+  const next = section.children[3].children[0];
+  assert.equal(urls.length, 1);
+  assert.equal(list.children.filter((node) => node.tag === 'div').length, 25);
+  assert.equal(next.hidden, false);
+  for (let i = 0; i < 5; i += 1) {
+    await next.listeners.click();
+  }
+  assert.equal(urls.length, 6);
+  assert.deepEqual(
+    urls.slice(1).map((url) => Number(url.split('before_id=')[1])),
+    [106, 81, 56, 31, 6]
+  );
+  assert.equal(next.hidden, true);
+  assert.equal(list.children.filter((node) => node.tag === 'div').length, 130);
+  const historical = list.children.filter(
+    (node) => node.tag === 'div' &&
+      node.children[0].textContent.includes('旧版の候補')
+  );
+  assert.equal(historical.length, 43);
+  assert.ok(historical.every((node) => node.children.length === 1));
+  await next.listeners.click();
+  assert.equal(urls.length, 6);
+  f.logout();
+  assert.equal(section.removed, true);
+});
+
+test('duplicate or unscoped next page is refused without exposing more controls', async () => {
+  const first = Array.from({ length: 25 }, (_, i) => ({
+    id: 50 - i,
+    episodeId: 4,
+    revision: 1,
+    kind: 'event',
+    key: '発見',
+    summary: '候補 ' + i,
+    evidence: '古い巻物',
+    status: 'pending'
+  }));
+  const f = mock();
+  let reads = 0;
+  assert.equal(
+    await attach({
+      client: f.client,
+      ownerId: OWNER,
+      novelId: 354,
+      doc: f.doc,
+      fetcher: async () => {
+        reads += 1;
+        return {
+          ok: true,
+          async json() {
+            return reads === 1
+              ? {
+                  novelId: 354,
+                  aiGenerated: false,
+                  candidates: first,
+                  pagination: { nextBeforeId: 26 }
+                }
+              : {
+                  novelId: 354,
+                  aiGenerated: false,
+                  candidates: [first[24]],
+                  pagination: { nextBeforeId: null }
+                };
+          }
+        };
+      }
+    }),
+    true
+  );
+  const section = f.host.children[0];
+  const next = section.children[3].children[0];
+  await next.listeners.click();
+  assert.equal(reads, 2);
+  assert.equal(next.hidden, true);
+  assert.match(section.children[2].textContent, /続きを確認できませんでした/u);
+  assert.equal(
+    section.children[1].children.filter((node) => node.tag === 'div').length,
+    25
+  );
+  await next.listeners.click();
+  assert.equal(reads, 2);
+});
