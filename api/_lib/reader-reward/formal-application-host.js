@@ -9,6 +9,7 @@ import { createUnregisteredFormalOpeningSync } from './formal-opening-sync.js';
 import { createUnregisteredFormalNewReaderOnboarding } from './formal-new-reader-onboarding.js';
 import { createUnregisteredFormalApiDispatch } from './formal-api-dispatch.js';
 import { createFormalCanonicalSourceReader } from './formal-earning-source-reader.js';
+import { holdDeferredFormalChannels } from './formal-deferred-channel-gates.js';
 
 export function createUnregisteredFormalApplication({
   pool,
@@ -67,6 +68,10 @@ export function createUnregisteredFormalApplication({
   const earningSourceReader = createFormalCanonicalSourceReader({
     postgresClient: pool
   });
+  // OWNER-held channels remain independently OFF even if formal earning,
+  // Level, or wallet readiness is later approved. No supplied catalog or
+  // provider adapter can activate gift exchange or charge for AI by accident.
+  const deferred = holdDeferredFormalChannels({ catalog, policy });
   // Read Level from scout_level_state and XP ledger; reconcile wallet to the
   // existing canonical Point ledger. No second source of truth is introduced.
   const usage = createUnregisteredFormalPostgresRewardHost({
@@ -88,9 +93,9 @@ export function createUnregisteredFormalApplication({
     releaseConfiguration,
     trustedServerAuthorization,
     env,
-    catalog,
-    policy,
-    aiExecutor,
+    catalog: deferred.catalog,
+    policy: deferred.policy,
+    aiExecutor: deferred.aiExecutor,
     verifyGiftReceipt,
     verifyGiftNonFulfillment,
     verifyGiftRefund,
