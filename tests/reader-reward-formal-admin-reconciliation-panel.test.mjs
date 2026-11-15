@@ -199,7 +199,7 @@ test('unavailable, malformed and purported release-ready audits fail closed', as
   assert.equal(descendants(audits[0], (n) => n.tag === 'button').length, 0);
 });
 
-test('admin can explicitly inspect canonical earning evidence without issuing points or showing private details', async () => {
+test('admin earning evidence is explicit, redacted and non-issuing', async () => {
   const eventId = '22222222-2222-4222-8222-222222222222';
   const calls = [];
   const element = root();
@@ -244,10 +244,13 @@ test('admin can explicitly inspect canonical earning evidence without issuing po
   ]);
   assert.match(flatten(element), /根拠イベントを確認しました/);
   assert.match(flatten(element), /Point発行は行っていません/);
-  assert.doesNotMatch(flatten(element), /PRIVATE_COMMENT_BODY|PRIVATE_READER_ID/);
+  assert.doesNotMatch(
+    flatten(element),
+    /PRIVATE_COMMENT_BODY|PRIVATE_READER_ID/
+  );
 });
 
-test('unverified source results fail closed and non-admin never mounts source inspector', async () => {
+test('unverified source fails closed and hidden panel stays inactive', async () => {
   let calls = 0;
   const element = root();
   createFormalRewardAdminPanel({
