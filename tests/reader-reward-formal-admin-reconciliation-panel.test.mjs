@@ -301,7 +301,7 @@ test('unverified source fails closed and hidden panel stays inactive', async () 
   assert.doesNotMatch(flatten(authorized), /根拠イベントを確認しました/);
 });
 
-test('formal diagnostic overview works without gift queue or settlement controls', async () => {
+test('formal audits render without a gift queue or settlement actions', async () => {
   const calls = [];
   const element = root();
   const panel = createFormalRewardAdminPanel({
@@ -349,13 +349,10 @@ test('formal diagnostic overview works without gift queue or settlement controls
   assert.match(visible, /称号定義：100/);
   assert.match(visible, /Wallet未作成：4/);
   assert.match(visible, /交換キューは未接続/);
-  assert.equal(
-    descendants(element, (n) => n.tag === 'button').length,
-    0
-  );
+  assert.equal(descendants(element, (n) => n.tag === 'button').length, 0);
 });
 
-test('gift queue failure does not suppress independent reader monitoring', async () => {
+test('failed gift queue does not hide reader monitoring', async () => {
   let summaryCalls = 0;
   const element = root();
   const panel = createFormalRewardAdminPanel({
@@ -383,13 +380,10 @@ test('gift queue failure does not suppress independent reader monitoring', async
   assert.match(visible, /要確認：3人/);
   assert.match(visible, /称号定義：100/);
   assert.match(visible, /申請一覧を取得できませんでした/);
-  assert.equal(
-    descendants(element, (n) => n.tag === 'button').length,
-    0
-  );
+  assert.equal(descendants(element, (n) => n.tag === 'button').length, 0);
 });
 
-test('read-only queue and refund candidates never render mutation buttons', async () => {
+test('read-only queue and refunds omit mutation buttons', async () => {
   const userId = '11111111-1111-4111-8111-111111111111';
   const operationId = '22222222-2222-4222-8222-222222222222';
   const element = root();
@@ -398,9 +392,7 @@ test('read-only queue and refund candidates never render mutation buttons', asyn
     authorized: true,
     loadQueue: async () => ({
       status: 'queue_ready',
-      items: [
-        { userId, operationId, amountPoints: 30000, phase: 'reserved' }
-      ]
+      items: [{ userId, operationId, amountPoints: 30000, phase: 'reserved' }]
     }),
     loadRefunds: async () => ({
       status: 'refund_candidates_ready',
@@ -419,10 +411,7 @@ test('read-only queue and refund candidates never render mutation buttons', asyn
   const visible = flatten(element);
   assert.match(visible, /30,000 pt/);
   assert.match(visible, /確定済み取引の返金照合/);
-  assert.equal(
-    descendants(element, (n) => n.tag === 'button').length,
-    0
-  );
+  assert.equal(descendants(element, (n) => n.tag === 'button').length, 0);
 });
 
 test('malformed reader summary cannot look like initialized accounts', async () => {
