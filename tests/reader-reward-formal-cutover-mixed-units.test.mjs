@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createFormalOfflineIntegration } from '../api/_lib/reader-reward/formal-offline-integration.js';
 import {
   SCOUT_MIXED_BETA_POINT_UNITS,
   quoteScoutOfflineBetaHandoff,
@@ -168,4 +169,64 @@ test('opening reconciliation detects source unit tampering after the quote', () 
     }).status,
     'opening_ledger_value_mismatch'
   );
+});
+
+test('mixed-unit beta handoff flows into the existing synthetic Wallet with zero gift eligibility', async () => {
+  const quoted = handoff(rows);
+  assert.equal(quoted.status, 'offline_handoff_quote_only');
+  const sandbox = createFormalOfflineIntegration({
+    handoff: quoted,
+    betaThresholdRows,
+    operatorId: '00000000-0000-4000-8000-000000000403',
+    mockBudgets: {
+      external_exchange: {
+        scopeId: 'synthetic-gift-hold',
+        limitPoints: 100000
+      },
+      ai_direct_use: {
+        scopeId: 'synthetic-ai-hold',
+        limitPoints: 100000
+      }
+    }
+  });
+  assert.equal(sandbox.mode, 'offline_synthetic_only');
+  assert.equal(sandbox.noRealPointOrProvider, true);
+  const initial = await sandbox.readerRequest(reader, { method: 'GET' });
+  assert.equal(initial.statusCode, 200);
+  assert.equal(initial.body.wallet.availablePoints, 3800);
+  assert.equal(initial.body.wallet.exchangeEligiblePoints, 0);
+  assert.equal(initial.body.account.level, 30);
+  assert.equal(sandbox.mockAiInvocations, 0);
+  assert.equal(sandbox.mockGiftVerifications, 0);
+
+  const afterFormal = createFormalOfflineIntegration({
+    handoff: quoted,
+    betaThresholdRows,
+    operatorId: '00000000-0000-4000-8000-000000000403',
+    mockBudgets: {
+      external_exchange: {
+        scopeId: 'synthetic-gift-hold',
+        limitPoints: 100000
+      },
+      ai_direct_use: {
+        scopeId: 'synthetic-ai-hold',
+        limitPoints: 100000
+      }
+    },
+    syntheticPostReleasePoints: [
+      {
+        eventId: 'offline-formal:qualified-event',
+        userId: reader,
+        amountPoints: 30000
+      }
+    ]
+  });
+  const formalSnapshot = await afterFormal.readerRequest(reader, {
+    method: 'GET'
+  });
+  assert.equal(formalSnapshot.statusCode, 200);
+  assert.equal(formalSnapshot.body.wallet.availablePoints, 33800);
+  assert.equal(formalSnapshot.body.wallet.exchangeEligiblePoints, 30000);
+  assert.equal(afterFormal.mockAiInvocations, 0);
+  assert.equal(afterFormal.mockGiftVerifications, 0);
 });
