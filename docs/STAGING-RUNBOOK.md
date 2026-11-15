@@ -88,6 +88,7 @@ revisionがまだ一致しない場合だけ短いbounded retryを行う。設�
 
 - **Production向けの正本は引き続き `supabase/migrations/`**。正式リリース前のSCOUT専用4件（`20261110080421`, `20261111095412`, `20261111103051`, `20261111104317`）をここへ入れない。
 - 上記4件のSQLと元のversion/nameは`supabase/staging-migrations/`に保存し、それ以外の例外を自動追加しない。Staging専用project refは`wmlzjgvxgoyrovdhbqbg`に固定。Production projectへの切替は拒否する。
+- **2026-11-15 未承認の観測記録4件**（`20261114062717` / `20261114065015` / `20261114070855` / `20261114091324`）は `supabase/staging-migrations-observed/` に実行時SQLのバイト同一証拠として隔離。`scripts/verify-observed-staging-scout-history.mjs` がファイル名・単一statement・SHA-256・バイト数を確認するが、OWNER承認・実行台帳は未確認。**既存の正式許可4件へ加えず、整合性ゲートはNO-GOを維持**。このフォルダからのDB適用・一時copy・Production同期は禁止。関連Draftと証拠は `docs/reports/NOVELIGHT-AI2-OBSERVED-SCOUT-STAGING-HISTORY-20261115.md` を参照。
 - **旧方式はlocal/remoteの14桁versionの全件完全一致**。新方式ではProduction対象migrationの全件存在に加え、Staging専用4件を固定allowlistとして追加して厳格に照合する。余分なversion、欠落、重複、誤ったmigration name、複数statement、SQL SHA-256/byte長不一致、未知のローカルStagingファイルはすべてfail closed。
 - Production migration計画でのread-only照合は`scripts/verify-staging-migration-parity.mjs`が継続担当し、既存Productionのpending完全一致・dry-run・明示承認ゲートを**変更しない**。
 - 専用Staging同期ワークフローだけが、接続先を再検証し既存4件のSQL digest・name・versionをDBにread-onlyで照合した後、実行runner内に4件を一時コピーする。これはGit mainへの追加ではなく、既存remote-only履歴をSupabase CLIが認識するための処理。未知の履歴や不一致は拒否する。
