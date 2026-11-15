@@ -205,7 +205,10 @@ test('a self-selected or forged signing key is never independently authorized', 
     quote(args, signed(args, other.privateKey)).status,
     'unit_evidence_signature_invalid_hold'
   );
-  assert.equal(quote(args, 'bad_signature').status, 'unit_evidence_signature_invalid_hold');
+  assert.equal(
+    quote(args, 'bad_signature').status,
+    'unit_evidence_signature_invalid_hold'
+  );
   const attackerKey = other.publicKey.export({
     type: 'spki',
     format: 'pem'
@@ -231,7 +234,11 @@ test('valid signature cannot override missing account evidence or an invalid rev
     ...evidence[index],
     canonicalRowSha256: fingerprintScoutBetaPointRow(row)
   }));
-  const altered = { ...args, canonicalLedgerRows: reversed, unitAssertions: rewritten };
+  const altered = {
+    ...args,
+    canonicalLedgerRows: reversed,
+    unitAssertions: rewritten
+  };
   const result = quote(altered, signed(altered));
   assert.equal(result.status, 'legacy_reversal_exceeds_original');
   assert.equal(result.mayIssuePoints, false);
