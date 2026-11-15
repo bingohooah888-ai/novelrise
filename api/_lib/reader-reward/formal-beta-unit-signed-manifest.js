@@ -12,7 +12,7 @@ import {
   SCOUT_POINT_TARGET_VERSION
 } from './beta-point-tenfold-plan.js';
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
 const EVIDENCE_REF = /^[a-z0-9][a-z0-9:_/.-]{7,159}$/;
 const MESSAGE_SCOPE = 'NOVELIGHT:SCOUT:BETA-POINT-UNIT-MANIFEST:v1';
