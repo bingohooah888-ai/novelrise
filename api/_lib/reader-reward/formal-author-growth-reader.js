@@ -29,9 +29,10 @@ const EVENTS_SQL =
   'where e.author_id_snapshot=$1::uuid ' +
   'order by e.occurred_at desc,e.id desc limit 80';
 function rank(value) {
-  const n = typeof value === 'string' && /^[1-6]$/.test(value)
-    ? Number(value)
-    : value;
+  const n =
+    typeof value === 'string' && /^[1-6]$/.test(value)
+      ? Number(value)
+      : value;
   if (!Number.isSafeInteger(n) || n < 1 || n > 6)
     throw new Error('FORMAL_AUTHOR_RANK_INVALID');
   return n;
