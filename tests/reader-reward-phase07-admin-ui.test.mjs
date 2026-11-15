@@ -236,6 +236,7 @@ test('reader and admin preview mounts reuse the real draft UI-to-host binding co
     globalThis.NovelightFormalRewardMount.mountFormalRewardAdmin({
       root: admin,
       authorized: true,
+      adminGiftQueueAvailable: true,
       request: async ({ method }) =>
         method === 'GET'
           ? { status: 'queue_ready', items: [one] }
@@ -279,4 +280,110 @@ test('administrator can inspect committed gift refund candidates; no refund with
   candidates = [];
   await panel.refresh();
   assert.equal(match(root, '返金・回収を照合').length, 0);
+});
+
+test('unpublished formal page mounts monitoring without gift requests or actions by default', async () => {
+  await import('../assets/formal-scout-reward-transport.js');
+  await import('../assets/formal-scout-reward-mount.js');
+  await import('../assets/formal-scout-reward-page.js');
+  const calls = [];
+  const root = new Element('main');
+  const makePage = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage;
+  const page = makePage({
+    adminRoot: root,
+    authorized: true,
+    adminEndpoint: '/api/formal-reward-admin',
+    getAccessToken: async () => 'synthetic-admin',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () =>
+          url.includes('view=new_readers')
+            ? {
+                ok: true,
+                status: 'new_reader_summary_ready',
+                totalRegistered: 7,
+                initialized: 6,
+                partial: 1
+              }
+            : { ok: true, status: 'not_configured' }
+      };
+    }
+  });
+  assert.equal(calls.length, 0);
+  const panel = page.admin();
+  const result = await panel.refresh();
+  assert.equal(result.status, 'queue_not_connected');
+  assert.equal(match(root, '正式版以降の新規読者').length, 1);
+  assert.equal(match(root, '登録：7人　初期化完了：6人　要確認：1人').length, 1);
+  assert.equal(match(root, '根拠を確認').length, 1);
+  assert.equal(
+    match(root, '交換キューは未接続です。読み取り専用の正式版監査のみ表示しています。')
+      .length,
+    1
+  );
+  assert.equal(match(root, '返金・回収を照合').length, 0);
+  assert.equal(match(root, '事業者への引渡しを照合').length, 0);
+  assert.ok(calls.length >= 1);
+  assert.ok(calls.every((x) => x.options.method === 'GET'));
+  assert.ok(calls.every((x) => x.options.cache === 'no-store'));
+  assert.ok(calls.every((x) => x.options.credentials === 'same-origin'));
+  assert.ok(calls.every((x) => x.options.headers.Authorization === 'Bearer synthetic-admin'));
+  assert.ok(calls.every((x) => x.url.includes('?view=')));
+  assert.ok(calls.every((x) => !x.url.includes('view=refunds')));
+});
+
+test('page may inspect a gift queue without exposing exchange or refund mutation controls', async () => {
+  const root = new Element('main');
+  const calls = [];
+  const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
+    adminRoot: root,
+    authorized: true,
+    adminEndpoint: '/api/formal-reward-admin',
+    adminGiftQueueAvailable: true,
+    getAccessToken: async () => 'synthetic-admin',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () => {
+          if (!url.includes('?'))
+            return { ok: true, status: 'queue_ready', items: [one] };
+          if (url.includes('view=refunds'))
+            return {
+              ok: true,
+              status: 'refund_candidates_ready',
+              items: [{ ...one, phase: 'committed' }]
+            };
+          return { ok: true, status: 'unavailable' };
+        }
+      };
+    }
+  });
+  const panel = page.admin();
+  assert.equal((await panel.refresh()).status, 'queue_ready');
+  assert.equal(match(root, '30,000 pt（3,000円相当）').length, 1);
+  assert.equal(match(root, '返金・回収を照合').length, 0);
+  assert.equal(match(root, '事業者への引渡しを照合').length, 0);
+  assert.ok(calls.some((x) => x.url === '/api/formal-reward-admin'));
+  assert.ok(calls.some((x) => x.url.includes('view=refunds')));
+  assert.ok(calls.every((x) => x.options.method === 'GET'));
+});
+
+test('settlement actions cannot be requested without independently enabling the gift queue', () => {
+  let touched = 0;
+  const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
+    adminRoot: new Element('main'),
+    authorized: true,
+    adminEndpoint: '/api/formal-reward-admin',
+    adminSettlementActionsAvailable: true,
+    getAccessToken: async () => 'synthetic-admin',
+    fetchImpl: async () => {
+      touched++;
+      throw Error('NO_NETWORK');
+    }
+  });
+  assert.throws(page.admin, /Gift settlement requires an approved gift queue/);
+  assert.equal(touched, 0);
 });
