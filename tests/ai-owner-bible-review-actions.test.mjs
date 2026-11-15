@@ -851,3 +851,76 @@ test('duplicate or unscoped next page is refused without exposing more controls'
   await next.listeners.click();
   assert.equal(reads, 2);
 });
+
+test('cross-page version label persists before matching historical row loads', async () => {
+  const pending = Array.from({ length: 25 }, (_, index) => ({
+    id: 26 - index,
+    episodeId: 41,
+    revision: 1,
+    kind: 'character',
+    key: index === 0 ? '凛' : '別の人物' + index,
+    summary: '新しい本文からの候補',
+    evidence: '青い鍵',
+    status: 'pending',
+    ...(index === 0 ? { replacesOutdatedVersion: true } : {})
+  }));
+  const historical = {
+    id: 1,
+    episodeId: 41,
+    revision: 2,
+    kind: 'character',
+    key: '凛',
+    summary: '古い本文からの候補',
+    evidence: '赤い鍵',
+    status: 'accepted',
+    staleReason: 'source_changed'
+  };
+  const f = mock();
+  let reads = 0;
+  const mounted = await attach({
+    client: f.client,
+    ownerId: OWNER,
+    novelId: 354,
+    doc: f.doc,
+    fetcher: async (_url, options) => {
+      assert.equal(options.method, 'GET');
+      reads += 1;
+      return {
+        ok: true,
+        async json() {
+          return reads === 1
+            ? {
+                novelId: 354,
+                aiGenerated: false,
+                candidates: pending,
+                pagination: { nextBeforeId: 2 }
+              }
+            : {
+                novelId: 354,
+                aiGenerated: false,
+                candidates: [],
+                staleCandidates: [historical],
+                pagination: { nextBeforeId: null }
+              };
+        }
+      };
+    }
+  });
+  assert.equal(mounted, true);
+  const section = f.host.children[0];
+  const list = section.children[1];
+  const current = list.children[0];
+  assert.match(current.children[0].textContent, /改稿後の新版候補/u);
+  assert.match(current.children[0].textContent, /凛/u);
+  assert.equal(current.children[1].tag, 'button');
+  assert.equal(reads, 1);
+  const next = section.children[3].children[0];
+  await next.listeners.click();
+  assert.equal(reads, 2);
+  assert.equal(next.hidden, true);
+  const oldest = list.children[list.children.length - 1];
+  assert.match(oldest.children[0].textContent, /旧版の候補/u);
+  assert.match(oldest.children[0].textContent, /凛/u);
+  assert.equal(oldest.children.length, 1);
+  assert.match(current.children[0].textContent, /改稿後の新版候補/u);
+});
