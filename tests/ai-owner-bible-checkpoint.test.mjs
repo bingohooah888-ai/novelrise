@@ -87,7 +87,7 @@ test('partial chunks survive restart; only last acknowledgement changes analyzed
   assert.equal(first.complete, false);
   assert.equal(first.remainingChunks, plan.chunks.length - 1);
   assert.equal(store.row.summary.novelightPhase2.state, 'in_progress');
-  assert.equal(store.row.source_hash, plan.chunks[0].sourceHash);
+  assert.equal(store.row.source_hash, '0'.repeat(64));
 
   // New request/process; the same scoped CAS repository is the only state.
   checkpoint = createOfflineOwnerNovelBibleCheckpoint({
