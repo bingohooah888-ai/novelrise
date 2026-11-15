@@ -92,7 +92,7 @@ export function deriveFormalReaderDatabaseUrl(privilegedUrl, password) {
     url.pathname !== '/postgres' ||
     url.search ||
     url.hash ||
-    url.port !== '5432'
+    (url.port && url.port !== '5432')
   ) {
     hold('DATABASE_ROUTE_INVALID');
   }
@@ -329,8 +329,15 @@ export async function provisionFormalStagingReader({
     });
   } catch {
     if (loginActivated) {
-      // Fail closed if the freshly provisioned login fails verification.
-      await admin.query('ALTER ROLE ' + ROLE + ' NOLOGIN').catch(() => {});
+      // Do not silently claim a safe rollback when disabling login failed.
+      let disabled = false;
+      try {
+        await admin.query('ALTER ROLE ' + ROLE + ' NOLOGIN');
+        disabled = true;
+      } catch {
+        // A credential may still be active: require explicit operator review.
+      }
+      if (!disabled) hold('ROLE_DISABLE_UNVERIFIED');
     }
     hold('PROVISION_FAILED_SAFE_REVIEW_REQUIRED');
   } finally {
