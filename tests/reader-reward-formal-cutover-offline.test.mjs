@@ -569,7 +569,6 @@ test('synthetic earning bridge rejects incomplete comment history', () => {
   );
 });
 
-
 const durableReadId = '00000000-0000-4000-8000-000000000511';
 const durableCommentId = '00000000-0000-4000-8000-000000000512';
 const durableReviewerId = '00000000-0000-4000-8000-000000000513';
@@ -643,7 +642,7 @@ function durableDemo(events = [durableSource, durableComment]) {
   });
 }
 
-test('existing durable queue, private award adapter, Wallet, reader and admin HTTP form one offline flow', async () => {
+test('durable earning reaches private Wallet, reader and admin HTTP', async () => {
   const sandbox = durableDemo();
   const readerUi =
     globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings(
@@ -652,19 +651,15 @@ test('existing durable queue, private award adapter, Wallet, reader and admin HT
           (await sandbox.readerRequest(reader, input)).body
       }
     );
-  const adminUi = globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings(
-    {
+  const adminUi =
+    globalThis.NovelightFormalRewardAdmin.createFormalAdminBindings({
       request: async (input) => (await sandbox.adminRequest(input)).body
-    }
-  );
+    });
   const before = await readerUi.fetchSnapshot();
   assert.equal(before.wallet.availablePoints, 35000);
   assert.equal(before.wallet.exchangeEligiblePoints, 0);
   assert.equal(before.account.level, 30);
-  assert.equal(
-    (await adminUi.loadRewardOverview()).issuedTotal,
-    0
-  );
+  assert.equal((await adminUi.loadRewardOverview()).issuedTotal, 0);
 
   assert.equal(
     (await sandbox.enqueueCommittedEarning({
@@ -755,7 +750,7 @@ test('existing durable queue, private award adapter, Wallet, reader and admin HT
   );
 });
 
-test('offline durable claims reject duplicate chapter awards and unverified canonical events', async () => {
+test('durable claims reject duplicates and unverified source rows', async () => {
   const newReadId = '00000000-0000-4000-8000-000000000515';
   const newCommentId = '00000000-0000-4000-8000-000000000516';
   const unavailableId = '00000000-0000-4000-8000-000000000517';
@@ -829,14 +824,19 @@ test('offline durable claims reject duplicate chapter awards and unverified cano
   }
   const result = await sandbox.drainDueEarnings({ limit: 8 });
   assert.equal(result.completed, 4);
-  assert.equal((await sandbox.readerRequest(reader, { method: 'GET' }))
-    .body.wallet.availablePoints, 35022);
+  assert.equal(
+    (await sandbox.readerRequest(reader, { method: 'GET' })).body.wallet
+      .availablePoints,
+    35022
+  );
   const overview = await sandbox.adminRequest({
     method: 'GET',
     query: { view: 'reward_overview' }
   });
   assert.equal(overview.body.issuedTotal, 22);
   assert.equal(overview.body.recent.length, 2);
-  assert.equal(sandbox.inspectSyntheticQueue().every((q) =>
-    q.status === 'completed'), true);
+  assert.equal(
+    sandbox.inspectSyntheticQueue().every((q) => q.status === 'completed'),
+    true
+  );
 });
