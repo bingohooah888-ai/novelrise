@@ -299,10 +299,7 @@ export function createOwnerBibleReviewWorkflow({
     candidateId,
     expectedRevision
   }) {
-    if (
-      !Number.isSafeInteger(expectedRevision) ||
-      expectedRevision < 2
-    ) {
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 2) {
       denied();
     }
     const actorId = await authenticate(token);
