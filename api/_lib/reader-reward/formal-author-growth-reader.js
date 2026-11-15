@@ -27,7 +27,7 @@ const RECEIVED_SQL =
   "count(s.id) filter (where s.seed_type='GOLD')::text as gold_count," +
   "count(s.id) filter (where s.seed_type='SILVER')::text as silver_count," +
   "count(s.id) filter (where s.seed_type='BRONZE')::text as bronze_count," +
-  "count(s.id) filter (where s.id is not null and (" +
+  'count(s.id) filter (where s.id is not null and (' +
   "s.seed_type is null or s.seed_type not in ('GOLD','SILVER','BRONZE')))" +
   '::text as legacy_count ' +
   'from public.novels n left join public.light_seeds s ' +
@@ -51,9 +51,7 @@ function rank(value) {
 }
 function seedCount(value) {
   const n =
-    typeof value === 'string' && /^\d+$/.test(value)
-      ? Number(value)
-      : value;
+    typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
   if (!Number.isSafeInteger(n) || n < 0)
     throw new Error('FORMAL_AUTHOR_RECEIVED_SEED_COUNT_INVALID');
   return n;
@@ -132,10 +130,7 @@ export function createFormalAuthorGrowthReader({ query } = {}) {
       const counts = new Map();
       for (const row of summaries.rows) {
         const id = workId(row?.novel_id_snapshot);
-        if (
-          !works.some((work) => work.id === id) ||
-          counts.has(id)
-        )
+        if (!works.some((work) => work.id === id) || counts.has(id))
           throw new Error('FORMAL_AUTHOR_RECEIVED_SEED_SCOPE_INVALID');
         const receivedSeeds = Object.freeze({
           total: seedCount(row.total_count),
