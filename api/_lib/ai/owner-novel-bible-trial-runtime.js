@@ -47,6 +47,7 @@ export function createOwnerNovelBibleTrialRuntime({
   readVerifiedHistory,
   checkpointEnabled = false,
   checkpointRepository,
+  atomicAdmissionEnabled = false,
   providers,
   routes,
   cache = null
@@ -65,6 +66,8 @@ export function createOwnerNovelBibleTrialRuntime({
     (checkpointRepository !== undefined &&
       (typeof checkpointRepository?.readSnapshot !== 'function' ||
         typeof checkpointRepository?.compareAndSwap !== 'function')) ||
+    typeof atomicAdmissionEnabled !== 'boolean' ||
+    (atomicAdmissionEnabled && checkpointEnabled !== true) ||
     !providers ||
     !routes
   ) {
@@ -86,7 +89,8 @@ export function createOwnerNovelBibleTrialRuntime({
         enabled: true,
         repository:
           checkpointRepository ??
-          createSupabaseOwnerNovelBibleCheckpointRepository({ serviceClient })
+          createSupabaseOwnerNovelBibleCheckpointRepository({ serviceClient }),
+        atomicAdmissionEnabled
       })
     : undefined;
 

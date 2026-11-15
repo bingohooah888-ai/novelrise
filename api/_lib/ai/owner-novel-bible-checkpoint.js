@@ -289,11 +289,15 @@ function requireMatchingPlan(snapshot, scope) {
 // This workflow does not automatically retry an uncertain paid execution.
 export function createOfflineOwnerNovelBibleCheckpoint({
   enabled = false,
-  repository
+  repository,
+  atomicAdmissionEnabled = false
 } = {}) {
   if (
     typeof repository?.readSnapshot !== 'function' ||
-    typeof repository?.compareAndSwap !== 'function'
+    typeof repository?.compareAndSwap !== 'function' ||
+    typeof atomicAdmissionEnabled !== 'boolean' ||
+    (atomicAdmissionEnabled &&
+      typeof repository?.claimOnce !== 'function')
   ) {
     unavailable();
   }
@@ -558,12 +562,48 @@ export function createOfflineOwnerNovelBibleCheckpoint({
     return { discarded: true };
   }
 
+  // The completion journal is not itself a pre-provider mutex.
+  // An opt-in backend MUST atomically insert a permanent claim scoped to
+  // owner, episode, source fingerprint and chunk; false/uncertain = DENY.
+  // Never release this claim automatically after a provider timeout: whether
+  // the paid call ran may be unknown and must be reconciled separately.
+  async function claim(args = {}) {
+    if (!enabled || !atomicAdmissionEnabled) unavailable();
+    const scope = validPlan(
+      args.plan,
+      args.actorId,
+      args.novelId,
+      args.episodeId,
+      args.chunkIndex
+    );
+    if ((await inspect(args)) !== 'pending') conflict();
+    let claimed = false;
+    try {
+      claimed =
+        (await repository.claimOnce({
+          actorId: scope.actorId,
+          novelId: scope.novelId,
+          episodeId: scope.episodeId,
+          sourceHash: scope.sourceHash,
+          previousSourceHash: scope.previousSourceHash,
+          fingerprint: scope.fingerprint,
+          chunkIndex: scope.chunkIndex,
+          chunkHash: args.plan.chunks[scope.chunkIndex].chunkHash
+        })) === true;
+    } catch {
+      unavailable();
+    }
+    if (!claimed) conflict();
+    return true;
+  }
+
   return Object.freeze({
     inspect,
     record,
     replan,
     completeEmpty,
-    discardRestored
+    discardRestored,
+    ...(atomicAdmissionEnabled ? { claim } : {})
   });
 }
 
@@ -591,8 +631,50 @@ export function createSupabaseOwnerNovelBibleCheckpointRepository({
       if (error) unavailable();
       return data;
     },
-    // The sole enabled write path: a scoped RPC that locks owner and source
-    // together with the checkpoint CAS. Missing SQL never permits direct writes.
+    // Optional pre-provider, per-chunk one-time admission. The trusted
+    // service-only RPC must atomically validate owner, current manuscript
+    // and unique (actor, episode, fingerprint, index). It is NOT installed
+    // by this code; absent DB SQL fails closed and never invokes a model.
+    async claimOnce({
+      actorId,
+      novelId,
+      episodeId,
+      sourceHash,
+      previousSourceHash,
+      fingerprint,
+      chunkIndex,
+      chunkHash
+    } = {}) {
+      if (
+        !UUID.test(actorId ?? '') ||
+        !validId(novelId) ||
+        !validId(episodeId) ||
+        !SHA.test(sourceHash ?? '') ||
+        (previousSourceHash !== null &&
+          !SHA.test(previousSourceHash ?? '')) ||
+        !SHA.test(fingerprint ?? '') ||
+        !SHA.test(chunkHash ?? '') ||
+        !Number.isSafeInteger(chunkIndex) ||
+        chunkIndex < 0 ||
+        chunkIndex >= 64
+      ) unavailable();
+      const { data, error } = await serviceClient.rpc(
+        'novelight_ai_checkpoint_claim_once_v1',
+        {
+          p_actor_id: actorId.toLowerCase(),
+          p_novel_id: novelId,
+          p_episode_id: episodeId,
+          p_source_hash: sourceHash,
+          p_previous_source_hash: previousSourceHash,
+          p_fingerprint: fingerprint,
+          p_chunk_index: chunkIndex,
+          p_chunk_hash: chunkHash
+        }
+      );
+      if (error || typeof data !== 'boolean') unavailable();
+      return data;
+    },
+    // The sole enabled completion write path: scoped, revision-locked CAS.
     async compareAndSwap({
       actorId,
       novelId,

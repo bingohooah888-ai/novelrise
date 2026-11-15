@@ -421,6 +421,13 @@ export function createOwnerNovelBibleModelBridge({
         }
         if (status !== 'pending') deny();
       }
+      // Existing completion CAS prevents sequential replay but cannot
+      // serialize two requests that both read "pending". Only an explicitly
+      // injected durable claim gates concurrent paid requests before budget
+      // reservation and external model invocation. Never retry unknown claims.
+      if (typeof checkpoint?.claim === 'function') {
+        await checkpoint.claim(checkpointRequest);
+      }
       const generated = await aiRouter.run({
         featureKey: 'novel-bible',
         principal: original.principal,
