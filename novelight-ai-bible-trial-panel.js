@@ -120,6 +120,13 @@
 
     function clear() {
       disposed = true;
+      if (offline && typeof offlineTrial?.stop === 'function') {
+        try {
+          offlineTrial.stop();
+        } catch {
+          // Local stop is best-effort, never a server-side cancellation.
+        }
+      }
       if (section) {
         section.textContent = '';
         section.remove();
@@ -283,6 +290,13 @@
         cancelButton.addEventListener('click', () => {
           if (disposed || busy || submitted || !planned) return;
           planned = null;
+          if (typeof offlineTrial?.cancelPending === 'function') {
+            try {
+              offlineTrial.cancelPending();
+            } catch {
+              // The local UI still prevents an unsubmitted stage call.
+            }
+          }
           action.disabled = true;
           cancelButton.disabled = true;
           status.textContent =
