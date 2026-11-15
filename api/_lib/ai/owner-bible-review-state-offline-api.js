@@ -57,7 +57,8 @@ export function createOfflineOwnerBibleReviewStateApiHandler({
   authClient,
   serviceClient,
   readOwnerPreview,
-  repository
+  repository,
+  createWorkflow = createOfflineOwnerBibleReviewStateWorkflow
 } = {}) {
   return async function ownerBibleReviewState(req, res) {
     applyAdminSecurityHeaders(res);
@@ -107,7 +108,7 @@ export function createOfflineOwnerBibleReviewStateApiHandler({
     }
 
     try {
-      const workflow = createOfflineOwnerBibleReviewStateWorkflow({
+      const workflow = createWorkflow({
         enabled: true,
         ownerId,
         authClient,
