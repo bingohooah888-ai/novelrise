@@ -13,6 +13,7 @@ import { holdDeferredFormalChannels } from './formal-deferred-channel-gates.js';
 import { createUnregisteredFormalBadgeCatalogInspector } from './formal-badge-catalog-inspector.js';
 import { createUnregisteredFormalBadgeHistoryInspector } from './formal-badge-history-inspector.js';
 import { createUnregisteredFormalWalletCohortInspector } from './formal-wallet-cohort-inspector.js';
+import { createUnregisteredFormalSettlementRecoveryInspector } from './formal-settlement-recovery-inspector.js';
 
 export function createUnregisteredFormalApplication({
   pool,
@@ -79,6 +80,9 @@ export function createUnregisteredFormalApplication({
   const walletCohort = createUnregisteredFormalWalletCohortInspector({
     query: pool.query.bind(pool)
   });
+  const settlementRecovery = createUnregisteredFormalSettlementRecoveryInspector({
+    query: pool.query.bind(pool)
+  });
   // OWNER-held channels remain independently OFF even if formal earning,
   // Level, or wallet readiness is later approved. No supplied catalog or
   // provider adapter can activate gift exchange or charge for AI by accident.
@@ -95,6 +99,7 @@ export function createUnregisteredFormalApplication({
     getAdminBadgeCatalog: badgeCatalog.inspect,
     getAdminBadgeHistory: badgeHistory.inspect,
     getAdminWalletCohort: walletCohort.inspect,
+    getAdminSettlementRecovery: settlementRecovery.inspect,
     // A single verified Auth user cannot prove cohort totals.
     getNewReaderSummary:
       stagingTestReferenceAt === undefined
@@ -207,6 +212,7 @@ export function createUnregisteredFormalApplication({
     inspectReaderBadgeCatalog: badgeCatalog.inspect,
     inspectReaderBadgeHistory: badgeHistory.inspect,
     inspectWalletCohort: walletCohort.inspect,
+    inspectSettlementRecovery: settlementRecovery.inspect,
     getReaderSnapshot: usage.service.getReaderSnapshot,
     submitModeration: earnings.submitModeration,
     drainDueEarnings: earnings.drainDue,
