@@ -82,6 +82,7 @@ const rows = [
 test('mixed-source offline cutover converts only old Point rows, preserves new-unit awards', () => {
   const result = handoff(rows);
   assert.equal(result.status, 'offline_handoff_quote_only');
+  assert.equal(result.sourceVersion, SCOUT_MIXED_BETA_POINT_UNITS);
   assert.deepEqual(
     result.convertedRows.map((row) => row.convertedValue),
     [4000, -250, 50]
