@@ -594,6 +594,8 @@ test('concurrent owner HTTP calls permit only one provider and one reservation w
   assert.equal(checkpointRepository.claims, 1);
 });
 
+// Synthetic fail-closed admission and no-provider proof.
+// prettier-ignore
 test('invalid or uncertain atomic admission must not reach budget or model', async () => {
   const options = {
     enabled: true,

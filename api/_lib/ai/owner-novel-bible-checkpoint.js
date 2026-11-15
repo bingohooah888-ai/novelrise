@@ -287,6 +287,8 @@ function requireMatchingPlan(snapshot, scope) {
 // readSnapshot/compareAndSwap are trusted server-side persistence contracts.
 // compareAndSwap MUST apply expected revision and unique episode PK atomically.
 // This workflow does not automatically retry an uncertain paid execution.
+// Preserve existing checkpoint CAS layout; synthetic admission is opt-in.
+// prettier-ignore
 export function createOfflineOwnerNovelBibleCheckpoint({
   enabled = false,
   repository,
@@ -611,6 +613,8 @@ export function createOfflineOwnerNovelBibleCheckpoint({
 // scope and fresh source are rechecked by the one-shot model bridge.
 // The final DB-level source-lock/ownership proof remains part of gated
 // Staging validation; no current release activates this writer.
+// Preserve existing checkpoint CAS layout; synthetic admission is opt-in.
+// prettier-ignore
 export function createSupabaseOwnerNovelBibleCheckpointRepository({
   serviceClient
 } = {}) {
