@@ -176,6 +176,7 @@ begin
          or pg_catalog.jsonb_typeof(v_progress -> 'chunkCount') is distinct from 'number'
          or v_progress ->> 'chunkCount' !~ '^(0|[1-9][0-9]?)$'
          or pg_catalog.jsonb_typeof(v_progress -> 'completedIndices') is distinct from 'array'
+         or pg_catalog.jsonb_typeof(v_progress -> 'state') is distinct from 'string'
          or v_progress ->> 'state' not in ('in_progress','complete')
       then
         raise exception using errcode='22023',message='Malformed saved checkpoint';
@@ -220,7 +221,11 @@ begin
         -- A completed PRIOR version is a valid baseline for a NEW version.
         -- A completed target cannot be re-claimed; matching current source
         -- already returned false above.
-        if v_count < 1 or pg_catalog.cardinality(v_seen) <> v_count
+        if v_count < 0 or pg_catalog.cardinality(v_seen) <> v_count
+           or (v_count = 0 and
+               (v_progress ->> 'zeroReason' not in ('empty-body','deletion-only','title-only')
+                or pg_catalog.jsonb_typeof(v_progress -> 'zeroReason') is distinct from 'string'))
+           or (v_count > 0 and v_progress ? 'zeroReason')
            or v_row.source_hash is distinct from p_previous_source_hash
            or v_progress ->> 'targetSourceHash' is distinct from v_row.source_hash
            or p_previous_source_hash is null
