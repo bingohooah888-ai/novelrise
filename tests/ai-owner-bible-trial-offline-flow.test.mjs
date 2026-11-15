@@ -46,6 +46,8 @@ function harness({ state = 'ready', nextIndex = 1 } = {}) {
   let lastIndex = null;
   let lastToken = null;
   let planStatus = state;
+  let throwOnStage = false;
+  let advanceAfterStage = false;
   const main = element('main');
   const doc = {
     getElementById(name) {
@@ -107,6 +109,8 @@ function harness({ state = 'ready', nextIndex = 1 } = {}) {
       staged += 1;
       lastIndex = args.chunkIndex;
       assert.equal(args.token, TOKEN);
+      if (throwOnStage) throw new Error('SYNTHETIC_UNKNOWN_OUTCOME');
+      if (advanceAfterStage) nextIndex += 1;
       return {
         novelId: work,
         stagedCount: 1,
@@ -148,6 +152,12 @@ function harness({ state = 'ready', nextIndex = 1 } = {}) {
     revoke() {
       active = false;
     },
+    failDuringStage() {
+      throwOnStage = true;
+    },
+    advanceOnSuccess() {
+      advanceAfterStage = true;
+    },
     signOut() {
       signedIn = false;
       listener?.('SIGNED_OUT', null);
@@ -166,7 +176,10 @@ function controls(main) {
     (item) => item.className === 'btn novelight-ai-bible-inspect-plan'
   );
   const buttons = section.children.filter((item) => item.tag === 'button');
-  return { section, plan, action: buttons[1], review: buttons[2] };
+  const cancel = section.children.find(
+    (item) => item.className === 'btn novelight-ai-bible-cancel-plan'
+  );
+  return { section, plan, cancel, action: buttons[2], review: buttons[3] };
 }
 
 test(
@@ -293,4 +306,111 @@ test(
     assert.equal(legacy.fetchCalls.length, 1);
   }
 );
+
+test('offline plan cancellation prevents execution, then explicit reinspection can resume', async () => {
+  const f = harness();
+  assert.equal(
+    await attach({
+      client: f.client,
+      novelId: work,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher,
+      reviewPanel: f.reviewPanel,
+      offlineTrial: f.offlineTrial
+    }),
+    true
+  );
+  const { section, plan, cancel, action } = controls(f.main);
+  await plan.listeners.get('click')();
+  assert.equal(cancel.disabled, false);
+  cancel.listeners.get('click')();
+  assert.equal(action.disabled, true);
+  assert.equal(cancel.disabled, true);
+  assert.match(section.children.at(-1).textContent, /実行前に中止/u);
+  await action.listeners.get('click')();
+  assert.equal(f.staged, 0);
+  await plan.listeners.get('click')();
+  assert.equal(action.disabled, false);
+  assert.equal(f.inspected, 2);
+});
+
+test('confirmed first chunk exposes explicit next-chunk resume without automatic calls', async () => {
+  const f = harness();
+  f.advanceOnSuccess();
+  assert.equal(
+    await attach({
+      client: f.client,
+      novelId: work,
+      ownerId: OWNER,
+      doc: f.doc,
+      fetcher: f.fetcher,
+      reviewPanel: f.reviewPanel,
+      offlineTrial: f.offlineTrial
+    }),
+    true
+  );
+  const { plan, action } = controls(f.main);
+  await plan.listeners.get('click')();
+  await action.listeners.get('click')();
+  assert.equal(f.staged, 1);
+  assert.equal(f.lastIndex, 1);
+  assert.equal(action.disabled, true);
+  // No automatic provider call: the second chunk needs two new user clicks.
+  await plan.listeners.get('click')();
+  assert.equal(action.disabled, false);
+  await action.listeners.get('click')();
+  assert.equal(f.staged, 2);
+  assert.equal(f.lastIndex, 2);
+  assert.equal(f.opened, 1);
+  assert.equal(f.fetchCalls.length, 1);
+});
+
+test('same-index replay after success and unknown outcome are locked', async () => {
+  const reused = harness();
+  assert.equal(
+    await attach({
+      client: reused.client,
+      novelId: work,
+      ownerId: OWNER,
+      doc: reused.doc,
+      fetcher: reused.fetcher,
+      reviewPanel: reused.reviewPanel,
+      offlineTrial: reused.offlineTrial
+    }),
+    true
+  );
+  const same = controls(reused.main);
+  await same.plan.listeners.get('click')();
+  await same.action.listeners.get('click')();
+  await same.plan.listeners.get('click')();
+  assert.equal(same.action.disabled, true);
+  assert.equal(reused.staged, 1);
+
+  const unknown = harness();
+  unknown.failDuringStage();
+  assert.equal(
+    await attach({
+      client: unknown.client,
+      novelId: work,
+      ownerId: OWNER,
+      doc: unknown.doc,
+      fetcher: unknown.fetcher,
+      reviewPanel: unknown.reviewPanel,
+      offlineTrial: unknown.offlineTrial
+    }),
+    true
+  );
+  const ctrl = controls(unknown.main);
+  await ctrl.plan.listeners.get('click')();
+  await ctrl.action.listeners.get('click')();
+  assert.equal(unknown.staged, 1);
+  assert.equal(ctrl.plan.disabled, true);
+  assert.equal(ctrl.action.disabled, true);
+  assert.match(ctrl.section.children.at(-1).textContent, /再送せず/u);
+  await ctrl.plan.listeners.get('click')();
+  await ctrl.action.listeners.get('click')();
+  assert.equal(unknown.staged, 1);
+});
+
 })();

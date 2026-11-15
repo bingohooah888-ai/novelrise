@@ -176,15 +176,31 @@
       status.setAttribute('role', 'status');
       status.className = 'status';
       const inspectButton = offline ? doc.createElement('button') : null;
+      const cancelButton = offline ? doc.createElement('button') : null;
       let planned = null;
+      // Never issue the same potentially billed chunk twice from one view.
+      // A changed manuscript with the same index needs a fresh page.
+      const attemptedChunks = new Set();
       if (inspectButton) {
+        cancelButton.type = 'button';
+        cancelButton.className = 'btn novelight-ai-bible-cancel-plan';
+        cancelButton.textContent = '実行前に中止';
+        cancelButton.disabled = true;
         inspectButton.type = 'button';
         inspectButton.className = 'btn novelight-ai-bible-inspect-plan';
         inspectButton.textContent = '解析予定・再開位置を確認（課金なし）';
         action.disabled = true;
         description.textContent +=
           ' このオフライン操作は合成データで検証し、公開画面には接続しません。';
-        section.append(heading, description, inspectButton, action, review, status);
+        section.append(
+          heading,
+          description,
+          inspectButton,
+          cancelButton,
+          action,
+          review,
+          status
+        );
       } else {
         section.append(heading, description, action, review, status);
       }
@@ -195,6 +211,7 @@
           busy = true;
           inspectButton.disabled = true;
           action.disabled = true;
+          cancelButton.disabled = true;
           planned = null;
           status.textContent = '解析対象を確認しています（課金なし）。';
           try {
@@ -216,7 +233,14 @@
             }
             planned = plan;
             if (plan.nextChunkIndex !== null) {
+              if (attemptedChunks.has(plan.nextChunkIndex)) {
+                planned = null;
+                status.textContent =
+                  'このチャンクは既に実行を試みています。再実行せず、保存状態を確認してページを開き直してください。';
+                return;
+              }
               action.disabled = false;
+              cancelButton.disabled = false;
               action.textContent =
                 'チャンク ' + (plan.nextChunkIndex + 1) + ' を1回だけ解析';
               status.textContent =
@@ -235,6 +259,7 @@
             if (!disposed) {
               planned = null;
               action.disabled = true;
+              cancelButton.disabled = true;
               status.textContent =
                 '解析予定を確認できませんでした。再確認してください。';
             }
@@ -242,6 +267,19 @@
             busy = false;
             if (!disposed) inspectButton.disabled = false;
           }
+        });
+      }
+
+      // This only cancels a local, unsubmitted plan. It does not claim to
+      // abort a paid request already in flight or alter server checkpoints.
+      if (cancelButton) {
+        cancelButton.addEventListener('click', () => {
+          if (disposed || busy || submitted || !planned) return;
+          planned = null;
+          action.disabled = true;
+          cancelButton.disabled = true;
+          status.textContent =
+            '解析を実行前に中止しました。再開する場合は解析予定をもう一度確認してください。';
         });
       }
 
@@ -281,6 +319,8 @@
         action.disabled = true;
         review.disabled = true;
         if (inspectButton) inspectButton.disabled = true;
+        if (cancelButton) cancelButton.disabled = true;
+        let stageStarted = false;
         status.textContent = '本人認証・許諾・原価を確認して解析しています。';
         try {
           if (!(await current())) {
@@ -302,14 +342,32 @@
               fresh.status !== planned.status ||
               fresh.chunkCount !== planned.chunkCount
             ) {
+              // No stage() has run: a fresh inspection is safe, but the
+              // old plan must never be reused for a possibly paid request.
+              planned = null;
+              submitted = false;
+              action.disabled = true;
+              inspectButton.disabled = false;
               status.textContent =
-                '原稿または解析状態が変化しました。再読込して確認してください。';
+                '原稿または解析状態が変化しました。解析予定を再確認してください。';
               return;
             }
             if (!(await current())) {
               clear();
               return;
             }
+            if (attemptedChunks.has(planned.nextChunkIndex)) {
+              planned = null;
+              submitted = false;
+              inspectButton.disabled = false;
+              status.textContent =
+                '同じチャンクの二重解析を防止しました。保存状態を確認してください。';
+              return;
+            }
+            // Mark BEFORE the async stage call. Uncertain paid outcomes must
+            // not be retried merely because the user pressed a button again.
+            attemptedChunks.add(planned.nextChunkIndex);
+            stageStarted = true;
             result = await offlineTrial.stage({
               token,
               novelId: work,
@@ -362,15 +420,27 @@
             clear();
             return;
           }
+          // A confirmed response permits a separate, fresh inspection of
+          // a DIFFERENT next chunk, never replay of this attempted index.
+          if (offline) {
+            planned = null;
+            submitted = false;
+            action.disabled = true;
+            cancelButton.disabled = true;
+            inspectButton.disabled = false;
+          }
           if (result.requiresAuthorReview === false) {
             status.textContent =
-              '追加解析は不要でした。課金・候補追加はありません。';
+              '追加解析は不要でした。次の操作前に保存状態を確認してください。';
             return;
           }
           status.textContent =
             '解析結果を確認待ち候補として保存しました（' +
             result.stagedCount +
-            '件）。正式設定には自動反映しません。作品カルテは再読込で更新してください。';
+            '件）。正式設定には自動反映しません。作品カルテは再読込で更新してください。' +
+            (offline
+              ? ' 次のチャンクは「解析予定・再開位置を確認」で確認してください。'
+              : '');
           if (reviewMounted) {
             status.textContent +=
               ' すでに開いた候補一覧はページ再読込後に更新されます。';
@@ -379,8 +449,19 @@
           }
         } catch {
           if (!disposed) {
-            status.textContent =
-              '解析の完了を確認できませんでした。自動再試行はしません。';
+            if (offline && !stageStarted) {
+              // Purely read-only failure: allow a new plan inspection.
+              planned = null;
+              submitted = false;
+              action.disabled = true;
+              cancelButton.disabled = true;
+              inspectButton.disabled = false;
+              status.textContent =
+                '解析前の確認に失敗しました。再度、解析予定を確認してください。';
+            } else {
+              status.textContent =
+                '解析の完了を確認できませんでした。再送せず、作品カルテと候補一覧を確認してください。';
+            }
           }
         } finally {
           busy = false;
