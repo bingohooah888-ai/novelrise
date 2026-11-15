@@ -73,8 +73,7 @@ export function createFormalOfflineDurableDb({
     if (
       !source ||
       !UUID.test(source.id || '') ||
-      (raw.kind === 'read' ? source.reader_id : source.user_id) !==
-        raw.userId
+      (raw.kind === 'read' ? source.reader_id : source.user_id) !== raw.userId
     )
       throw new TypeError('Synthetic source ownership mismatch');
     const event = copy(raw);
@@ -212,9 +211,7 @@ export function createFormalOfflineDurableDb({
         points: quotation.points,
         eventId: source.id,
         episodeId: String(
-          event.kind === 'read'
-            ? source.episode_id_snapshot
-            : source.episode_id
+          event.kind === 'read' ? source.episode_id_snapshot : source.episode_id
         ),
         at
       });
@@ -279,8 +276,8 @@ export function createFormalOfflineDurableDb({
       return result({ status: 'review_recorded' });
     }
     if (sql.includes('.claim_earning_draft(')) {
-      const entry = [...queue.values()].find(
-        (candidate) => ['pending', 'retry'].includes(candidate.status)
+      const entry = [...queue.values()].find((candidate) =>
+        ['pending', 'retry'].includes(candidate.status)
       );
       if (!entry) return result({ status: 'no_due_event' });
       entry.status = 'leased';
@@ -336,11 +333,10 @@ export function createFormalOfflineDurableDb({
     const all = [...earned.values()];
     const month = monthOf(nowIso);
     const inMonth = all.filter((entry) => monthOf(entry.at) === month);
-    const sum = (rows) => rows.reduce((total, entry) => total + entry.points, 0);
+    const sum = (rows) =>
+      rows.reduce((total, entry) => total + entry.points, 0);
     const eligibleAvailable = (
-      await Promise.all(
-        [...readerIds].map((id) => repository.readReader(id))
-      )
+      await Promise.all([...readerIds].map((id) => repository.readReader(id)))
     ).reduce((total, row) => total + row.wallet.exchangeEligiblePoints, 0);
     const pending = await repository.listPendingExchanges();
     const settled = repository.getSyntheticUsageTotals();
@@ -364,17 +360,20 @@ export function createFormalOfflineDurableDb({
         0
       ),
       pendingExchangeCount: pending.length,
-      recent: all.slice(-30).reverse().map((entry) => ({
-        eventId: entry.eventId,
-        userId: entry.userId,
-        kind:
-          entry.kind === 'read'
-            ? 'formal_read_reward'
-            : 'formal_comment_reward',
-        points: entry.points,
-        status: 'confirmed',
-        occurredAt: entry.at
-      }))
+      recent: all
+        .slice(-30)
+        .reverse()
+        .map((entry) => ({
+          eventId: entry.eventId,
+          userId: entry.userId,
+          kind:
+            entry.kind === 'read'
+              ? 'formal_read_reward'
+              : 'formal_comment_reward',
+          points: entry.points,
+          status: 'confirmed',
+          occurredAt: entry.at
+        }))
     };
   }
 
