@@ -333,7 +333,14 @@
           novelId: work,
           ownerId,
           doc,
-          fetcher
+          fetcher,
+          // Only the explicitly injected offline trial may provide a private
+          // note-editor callback. Transfer still needs a separate author click,
+          // a fresh verified accepted candidate and the editor Save action.
+          onAccepted:
+            offline && typeof offlineTrial?.onAccepted === 'function'
+              ? offlineTrial.onAccepted
+              : undefined
         });
         if (!opened || !(await current())) {
           if (!(await current())) clear();
