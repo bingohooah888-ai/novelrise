@@ -1,7 +1,6 @@
 // Formal author-side Rank visibility, read-only and never a public Rank API.
 // Only the trusted Auth-backed host may supply the verified author ID.
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RANK_NAMES = Object.freeze([
   '',
   'EMBER',
@@ -30,9 +29,7 @@ const EVENTS_SQL =
   'order by e.occurred_at desc,e.id desc limit 80';
 function rank(value) {
   const n =
-    typeof value === 'string' && /^[1-6]$/.test(value)
-      ? Number(value)
-      : value;
+    typeof value === 'string' && /^[1-6]$/.test(value) ? Number(value) : value;
   if (!Number.isSafeInteger(n) || n < 1 || n > 6)
     throw new Error('FORMAL_AUTHOR_RANK_INVALID');
   return n;
