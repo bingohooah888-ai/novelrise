@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -113,5 +115,41 @@ test('same backend PID is denied and rolled back', async () => {
   assert.equal(
     clients.every((c) => c.statements.includes('ROLLBACK') && c.closed),
     true
+  );
+});
+
+
+test('direct CLI fails closed without staging opt-in or if given arguments', () => {
+  const scriptPath = fileURLToPath(
+    new URL('../scripts/nlo-staging-dual-session.mjs', import.meta.url)
+  );
+  const safeEnv = {
+    ...process.env,
+    NLO_STAGING_DUAL_SESSION_ENABLED: 'false',
+    NLO_STAGING_DUAL_SESSION_PROJECT_REF: REF,
+    NLO_STAGING_DUAL_SESSION_DATABASE_URL: 'do-not-print-staging-secret'
+  };
+  const disabled = spawnSync(process.execPath, [scriptPath], {
+    env: safeEnv,
+    encoding: 'utf8',
+    timeout: 10000
+  });
+  assert.equal(disabled.status, 1);
+  assert.equal(disabled.stdout, '');
+  assert.equal(disabled.stderr.trim(), 'nlo_staging_dual_session_disabled');
+  const forbidden = spawnSync(process.execPath, [scriptPath, '--sql'], {
+    env: safeEnv,
+    encoding: 'utf8',
+    timeout: 10000
+  });
+  assert.equal(forbidden.status, 1);
+  assert.equal(forbidden.stdout, '');
+  assert.equal(
+    forbidden.stderr.trim(),
+    'nlo_staging_dual_session_invalid_cli_args'
+  );
+  assert.doesNotMatch(
+    disabled.stderr + forbidden.stderr,
+    /do-not-print-staging-secret/
   );
 });

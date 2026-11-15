@@ -1,3 +1,5 @@
+import { pathToFileURL } from 'node:url';
+
 // NOVELIGHT 02-07-05: explicit Staging-only, read-only, 2-session overlap proof.
 // This module does NOT create test data, call CAS, or accept arbitrary SQL.
 // A later CAS action requires independent review of the fixture lifecycle.
@@ -117,5 +119,28 @@ export async function runNloStagingDualSessionOverlap({
       if (began[i]) await client.query('ROLLBACK');
     }));
     await Promise.allSettled(clients.map(client => client.end()));
+  }
+}
+
+// Direct NLO's existing allowlisted "npm run" can invoke this fixed script
+// from an isolated PR worktree. No shell permission or Bridge reload needed.
+// Never print connection strings, SQL errors, stack traces or user data.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  if (process.argv.length !== 2) {
+    process.stderr.write('nlo_staging_dual_session_invalid_cli_args\n');
+    process.exitCode = 1;
+  } else {
+    try {
+      const proof = await runNloStagingDualSessionOverlap();
+      process.stdout.write(JSON.stringify(proof) + '\n');
+      if (proof.verdict !== 'PASS') process.exitCode = 2;
+    } catch (error) {
+      const code =
+        error instanceof NloStagingDualSessionError
+          ? error.code
+          : 'nlo_staging_dual_session_execution_failed';
+      process.stderr.write(code + '\n');
+      process.exitCode = 1;
+    }
   }
 }
