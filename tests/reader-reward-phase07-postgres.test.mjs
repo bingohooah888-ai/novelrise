@@ -341,6 +341,11 @@ test('admin overview reads formal issuance, usage, holds and recent ledger witho
   assert.ok(
     calls.some(({ sql }) => sql.includes("left(point_kind,7)='formal_'"))
   );
+  const issuedQuery = calls.find(({ sql }) =>
+    sql.includes('as issued_total')
+  )?.sql;
+  assert.match(issuedQuery, /point_kind='level_up'/);
+  assert.match(issuedQuery, /scout_point_usage_credit_claims/);
   assert.ok(calls.some(({ sql }) => sql.includes("time zone 'Asia/Tokyo'")));
 });
 
