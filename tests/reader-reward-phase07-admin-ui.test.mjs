@@ -236,6 +236,7 @@ test('reader and admin preview mounts reuse the real draft UI-to-host binding co
     globalThis.NovelightFormalRewardMount.mountFormalRewardAdmin({
       root: admin,
       authorized: true,
+      adminGiftQueueAvailable: true,
       request: async ({ method }) =>
         method === 'GET'
           ? { status: 'queue_ready', items: [one] }
@@ -279,4 +280,226 @@ test('administrator can inspect committed gift refund candidates; no refund with
   candidates = [];
   await panel.refresh();
   assert.equal(match(root, '返金・回収を照合').length, 0);
+});
+
+test('formal admin page defaults to read-only monitoring', async () => {
+  await import('../assets/formal-scout-reward-transport.js');
+  await import('../assets/formal-scout-reward-mount.js');
+  await import('../assets/formal-scout-reward-page.js');
+  const calls = [];
+  const root = new Element('main');
+  const makePage = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage;
+  const page = makePage({
+    adminRoot: root,
+    authorized: true,
+    adminEndpoint: '/api/formal-reward-admin',
+    getAccessToken: async () => 'synthetic-admin',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () =>
+          url.includes('view=new_readers')
+            ? {
+                ok: true,
+                status: 'new_reader_summary_ready',
+                totalRegistered: 7,
+                initialized: 6,
+                partial: 1
+              }
+            : { ok: true, status: 'not_configured' }
+      };
+    }
+  });
+  assert.equal(calls.length, 0);
+  const panel = page.admin();
+  const result = await panel.refresh();
+  assert.equal(result.status, 'queue_not_connected');
+  assert.equal(match(root, '正式版以降の新規読者').length, 1);
+  assert.equal(match(root, '根拠を確認').length, 1);
+  assert.equal(match(root, '返金・回収を照合').length, 0);
+  assert.equal(match(root, '事業者への引渡しを照合').length, 0);
+  assert.ok(calls.length >= 1);
+  assert.ok(calls.every((x) => x.options.method === 'GET'));
+  assert.ok(calls.every((x) => x.options.cache === 'no-store'));
+  assert.ok(calls.every((x) => x.options.credentials === 'same-origin'));
+  assert.ok(
+    calls.every(
+      (x) => x.options.headers.Authorization === 'Bearer synthetic-admin'
+    )
+  );
+  assert.ok(calls.every((x) => x.url.includes('?view=')));
+  assert.ok(calls.every((x) => !x.url.includes('view=refunds')));
+});
+
+test('gift queue inspection keeps settlement controls OFF', async () => {
+  const root = new Element('main');
+  const calls = [];
+  const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
+    adminRoot: root,
+    authorized: true,
+    adminEndpoint: '/api/formal-reward-admin',
+    adminGiftQueueAvailable: true,
+    getAccessToken: async () => 'synthetic-admin',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () => {
+          if (!url.includes('?'))
+            return { ok: true, status: 'queue_ready', items: [one] };
+          if (url.includes('view=refunds'))
+            return {
+              ok: true,
+              status: 'refund_candidates_ready',
+              items: [{ ...one, phase: 'committed' }]
+            };
+          return { ok: true, status: 'unavailable' };
+        }
+      };
+    }
+  });
+  const panel = page.admin();
+  assert.equal((await panel.refresh()).status, 'queue_ready');
+  assert.equal(match(root, '30,000 pt（3,000円相当）').length, 1);
+  assert.equal(match(root, '返金・回収を照合').length, 0);
+  assert.equal(match(root, '事業者への引渡しを照合').length, 0);
+  assert.ok(calls.some((x) => x.url === '/api/formal-reward-admin'));
+  assert.ok(calls.some((x) => x.url.includes('view=refunds')));
+  assert.ok(calls.every((x) => x.options.method === 'GET'));
+});
+
+test('settlement actions require a separately enabled gift queue', () => {
+  let touched = 0;
+  const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
+    adminRoot: new Element('main'),
+    authorized: true,
+    adminEndpoint: '/api/formal-reward-admin',
+    adminSettlementActionsAvailable: true,
+    getAccessToken: async () => 'synthetic-admin',
+    fetchImpl: async () => {
+      touched++;
+      throw Error('NO_NETWORK');
+    }
+  });
+  assert.throws(page.admin, /Gift settlement requires an approved gift queue/);
+  assert.equal(touched, 0);
+});
+
+test('reader page is read-only despite an enabled server snapshot', async () => {
+  await import('../assets/formal-scout-reward-transport.js');
+  await import('../assets/formal-scout-reward-ui.js');
+  await import('../assets/formal-scout-reward-client.js');
+  await import('../assets/formal-scout-reward-mount.js');
+  await import('../assets/formal-scout-reward-page.js');
+  const root = new Element('main');
+  const calls = [];
+  const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
+    readerRoot: root,
+    readerEndpoint: '/api/formal-reward-reader',
+    getAccessToken: async () => 'synthetic-reader',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({
+          serverVerified: true,
+          formalEnabled: true,
+          exchangeEnabled: true,
+          giftProviderReady: true,
+          account: { level: 48, progressXp: 40, requiredXp: 400 },
+          wallet: {
+            availablePoints: 45000,
+            exchangeEligiblePoints: 38000,
+            heldPoints: 0
+          },
+          history: [],
+          aiFeatures: [
+            {
+              id: 'preview_feature',
+              name: '未公開AI',
+              approved: true,
+              pricePoints: 200
+            }
+          ]
+        })
+      };
+    }
+  });
+  assert.equal(calls.length, 0);
+  const panel = page.reader();
+  await panel.reload();
+  assert.equal(match(root, 'Lv.48').length, 1);
+  match(root, 'デジタルギフト交換')[0].fire('click');
+  const submit = match(root, '交換を申請する')[0];
+  assert.equal(submit.disabled, true);
+  const form = flatten(root).find((node) => node.tagName === 'form');
+  await form.fire('submit');
+  const aiTab = match(root, 'AIに使う')[0];
+  aiTab.fire('click');
+  const use = match(root, '利用する')[0];
+  assert.equal(use.disabled, true);
+  await use.fire('click');
+  assert.ok(calls.length >= 1);
+  assert.ok(calls.every((call) => call.options.method === 'GET'));
+  assert.ok(calls.every((call) => call.options.cache === 'no-store'));
+  assert.ok(calls.every((call) => !call.options.body));
+});
+
+test('Point actions require an operation ID provider', () => {
+  const prepare = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage;
+  let calls = 0;
+  for (const enabled of [
+    { readerExchangeAvailable: true },
+    { readerAiPointAvailable: true }
+  ]) {
+    assert.throws(
+      () =>
+        prepare({
+          readerRoot: new Element('main'),
+          readerEndpoint: '/api/formal-reward-reader',
+          getAccessToken: async () => 'synthetic-reader',
+          fetchImpl: async () => {
+            calls++;
+          },
+          ...enabled
+        }),
+      /Reader Point actions require operation UUIDs/
+    );
+  }
+  assert.equal(calls, 0);
+});
+
+test('new reader status needs no Point operation ID', async () => {
+  const root = new Element('main');
+  const calls = [];
+  const page = globalThis.NovelightFormalRewardPage.prepareFormalRewardPage({
+    readerRoot: root,
+    newReaderOnboardingAvailable: true,
+    readerEndpoint: '/api/formal-reward-reader',
+    getAccessToken: async () => 'synthetic-reader',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return {
+        ok: true,
+        json: async () =>
+          url.includes('view=new_reader')
+            ? { ok: true, status: 'new_reader_ready_for_initialization' }
+            : {
+                serverVerified: true,
+                formalEnabled: false,
+                wallet: { availablePoints: 0 },
+                account: { level: 1, progressXp: 0, requiredXp: 50 }
+              }
+      };
+    }
+  });
+  const panel = page.reader();
+  await panel.reload();
+  await tick();
+  assert.ok(calls.some((call) => call.url.includes('view=new_reader')));
+  assert.ok(calls.every((call) => call.options.method === 'GET'));
+  const onboard = match(root, '正式スカウトを利用開始')[0];
+  assert.equal(onboard.disabled, false);
+  assert.equal(match(root, '正式登録が可能です。').length, 1);
 });

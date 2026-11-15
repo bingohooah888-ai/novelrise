@@ -11,7 +11,11 @@
     getAccessToken,
     fetchImpl,
     nextOperationId,
-    newReaderOnboardingAvailable = false
+    newReaderOnboardingAvailable = false,
+    readerExchangeAvailable = false,
+    readerAiPointAvailable = false,
+    adminGiftQueueAvailable = false,
+    adminSettlementActionsAvailable = false
   } = {}) {
     const transport = globalThis.NovelightFormalRewardTransport;
     const mount = globalThis.NovelightFormalRewardMount;
@@ -26,13 +30,18 @@
     }
     const bindings = {};
     if (readerRoot) {
-      if (typeof nextOperationId !== 'function')
-        throw new TypeError('Reader operation UUID provider required');
+      if (
+        (readerExchangeAvailable === true || readerAiPointAvailable === true) &&
+        typeof nextOperationId !== 'function'
+      )
+        throw new TypeError('Reader Point actions require operation UUIDs');
       bindings.reader = () =>
         mount.mountFormalReaderReward({
           root: readerRoot,
           nextOperationId,
           newReaderOnboardingAvailable,
+          readerExchangeAvailable,
+          readerAiPointAvailable,
           request: transport.createFormalRewardTransport({
             endpoint: readerEndpoint,
             getAccessToken,
@@ -45,6 +54,8 @@
         mount.mountFormalRewardAdmin({
           root: adminRoot,
           authorized: authorized === true,
+          adminGiftQueueAvailable,
+          adminSettlementActionsAvailable,
           request: transport.createFormalRewardTransport({
             endpoint: adminEndpoint,
             getAccessToken,
