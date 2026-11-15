@@ -240,7 +240,30 @@ function fixture({
   });
 
   const handler = createOwnerBibleAnalyzeApiHandler({
-    env: ENV,
+    env: offlinePlanEnabled
+      ? {
+          ...ENV,
+          // Only synthetic GET-readiness needs these explicit disclosure,
+          // approved-work and processor-policy fields. Production is OFF.
+          NOVELIGHT_AI_CONSENT_SERVER_RUNTIME_ENABLED: 'true',
+          NOVELIGHT_AI_CONSENT_POLICY_REVISION: 'offline-policy-v1',
+          NOVELIGHT_AI_CONSENT_DISCLOSURES_JSON: JSON.stringify([
+            {
+              processor: 'openai',
+              label: '架空モデル',
+              purpose: '合成テスト',
+              dataSent: '架空原稿',
+              retention: '保存しない',
+              internationalTransfer: '通信しない'
+            }
+          ]),
+          NOVELIGHT_AI_TRIAL_ALLOWED_NOVEL_ID: '41',
+          NOVELIGHT_AI_TRIAL_ALLOWED_EPISODE_ID: '11',
+          NOVELIGHT_AI_TRIAL_ROUTES_JSON: JSON.stringify(
+            ROUTES['novel-bible']
+          )
+        }
+      : ENV,
     offlinePlanEnabled,
     createServiceClient(url, secret) {
       assert.equal(url, ENV.SUPABASE_URL);
