@@ -40,7 +40,8 @@
             'badge_catalog',
             'badge_history',
             'wallet_cohort',
-            'settlement_recovery'
+            'settlement_recovery',
+            'new_reader'
           ].includes(query.view)
         )
           throw new TypeError('Formal reward query rejected');
