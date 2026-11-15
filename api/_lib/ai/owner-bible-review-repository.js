@@ -104,6 +104,76 @@ export function createSupabaseOwnerBibleReviewRepository({
       };
     },
 
+    // Version markers are computed independently of the current page.
+    // A candidate is a revised version only if an earlier candidate with
+    // the SAME actor/work/episode/kind/key has a DIFFERENT source hash.
+    // Keep queries scoped and bounded (at most 25 candidates, five at once).
+    async listPriorVersionIds({ actorId, novelId, candidates }) {
+      requireScope(actorId, novelId);
+      if (!Array.isArray(candidates) || candidates.length > 25) unavailable();
+      const ids = new Set();
+      const matches = [];
+      for (const candidate of candidates) {
+        if (
+          !candidate ||
+          !validId(candidate.id) ||
+          !validId(candidate.episodeId) ||
+          typeof candidate.factKind !== 'string' ||
+          ![
+            'character',
+            'relationship',
+            'location',
+            'world',
+            'timeline',
+            'event',
+            'foreshadowing',
+            'other'
+          ].includes(candidate.factKind) ||
+          typeof candidate.factKey !== 'string' ||
+          !candidate.factKey.trim() ||
+          candidate.factKey.length > 120 ||
+          !SHA256.test(candidate.sourceHash) ||
+          ids.has(Number(candidate.id))
+        ) {
+          unavailable();
+        }
+        ids.add(Number(candidate.id));
+      }
+      for (let start = 0; start < candidates.length; start += 5) {
+        const batch = await Promise.all(
+          candidates.slice(start, start + 5).map(async (candidate) => {
+            const { data, error } = await serviceClient
+              .from('novelight_ai_review_candidates')
+              .select('id')
+              .eq('actor_id', actorId)
+              .eq('novel_id', novelId)
+              .eq('source_episode_id', candidate.episodeId)
+              .eq('fact_kind', candidate.factKind)
+              .eq('fact_key', candidate.factKey)
+              .in('status', ['pending', 'accepted'])
+              .neq('source_hash', candidate.sourceHash)
+              .lt('id', candidate.id)
+              .order('id', { ascending: false })
+              .limit(1);
+            if (error || !Array.isArray(data) || data.length > 1) {
+              unavailable();
+            }
+            if (data.length) {
+              if (!validId(data[0]?.id) || Number(data[0].id) >= candidate.id) {
+                unavailable();
+              }
+              return Number(candidate.id);
+            }
+            return null;
+          })
+        );
+        for (const id of batch) {
+          if (id !== null) matches.push(id);
+        }
+      }
+      return matches;
+    },
+
     async listAuthorConfirmed({ actorId, novelId }) {
       requireScope(actorId, novelId);
       const canon = await bible.listOwnerCanon({ actorId, novelId });
