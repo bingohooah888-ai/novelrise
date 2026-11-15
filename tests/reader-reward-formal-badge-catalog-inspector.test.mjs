@@ -16,7 +16,8 @@ const rows = Array.from({ length: 100 }, (_, i) => {
     difficulty,
     sort_order: i + 1,
     enabled: i < 58,
-    point_reward: difficulty === 'easy' ? 10 : difficulty === 'normal' ? 61 : 250
+    point_reward:
+      difficulty === 'easy' ? 10 : difficulty === 'normal' ? 61 : 250
   };
 });
 
@@ -113,9 +114,7 @@ test('catalog damage, wrong Point unit and premature launch all remain blocked',
   assert.equal(allEnabled.observed.enabled, 100);
   assert.equal(allEnabled.readyForPublicRelease, false);
   assert.equal(allEnabled.blockers.length, 1);
-  await assert.rejects(() =>
-    adapter([rows[0], rows[0]]).inspector.inspect()
-  );
+  await assert.rejects(() => adapter([rows[0], rows[0]]).inspector.inspect());
   await assert.rejects(() =>
     adapter([{ ...rows[0], point_reward: -1 }]).inspector.inspect()
   );
