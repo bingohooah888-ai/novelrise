@@ -60,7 +60,8 @@ export function createUnregisteredFormalBadgeCatalogInspector({ query } = {}) {
       }
       const expected = FORMAL_READER_BADGE_CATALOG;
       const blockers = [];
-      if (ids.size !== expected.total) blockers.push('reader_badge_count_mismatch');
+      if (ids.size !== expected.total)
+        blockers.push('reader_badge_count_mismatch');
       if (
         counts.easy !== expected.easy ||
         counts.normal !== expected.normal ||
