@@ -125,7 +125,9 @@ export function createFormalOfflineIntegration({
       // claims in this complete fixture, never a browser-supplied counter.
       // Arbitrary synthetic Point seeds have no verified comment claim count.
       if (syntheticPostReleasePoints.length)
-        throw new TypeError('Mixed synthetic comment history is not verifiable');
+        throw new TypeError(
+          'Mixed synthetic comment history is not verifiable'
+        );
       const occurred = Date.parse(event.verifiedComment?.created_at);
       const month = Number.isFinite(occurred)
         ? new Date(occurred + 9 * 60 * 60 * 1000).toISOString().slice(0, 7)
@@ -166,7 +168,10 @@ export function createFormalOfflineIntegration({
       throw new Error('Synthetic Point event key collision');
     awardedKeys.add(verdict.eventKey);
     const awardId =
-      'offline-formal:' + event.kind + '-' + verdict.sourceEventId.toLowerCase();
+      'offline-formal:' +
+      event.kind +
+      '-' +
+      verdict.sourceEventId.toLowerCase();
     if (formalAddition.has(awardId))
       throw new Error('Synthetic Point event ID collision');
     formalAddition.set(awardId, {
