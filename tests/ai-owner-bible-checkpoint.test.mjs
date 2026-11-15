@@ -2,6 +2,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+const cloneSnapshot = (value) => JSON.parse(JSON.stringify(value));
+
 import {
   createOfflineOwnerNovelBibleCheckpoint,
   createSupabaseOwnerNovelBibleCheckpointRepository
@@ -31,12 +33,12 @@ function syntheticPlan(episode = EPISODE) {
 }
 
 function fakeJournal(initialRow = null) {
-  let row = initialRow === null ? null : structuredClone(initialRow);
+  let row = initialRow === null ? null : cloneSnapshot(initialRow);
   const calls = { read: 0, cas: 0 };
   const repository = {
     async readSnapshot() {
       calls.read += 1;
-      return row === null ? null : structuredClone(row);
+      return row === null ? null : cloneSnapshot(row);
     },
     async compareAndSwap(change) {
       calls.cas += 1;
@@ -50,16 +52,16 @@ function fakeJournal(initialRow = null) {
         episode_id: 11,
         source_hash: change.nextSourceHash,
         revision: (row?.revision ?? 0) + 1,
-        summary: structuredClone(change.nextSummary)
+        summary: cloneSnapshot(change.nextSummary)
       };
-      return structuredClone(row);
+      return cloneSnapshot(row);
     }
   };
   return {
     repository,
     calls,
     get row() {
-      return row === null ? null : structuredClone(row);
+      return row === null ? null : cloneSnapshot(row);
     }
   };
 }
