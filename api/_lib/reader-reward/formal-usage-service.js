@@ -35,7 +35,8 @@ export function createFormalRewardUsageService({
   verifyGiftRefund,
   verifyAiRefund,
   getScoutOverview,
-  getAuthorGrowth
+  getAuthorGrowth,
+  getReaderSeedEvidence
 } = {}) {
   if (
     typeof repository?.transact !== 'function' ||
@@ -372,6 +373,10 @@ export function createFormalRewardUsageService({
       enabled && typeof getAuthorGrowth === 'function'
         ? await getAuthorGrowth(userId)
         : null;
+    const seedEvidence =
+      enabled && typeof getReaderSeedEvidence === 'function'
+        ? await getReaderSeedEvidence(userId)
+        : null;
     return {
       serverVerified: true,
       formalEnabled: enabled,
@@ -385,6 +390,7 @@ export function createFormalRewardUsageService({
       account: state.account || {},
       scout,
       authorGrowth,
+      seedEvidence,
       history: state.history || [],
       aiFeatures: catalog.map((f) => ({
         id: f.id,
