@@ -278,6 +278,46 @@ export function createOwnerBibleReviewWorkflow({
   }
 
   // Candidate listing is still private author data. No inference or write.
+  // Resolve each referenced episode once from the authoritative server,
+  // never from author-submitted IDs, cached UI data or model output.
+  // Deleted episodes are stale; a foreign-work episode fails closed.
+  async function currentSourceHashes(novelId, episodeIds) {
+    const hashes = new Map();
+    await Promise.all(
+      episodeIds.map(async (id) => {
+        const response = await serviceClient
+          .from('episodes')
+          .select('id,novel_id,title,content')
+          .eq('id', id)
+          .maybeSingle();
+        if (response?.error) denied();
+        const episode = response?.data;
+        if (episode === null) {
+          hashes.set(id, null);
+          return;
+        }
+        if (
+          !episode ||
+          positiveId(episode.id) !== id ||
+          positiveId(episode.novel_id) !== novelId ||
+          typeof episode.title !== 'string' ||
+          typeof episode.content !== 'string' ||
+          Buffer.byteLength(episode.title, 'utf8') > 8192 ||
+          Buffer.byteLength(episode.content, 'utf8') > 1000000
+        ) {
+          denied();
+        }
+        hashes.set(
+          id,
+          createHash('sha256')
+            .update(JSON.stringify([episode.title, episode.content]))
+            .digest('hex')
+        );
+      })
+    );
+    return hashes;
+  }
+
   async function list({ token, novelId }) {
     const actorId = await authenticate(token);
     const novel = await loadNovel(actorId, novelId);
@@ -321,21 +361,44 @@ export function createOwnerBibleReviewWorkflow({
       });
     }
     const candidates = project(rows, 'pending');
-    if (typeof repository.listAccepted !== 'function') {
-      // Offline repositories created before this feature stay compatible.
-      return { novelId: novel.id, candidates, aiGenerated: false };
-    }
-    const acceptedRows = await repository.listAccepted({
-      actorId,
-      novelId: novel.id
-    });
+    const acceptedRows =
+      typeof repository.listAccepted === 'function'
+        ? await repository.listAccepted({ actorId, novelId: novel.id })
+        : [];
     const acceptedCandidates = project(acceptedRows, 'accepted');
     const known = new Set(candidates.map((item) => item.id));
     if (acceptedCandidates.some((item) => known.has(item.id))) denied();
+
+    // Verify a bounded set of distinct chapter hashes after owner auth. A
+    // stale candidate is retained as historical evidence but cannot receive
+    // accept/reject controls or be copied into the owner's current notes.
+    const all = [...candidates, ...acceptedCandidates];
+    const episodeIds = [...new Set(all.map((item) => item.episodeId))];
+    const sourceHashes = await currentSourceHashes(novel.id, episodeIds);
+    const staleCandidates = [];
+    const activeCandidates = [];
+    const activeAccepted = [];
+    for (const item of all) {
+      const hash = sourceHashes.get(item.episodeId);
+      const original = item.status === 'pending' ? rows : acceptedRows;
+      const originalRow = original.find((row) => Number(row.id) === item.id);
+      if (!originalRow || !SHA256.test(originalRow.sourceHash)) denied();
+      if (hash === null || hash !== originalRow.sourceHash) {
+        staleCandidates.push({
+          ...item,
+          staleReason: hash === null ? 'episode_missing' : 'source_changed'
+        });
+      } else if (item.status === 'pending') {
+        activeCandidates.push(item);
+      } else {
+        activeAccepted.push(item);
+      }
+    }
     return {
       novelId: novel.id,
-      candidates,
-      acceptedCandidates,
+      candidates: activeCandidates,
+      acceptedCandidates: activeAccepted,
+      staleCandidates,
       aiGenerated: false
     };
   }
