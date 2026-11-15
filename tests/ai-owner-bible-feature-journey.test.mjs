@@ -289,10 +289,19 @@ function makeJourney({
     }
   };
   const fetcher = async (url, options) => {
-    assert.equal(url, '/api/ai-owner-bible-review?novel_id=41');
+    assert.ok(url.startsWith('/api/ai-owner-bible-review?novel_id=41'));
     state.uiRequests.push(options.method);
     if (options.method === 'GET') {
-      const data = await workflow.list({ token: TOKEN, novelId: 41 });
+      const params = new URL(url, 'https://offline.test').searchParams;
+      const transferId = params.get('transfer_candidate_id');
+      const data = transferId
+        ? await workflow.verifyTransfer({
+            token: TOKEN,
+            novelId: 41,
+            candidateId: Number(transferId),
+            expectedRevision: Number(params.get('expected_revision'))
+          })
+        : await workflow.list({ token: TOKEN, novelId: 41 });
       return {
         ok: true,
         async json() {
@@ -504,5 +513,5 @@ test('accepted candidate survives author review reload and needs explicit note s
   assert.deepEqual(journey.state.confirmedCanon, [
     { kind: 'character', key: '凛' }
   ]);
-  assert.deepEqual(journey.state.uiRequests, ['GET', 'POST', 'GET']);
+  assert.deepEqual(journey.state.uiRequests, ['GET', 'POST', 'GET', 'GET']);
 });
