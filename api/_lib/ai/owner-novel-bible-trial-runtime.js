@@ -33,6 +33,9 @@ function workId(value) {
   return value;
 }
 
+// Preserve the existing owner trial lifecycle while injecting a narrow
+// post-reservation server stop gate; no alternate provider pipeline.
+// prettier-ignore
 export function createOwnerNovelBibleTrialRuntime({
   enabled = false,
   externalProcessingApproved = false,

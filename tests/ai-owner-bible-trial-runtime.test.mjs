@@ -12,6 +12,8 @@ const TOKEN = 'synthetic-token-is-not-an-auth-jwt';
 const CONTENT = '凛は青い鍵を持っていた。';
 const REQUEST = { token: TOKEN, novelId: 41, episodeId: 11 };
 
+// Synthetic mutable stop state and callback timing are deliberate.
+// prettier-ignore
 function fixture({
   actor = OWNER,
   enabled = true,
@@ -431,6 +433,8 @@ test('owner trial cannot inspect plans when disabled, unauthenticated or without
   assert.equal(denied.state.reservations, 0);
 });
 
+// Keep the synthetic stop/settlement event order explicit.
+// prettier-ignore
 test('server stop before reserve blocks provider and candidate writes', async () => {
   const { runtime, state } = fixture({ runtimeEnabled: false });
   await assert.rejects(
@@ -442,6 +446,8 @@ test('server stop before reserve blocks provider and candidate writes', async ()
   assert.equal(state.staged, 0);
 });
 
+// Keep the synthetic stop/settlement event order explicit.
+// prettier-ignore
 test('server stop after atomic reserve settles zero and never calls provider', async () => {
   const { runtime, state } = fixture({
     onReserve(current) {
@@ -457,6 +463,8 @@ test('server stop after atomic reserve settles zero and never calls provider', a
   assert.equal(state.staged, 0);
 });
 
+// Keep the synthetic stop/settlement event order explicit.
+// prettier-ignore
 test('server stop during model invocation settles once, then blocks review storage', async () => {
   const { runtime, state } = fixture({
     onModelCall(current) {
@@ -475,6 +483,8 @@ test('server stop during model invocation settles once, then blocks review stora
   assert.ok(state.settlementCharges[0] > 0);
 });
 
+// Keep the synthetic stop/settlement event order explicit.
+// prettier-ignore
 test('revoked consent during atomic reserve also settles safely before sending text', async () => {
   const { runtime, state } = fixture({
     onReserve(current) {

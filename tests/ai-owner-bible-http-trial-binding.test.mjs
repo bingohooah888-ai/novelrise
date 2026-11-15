@@ -100,6 +100,18 @@ function fixture({
           return this;
         },
         async maybeSingle() {
+          if (table === 'novelight_ai_runtime_settings') {
+            return {
+              data: {
+                enabled: true,
+                user_day_cap_micros: 1000000,
+                user_month_cap_micros: 1000000,
+                global_day_cap_micros: 1000000,
+                global_month_cap_micros: 1000000
+              },
+              error: null
+            };
+          }
           if (table === 'novels') {
             return { data: { id: 41, user_id: OWNER }, error: null };
           }

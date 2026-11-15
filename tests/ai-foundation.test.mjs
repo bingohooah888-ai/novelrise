@@ -414,6 +414,8 @@ test('02-07-05 failed attempt plus unknown usage settles full fallback ceiling o
   assert.ok(!JSON.stringify(state.audits).includes(REQUEST.user));
 });
 
+// Read-only synthetic Router stop-gate proof.
+// prettier-ignore
 test('Router post-reservation stop hook settles zero before external provider, including fallback', async () => {
   let checks = 0;
   const { router, state } = fakeRouter({
@@ -432,6 +434,8 @@ test('Router post-reservation stop hook settles zero before external provider, i
   assert.equal(state.audits[0].outcome, 'failed');
 });
 
+// Read-only synthetic Router stop-gate proof.
+// prettier-ignore
 test('Router invalid post-reservation callback fails closed at construction', () => {
   assert.throws(
     () => fakeRouter({ beforeProviderAttempt: true }),
