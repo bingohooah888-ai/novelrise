@@ -173,122 +173,125 @@ function tick() {
 test(
   'offline owner must inspect before one explicit stage and then sees review',
   async () => {
-  const f = harness();
-  assert.equal(
-    await attach({
-      client: f.client,
-      novelId: work,
-      ownerId: OWNER,
-      doc: f.doc,
-      fetcher: f.fetcher,
-      reviewPanel: f.reviewPanel,
-      offlineTrial: f.offlineTrial
-    }),
-    true
-  );
-  const { section, plan, action } = controls(f.main);
-  assert.equal(action.disabled, true);
-  assert.equal(f.inspected, 0);
-  assert.equal(f.staged, 0);
-  await plan.listeners.get('click')();
-  assert.equal(f.inspected, 1);
-  assert.equal(action.disabled, false);
-  assert.match(section.children.at(-1).textContent, /次の対象 2/u);
-  await action.listeners.get('click')();
-  assert.equal(f.inspected, 2);
-  assert.equal(f.staged, 1);
-  assert.equal(f.lastIndex, 1);
-  assert.equal(f.opened, 1);
-  assert.equal(f.lastToken, TOKEN);
-  assert.equal(f.fetchCalls.length, 1);
-  assert.match(section.children.at(-1).textContent, /1件/u);
-  await action.listeners.get('click')();
-  assert.equal(f.staged, 1);
-});
+    const f = harness();
+    assert.equal(
+      await attach({
+        client: f.client,
+        novelId: work,
+        ownerId: OWNER,
+        doc: f.doc,
+        fetcher: f.fetcher,
+        reviewPanel: f.reviewPanel,
+        offlineTrial: f.offlineTrial
+      }),
+      true
+    );
+    const { section, plan, action } = controls(f.main);
+    assert.equal(action.disabled, true);
+    assert.equal(f.inspected, 0);
+    assert.equal(f.staged, 0);
+    await plan.listeners.get('click')();
+    assert.equal(f.inspected, 1);
+    assert.equal(action.disabled, false);
+    assert.match(section.children.at(-1).textContent, /次の対象 2/u);
+    await action.listeners.get('click')();
+    assert.equal(f.inspected, 2);
+    assert.equal(f.staged, 1);
+    assert.equal(f.lastIndex, 1);
+    assert.equal(f.opened, 1);
+    assert.equal(f.lastToken, TOKEN);
+    assert.equal(f.fetchCalls.length, 1);
+    assert.match(section.children.at(-1).textContent, /1件/u);
+    await action.listeners.get('click')();
+    assert.equal(f.staged, 1);
+  }
+);
 
 test(
   'changed plan, completed work or revoked session cannot execute',
   async () => {
-  const changed = harness();
-  assert.equal(
-    await attach({
-      client: changed.client,
-      novelId: work,
-      ownerId: OWNER,
-      doc: changed.doc,
-      fetcher: changed.fetcher,
-      reviewPanel: changed.reviewPanel,
-      offlineTrial: changed.offlineTrial
-    }),
-    true
-  );
-  const controlsChanged = controls(changed.main);
-  await controlsChanged.plan.listeners.get('click')();
-  changed.setPlan(2);
-  await controlsChanged.action.listeners.get('click')();
-  assert.equal(changed.staged, 0);
-  assert.match(
-    controlsChanged.section.children.at(-1).textContent,
-    /再読込/u
-  );
+    const changed = harness();
+    assert.equal(
+      await attach({
+        client: changed.client,
+        novelId: work,
+        ownerId: OWNER,
+        doc: changed.doc,
+        fetcher: changed.fetcher,
+        reviewPanel: changed.reviewPanel,
+        offlineTrial: changed.offlineTrial
+      }),
+      true
+    );
+    const controlsChanged = controls(changed.main);
+    await controlsChanged.plan.listeners.get('click')();
+    changed.setPlan(2);
+    await controlsChanged.action.listeners.get('click')();
+    assert.equal(changed.staged, 0);
+    assert.match(
+      controlsChanged.section.children.at(-1).textContent,
+      /再読込/u
+    );
 
-  const completed = harness({ state: 'completed' });
-  assert.equal(
-    await attach({
-      client: completed.client,
-      novelId: work,
-      ownerId: OWNER,
-      doc: completed.doc,
-      fetcher: completed.fetcher,
-      reviewPanel: completed.reviewPanel,
-      offlineTrial: completed.offlineTrial
-    }),
-    true
-  );
-  const completeControls = controls(completed.main);
-  await completeControls.plan.listeners.get('click')();
-  assert.equal(completeControls.action.disabled, true);
-  assert.equal(completed.staged, 0);
-  completed.signOut();
-  assert.equal(completed.main.children[0].removed, true);
-  assert.equal(completed.main.children[0].textContent, '');
-  await tick();
-});
+    const completed = harness({ state: 'completed' });
+    assert.equal(
+      await attach({
+        client: completed.client,
+        novelId: work,
+        ownerId: OWNER,
+        doc: completed.doc,
+        fetcher: completed.fetcher,
+        reviewPanel: completed.reviewPanel,
+        offlineTrial: completed.offlineTrial
+      }),
+      true
+    );
+    const completeControls = controls(completed.main);
+    await completeControls.plan.listeners.get('click')();
+    assert.equal(completeControls.action.disabled, true);
+    assert.equal(completed.staged, 0);
+    completed.signOut();
+    assert.equal(completed.main.children[0].removed, true);
+    assert.equal(completed.main.children[0].textContent, '');
+    await tick();
+  }
+);
 
 test(
   'missing offline capability does not change default deployed panel',
   async () => {
-  const invalid = harness();
-  assert.equal(
-    await attach({
-      client: invalid.client,
-      novelId: work,
-      ownerId: OWNER,
-      doc: invalid.doc,
-      fetcher: invalid.fetcher,
-      offlineTrial: { enabled: true, inspectPlan() {} }
-    }),
-    false
-  );
-  assert.equal(invalid.main.children.length, 0);
-  const legacy = harness();
-  assert.equal(
-    await attach({
-      client: legacy.client,
-      novelId: work,
-      ownerId: OWNER,
-      doc: legacy.doc,
-      fetcher: legacy.fetcher,
-      reviewPanel: legacy.reviewPanel
-    }),
-    true
-  );
-  const section = legacy.main.children[0];
-  assert.equal(
-    section.children.some(
-      (item) => item.className === 'btn novelight-ai-bible-inspect-plan'
-    ),
-    false
-  );
-  assert.equal(legacy.fetchCalls.length, 1);
-});
+    const invalid = harness();
+    assert.equal(
+      await attach({
+        client: invalid.client,
+        novelId: work,
+        ownerId: OWNER,
+        doc: invalid.doc,
+        fetcher: invalid.fetcher,
+        offlineTrial: { enabled: true, inspectPlan() {} }
+      }),
+      false
+    );
+    assert.equal(invalid.main.children.length, 0);
+    const legacy = harness();
+    assert.equal(
+      await attach({
+        client: legacy.client,
+        novelId: work,
+        ownerId: OWNER,
+        doc: legacy.doc,
+        fetcher: legacy.fetcher,
+        reviewPanel: legacy.reviewPanel
+      }),
+      true
+    );
+    const section = legacy.main.children[0];
+    assert.equal(
+      section.children.some(
+        (item) => item.className === 'btn novelight-ai-bible-inspect-plan'
+      ),
+      false
+    );
+    assert.equal(legacy.fetchCalls.length, 1);
+  }
+);
