@@ -105,6 +105,12 @@ export function createOwnerBibleReviewApiHandler({
         ) {
           return fail(res, 400, 'INVALID_TRANSFER_REQUEST');
         }
+        if (
+          typeof req.query.transfer_candidate_id !== 'string' ||
+          typeof req.query.expected_revision !== 'string'
+        ) {
+          return fail(res, 400, 'INVALID_TRANSFER_REQUEST');
+        }
         const candidateId = integerId(req.query.transfer_candidate_id);
         const expectedRevision = integerId(req.query.expected_revision);
         if (!candidateId || !expectedRevision || expectedRevision < 2) {
