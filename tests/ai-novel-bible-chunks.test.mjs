@@ -305,15 +305,17 @@ test('zero-excerpt metadata is bounded to deletion and new empty text only', () 
     analyses: [{ episode_id: 16, source_hash: hash }],
     previousEpisodes: [prior]
   });
-  assert.deepEqual(deleted.zeroChangedSources.map((x) => x.reason), [
-    'deletion-only'
-  ]);
+  assert.deepEqual(
+    deleted.zeroChangedSources.map((x) => x.reason),
+    ['deletion-only']
+  );
   assert.deepEqual(deleted.chunks, []);
 
   const empty = plan([episode(17, '')]);
-  assert.deepEqual(empty.zeroChangedSources.map((x) => x.reason), [
-    'empty-body'
-  ]);
+  assert.deepEqual(
+    empty.zeroChangedSources.map((x) => x.reason),
+    ['empty-body']
+  );
   assert.deepEqual(empty.chunks, []);
   assert.deepEqual(empty.titleOnlyEpisodes, []);
   assert.equal(JSON.stringify(empty).includes('secret manuscript'), false);
