@@ -66,9 +66,7 @@ function economicRow(row) {
 }
 
 export function fingerprintScoutBetaPointRow(row) {
-  return sha256(
-    MESSAGE_SCOPE + ':row\n' + JSON.stringify(economicRow(row))
-  );
+  return sha256(MESSAGE_SCOPE + ':row\n' + JSON.stringify(economicRow(row)));
 }
 
 /**
@@ -109,10 +107,9 @@ export function buildScoutBetaUnitManifestMessage({
       Array.isArray(assertion) ||
       !UUID.test(assertion.ledgerId) ||
       !DIGEST.test(assertion.canonicalRowSha256) ||
-      ![
-        SCOUT_POINT_LEGACY_VERSION,
-        SCOUT_POINT_TARGET_VERSION
-      ].includes(assertion.sourceUnitVersion) ||
+      ![SCOUT_POINT_LEGACY_VERSION, SCOUT_POINT_TARGET_VERSION].includes(
+        assertion.sourceUnitVersion
+      ) ||
       typeof assertion.evidenceRef !== 'string' ||
       !EVIDENCE_REF.test(assertion.evidenceRef) ||
       assertions.has(assertion.ledgerId)
@@ -139,9 +136,7 @@ export function buildScoutBetaUnitManifestMessage({
       evidenceRef: a.evidenceRef
     }));
   const message =
-    MESSAGE_SCOPE +
-    '\n' +
-    JSON.stringify({ rowCount: rows.size, claims });
+    MESSAGE_SCOPE + '\n' + JSON.stringify({ rowCount: rows.size, claims });
   return Object.freeze({
     status: 'offline_unit_manifest_message_only',
     message,
@@ -193,12 +188,7 @@ export function quoteScoutSignedBetaUnitHandoff({
     const signer = createPublicKey(signerPublicKeyPem);
     valid =
       signer.asymmetricKeyType === 'ed25519' &&
-      verify(
-        null,
-        Buffer.from(manifest.message, 'utf8'),
-        signer,
-        signature
-      );
+      verify(null, Buffer.from(manifest.message, 'utf8'), signer, signature);
   } catch {
     valid = false;
   }
