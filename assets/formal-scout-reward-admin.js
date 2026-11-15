@@ -20,6 +20,7 @@
     loadBadgeHistory,
     loadWalletCohort,
     loadSettlementRecovery,
+    inspectEarningSource,
     onResolve
   } = {}) {
     if (!root || typeof root.replaceChildren !== 'function')
@@ -42,17 +43,104 @@
     const list = node('div', 'rr-admin-list');
     const refunds = node('div', 'rr-admin-list');
     const newReaders = node('div', 'rr-admin-list');
+    const earningReview = node('section', 'rr-admin-audits');
     shell.append(
       title,
       caption,
       notice,
       records,
       audits,
+      earningReview,
       newReaders,
       list,
       refunds
     );
     root.replaceChildren(shell);
+
+    // The existing admin-only HTTP handler returns only a source verdict.
+    // Never fetch on mount or display comment text, reader identity or claims.
+    if (authorized === true && typeof inspectEarningSource === 'function') {
+      const sourceType = node('select', 'rr-admin-source-type');
+      sourceType.setAttribute('aria-label', '報酬根拠の種類');
+      for (const [value, label] of [
+        ['valid_read_qualified', '有効読書'],
+        ['novel_episode_comment_reviewed', 'コメント']
+      ]) {
+        const option = node('option', '', label);
+        option.value = value;
+        sourceType.append(option);
+      }
+      sourceType.value = 'valid_read_qualified';
+      const sourceId = node('input', 'rr-admin-source-id');
+      sourceId.type = 'text';
+      sourceId.maxLength = 36;
+      sourceId.placeholder = '根拠イベントID（UUID）';
+      sourceId.setAttribute('aria-label', '根拠イベントID');
+      sourceId.setAttribute('autocomplete', 'off');
+      const lookup = node('button', 'rr-admin-action', '根拠を確認');
+      lookup.type = 'button';
+      const status = node('p', 'rr-admin-muted', '未照合');
+      status.setAttribute('role', 'status');
+      const actions = node('div', 'rr-admin-actions');
+      actions.append(sourceType, sourceId, lookup);
+      earningReview.append(
+        node('h3', '', '読書・コメント報酬の根拠照合'),
+        node(
+          'p',
+          'rr-admin-muted',
+          '既存の認証済み根拠イベントを読み取り専用で照合します。Point発行・報酬確定は行いません。'
+        ),
+        actions,
+        status
+      );
+      const validId =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      let checking = false;
+      lookup.addEventListener('click', async () => {
+        if (checking) return;
+        const eventType = sourceType.value;
+        const eventId = sourceId.value;
+        if (
+          ![
+            'valid_read_qualified',
+            'novel_episode_comment_reviewed'
+          ].includes(eventType) ||
+          typeof eventId !== 'string' ||
+          !validId.test(eventId)
+        ) {
+          status.textContent = '対象の種類とイベントIDを確認してください。';
+          return;
+        }
+        checking = true;
+        lookup.disabled = true;
+        sourceType.disabled = true;
+        sourceId.disabled = true;
+        status.textContent = '根拠を照合しています。';
+        try {
+          const report = await inspectEarningSource({ eventType, eventId });
+          const verdict = {
+            canonical_source_verified: '根拠イベントを確認しました。',
+            canonical_source_missing: '根拠イベントが見つかりません。',
+            canonical_source_invalid: '根拠イベントの内容を確認できません。',
+            history_limit_requires_review: '過去履歴の追加確認が必要です。'
+          };
+          status.textContent =
+            report?.ok === true &&
+            report?.eventType === eventType &&
+            report?.mayIssuePoints === false &&
+            Object.hasOwn(verdict, report?.status)
+              ? verdict[report.status] + ' Point発行は行っていません。'
+              : '根拠の確認結果を検証できません。';
+        } catch {
+          status.textContent = '根拠を確認できませんでした。';
+        } finally {
+          checking = false;
+          lookup.disabled = false;
+          sourceType.disabled = false;
+          sourceId.disabled = false;
+        }
+      });
+    }
 
     async function refresh() {
       const requestId = ++latestRequest;
@@ -520,6 +608,11 @@
         request({ method: 'GET', query: { view: 'wallet_cohort' } }),
       loadSettlementRecovery: () =>
         request({ method: 'GET', query: { view: 'settlement_recovery' } }),
+      inspectEarningSource: ({ eventType, eventId }) =>
+        request({
+          method: 'GET',
+          query: { view: 'earning_source', eventType, eventId }
+        }),
       onResolve: ({ operationId, action }) =>
         request({ method: 'POST', body: { operationId, action } })
     });
