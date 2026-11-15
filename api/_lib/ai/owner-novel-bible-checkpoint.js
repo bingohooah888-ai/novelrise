@@ -467,7 +467,74 @@ export function createOfflineOwnerNovelBibleCheckpoint({
     return { complete: true, alreadyRecorded: false, remainingChunks: 0 };
   }
 
-  return Object.freeze({ inspect, record, replan, completeEmpty });
+  // Restoring a previous fully analyzed source needs no new AI call. Remove
+  // only the stale in-progress marker while retaining the prior source hash
+  // and unrelated summary fields. Both auth and source equality are checked
+  // by the trusted caller immediately before this atomic CAS.
+  async function discardRestored({
+    actorId,
+    novelId,
+    episodeId,
+    sourceHash
+  }) {
+    if (!enabled) throw new Error('AI_BIBLE_CHECKPOINT_DISABLED');
+    if (
+      typeof actorId !== 'string' ||
+      !UUID.test(actorId) ||
+      !validId(novelId) ||
+      !validId(episodeId) ||
+      !SHA.test(sourceHash) ||
+      sourceHash === NOVEL_BIBLE_PENDING_SOURCE_HASH
+    ) {
+      unavailable();
+    }
+    const scope = { actorId: actorId.toLowerCase(), novelId, episodeId };
+    const snapshot = validateRow(await repository.readSnapshot(scope), scope);
+    if (!snapshot?.progress || snapshot.progress.state === 'complete') {
+      return { discarded: false };
+    }
+    if (
+      snapshot.progress.previousSourceHash !== sourceHash ||
+      snapshot.row.source_hash !== sourceHash ||
+      snapshot.progress.targetSourceHash === sourceHash
+    ) {
+      conflict();
+    }
+    const nextSummary = { ...snapshot.row.summary };
+    delete nextSummary[KEY];
+    let saved;
+    try {
+      saved = await repository.compareAndSwap({
+        ...scope,
+        expectedRevision: snapshot.row.revision,
+        expectedSourceHash: sourceHash,
+        nextSourceHash: sourceHash,
+        nextSummary
+      });
+    } catch {
+      unavailable();
+    }
+    if (saved === null) conflict();
+    const verified = validateRow(saved, scope);
+    if (
+      !verified ||
+      verified.progress !== null ||
+      verified.row.source_hash !== sourceHash ||
+      verified.row.revision !== snapshot.row.revision + 1 ||
+      JSON.stringify(verified.row.summary) !== JSON.stringify(nextSummary)
+    ) {
+      unavailable();
+    }
+    return { discarded: true };
+  }
+
+  return Object.freeze({
+    inspect,
+    record,
+    replan,
+    completeEmpty,
+    discardRestored
+  });
 }
 
 // Existing-table adapter: never used by a public route. The authoritative
