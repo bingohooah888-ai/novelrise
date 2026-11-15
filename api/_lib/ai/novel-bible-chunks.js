@@ -38,7 +38,7 @@ function ensureUnicodeScalar(value) {
 
 // UTF-16 offsets are only used for server-side String.slice(), not sent to
 // models. Iterate by Unicode codepoint to avoid splitting surrogate pairs.
-function segments(content, episodeId, sourceHash, reason) {
+function segments(content, episodeId, sourceHash, reason, offset = 0) {
   ensureUnicodeScalar(content);
   const items = [];
   let start = 0;
@@ -52,8 +52,8 @@ function segments(content, episodeId, sourceHash, reason) {
         episodeId,
         sourceHash,
         reason,
-        start,
-        end: pos,
+        start: start + offset,
+        end: pos + offset,
         byteLength: bytes,
         chunkHash: sha256(text)
       });
@@ -68,8 +68,8 @@ function segments(content, episodeId, sourceHash, reason) {
       episodeId,
       sourceHash,
       reason,
-      start,
-      end: content.length,
+      start: start + offset,
+      end: content.length + offset,
       byteLength: bytes,
       chunkHash: sha256(content.slice(start))
     });
@@ -77,15 +77,84 @@ function segments(content, episodeId, sourceHash, reason) {
   return items;
 }
 
+// Find the smallest changed window in the CURRENT manuscript. Old text never
+// leaves the trusted server and is never placed in queue metadata. Codepoint
+// boundaries prevent clipping Japanese emoji or supplementary characters.
+// A removal-only revision has no new excerpt to send to a model.
+function changedWindow(previous, current) {
+  ensureUnicodeScalar(previous);
+  ensureUnicodeScalar(current);
+  let start = 0;
+  while (start < previous.length && start < current.length) {
+    const before = String.fromCodePoint(previous.codePointAt(start));
+    if (before !== String.fromCodePoint(current.codePointAt(start))) break;
+    start += before.length;
+  }
+  let priorEnd = previous.length;
+  let currentEnd = current.length;
+  while (priorEnd > start && currentEnd > start) {
+    const previousWidth = isLowSurrogate(previous.charCodeAt(priorEnd - 1))
+      ? 2
+      : 1;
+    const currentWidth = isLowSurrogate(current.charCodeAt(currentEnd - 1))
+      ? 2
+      : 1;
+    if (
+      previous.slice(priorEnd - previousWidth, priorEnd) !==
+      current.slice(currentEnd - currentWidth, currentEnd)
+    ) break;
+    priorEnd -= previousWidth;
+    currentEnd -= currentWidth;
+  }
+  return { start, end: currentEnd };
+}
+
+// Prior snapshots are OPTIONAL, and MUST come from trusted server-side
+// historical records. Each snapshot is tied to the acknowledged analysis hash;
+// an unverified/mismatched history fails closed instead of shaping prompts.
+function checkedHistoricalEpisodes(previousEpisodes, episodes, analyses, novelId) {
+  if (
+    !Array.isArray(previousEpisodes) ||
+    previousEpisodes.length > episodes.length
+  ) invalid();
+  const currentIds = new Set(episodes.map((item) => Number(item.id)));
+  const analysisHashes = new Map(
+    analyses.map((row) => [Number(row.episode_id), row.source_hash])
+  );
+  const historical = new Map();
+  for (const old of previousEpisodes) {
+    const episodeId = Number(old?.id);
+    if (
+      !validId(episodeId) ||
+      !/^[1-9]\\d*$/.test(String(old.id)) ||
+      Number(old.novel_id) !== novelId ||
+      !/^[1-9]\\d*$/.test(String(old.novel_id)) ||
+      !currentIds.has(episodeId) ||
+      historical.has(episodeId) ||
+      typeof old.title !== 'string' ||
+      typeof old.content !== 'string' ||
+      Buffer.byteLength(old.title, 'utf8') > 8192 ||
+      Buffer.byteLength(old.content, 'utf8') > 1000000 ||
+      analysisHashes.get(episodeId) !==
+        sha256(JSON.stringify([old.title, old.content]))
+    ) invalid();
+    ensureUnicodeScalar(old.content);
+    historical.set(episodeId, old);
+  }
+  return historical;
+}
+
 // Metadata-only queue: no chapter titles, bodies, notes or raw quotations.
 // A title-only revision deliberately invalidates the whole chapter hash.
-// It cannot compute changed paragraphs without retaining prior manuscript text.
+// With no verified historical text, the entire changed episode is selected.
+// With verified historical text, only the minimal changed excerpt is selected.
 export function planNovelBibleChangedChunks({
   principal,
   novel,
   episodes,
   analyses,
-  limit = 12
+  limit = 12,
+  previousEpisodes = []
 }) {
   const base = planNovelBibleEpisodeChanges({
     principal,
@@ -98,13 +167,29 @@ export function planNovelBibleChangedChunks({
   for (const episode of episodes) {
     byId.set(Number(episode.id), episode);
   }
+  const historical = checkedHistoricalEpisodes(
+    previousEpisodes, episodes, analyses, base.novelId
+  );
   const chunks = [];
   const emptyChangedEpisodes = [];
+  const deletionOnlyEpisodes = [];
   for (const item of base.pending) {
     const episode = byId.get(item.episodeId);
     if (!episode) invalid();
     const { episodeId, sourceHash, reason } = item;
-    const parts = segments(episode.content, episodeId, sourceHash, reason);
+    const old = historical.get(episodeId);
+    let text = episode.content;
+    let offset = 0;
+    if (reason === 'changed' && old && old.title === episode.title) {
+      const window = changedWindow(old.content, episode.content);
+      text = episode.content.slice(window.start, window.end);
+      offset = window.start;
+      if (text.length === 0 && episode.content.length > 0) {
+        deletionOnlyEpisodes.push(episodeId);
+        continue;
+      }
+    }
+    const parts = segments(text, episodeId, sourceHash, reason, offset);
     if (!parts.length) emptyChangedEpisodes.push(item.episodeId);
     chunks.push(...parts);
   }
@@ -114,6 +199,7 @@ export function planNovelBibleChangedChunks({
     unchangedCount: base.unchangedCount,
     deferredEpisodeCount: base.deferredCount,
     emptyChangedEpisodes,
+    deletionOnlyEpisodes,
     chunks
   };
 }
