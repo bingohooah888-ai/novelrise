@@ -267,3 +267,54 @@ test('untrusted historical revisions fail closed; missing history falls back', (
     );
   }
 });
+
+test('verified title-only edit has no excerpt while absent old snapshot still analyzes body', () => {
+  const prior = episode(15, '本文は同じです。', 15, '旧題');
+  const revised = episode(15, prior.content, 15, '改題');
+  const hash = createHash('sha256')
+    .update(JSON.stringify([prior.title, prior.content]))
+    .digest('hex');
+  const analyses = [{ episode_id: 15, source_hash: hash }];
+  const verified = plan([revised], {
+    analyses,
+    previousEpisodes: [prior]
+  });
+  assert.deepEqual(verified.chunks, []);
+  assert.deepEqual(verified.titleOnlyEpisodes, [15]);
+  assert.deepEqual(verified.zeroChangedSources, [
+    {
+      episodeId: 15,
+      sourceHash: createHash('sha256')
+        .update(JSON.stringify([revised.title, revised.content]))
+        .digest('hex'),
+      reason: 'title-only'
+    }
+  ]);
+  const unverified = plan([revised], { analyses });
+  assert.equal(unverified.chunks.length, 1);
+  assert.deepEqual(unverified.titleOnlyEpisodes, []);
+});
+
+test('zero-excerpt metadata is bounded to deletion and new empty text only', () => {
+  const prior = episode(16, '冒頭、削除部分。結末');
+  const revised = episode(16, '冒頭、結末');
+  const hash = createHash('sha256')
+    .update(JSON.stringify([prior.title, prior.content]))
+    .digest('hex');
+  const deleted = plan([revised], {
+    analyses: [{ episode_id: 16, source_hash: hash }],
+    previousEpisodes: [prior]
+  });
+  assert.deepEqual(deleted.zeroChangedSources.map((x) => x.reason), [
+    'deletion-only'
+  ]);
+  assert.deepEqual(deleted.chunks, []);
+
+  const empty = plan([episode(17, '')]);
+  assert.deepEqual(empty.zeroChangedSources.map((x) => x.reason), [
+    'empty-body'
+  ]);
+  assert.deepEqual(empty.chunks, []);
+  assert.deepEqual(empty.titleOnlyEpisodes, []);
+  assert.equal(JSON.stringify(empty).includes('secret manuscript'), false);
+});
