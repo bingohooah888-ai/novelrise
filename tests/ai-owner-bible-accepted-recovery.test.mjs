@@ -37,7 +37,7 @@ function acceptedRow(extra = {}) {
 }
 
 function authorWorkflow({ accepted = [acceptedRow()], pending = [] } = {}) {
-  const state = { accepted, pending, loads: 0 };
+  const state = { accepted, pending, loads: 0, episode: { ...EPISODE } };
   const authClient = {
     auth: {
       async getUser(value) {
@@ -63,7 +63,7 @@ function authorWorkflow({ accepted = [acceptedRow()], pending = [] } = {}) {
           if (name === 'novels') {
             return { data: { id: 354, user_id: OWNER }, error: null };
           }
-          return { data: { ...EPISODE }, error: null };
+          return { data: { ...state.episode }, error: null };
         }
       };
     }
@@ -75,8 +75,13 @@ function authorWorkflow({ accepted = [acceptedRow()], pending = [] } = {}) {
     async savePendingBatch() {
       return { count: 0 };
     },
-    async readCandidate() {
-      return null;
+    async readCandidate({ actorId, novelId, candidateId }) {
+      if (actorId !== OWNER || novelId !== 354) return null;
+      return (
+        [...state.accepted, ...state.pending].find(
+          (row) => row.id === candidateId
+        ) ?? null
+      );
     },
     async compareAndSwapDecision() {
       return null;
@@ -207,12 +212,22 @@ test('reviewed candidate is recoverable after page reload for manual note save',
       },
       createElement: element
     },
-    fetcher: async (_url, options) => {
+    fetcher: async (url, options) => {
       assert.equal(options.method, 'GET');
       reads += 1;
+      const params = new URL(url, 'https://offline.test').searchParams;
+      const transferId = params.get('transfer_candidate_id');
       return {
         ok: true,
-        json: () => workflow.list({ token: TOKEN, novelId: 354 })
+        json: () =>
+          transferId
+            ? workflow.verifyTransfer({
+                token: TOKEN,
+                novelId: 354,
+                candidateId: Number(transferId),
+                expectedRevision: Number(params.get('expected_revision'))
+              })
+            : workflow.list({ token: TOKEN, novelId: 354 })
       };
     },
     onAccepted: async (candidate) =>
@@ -236,7 +251,7 @@ test('reviewed candidate is recoverable after page reload for manual note save',
   assert.equal(notes.fields.title.value, '青い王都');
   assert.match(notes.fields.body.value, /王都の城壁は青かった/);
   assert.equal(notes.fields.noteId.value, '');
-  assert.equal(reads, 1);
+  assert.equal(reads, 2);
   callback('SIGNED_OUT', null);
   assert.equal(section.removed, true);
 });
@@ -274,4 +289,73 @@ test('pending and accepted candidate IDs cannot overlap', async () => {
     workflow.list({ token: TOKEN, novelId: 354 }),
     /AI_OWNER_REVIEW_DENIED/
   );
+});
+
+test('transfer verification reloads the current chapter and refuses old source', async () => {
+  const { state, workflow } = authorWorkflow();
+  const input = {
+    token: TOKEN,
+    novelId: 354,
+    candidateId: 77,
+    expectedRevision: 2
+  };
+  const valid = await workflow.verifyTransfer(input);
+  assert.equal(valid.transferReady, true);
+  assert.deepEqual(valid.candidate, {
+    id: 77,
+    revision: 2,
+    episodeId: 41,
+    kind: 'world',
+    key: '青い王都',
+    summary: '青い石造りの城壁を持つ。',
+    evidence: '王都の城壁は青かった。',
+    status: 'accepted'
+  });
+  state.episode.title = '改稿された第一話';
+  await assert.rejects(
+    workflow.verifyTransfer(input),
+    /AI_BIBLE_INFERENCE_INVALID/u
+  );
+  state.episode.title = EPISODE.title;
+  state.episode.content += '追記';
+  await assert.rejects(
+    workflow.verifyTransfer(input),
+    /AI_BIBLE_INFERENCE_INVALID/u
+  );
+  state.episode.content = EPISODE.content;
+  state.episode.novel_id = 999;
+  await assert.rejects(
+    workflow.verifyTransfer(input),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+});
+
+test('only the owner and accepted exact-revision candidate can transfer', async () => {
+  const { workflow, state } = authorWorkflow();
+  const input = {
+    token: TOKEN,
+    novelId: 354,
+    candidateId: 77,
+    expectedRevision: 2
+  };
+  for (const change of [
+    { token: 'not-owner' },
+    { novelId: 999 },
+    { candidateId: 1 },
+    { expectedRevision: 1 },
+    { expectedRevision: 3 }
+  ]) {
+    await assert.rejects(
+      workflow.verifyTransfer({ ...input, ...change }),
+      /AI_OWNER_REVIEW_DENIED/u
+    );
+  }
+  state.accepted[0].status = 'pending';
+  await assert.rejects(
+    workflow.verifyTransfer(input),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+  state.accepted[0].status = 'accepted';
+  assert.equal(state.accepted[0].revision, 2);
+  assert.equal((await workflow.verifyTransfer(input)).transferReady, true);
 });
