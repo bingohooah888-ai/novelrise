@@ -150,7 +150,9 @@ export function createSupabaseOwnerBibleReviewRepository({
               .eq('source_episode_id', candidate.episodeId)
               .eq('fact_kind', candidate.factKind)
               .eq('fact_key', candidate.factKey)
-              .in('status', ['pending', 'accepted'])
+              // A rejected prior proposal still proves that an earlier
+              // manuscript version existed. Review decisions must not
+              // determine whether source revisions are related.
               .neq('source_hash', candidate.sourceHash)
               .lt('id', candidate.id)
               .order('id', { ascending: false })
