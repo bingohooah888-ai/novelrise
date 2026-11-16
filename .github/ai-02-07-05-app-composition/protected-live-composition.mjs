@@ -4,6 +4,7 @@
 // capability. Do not import this file from public APIs or browser code.
 import { createHash } from 'node:crypto';
 import { create020705ProtectedStageExecutor } from '../staging-ai-02-07-05/protected-stage-executor.mjs';
+import { create020705ComprehensiveStagingSequence } from '../staging-ai-02-07-05/comprehensive-staging-sequence.mjs';
 import { createPaidTrialOneShotOpenAiProvider } from '../staging-ai-02-07-05/paid-trial-one-shot-provider.mjs';
 import { createOpenAiTextProvider } from '../../api/_lib/ai/providers.js';
 import { createAiRouter } from '../../api/_lib/ai/router.js';
@@ -369,5 +370,15 @@ export function create020705ProtectedLiveComposition({
     readVerifiedSyntheticAnalysis() {
       return succeeded ? reviewed : null;
     }
+  });
+}
+
+// Trusted composition boundary: a future protected main-only workflow can
+// supply approved Staging adapters, but CANNOT replace the guarded paid
+// implementation. No network/mutation is performed when composed.
+export function create020705ProtectedComprehensiveStagingSequence(options = {}) {
+  return create020705ComprehensiveStagingSequence({
+    ...options,
+    protectedPaidFactory: create020705ProtectedLiveComposition
   });
 }
