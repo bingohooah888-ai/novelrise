@@ -159,6 +159,7 @@ const scope = {
 
 // A trusted, separately authorized PG session observer supplies ONLY a
 // parameter-bound one-row boolean. No database, JWT or secrets are used here.
+// prettier-ignore
 test('private session lookup uses two bound UUIDs and the signed-session contract', async () => {
   const calls = [];
   const queryClient = {
@@ -213,6 +214,7 @@ test('private session lookup uses two bound UUIDs and the signed-session contrac
   assert.equal(calls.length, 2);
 });
 
+// prettier-ignore
 test('session lookup fails closed on missing capability, revocation or odd PG receipts', async () => {
   let queries = 0;
   const invalid = [
