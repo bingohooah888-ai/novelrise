@@ -246,7 +246,7 @@ test('following Next preserves expanded mode without another gesture', () => {
 test('rotated view keeps original content and Next', () => {
   for (const html of [episode, seo]) {
     assert.match(html, /novelight-landscape-reader\.js\?v=20261018c/);
-    assert.match(html, /novelight-reading-settings\.css\?v=20261116a/);
+    assert.match(html, /novelight-reading-settings\.css\?v=20261116b/);
     assert.match(html, /NovelightLandscapeReader\.mount\(\)/);
   }
   assert.match(script, /requestFullscreen/);
