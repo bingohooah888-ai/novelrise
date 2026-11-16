@@ -67,6 +67,11 @@ const SAFE_PROVISION_CODES = new Set([
   'DATABASE_ROUTE_INVALID',
   'SCRAM_INPUT_INVALID',
   'TLS_NOT_VERIFIED',
+  'CLIENT_TLS_NOT_VERIFIED',
+  'TLS_BACKEND_EVIDENCE_UNAVAILABLE',
+  'TLS_BACKEND_EVIDENCE_INVALID',
+  'POOLER_UPSTREAM_SSL_UNVERIFIED',
+  'DATABASE_BACKEND_SSL_NOT_VERIFIED',
   'ROLE_NOT_DORMANT_OR_UNSAFE',
   'STAGING_READER_ACL_DRIFT',
   'INVALID_RELATION',
@@ -195,12 +200,40 @@ function connectionOptions(urlText, ca) {
   };
 }
 
-async function verifyTls(client) {
-  const result = await client.query(
-    'select ssl from pg_catalog.pg_stat_ssl where pid=pg_backend_pid()'
-  );
-  if (result.rows.length !== 1 || result.rows[0].ssl !== true) {
-    hold('TLS_NOT_VERIFIED');
+// Do not confuse an encrypted client-to-Supavisor hop with the separate
+// Supavisor-to-Postgres hop measured by pg_stat_ssl. Both must be proven.
+export async function verifyFormalReaderTls(client, host) {
+  const stream = client?.connection?.stream;
+  const peer = typeof stream?.getPeerCertificate === 'function'
+    ? stream.getPeerCertificate()
+    : null;
+  if (
+    stream?.encrypted !== true ||
+    stream?.authorized !== true ||
+    stream?.servername !== host ||
+    !['TLSv1.2', 'TLSv1.3'].includes(stream?.getProtocol?.()) ||
+    !peer ||
+    Object.keys(peer).length === 0
+  ) {
+    hold('CLIENT_TLS_NOT_VERIFIED');
+  }
+  let result;
+  try {
+    result = await client.query(
+      'select ssl from pg_catalog.pg_stat_ssl where pid=pg_backend_pid()'
+    );
+  } catch {
+    hold('TLS_BACKEND_EVIDENCE_UNAVAILABLE');
+  }
+  if (result?.rows?.length !== 1 || typeof result.rows[0]?.ssl !== 'boolean') {
+    hold('TLS_BACKEND_EVIDENCE_INVALID');
+  }
+  if (result.rows[0].ssl !== true) {
+    hold(
+      host === 'db.' + STAGING_REF + '.supabase.co'
+        ? 'DATABASE_BACKEND_SSL_NOT_VERIFIED'
+        : 'POOLER_UPSTREAM_SSL_UNVERIFIED'
+    );
   }
 }
 
@@ -297,8 +330,8 @@ async function storeBranchOnlySecret(token, connectionUrl, fetchImpl) {
   if (!res.ok) hold('VERCEL_SECRET_WRITE_UNVERIFIED');
 }
 
-async function verifyNewRole(client) {
-  await verifyTls(client);
+async function verifyNewRole(client, host) {
+  await verifyFormalReaderTls(client, host);
   const info = await client.query(
     'select current_user as role, current_setting($1) as read_only',
     ['default_transaction_read_only']
@@ -338,13 +371,14 @@ export async function provisionFormalStagingReader({
     hold('VERCEL_EXISTING_SECRET_REFUSED');
   }
   onSafeStage('STAGING_ADMIN_CONNECT');
+  const adminHost = new URL(env.STAGING_DATABASE_URL).hostname;
   const admin = new ClientImpl(connectionOptions(env.STAGING_DATABASE_URL, ca));
   let loginActivated = false;
   try {
     onSafeStage('STAGING_ADMIN_CONNECT');
     await admin.connect();
     onSafeStage('VERIFY_STAGING_ADMIN_TLS');
-    await verifyTls(admin);
+    await verifyFormalReaderTls(admin, adminHost);
     onSafeStage('VERIFY_STAGING_ADMIN_IDENTITY');
     const who = await admin.query('select current_user as name');
     if (who.rows[0]?.name !== 'postgres') hold('PRIVILEGED_STAGING_ROLE_UNVERIFIED');
@@ -384,7 +418,7 @@ export async function provisionFormalStagingReader({
       onSafeStage('STAGING_RO_CONNECT');
       await reader.connect();
       onSafeStage('VERIFY_STAGING_RO_LOGIN');
-      await verifyNewRole(reader);
+      await verifyNewRole(reader, new URL(readerUrl).hostname);
     } finally {
       await reader.end().catch(() => {});
     }
@@ -394,7 +428,7 @@ export async function provisionFormalStagingReader({
       environment: 'preview_branch_only',
       formalRewardsEnabled: false
     });
-  } catch {
+  } catch (error) {
     if (loginActivated) {
       // Do not silently claim a safe rollback when disabling login failed.
       let disabled = false;
@@ -406,6 +440,7 @@ export async function provisionFormalStagingReader({
       }
       if (!disabled) hold('ROLE_DISABLE_UNVERIFIED');
     }
+    if (SAFE_PROVISION_CODES.has(error?.safeCode)) hold(error.safeCode);
     hold('PROVISION_FAILED_SAFE_REVIEW_REQUIRED');
   } finally {
     await admin.end().catch(() => {});

@@ -7,7 +7,8 @@ import {
   formatFormalRoProvisionFailure,
   makeScramVerifier,
   provisionFormalStagingReader,
-  verifyFormalReaderProvisionContext
+  verifyFormalReaderProvisionContext,
+  verifyFormalReaderTls
 } from '../scripts/scout-formal-staging-ro-provision.mjs';
 
 const REF = 'wmlzjgvxgoyrovdhbqbg';
@@ -212,4 +213,83 @@ test('synthetic scope failure identifies the safe stage', async () => {
     /private-password/u
   );
   assert.equal(observed, 'VERIFY_VERCEL_PROJECT');
+});
+
+test('verified client TLS and backend TLS both pass', async () => {
+  const host = 'db.' + REF + '.supabase.co';
+  const stream = {
+    encrypted: true,
+    authorized: true,
+    servername: host,
+    getProtocol: () => 'TLSv1.3',
+    getPeerCertificate: () => ({ subject: { CN: 'synthetic' } })
+  };
+  const client = {
+    connection: { stream },
+    query: async () => ({ rows: [{ ssl: true }] })
+  };
+  await assert.doesNotReject(verifyFormalReaderTls(client, host));
+  await assert.rejects(
+    verifyFormalReaderTls(
+      { ...client, connection: { stream: { ...stream, authorized: false } } },
+      host
+    ),
+    /CLIENT_TLS_NOT_VERIFIED/u
+  );
+  await assert.rejects(
+    verifyFormalReaderTls(
+      { ...client, query: async () => ({ rows: [{ ssl: false }] }) },
+      host
+    ),
+    /DATABASE_BACKEND_SSL_NOT_VERIFIED/u
+  );
+});
+
+test('pooler backend without SSL remains a hard stop', async () => {
+  const host = 'aws-0-ap-northeast-1.pooler.supabase.com';
+  const stream = {
+    encrypted: true,
+    authorized: true,
+    servername: host,
+    getProtocol: () => 'TLSv1.3',
+    getPeerCertificate: () => ({ subject: { CN: 'synthetic' } })
+  };
+  const client = {
+    connection: { stream },
+    query: async () => ({ rows: [{ ssl: false }] })
+  };
+  await assert.rejects(
+    verifyFormalReaderTls(client, host),
+    /POOLER_UPSTREAM_SSL_UNVERIFIED/u
+  );
+  const error = { safeCode: 'POOLER_UPSTREAM_SSL_UNVERIFIED' };
+  const diagnostic = formatFormalRoProvisionFailure(
+    error,
+    'VERIFY_STAGING_ADMIN_TLS'
+  );
+  assert.equal(
+    diagnostic,
+    'FORMAL_RO_STAGING_PROVISION_STOPPED:VERIFY_STAGING_ADMIN_TLS:POOLER_UPSTREAM_SSL_UNVERIFIED'
+  );
+});
+
+test('unknown backend SSL evidence never passes', async () => {
+  const host = 'db.' + REF + '.supabase.co';
+  const stream = {
+    encrypted: true,
+    authorized: true,
+    servername: host,
+    getProtocol: () => 'TLSv1.3',
+    getPeerCertificate: () => ({ subject: { CN: 'synthetic' } })
+  };
+  const client = {
+    connection: { stream },
+    query: async () => {
+      throw new Error('SECRET_MUST_NOT_LEAK');
+    }
+  };
+  await assert.rejects(
+    verifyFormalReaderTls(client, host),
+    /TLS_BACKEND_EVIDENCE_UNAVAILABLE/u
+  );
 });
