@@ -150,8 +150,14 @@ export function create020705StagingCleanup({
       // The protected paid trial permits at most one chunk; an absent count,
       // negative count or multiple claims is UNKNOWN/NO-GO. The detached
       // observer must count by the verified synthetic actor + novel scope.
+      // Scope markers must also echo the exact project/user/novel/approval.
+      // An unrelated 0/1 count must never certify this cleanup.
       if (
         !report ||
+        report.projectRef !== synthetic.projectRef ||
+        report.userId !== synthetic.userId ||
+        report.novelId !== synthetic.novelId ||
+        report.approvalCommentId !== synthetic.approvalCommentId ||
         report.runtimeDisabledZero !== true ||
         report.approvalTombstoneCount !== 1 ||
         !Number.isSafeInteger(report.chunkClaimsRetained) ||
