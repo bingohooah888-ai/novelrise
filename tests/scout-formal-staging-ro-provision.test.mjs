@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 import {
@@ -9,7 +10,7 @@ import {
 } from '../scripts/scout-formal-staging-ro-provision.mjs';
 
 const REF = 'wmlzjgvxgoyrovdhbqbg';
-const BRANCH = 'feature/scout-formal-last-mile-integrity-off-20261115';
+const BRANCH = 'feature/scout-formal-qualified-earnings-offline-20261116';
 const admin = new URL(
   'postgresql://postgres:synthetic@localhost:5432/postgres'
 );
@@ -119,4 +120,35 @@ test('missing Secret fails before external access', async () => {
     /EXISTING_STAGING_SECRETS_REQUIRED/u
   );
   assert.equal(touchedNetwork, false);
+});
+
+test('OWNER-only Staging RO workflow targets the same Draft PR branch and has no automatic trigger', () => {
+  const workflow = readFileSync(
+    new URL('../.github/workflows/scout-formal-staging-ro-provision.yml', import.meta.url),
+    'utf8'
+  );
+  assert.match(workflow, /^on:\\n  workflow_dispatch:/mu);
+  assert.doesNotMatch(workflow, /^  (push|pull_request):/mu);
+  assert.match(workflow, /github\\.ref == 'refs\\/heads\\/main'/u);
+  assert.match(workflow, /inputs\\.main_sha == github\\.sha/u);
+  assert.match(workflow, /environment: staging/u);
+  assert.ok(workflow.includes("inputs.preview_branch == '" + BRANCH + "'"));
+  assert.ok(workflow.includes("inputs.staging_ref == '" + REF + "'"));
+  assert.doesNotMatch(workflow, /feature\\/scout-formal-last-mile-integrity-off-20261115/u);
+  assert.throws(
+    () =>
+      verify({
+        FORMAL_STAGING_PREVIEW_BRANCH:
+          'feature/scout-formal-last-mile-integrity-off-20261115'
+      }),
+    /UNTRUSTED_APPROVAL_CONTEXT/u
+  );
+  assert.throws(
+    () => verify({ GITHUB_EVENT_NAME: 'pull_request' }),
+    /UNTRUSTED_APPROVAL_CONTEXT/u
+  );
+  assert.throws(
+    () => verify({ GITHUB_EVENT_NAME: 'push' }),
+    /UNTRUSTED_APPROVAL_CONTEXT/u
+  );
 });

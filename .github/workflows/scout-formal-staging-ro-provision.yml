@@ -45,7 +45,7 @@ jobs:
       inputs.main_sha == github.sha &&
       inputs.scope == 'scout-formal-reader-credential-staging-v1' &&
       inputs.staging_ref == 'wmlzjgvxgoyrovdhbqbg' &&
-      inputs.preview_branch == 'feature/scout-formal-last-mile-integrity-off-20261115' &&
+      inputs.preview_branch == 'feature/scout-formal-qualified-earnings-offline-20261116' &&
       inputs.confirmation == 'STAGING FORMAL RO APPROVED'
     runs-on: ubuntu-latest
     environment: staging
