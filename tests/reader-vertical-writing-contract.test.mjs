@@ -85,8 +85,14 @@ test('vertical reading measures and resumes leftward progress', () => {
 test('illustrations stay upright and bounded in vertical mode', () => {
   assert.match(settingsCss, /writing-mode: vertical-rl/);
   // Book text uses context-sensitive punctuation; navigation labels stay upright.
-  assert.equal((settingsCss.match(/text-orientation: mixed;/g) || []).length, 3);
-  assert.equal((settingsCss.match(/text-orientation: upright;/g) || []).length, 2);
+  assert.equal(
+    (settingsCss.match(/text-orientation: mixed;/g) || []).length,
+    3
+  );
+  assert.equal(
+    (settingsCss.match(/text-orientation: upright;/g) || []).length,
+    2
+  );
   assert.match(settingsCss, /line-break: anywhere/);
   assert.match(settingsCss, /overflow-x: auto/);
   assert.match(settingsCss, /\.content > \.episode-inline-illustration/);
