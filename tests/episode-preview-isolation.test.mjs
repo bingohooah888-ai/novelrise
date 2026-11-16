@@ -5,24 +5,31 @@ import test from 'node:test';
 import episodeHandler from '../api/seo/episode.js';
 import { prepareEpisodeReaderTemplate } from '../api/seo/episode-preview-isolation.js';
 
-const originalTemplate = await readFile(
+const template = await readFile(
   new URL('../api/seo/templates/episode.html', import.meta.url),
   'utf8'
 );
-const STAGING_URL = 'https://safe-staging-fixture.supabase.co';
-const PRODUCTION_URL = 'https://fiepaguycecrredwrcwx.supabase.co';
-const PUBLIC_KEY = 'sb_publishable_safe_fixture_key_for_tests';
+const stagingUrl = 'https://safe-staging-fixture.supabase.co';
+const productionUrl = 'https://fiepaguycecrredwrcwx.supabase.co';
+const publicKey = 'sb_publishable_safe_fixture_key_for_tests';
 
 function previewEnv(overrides = {}) {
   return {
     VERCEL_ENV: 'preview',
-    SUPABASE_URL: STAGING_URL,
-    NOVELIGHT_STAGING_SUPABASE_URL: STAGING_URL,
-    SUPABASE_PUBLISHABLE_KEY: PUBLIC_KEY,
-    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: PUBLIC_KEY,
+    SUPABASE_URL: stagingUrl,
+    NOVELIGHT_STAGING_SUPABASE_URL: stagingUrl,
+    SUPABASE_PUBLISHABLE_KEY: publicKey,
+    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: publicKey,
     SUPABASE_SECRET_KEY: 'sb_secret_fixture_only_never_a_real_credential',
     ...overrides
   };
+}
+
+function denied(overrides) {
+  assert.throws(
+    () => prepareEpisodeReaderTemplate(template, previewEnv(overrides)),
+    /EPISODE_PREVIEW_/u
+  );
 }
 
 async function withEnvironment(env, callback) {
@@ -59,74 +66,69 @@ function response() {
   };
 }
 
-test('Production retains its original episode template and public client', () => {
-  const result = prepareEpisodeReaderTemplate(originalTemplate, {
+test('Production episode template is unchanged', () => {
+  const result = prepareEpisodeReaderTemplate(template, {
     VERCEL_ENV: 'production'
   });
   assert.equal(result.preview, false);
-  assert.equal(result.html, originalTemplate);
+  assert.equal(result.html, template);
 });
 
-test('Preview replaces the Production public client with the verified Staging target', () => {
-  const result = prepareEpisodeReaderTemplate(
-    originalTemplate,
-    previewEnv()
-  );
+test('Preview uses only matching isolated browser and server targets', () => {
+  const result = prepareEpisodeReaderTemplate(template, previewEnv());
   assert.equal(result.preview, true);
   assert.match(result.html, /const client=supabase\.createClient\(/u);
-  assert.ok(result.html.includes(STAGING_URL));
-  assert.ok(result.html.includes(PUBLIC_KEY));
-  assert.ok(!result.html.includes(PRODUCTION_URL));
+  assert.ok(result.html.includes(stagingUrl));
+  assert.ok(result.html.includes(publicKey));
+  assert.ok(!result.html.includes(productionUrl));
   assert.ok(!result.html.includes('sb_secret_fixture_only'));
 });
 
-test('Preview rejects drift and never falls back to Production', () => {
-  const unsafeConfigurations = [
-    ['Production server URL', { SUPABASE_URL: PRODUCTION_URL }],
-    ['Production expected browser URL', { NOVELIGHT_STAGING_SUPABASE_URL: PRODUCTION_URL }],
-    ['mismatched server project', { SUPABASE_URL: 'https://other-project.supabase.co' }],
-    ['missing server project', { SUPABASE_URL: undefined }],
-    ['missing browser project', { NOVELIGHT_STAGING_SUPABASE_URL: undefined }],
-    ['wrong browser publishable key', { NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_different_fixture' }],
-    ['wrong server publishable key', { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_different_fixture' }],
-    ['server secret absent', { SUPABASE_SECRET_KEY: undefined }],
-    ['server secret empty', { SUPABASE_SECRET_KEY: ' ' }],
-    ['legacy privileged browser key', { NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: 'sb_secret_invalid' }],
-    ['non-TLS server URL', { SUPABASE_URL: 'http://safe-staging-fixture.supabase.co' }],
-    ['server URL contains an unexpected path', { SUPABASE_URL: STAGING_URL + '/rest/v1' }],
-    ['server URL with query', { SUPABASE_URL: STAGING_URL + '/?secret=1' }],
-    ['server URL with port', { SUPABASE_URL: 'https://safe-staging-fixture.supabase.co:8443' }],
-    ['missing Vercel environment', { VERCEL_ENV: undefined }],
-    ['development environment', { VERCEL_ENV: 'development' }]
+test('Preview rejects unsafe connection details without fallback', () => {
+  const badTargets = [
+    { SUPABASE_URL: productionUrl },
+    { NOVELIGHT_STAGING_SUPABASE_URL: productionUrl },
+    { SUPABASE_URL: 'https://other-project.supabase.co' },
+    { SUPABASE_URL: undefined },
+    { NOVELIGHT_STAGING_SUPABASE_URL: undefined },
+    { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_other_fixture' },
+    { SUPABASE_SECRET_KEY: undefined },
+    { SUPABASE_SECRET_KEY: ' ' },
+    { SUPABASE_URL: 'http://safe-staging-fixture.supabase.co' },
+    { SUPABASE_URL: stagingUrl + '/rest/v1' },
+    { SUPABASE_URL: stagingUrl + '/?secret=1' },
+    { SUPABASE_URL: 'https://safe-staging-fixture.supabase.co:8443' },
+    { VERCEL_ENV: undefined },
+    { VERCEL_ENV: 'development' }
   ];
-  for (const [caseName, overrides] of unsafeConfigurations) {
-    assert.throws(
-      () => prepareEpisodeReaderTemplate(originalTemplate, previewEnv(overrides)),
-      /EPISODE_PREVIEW_/u,
-      caseName
-    );
-  }
+  for (const badTarget of badTargets) denied(badTarget);
+  denied({
+    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY:
+      'sb_publishable_other_fixture'
+  });
+  denied({
+    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: 'sb_secret_not_public'
+  });
 });
 
-test('Preview rejects unexpected template shape instead of serving unchanged credentials', () => {
+test('Preview blocks unrecognized or duplicated browser templates', () => {
+  const drift = template.replace(
+    'const client=supabase.createClient(',
+    'const client = supabase.createClient('
+  );
   assert.throws(
-    () => prepareEpisodeReaderTemplate(
-      originalTemplate.replace('const client=supabase.createClient(', 'const client = supabase.createClient('),
-      previewEnv()
-    ),
+    () => prepareEpisodeReaderTemplate(drift, previewEnv()),
     /EPISODE_PREVIEW_TEMPLATE_DRIFT/u
   );
   assert.throws(
-    () => prepareEpisodeReaderTemplate(
-      originalTemplate + originalTemplate,
-      previewEnv()
-    ),
+    () => prepareEpisodeReaderTemplate(template + template, previewEnv()),
     /EPISODE_PREVIEW_TEMPLATE_DRIFT/u
   );
 });
 
-test('Preview SEO handler refuses unsafe configuration before performing DB reads', async () => {
-  await withEnvironment(previewEnv({ SUPABASE_URL: PRODUCTION_URL }), async () => {
+test('Preview SEO route fails before DB access with unsafe settings', async () => {
+  const unsafe = previewEnv({ SUPABASE_URL: productionUrl });
+  await withEnvironment(unsafe, async () => {
     for (const id of ['123', undefined]) {
       const res = response();
       await episodeHandler({ method: 'GET', query: { id } }, res);
@@ -134,25 +136,28 @@ test('Preview SEO handler refuses unsafe configuration before performing DB read
       assert.equal(res.body, 'Episode preview environment unavailable');
       assert.equal(res.headers['Cache-Control'], 'no-store, max-age=0');
       assert.equal(res.headers['X-Robots-Tag'], 'noindex, nofollow');
-      assert.ok(!res.body.includes(PRODUCTION_URL));
+      assert.ok(!res.body.includes(productionUrl));
     }
   });
 });
 
-test('Preview SEO handler serves the no-ID shell using only isolated public config', async () => {
+test('Preview SEO no-ID page contains only the Staging client', async () => {
   await withEnvironment(previewEnv(), async () => {
     const res = response();
     await episodeHandler({ method: 'GET', query: {} }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.headers['Cache-Control'], 'no-store, max-age=0');
-    assert.ok(res.body.includes(STAGING_URL));
-    assert.ok(!res.body.includes(PRODUCTION_URL));
+    assert.ok(res.body.includes(stagingUrl));
+    assert.ok(!res.body.includes(productionUrl));
     assert.ok(!res.body.includes('sb_secret_fixture_only'));
   });
 });
 
-test('Vercel Preview uses the SEO function, not the unguarded local HTML shell', async () => {
-  const ignore = await readFile(new URL('../.vercelignore', import.meta.url), 'utf8');
+test('Vercel Preview serves the guarded SEO function, not a raw shell', async () => {
+  const ignore = await readFile(
+    new URL('../.vercelignore', import.meta.url),
+    'utf8'
+  );
   const vercel = JSON.parse(
     await readFile(new URL('../vercel.json', import.meta.url), 'utf8')
   );
