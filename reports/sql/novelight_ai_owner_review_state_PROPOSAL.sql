@@ -1,7 +1,7 @@
 -- NOVELIGHT AI Phase 02-07-05 OWNER checklist review-state storage.
 -- REVIEW-ONLY PROPOSAL. NOT A MIGRATION. DO NOT EXECUTE.
--- Existing Supabase Preview migration divergence must be reconciled in a
--- separately authorized Staging plan BEFORE generating an actual migration.
+-- Staging installation requires a separately scoped OWNER approval.
+-- Unrelated remote-only migrations remain isolated and untouched.
 -- No public route imports the adapter; no live JWT/DB/SQL proof exists.
 -- Distinct from candidate accepted/rejected and author-confirmed canon.
 begin;
@@ -19,25 +19,89 @@ $review_state_guard$;
 -- Refuse to create an unusable RPC while target role privileges remain
 -- unproven; this guard is evaluated at installation, not trusted from a PR.
 -- This proposal must remain UNAPPLIED until separately scoped approval.
+-- The installing role must own the limited auth row-lock privilege.
+-- The backend service_role must NEVER get UPDATE/SELECT on auth.sessions.
 do $review_state_privilege_guard$
 declare
-  v_auth_sessions regclass := pg_catalog.to_regclass('auth.sessions');
+  v_sessions regclass := pg_catalog.to_regclass('auth.sessions');
   v_novels regclass := pg_catalog.to_regclass('public.novels');
 begin
-  if v_auth_sessions is null or v_novels is null
-    or not pg_catalog.has_schema_privilege('service_role', 'auth', 'USAGE')
-    or not pg_catalog.has_column_privilege('service_role', v_auth_sessions, 'id', 'SELECT')
-    or not pg_catalog.has_column_privilege('service_role', v_auth_sessions, 'user_id', 'SELECT')
-    or not pg_catalog.has_any_column_privilege('service_role', v_auth_sessions, 'UPDATE')
-    or not pg_catalog.has_column_privilege('service_role', v_novels, 'id', 'SELECT')
-    or not pg_catalog.has_column_privilege('service_role', v_novels, 'user_id', 'SELECT')
-    or not pg_catalog.has_any_column_privilege('service_role', v_novels, 'UPDATE')
+  if v_sessions is null or v_novels is null
+    or pg_catalog.to_regnamespace('novelight_ai_private') is not null
+    or not exists (select 1 from pg_catalog.pg_attribute
+      where attrelid = v_sessions and attname='not_after' and not attisdropped)
+    or not pg_catalog.has_schema_privilege(current_user,'auth','USAGE')
+    or not pg_catalog.has_column_privilege(current_user,v_sessions,'id','SELECT')
+    or not pg_catalog.has_column_privilege(current_user,v_sessions,'user_id','SELECT')
+    or not pg_catalog.has_column_privilege(current_user,v_sessions,'not_after','SELECT')
+    or not pg_catalog.has_any_column_privilege(current_user,v_sessions,'UPDATE')
+    or not pg_catalog.has_column_privilege('service_role',v_novels,'id','SELECT')
+    or not pg_catalog.has_column_privilege('service_role',v_novels,'user_id','SELECT')
+    or not pg_catalog.has_any_column_privilege('service_role',v_novels,'UPDATE')
   then
-    raise exception using errcode = '42501',
-      message = 'OWNER review CAS prerequisite privileges are not proven';
+    raise exception using errcode='42501',
+      message='OWNER review CAS prerequisite privileges are not proven';
   end if;
 end
 $review_state_privilege_guard$;
+
+-- Strictly limited non-exposed helper; the only SECURITY DEFINER in this
+-- proposal. It returns only one boolean. CAS holds a SHARE row lock through
+-- the caller's transaction; read-only checks acquire no lock.
+-- Installation must verify this schema is NOT exposed by the Data API.
+create schema novelight_ai_private;
+revoke all on schema novelight_ai_private from public, anon, authenticated;
+grant usage on schema novelight_ai_private to service_role;
+
+create function novelight_ai_private.session_active_v1(
+  p_session_id uuid, p_actor_id uuid, p_take_lock boolean
+) returns boolean
+language plpgsql security definer set search_path = '' as $
+begin
+  if p_session_id is null or p_actor_id is null or p_take_lock is null then
+    return false;
+  end if;
+  if p_take_lock then
+    perform 1 from auth.sessions s
+      where s.id = p_session_id and s.user_id = p_actor_id
+        and (s.not_after is null or s.not_after > pg_catalog.clock_timestamp())
+      for share of s;
+  else
+    perform 1 from auth.sessions s
+      where s.id = p_session_id and s.user_id = p_actor_id
+        and (s.not_after is null or s.not_after > pg_catalog.clock_timestamp());
+  end if;
+  return found;
+end
+$;
+revoke all on function novelight_ai_private.session_active_v1(
+  uuid, uuid, boolean
+) from public, anon, authenticated;
+grant execute on function novelight_ai_private.session_active_v1(
+  uuid, uuid, boolean
+) to service_role;
+
+-- A public SECURITY INVOKER wrapper is callable only by the backend
+-- service_role, and only AFTER its signed JWT and owner checks.
+create function public.novelight_ai_owner_session_exists_v1(
+  p_session_id uuid, p_actor_id uuid
+) returns boolean
+language plpgsql security invoker set search_path = '' as $
+begin
+  if current_user <> 'service_role' then
+    raise exception using errcode='42501',message='AI service access required';
+  end if;
+  return novelight_ai_private.session_active_v1(
+    p_session_id,p_actor_id,false
+  );
+end
+$;
+revoke all on function public.novelight_ai_owner_session_exists_v1(
+  uuid, uuid
+) from public, anon, authenticated;
+grant execute on function public.novelight_ai_owner_session_exists_v1(
+  uuid, uuid
+) to service_role;
 
 create table public.novelight_ai_owner_review_states (
   actor_id uuid not null,
@@ -59,17 +123,9 @@ create table public.novelight_ai_owner_review_states (
 create index novelight_ai_owner_review_novel_fk_idx
   on public.novelight_ai_owner_review_states (novel_id);
 
--- Caller is the backend's service-role-only RPC, never the browser.
--- SECURITY INVOKER and explicit service-only EXECUTE grants avoid a
--- publicly callable definer. The SQL itself verifies the current owner,
--- signed session_id/actor tuple, and old revision within one transaction.
--- IMPORTANT: FOR SHARE on auth.sessions requires both SELECT on id/user_id
--- and UPDATE privilege on at least one column; service_role bypassing RLS
--- does NOT establish these grants. NEVER grant UPDATE on auth.sessions as a
--- quick fix, and do not add a public SECURITY DEFINER or exposed auth query.
--- The read-only privilege proof must pass in explicitly approved Staging.
--- If it fails, do not apply this proposal; redesign the session boundary
--- with a separately reviewed least-privilege option before another approval.
+-- Backend-only SECURITY INVOKER CAS; signed session_id is never
+-- accepted from unverified JWT, browser request fields, or a user claim.
+-- A private boolean helper holds the exact Auth row during this transaction.
 create function public.novelight_ai_owner_review_state_cas(
   p_actor_id uuid,
   p_novel_id bigint,
@@ -128,16 +184,13 @@ begin
     raise exception using errcode = '42501', message = 'Review scope denied';
   end if;
 
-  -- Independently verify the *signed* session_id against the server-owned
-  -- auth.sessions row; FOR SHARE protects against row deletion during CAS.
-  -- p_session_id MUST come only from verified signed session claims, NEVER
-  -- from the browser body or unverified JWT decoding.
-  perform 1
-  from auth.sessions s
-  where s.id = p_session_id and s.user_id = p_actor_id
-  for share of s;
-  if not found then
-    raise exception using errcode = '42501', message = 'Review session revoked';
+  -- A competing revocation either wins first and rejects this save, or
+  -- waits for the SHARE lock until our CAS transaction commits.
+  -- auth.sessions.not_after prevents already expired sessions being saved.
+  if not novelight_ai_private.session_active_v1(
+    p_session_id,p_actor_id,true
+  ) then
+    raise exception using errcode='42501',message='Review session revoked';
   end if;
 
   -- Same work + actor writes serialize, including first-write races.
