@@ -1573,6 +1573,48 @@ test('save conflicts and late responses never report a persisted confirmation', 
   assert.doesNotMatch(target.textContent, /確認状態を保存しました/);
 });
 
+test('non-sequential CAS receipts never show saved or allow a blind retry', async () => {
+  const payload = fixture();
+  payload.novelId = 17;
+  payload.characters.push({ name: '蒼', aliases: ['青い鍵の持ち主'] });
+  const target = new FakeElement('div', doc);
+  let writes = 0;
+  assert.equal(
+    render({
+      target,
+      payload,
+      reviewState: {
+        version: 1,
+        novelId: 17,
+        revision: 7,
+        reviewedIds: []
+      },
+      saveReviewState: async (change) => {
+        writes += 1;
+        return {
+          version: 1,
+          novelId: 17,
+          revision: 9,
+          reviewedIds: change.reviewedIds
+        };
+      }
+    }),
+    true
+  );
+  const button = nodes(target, 'button').find(
+    (node) => node.className === 'novelight-ai-workspace-reviewed-button'
+  );
+  await button.listeners.get('click')();
+  assert.equal(writes, 1);
+  assert.equal(button.disabled, true);
+  assert.equal(button.attributes['aria-pressed'], 'false');
+  assert.match(target.textContent, /保存に失敗しました/u);
+  assert.match(target.textContent, /再読込して確認してください/u);
+  assert.doesNotMatch(target.textContent, /確認状態を保存しました/u);
+  await button.listeners.get('click')();
+  assert.equal(writes, 1);
+});
+
 test('ambiguous author CAS response forces a fresh read before another save', async () => {
   const payload = fixture();
   payload.novelId = 17;
