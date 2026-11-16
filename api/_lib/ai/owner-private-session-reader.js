@@ -62,6 +62,37 @@ export function createOfflineReadOnlyAuthSessionLookup({ queryClient } = {}) {
   };
 }
 
+// Backend-only use with the staged SQL proposal's service-role INVOKER RPC.
+// A private, non-exposed helper performs the actual auth.sessions lookup;
+// no new direct PostgreSQL credentials or auth.sessions grants are required.
+// This is only a capability factory. It never calls the network until invoked,
+// and is NOT wired into public routes without separate Staging approval.
+const SESSION_PROBE_RPC = 'novelight_ai_owner_session_exists_v1';
+
+export function createOfflineServiceRoleSessionLookup({
+  serviceClient
+} = {}) {
+  return async function lookupOneSession({ sessionId, actorId } = {}) {
+    const session = uuid(sessionId);
+    const owner = uuid(actorId);
+    if (!session || !owner || typeof serviceClient?.rpc !== 'function') {
+      return false;
+    }
+    try {
+      const response = await serviceClient.rpc(SESSION_PROBE_RPC, {
+        p_session_id: session,
+        p_actor_id: owner
+      });
+      // Only the literal boolean true from the restricted RPC is accepted.
+      // An error, absent proposal, unexpected data shape or permission denial
+      // must block the owner workflow without revealing private auth metadata.
+      return response?.error == null && response?.data === true;
+    } catch {
+      return false;
+    }
+  };
+}
+
 export function createOfflinePrivateSessionReader({ lookupOneSession } = {}) {
   return async function readExistingSession({ sessionId, actorId } = {}) {
     const id = uuid(sessionId);
