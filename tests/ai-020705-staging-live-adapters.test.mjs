@@ -91,7 +91,12 @@ test('Staging migration adapter installs two fixed, SHA-pinned proposals atomica
   const { options, actions } = migrationFixture();
   const adapter = create020705StagingMigrationAdapter(options);
   assert.deepEqual(actions, []);
-  try {\n    assert.equal(await adapter.installReviewState(), true);\n  } catch (error) {\n    assert.fail('Synthetic migration fixture trace: ' +\n      actions.map((value) => String(value).slice(0, 50)).join('|'));\n  }
+  try {
+    assert.equal(await adapter.installReviewState(), true);
+  } catch {
+    assert.fail('Synthetic migration fixture trace: ' +
+      actions.map((value) => String(value).slice(0, 50)).join('|'));
+  }
   assert.equal(await adapter.installChunkClaim(), true);
   assert.equal(actions.filter((x) => x === 'BEGIN').length, 2);
   assert.equal(actions.filter((x) => x === 'COMMIT').length, 2);
