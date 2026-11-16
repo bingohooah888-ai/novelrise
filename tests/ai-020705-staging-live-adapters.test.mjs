@@ -25,6 +25,7 @@ const scope = Object.freeze({
   maxPreviews: 1,
   maxPaidCalls: 1
 });
+// prettier-ignore
 const DB = 'postgres://postgres.' + STAGING +
   ':synthetic@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres';
 
@@ -48,7 +49,7 @@ function migrationFixture({ drift = false, badSha = false } = {}) {
     async fetchImpl(url) {
       actions.push('github-pinned-file');
       assert.match(url, new RegExp('ref=' + HEAD + '$'));
-      const path = new URL(url).pathname.split('/contents/')[1];
+      const path = new globalThis.URL(url).pathname.split('/contents/')[1];
       return {
         status: 200,
         async json() {
