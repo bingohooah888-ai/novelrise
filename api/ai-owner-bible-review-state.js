@@ -181,8 +181,7 @@ export function createOwnerBibleReviewStateApiHandler({
 const isolatedStagingPreview =
   process.env.VERCEL_ENV === 'preview' &&
   process.env.NOVELIGHT_AI_020705_STAGING_PREVIEW_ENABLED === 'true' &&
-  process.env.SUPABASE_URL ===
-    'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
+  process.env.SUPABASE_URL === 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
 
 export default createOwnerBibleReviewStateApiHandler({
   enabled: isolatedStagingPreview,
