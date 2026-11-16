@@ -79,10 +79,9 @@ export function create020705StagingPreviewAdapter({
     const origin = 'https://' + hostname;
     // Explicit protection test: direct unauthenticated access must be
     // rejected, followed by a bypassed request bound to the exact SHA.
-    const revision = origin + '/api/deployment-revision';
+    const revision = origin + '/api/ai-020705-staging-attestation';
     let blocked;
     let authorized;
-    let browser;
     try {
       blocked = await fetchImpl(revision, {
         redirect: 'error', signal: AbortSignal.timeout(10000)
@@ -93,18 +92,12 @@ export function create020705StagingPreviewAdapter({
         redirect: 'error', signal: AbortSignal.timeout(10000)
       });
       if (authorized.status !== 200) deny();
-      const revisionBody = await authorized.json();
-      if (revisionBody?.commitSha !== scope.candidateSha) deny();
-      browser = await fetchImpl(origin + '/api/staging-browser-config', {
-        headers: { 'x-vercel-protection-bypass': protectionBypass },
-        redirect: 'error', signal: AbortSignal.timeout(10000)
-      });
-      if (browser.status !== 200) deny();
-      const config = await browser.json();
-      if (config?.supabaseUrl !== SUPABASE ||
-          typeof config?.supabasePublishableKey !== 'string' ||
-          !config.supabasePublishableKey.startsWith('sb_publishable_') ||
-          config.supabasePublishableKey.includes('secret')) deny();
+      const attestation = await authorized.json();
+      if (Object.keys(attestation ?? {}).sort().join(',') !==
+            'commitSha,supabaseUrl,target' ||
+          attestation.commitSha !== scope.candidateSha ||
+          attestation.supabaseUrl !== SUPABASE ||
+          attestation.target !== 'preview') deny();
     } catch {
       deny();
     }
