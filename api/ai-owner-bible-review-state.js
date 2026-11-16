@@ -174,5 +174,17 @@ export function createOwnerBibleReviewStateApiHandler({
   };
 }
 
-// Vercel uses the default: no session observer, no enablement, HTTP 404.
-export default createOwnerBibleReviewStateApiHandler();
+// Production and ordinary previews remain OFF. The isolated AI 02-07-05
+// Preview can opt in only with its own exact environment flags and Staging
+// Supabase target. The signed-session RPC must already be present and granted
+// on the isolated Staging DB; missing dependencies return 503, never success.
+const isolatedStagingPreview =
+  process.env.VERCEL_ENV === 'preview' &&
+  process.env.NOVELIGHT_AI_020705_STAGING_PREVIEW_ENABLED === 'true' &&
+  process.env.SUPABASE_URL ===
+    'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
+
+export default createOwnerBibleReviewStateApiHandler({
+  enabled: isolatedStagingPreview,
+  sessionLookupMode: isolatedStagingPreview ? 'restricted_rpc' : undefined
+});
