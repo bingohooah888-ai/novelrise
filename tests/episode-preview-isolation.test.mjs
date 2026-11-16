@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import * as prettier from 'prettier';
 
 import episodeHandler from '../api/seo/episode.js';
 import { prepareEpisodeReaderTemplate } from '../api/seo/episode-preview-isolation.js';
@@ -169,4 +170,21 @@ test('Vercel Preview serves the guarded SEO function, not a raw shell', async ()
         route.destination === '/api/seo/episode'
     )
   );
+});
+
+test('temporary CI formatting diagnosis', async () => {
+  const path = new URL('./episode-preview-isolation.test.mjs', import.meta.url);
+  const source = await readFile(path, 'utf8');
+  const options = await prettier.resolveConfig(path.pathname);
+  const formatted = await prettier.format(source, {
+    ...options,
+    filepath: path.pathname
+  });
+  const masked = formatted
+    .replaceAll('sb_secret_fixture_only_never_a_real_credential', '[FIXTURE_SECRET]')
+    .replaceAll('sb_publishable_safe_fixture_key_for_tests', '[FIXTURE_PUBLIC]')
+    .replaceAll('https://fiepaguycecrredwrcwx.supabase.co', '[FIXTURE_PRODUCTION_URL]');
+  console.log('PRETTIER_TRACE_START');
+  console.log(masked);
+  console.log('PRETTIER_TRACE_END');
 });
