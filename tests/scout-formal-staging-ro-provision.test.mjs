@@ -130,7 +130,7 @@ test('OWNER-only Staging RO workflow pins PR #2935 and stays manual', () => {
     ),
     'utf8'
   );
-  assert.match(workflow, /^on:\n  workflow_dispatch:/u);
+  assert.match(workflow, /^on:\n  workflow_dispatch:/mu);
   assert.doesNotMatch(workflow, /^\s+(push|pull_request):/mu);
   assert.match(workflow, /github\.ref == 'refs\/heads\/main'/u);
   assert.match(workflow, /inputs\.main_sha == github\.sha/u);
