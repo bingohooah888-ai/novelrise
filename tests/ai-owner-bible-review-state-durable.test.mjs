@@ -10,9 +10,7 @@ import {
   createOfflinePrivateSessionReader,
   createOfflineReadOnlyAuthSessionLookup
 } from '../api/_lib/ai/owner-private-session-reader.js';
-import {
-  createOfflineServiceRoleSessionLookup
-} from '../api/_lib/ai/owner-service-role-session-reader.js';
+import { createOfflineServiceRoleSessionLookup } from '../api/_lib/ai/owner-service-role-session-reader.js';
 import { createOfflineOwnerBibleReviewStateWorkflow } from '../api/_lib/ai/owner-bible-review-state-offline.js';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111';
