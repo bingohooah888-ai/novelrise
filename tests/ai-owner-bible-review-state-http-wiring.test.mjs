@@ -158,6 +158,7 @@ function offlineHarness() {
         }
       };
     },
+    // prettier-ignore
     lookupOneSession: createOfflineReadOnlyAuthSessionLookup({
       queryClient: {
         async query(statement, values) {
