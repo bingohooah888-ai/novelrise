@@ -270,7 +270,7 @@ test('session lookup fails closed on missing capability, revocation or odd PG re
 
 // No new private PostgreSQL credentials are needed for the Staging reader:
 // it uses the same server-only service-role client as the CAS repository.
-test('private session probe RPC is parameterized, scoped and fail-closed', async () => {
+test('service-only session probe is strict and fail-closed', async () => {
   const calls = [];
   let response = { data: true, error: null };
   const lookup = createOfflineServiceRoleSessionLookup({
@@ -294,7 +294,10 @@ test('private session probe RPC is parameterized, scoped and fail-closed', async
   assert.equal(await lookup({ sessionId: SESSION, actorId: ACTOR }), false);
   response = { data: null, error: null };
   assert.equal(await lookup({ sessionId: SESSION, actorId: ACTOR }), false);
-  assert.equal(await lookup({ sessionId: 'not-a-uuid', actorId: ACTOR }), false);
+  assert.equal(
+    await lookup({ sessionId: 'not-a-uuid', actorId: ACTOR }),
+    false
+  );
   assert.equal(
     await createOfflineServiceRoleSessionLookup()({
       sessionId: SESSION,
@@ -608,12 +611,18 @@ test('SQL proposal requires service_role, RLS, ownership and signed session evid
   assert.equal((executableSql.match(/security definer/gi) ?? []).length, 1);
   assert.match(sql, /create schema novelight_ai_private;/);
   assert.match(sql, /create function novelight_ai_private\.session_active_v1/);
-  assert.match(sql, /language plpgsql security definer set search_path = '' as \$\$/);
+  assert.match(
+    sql,
+    /language plpgsql security definer set search_path = '' as \$\$/
+  );
   assert.match(
     sql,
     /revoke all on function novelight_ai_private\.session_active_v1[\s\S]*from public, anon, authenticated/
   );
-  assert.match(sql, /create function public\.novelight_ai_owner_session_exists_v1/);
+  assert.match(
+    sql,
+    /create function public\.novelight_ai_owner_session_exists_v1/
+  );
   assert.match(
     sql,
     /grant execute on function public\.novelight_ai_owner_session_exists_v1[\s\S]*to service_role/
@@ -628,8 +637,14 @@ test('SQL proposal requires service_role, RLS, ownership and signed session evid
     sql,
     /from auth\.sessions s[\s\S]*s\.id = p_session_id and s\.user_id = p_actor_id[\s\S]*for share of s/
   );
-  assert.match(sql, /s\.not_after is null or s\.not_after > pg_catalog\.clock_timestamp\(\)/);
-  assert.match(sql, /if not novelight_ai_private\.session_active_v1\([\s\S]*p_session_id,p_actor_id,true/);
+  assert.match(
+    sql,
+    /s\.not_after is null or s\.not_after > pg_catalog\.clock_timestamp\(\)/
+  );
+  assert.match(
+    sql,
+    /if not novelight_ai_private\.session_active_v1\([\s\S]*p_session_id,p_actor_id,true/
+  );
   assert.match(sql, /pg_advisory_xact_lock/);
   assert.match(sql, /p_expected_revision <> 0/);
   assert.match(sql, /on conflict \(actor_id, novel_id\) do nothing/);
