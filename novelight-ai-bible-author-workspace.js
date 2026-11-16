@@ -654,7 +654,7 @@
           );
           if (
             !verified ||
-            verified.revision <= revision ||
+            verified.revision !== revision + 1 ||
             verified.reviewedIds.length !== next.size ||
             verified.reviewedIds.some((id) => !next.has(id))
           ) {
