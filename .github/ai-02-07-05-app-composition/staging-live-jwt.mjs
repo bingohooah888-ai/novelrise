@@ -218,11 +218,6 @@ export function create020705StagingJwtAdapter({
       );
       if (active.error || active.data !== true) deny();
 
-      const foreign = await outsiderClient
-        .from('novelight_ai_owner_review_states')
-        .select('actor_id,novel_id').eq('novel_id', NOVEL);
-      if (foreign.error || foreign.data?.length !== 0) deny();
-
       const saved = await serviceClient.rpc(
         'novelight_ai_owner_review_state_cas',
         {
@@ -234,6 +229,26 @@ export function create020705StagingJwtAdapter({
       );
       if (saved.error || saved.data?.length !== 1 ||
           saved.data[0]?.revision !== 1) deny();
+      const foreign = await outsiderClient
+        .from('novelight_ai_owner_review_states')
+        .select('actor_id,novel_id').eq('novel_id', NOVEL);
+      if (foreign.error || foreign.data?.length !== 0) deny();
+      const outsiderToken = outsider?.data?.session?.access_token;
+      if (typeof outsiderToken !== 'string') deny();
+      const outsiderClaims = await serviceClient.auth.getClaims(outsiderToken);
+      const outsiderSessionId = outsiderClaims?.data?.claims?.session_id;
+      if (outsiderClaims?.error ||
+          outsiderClaims?.data?.claims?.sub !== outsiderId ||
+          !UUID.test(outsiderSessionId ?? '')) deny();
+      const wrongOwnerCas = await serviceClient.rpc(
+        'novelight_ai_owner_review_state_cas',
+        {
+          p_actor_id: outsiderId, p_novel_id: NOVEL,
+          p_session_id: outsiderSessionId,
+          p_expected_revision: 0, p_reviewed_ids: []
+        }
+      );
+      if (!wrongOwnerCas.error && wrongOwnerCas.data?.length) deny();
       const conflict = await serviceClient.rpc(
         'novelight_ai_owner_review_state_cas',
         {
