@@ -224,6 +224,37 @@
       "version": "0.1.0",
       "status": "testing",
       "provenance": "2026-11-11 OWNER request; Supabase official action runs and logs Management API; offline mock tests only, no live action runs queried"
+    },
+    {
+      "id": "nlo.github.scout-ro-staging-dispatch",
+      "description": "OWNER-only, one-use, approval-bound SCOUT RECORD Staging RO credential workflow dispatch via existing NLO GitHub Bridge; no new token or autonomous execution.",
+      "intents": [
+        "dispatch Scout RO staging credentials once",
+        "NOVELIGHT SCOUT RECORDのRO復旧ワークフローを承認後に起動"
+      ],
+      "aliases": [
+        "NLO Scout RO Staging one-shot dispatch",
+        "scout_ro_staging_dispatch"
+      ],
+      "adapter": "tools/novelight-commander/src/scout-ro-staging-dispatch.js",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "existing_nlo_owner_github_token",
+        "github_actions_read",
+        "github_actions_write",
+        "github_issues_write",
+        "fresh_owner_control_and_staging_approval_comments",
+        "exact_current_main_sha",
+        "exact_source_blob_pins",
+        "single_use_durable_claim",
+        "no_credential_values_in_bridge"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-scout-ro-staging-dispatch.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "2026-11-16 OWNER-requested code-only NLO automation; requires separately approved main merge, promotion and local NLO rollout; no live dispatch authorized"
     }
   ]
 }
