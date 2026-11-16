@@ -290,11 +290,16 @@ export function create020705StagingLiveBindings({
           };
         },
         stopAndCleanup: async () => {
-          // Also used when synthetic JWT proof fails midway.
+          // Continue cleanup even if kill switch fails, but NEVER report PASS.
+          let stopped = false;
+          let cleaned = false;
           try {
-            await controller.disableTrialEnvironment();
-          } catch { /* still attempt the Staging cleanup */ }
-          return jwt.emergencyCleanup();
+            stopped = (await controller.disableTrialEnvironment()) === true;
+          } catch { /* still attempt cleanup */ }
+          try {
+            cleaned = (await jwt.emergencyCleanup()) === true;
+          } catch { /* retain cleanup failure */ }
+          return stopped && cleaned;
         },
         independentFinalCensus: async () =>
           (await controller.independentCensus(scope)) === true &&
