@@ -41,7 +41,12 @@ function readerSettings() {
     scrollTo() {}
   };
   vm.runInNewContext(settingsScript, { window, document, console });
-  return { api: window.NovelightReadingSettings, document, values, styleValues };
+  return {
+    api: window.NovelightReadingSettings,
+    document,
+    values,
+    styleValues
+  };
 }
 
 test('legacy settings remain horizontal; vertical mode persists', () => {
@@ -119,7 +124,7 @@ test('episode and contest trackers record horizontal scrolling', () => {
   assert.match(contestTracker, /context\.content\.addEventListener\?\./);
 });
 
-test('reader font sizes remain selectable and vertical Safari inflation is constrained', () => {
+test('iOS vertical reader font size remains user-controlled', () => {
   const { api, styleValues } = readerSettings();
   for (const [size, expected] of [
     ['small', '15px'],
