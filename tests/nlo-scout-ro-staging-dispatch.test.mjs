@@ -86,7 +86,10 @@ function fixture(options = {}) {
     if (method === 'GET' && path.includes('/issues/comments/')) {
       return options.badApproval || approval();
     }
-    if (method === 'GET' && path.endsWith('/issues/188/comments?per_page=100')) {
+    if (
+      method === 'GET' &&
+      path.endsWith('/issues/188/comments?per_page=100')
+    ) {
       return options.fullLedger
         ? Array.from({ length: 100 }, (_, i) => ({ id: i }))
         : comments;
