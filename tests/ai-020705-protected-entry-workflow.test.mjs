@@ -4,7 +4,7 @@ import test from 'node:test';
 
 // prettier-ignore
 const yaml = readFileSync(
-  new URL('../.github/workflows/ai-020705-staging-protected-entry.yml', import.meta.url),
+  new globalThis.URL('../.github/workflows/ai-020705-staging-protected-entry.yml', import.meta.url),
   'utf8'
 );
 
