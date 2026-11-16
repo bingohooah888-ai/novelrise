@@ -1,0 +1,100 @@
+name: NOVELIGHT AI 02-07-05 Protected Staging Entry (admission only)
+
+# This code-only bridge never creates a Preview, mutates DB, reads Secrets,
+# invokes real JWT or paid AI. GitHub issue_comment workflows only run from
+# trusted default main. The independently signed Gate A controller and the
+# OWNER ledger's run-bound approval MUST be connected before live execution.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: novelight-ai-020705-protected-staging-entry-294
+  cancel-in-progress: false
+
+jobs:
+  admit:
+    name: Read-only OWNER intent and exact SHA admission
+    if: >-
+      github.event.issue.number == 294 &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      startsWith(github.event.comment.body, 'NOVELIGHT_STAGING_AI_020705_INTEGRATION_INTENT ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Checkout trusted main only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Verify exact OWNER intent and latest PR refs without secrets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$(git rev-parse HEAD)" = "$current_main"
+          jq -e '
+            .repository.full_name == "bingohooah888-ai/novelrise" and
+            .issue.number == 294 and
+            .comment.user.login == "bingohooah888-ai" and
+            .comment.author_association == "OWNER" and
+            (.comment.body | startswith("NOVELIGHT_STAGING_AI_020705_INTEGRATION_INTENT "))
+          ' "$GITHUB_EVENT_PATH" >/dev/null
+          body="$(jq -er '.comment.body' "$GITHUB_EVENT_PATH")"
+          payload="${body#'NOVELIGHT_STAGING_AI_020705_INTEGRATION_INTENT '}"
+          printf '%s' "$payload" | jq -e --arg main "$current_main" '
+            type == "object" and
+            ((keys | sort) == (["mainSha","candidateSha","stagingProjectRef","pr","scope"] | sort)) and
+            .scope == "read-only-protected-entry-no-live-execution" and
+            .stagingProjectRef == "wmlzjgvxgoyrovdhbqbg" and
+            .pr == 2895 and
+            .mainSha == $main and
+            (.candidateSha | type == "string" and test("^[a-f0-9]{40}$"))
+          ' >/dev/null
+          pr="$(gh api "repos/$GITHUB_REPOSITORY/pulls/2895")"
+          candidate="$(printf '%s' "$payload" | jq -er .candidateSha)"
+          printf '%s' "$pr" | jq -e --arg main "$current_main" --arg head "$candidate" '
+            .number == 2895 and .state == "open" and .draft == true and
+            .merged == false and .base.sha == $main and .head.sha == $head
+          ' >/dev/null
+          echo 'AI_020705_PROTECTED_ADMISSION_READONLY_PASS: no Staging mutation or paid authorization'
+
+  staging-review:
+    name: Protected Staging readiness (no secrets, no live actions)
+    needs: admit
+    if: needs.admit.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    environment: staging
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout trusted main without PR code execution
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Refuse live execution until independent Gate A and run-bound paid approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'AI_020705_LIVE_NO_GO: external independent watchdog and run-bound paid OWNER ledger not connected.'
+          echo 'Existing protected paid composition remains default OFF. No secrets, Preview, JWT, DB write or model call.'
