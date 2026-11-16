@@ -767,7 +767,7 @@ test('complete offline author journey persists confirmation and resumes after re
   assert.equal(reopened.children[0].children[0].textContent, '');
 });
 
-test('review-state browser adapter uses a default-off server route', () => {
+test('review-state browser adapter uses a Staging-only, default-off server route', () => {
   const html = readFileSync(
     new URL('../story-notes.html', import.meta.url),
     'utf8'
@@ -783,7 +783,7 @@ test('review-state browser adapter uses a default-off server route', () => {
   assert.match(source, /enabled = false/);
   assert.match(
     source,
-    /export default createOwnerBibleReviewStateApiHandler\(\)/
+    /enabled: isolatedStagingPreview/
   );
 });
 
