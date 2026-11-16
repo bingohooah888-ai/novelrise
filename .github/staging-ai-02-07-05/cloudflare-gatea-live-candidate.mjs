@@ -112,6 +112,64 @@ async function sign020705Death({ proof, keyId, nonce, pkcs8, cryptoImpl }) {
   });
 }
 
+/**
+ * Deliver a signed runner-death notification only to a distinct Cloudflare
+ * service binding. Never a public URL, paid runner, or in-process fallback.
+ * The receiver must verify the signature, atomically claim recovery, stop
+ * provider transport, disable Staging AI, revoke synthetic sessions, clean
+ * the synthetic fixture, and perform an independent zero-residue census.
+ *
+ * An HTTP acknowledgement is NOT proof of the actual independent census,
+ * so the DO remains CLAIMED rather than labelling itself STOPPED.
+ */
+export async function dispatch020705DeathToRecoveryController({
+  service,
+  scope,
+  envelope
+} = {}) {
+  if (!validScope(scope) ||
+      typeof service?.fetch !== 'function' ||
+      envelope?.domain !== DOMAIN_DEATH ||
+      envelope?.proof?.kind !== 'detached-controller-runner-death' ||
+      envelope?.proof?.runnerConfirmedDead !== true ||
+      !FIELDS.every((key) => envelope.proof[key] === scope[key]) ||
+      !NONCE.test(envelope?.challengeNonce ?? '') ||
+      !NAME.test(envelope?.keyId ?? '') ||
+      !/^[A-Za-z0-9_-]{86}$/u.test(envelope?.signature ?? '')) deny();
+  const payload = JSON.stringify({ scope, envelope });
+  if (payload.length > 4096) deny();
+  try {
+    const response = await service.fetch(new Request(
+      'https://gatea-recovery.internal/_novelight/gatea/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload
+      }
+    ));
+    if (response?.status !== 200 ||
+        !/application\/json/iu.test(
+          response.headers?.get?.('content-type') ?? ''
+        )) deny();
+    const raw = await response.text();
+    if (raw.length > 2048) deny();
+    const result = JSON.parse(raw);
+    if (
+      Object.keys(result ?? {}).sort().join(',') !==
+        'approvalCommentId,controllerRunId,noPaidRetry,runId,status' ||
+      result.status !== 'INDEPENDENT_STAGING_STOP_AND_CLEANUP_VERIFIED' ||
+      result.noPaidRetry !== true ||
+      result.runId !== scope.runId ||
+      result.approvalCommentId !== scope.approvalCommentId ||
+      result.controllerRunId !== envelope.proof.controllerRunId
+    ) deny();
+    return Object.freeze({
+      dispatchedToSeparateController: true,
+      cleanupVerifiedByCloudflare: false,
+      noPaidRetry: true
+    });
+  } catch { deny(); }
+}
+
 // The class name is deliberately identical to the existing A1 binding.
 // Deploying this CANDIDATE would REPLACE the existing class implementation;
 // that is not authorized in this turn. No new Worker / DO is defined.
@@ -127,6 +185,10 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
         typeof this.env?.GATEA_RUNNER_PUB_SPKI !== 'string' ||
         typeof this.env?.GATEA_CONTROLLER_PRIVATE_PKCS8 !== 'string' ||
         typeof this.env?.GATEA_GITHUB_ACTIONS_READ_TOKEN !== 'string' ||
+        // Receipt storage does not itself stop or clean up Staging.
+        // Keep live arm OFF without a separately bound recovery service.
+        this.env?.GATEA_RECOVERY_DISPATCH_ENABLED !== 'true' ||
+        typeof this.env?.GATEA_RECOVERY_CONTROLLER?.fetch !== 'function' ||
         typeof this.ctx?.storage?.transactionSync !== 'function' ||
         typeof this.ctx.storage.sql?.exec !== 'function' ||
         typeof this.ctx.storage.setAlarm !== 'function') deny();
@@ -293,7 +355,18 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
         JSON.stringify(envelope)
       );
     });
-    return Object.freeze({ state: 'CLAIMED', noPaidRetry: true });
+    // Real GitHub terminal evidence and a one-shot stored signed receipt
+    // already exist. An independent controller must handle recovery now.
+    // No retries, no temporary public endpoint and no paid-runner fallback.
+    await dispatch020705DeathToRecoveryController({
+      service: this.env.GATEA_RECOVERY_CONTROLLER,
+      scope,
+      envelope
+    });
+    return Object.freeze({
+      state: 'CLAIMED', noPaidRetry: true,
+      cleanupVerifiedByCloudflare: false
+    });
   }
   async readReceipt({ scope, nonce, signature } = {}) {
     this.check();
