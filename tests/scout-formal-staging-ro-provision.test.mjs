@@ -122,19 +122,25 @@ test('missing Secret fails before external access', async () => {
   assert.equal(touchedNetwork, false);
 });
 
-test('OWNER-only Staging RO workflow targets the same Draft PR branch and has no automatic trigger', () => {
+test('OWNER-only Staging RO workflow pins PR #2935 and stays manual', () => {
   const workflow = readFileSync(
-    new URL('../.github/workflows/scout-formal-staging-ro-provision.yml', import.meta.url),
+    new URL(
+      '../.github/workflows/scout-formal-staging-ro-provision.yml',
+      import.meta.url
+    ),
     'utf8'
   );
-  assert.match(workflow, /^on:\\n  workflow_dispatch:/mu);
-  assert.doesNotMatch(workflow, /^  (push|pull_request):/mu);
-  assert.match(workflow, /github\\.ref == 'refs\\/heads\\/main'/u);
-  assert.match(workflow, /inputs\\.main_sha == github\\.sha/u);
+  assert.match(workflow, /^on:\n  workflow_dispatch:/u);
+  assert.doesNotMatch(workflow, /^\s+(push|pull_request):/mu);
+  assert.match(workflow, /github\.ref == 'refs\/heads\/main'/u);
+  assert.match(workflow, /inputs\.main_sha == github\.sha/u);
   assert.match(workflow, /environment: staging/u);
   assert.ok(workflow.includes("inputs.preview_branch == '" + BRANCH + "'"));
   assert.ok(workflow.includes("inputs.staging_ref == '" + REF + "'"));
-  assert.doesNotMatch(workflow, /feature\\/scout-formal-last-mile-integrity-off-20261115/u);
+  assert.doesNotMatch(
+    workflow,
+    /feature\/scout-formal-last-mile-integrity-off-20261115/u
+  );
   assert.throws(
     () =>
       verify({
