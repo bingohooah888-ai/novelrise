@@ -6,7 +6,10 @@ import { URL } from 'node:url';
 import { createSupabaseOwnerBibleReviewStateRepository } from '../api/_lib/ai/owner-bible-review-state-repository.js';
 import { createOfflineOwnerBibleReviewStateWiring } from '../api/_lib/ai/owner-bible-review-state-offline-wiring.js';
 import { createOfflineOwnerSessionCheck } from '../api/_lib/ai/owner-session-evidence.js';
-import { createOfflinePrivateSessionReader } from '../api/_lib/ai/owner-private-session-reader.js';
+import {
+  createOfflinePrivateSessionReader,
+  createOfflineReadOnlyAuthSessionLookup
+} from '../api/_lib/ai/owner-private-session-reader.js';
 import { createOfflineOwnerBibleReviewStateWorkflow } from '../api/_lib/ai/owner-bible-review-state-offline.js';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111';
@@ -153,6 +156,114 @@ const scope = {
   novelId: 17,
   bearerToken: TOKEN
 };
+
+// A trusted, separately authorized PG session observer supplies ONLY a
+// parameter-bound one-row boolean. No database, JWT or secrets are used here.
+test('private session lookup uses two bound UUIDs and the signed-session contract', async () => {
+  const calls = [];
+  const queryClient = {
+    async query(statement, values) {
+      calls.push({ statement, values });
+      return { command: 'SELECT', rowCount: 1, rows: [{ active: true }] };
+    }
+  };
+  const lookupOneSession = createOfflineReadOnlyAuthSessionLookup({
+    queryClient
+  });
+  const readExistingSession = createOfflinePrivateSessionReader({
+    lookupOneSession
+  });
+  const verified = await readExistingSession({
+    sessionId: SESSION.toUpperCase(),
+    actorId: ACTOR.toUpperCase()
+  });
+  assert.deepEqual(verified, {
+    data: { id: SESSION, user_id: ACTOR },
+    error: null
+  });
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].statement, /^SELECT EXISTS /u);
+  assert.match(calls[0].statement, /auth\\.sessions/u);
+  assert.match(calls[0].statement, /id = \\$1::uuid AND user_id = \\$2::uuid/u);
+  assert.deepEqual(calls[0].values, [SESSION, ACTOR]);
+  assert.doesNotMatch(calls[0].statement, new RegExp(SESSION, 'u'));
+  assert.doesNotMatch(calls[0].statement, new RegExp(ACTOR, 'u'));
+
+  const signed = createOfflineOwnerSessionCheck({
+    verifySignedClaims: async () => ({
+      data: {
+        claims: {
+          sub: ACTOR,
+          session_id: SESSION,
+          role: 'authenticated',
+          aud: 'authenticated',
+          iat: 100,
+          exp: 999999
+        }
+      },
+      error: null
+    }),
+    readExistingSession,
+    nowEpochSeconds: () => 500
+  });
+  assert.deepEqual(
+    await signed({ bearerToken: TOKEN, actorId: ACTOR, novelId: 17 }),
+    { active: true, binding: SESSION }
+  );
+  assert.equal(calls.length, 2);
+});
+
+test('session lookup fails closed on missing capability, revocation or odd PG receipts', async () => {
+  let queries = 0;
+  const invalid = [
+    { command: 'SELECT', rowCount: 1, rows: [{ active: false }] },
+    { command: 'SELECT', rowCount: 1, rows: [{ active: 'true' }] },
+    { command: 'SELECT', rowCount: 1, rows: [{ active: true, id: SESSION }] },
+    { command: 'SELECT', rowCount: 2, rows: [{ active: true }] },
+    { command: 'UPDATE', rowCount: 1, rows: [{ active: true }] },
+    { command: 'SELECT', rowCount: 1, rows: [] },
+    { command: 'SELECT', rowCount: 0, rows: [{ active: true }] },
+    null
+  ];
+  const client = {
+    async query() {
+      queries += 1;
+      return invalid.shift();
+    }
+  };
+  const lookup = createOfflineReadOnlyAuthSessionLookup({
+    queryClient: client
+  });
+  for (let i = 0; i < 8; i += 1) {
+    assert.equal(
+      await lookup({ sessionId: SESSION, actorId: ACTOR }),
+      false
+    );
+  }
+  assert.equal(queries, 8);
+  assert.equal(await lookup({ sessionId: TOKEN, actorId: ACTOR }), false);
+  assert.equal(await lookup({ sessionId: SESSION, actorId: FOREIGN }), false);
+  // A syntactically valid foreign actor is bound to SQL but cannot be
+  // treated as authorized without a strict true database receipt.
+  assert.equal(queries, 9);
+  assert.equal(
+    await createOfflineReadOnlyAuthSessionLookup()({
+      sessionId: SESSION,
+      actorId: ACTOR
+    }),
+    false
+  );
+  assert.equal(
+    await createOfflineReadOnlyAuthSessionLookup({
+      queryClient: {
+        async query() {
+          throw new Error('PRIVATE_AUTH_CREDENTIALS_MUST_NOT_LEAK');
+        }
+      }
+    })({ sessionId: SESSION, actorId: ACTOR }),
+    false
+  );
+});
 
 test('constructor requires scoped server capabilities, never creates a client', () => {
   assert.throws(
