@@ -56,7 +56,7 @@ grant usage on schema novelight_ai_private to service_role;
 create function novelight_ai_private.session_active_v1(
   p_session_id uuid, p_actor_id uuid, p_take_lock boolean
 ) returns boolean
-language plpgsql security definer set search_path = '' as $
+language plpgsql security definer set search_path = '' as $$
 begin
   if p_session_id is null or p_actor_id is null or p_take_lock is null then
     return false;
@@ -73,7 +73,7 @@ begin
   end if;
   return found;
 end
-$;
+$$;
 revoke all on function novelight_ai_private.session_active_v1(
   uuid, uuid, boolean
 ) from public, anon, authenticated;
@@ -86,7 +86,7 @@ grant execute on function novelight_ai_private.session_active_v1(
 create function public.novelight_ai_owner_session_exists_v1(
   p_session_id uuid, p_actor_id uuid
 ) returns boolean
-language plpgsql security invoker set search_path = '' as $
+language plpgsql security invoker set search_path = '' as $$
 begin
   if current_user <> 'service_role' then
     raise exception using errcode='42501',message='AI service access required';
@@ -95,7 +95,7 @@ begin
     p_session_id,p_actor_id,false
   );
 end
-$;
+$$;
 revoke all on function public.novelight_ai_owner_session_exists_v1(
   uuid, uuid
 ) from public, anon, authenticated;
