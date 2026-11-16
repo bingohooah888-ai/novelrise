@@ -29,6 +29,12 @@ function previewEnv(overrides = {}) {
   };
 }
 
+// The Preview HTML must not embed any Supabase endpoint, not merely a
+// known Production or fixture URL. Browser config is resolved separately.
+function assertNoSupabaseOrigin(html) {
+  assert.doesNotMatch(html, /https:\/\/[a-z0-9-]+\.supabase\.co/iu);
+}
+
 function denied(overrides) {
   assert.throws(
     () => prepareEpisodeReaderTemplate(template, previewEnv(overrides)),
@@ -82,9 +88,8 @@ test('Preview uses only matching isolated browser and server targets', () => {
   const result = prepareEpisodeReaderTemplate(template, previewEnv());
   assert.equal(result.preview, true);
   assert.match(result.html, /NovelightClient\.createAuthClient\(null,null\)/u);
-  assert.ok(!result.html.includes(stagingUrl));
+  assertNoSupabaseOrigin(result.html);
   assert.ok(!result.html.includes(publicKey));
-  assert.ok(!result.html.includes(productionUrl));
   assert.ok(!result.html.includes(fakeServerCredential));
 });
 
@@ -139,7 +144,7 @@ test('Preview SEO route fails before DB access with unsafe settings', async () =
       assert.equal(res.body, 'Episode preview environment unavailable');
       assert.equal(res.headers['Cache-Control'], 'no-store, max-age=0');
       assert.equal(res.headers['X-Robots-Tag'], 'noindex, nofollow');
-      assert.ok(!res.body.includes(productionUrl));
+      assertNoSupabaseOrigin(res.body);
     }
   });
 });
@@ -151,8 +156,7 @@ test('Preview SEO no-ID page contains only the Staging client', async () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.headers['Cache-Control'], 'no-store, max-age=0');
     assert.ok(res.body.includes('NovelightClient.createAuthClient(null,null)'));
-    assert.ok(!res.body.includes(stagingUrl));
-    assert.ok(!res.body.includes(productionUrl));
+    assertNoSupabaseOrigin(res.body);
     assert.ok(!res.body.includes(fakeServerCredential));
   });
 });
