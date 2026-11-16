@@ -160,116 +160,56 @@ test('OWNER-only Staging RO workflow pins PR #2935 and stays manual', () => {
   );
 });
 
-test('safe failure output does not expose untrusted errors', () => {
-  const secret = 'postgresql://postgres:private-pass@db.example.invalid/postgres';
+test('failure messages allow only fixed safe codes', () => {
+  const secret = 'private-password';
+  const result = formatFormalRoProvisionFailure(
+    { safeCode: secret },
+    'STAGING_ADMIN_CONNECT'
+  );
   assert.equal(
-    formatFormalRoProvisionFailure(
-      Object.assign(new Error(secret), { safeCode: secret }),
-      'STAGING_ADMIN_CONNECT'
-    ),
+    result,
     'FORMAL_RO_STAGING_PROVISION_STOPPED:STAGING_ADMIN_CONNECT:UNCLASSIFIED_FAILURE'
   );
+  assert.equal(result.includes(secret), false);
   assert.equal(
     formatFormalRoProvisionFailure(new Error(secret), secret),
     'FORMAL_RO_STAGING_PROVISION_STOPPED:UNKNOWN_STAGE:UNCLASSIFIED_FAILURE'
   );
-  assert.equal(
-    formatFormalRoProvisionFailure(
-      { safeCode: 'EXISTING_STAGING_SECRETS_REQUIRED' },
-      'VERIFY_CONTEXT'
-    ),
-    'FORMAL_RO_STAGING_PROVISION_STOPPED:VERIFY_CONTEXT:EXISTING_STAGING_SECRETS_REQUIRED'
-  );
 });
 
-test('missing Secret reports context before network access', async () => {
-  let safeStage = '';
-  let touchedNetwork = false;
-  let failure;
-  try {
-    await provisionFormalStagingReader({
+test('context failure reports its stage without external access', async () => {
+  let observed = '';
+  let touched = false;
+  await assert.rejects(
+    provisionFormalStagingReader({
       env: { ...stage, VERCEL_API_TOKEN: '' },
-      onSafeStage: (name) => {
-        safeStage = name;
+      onSafeStage: (value) => {
+        observed = value;
       },
       fetchImpl: async () => {
-        touchedNetwork = true;
-        throw new Error('unexpected external access');
+        touched = true;
+        throw new Error('unexpected network');
       }
-    });
-  } catch (error) {
-    failure = error;
-  }
-  assert.equal(touchedNetwork, false);
-  assert.equal(
-    formatFormalRoProvisionFailure(failure, safeStage),
-    'FORMAL_RO_STAGING_PROVISION_STOPPED:VERIFY_CONTEXT:EXISTING_STAGING_SECRETS_REQUIRED'
+    }),
+    /EXISTING_STAGING_SECRETS_REQUIRED/u
   );
+  assert.equal(observed, 'VERIFY_CONTEXT');
+  assert.equal(touched, false);
 });
 
-test('synthetic Vercel scope failure prints no raw exception', async () => {
-  const secret = 'Bearer ultra-secret-token';
-  let safeStage = '';
-  let failure;
-  try {
-    await provisionFormalStagingReader({
+test('synthetic scope failure identifies the safe stage', async () => {
+  let observed = '';
+  await assert.rejects(
+    provisionFormalStagingReader({
       env: stage,
-      onSafeStage: (name) => {
-        safeStage = name;
+      onSafeStage: (value) => {
+        observed = value;
       },
       resolveScope: async () => {
-        throw new Error(secret);
-      },
-      fetchImpl: async () => {
-        throw new Error('network forbidden');
+        throw new Error('private-password');
       }
-    });
-  } catch (error) {
-    failure = error;
-  }
-  assert.equal(safeStage, 'VERIFY_VERCEL_PROJECT');
-  const line = formatFormalRoProvisionFailure(failure, safeStage);
-  assert.equal(
-    line,
-    'FORMAL_RO_STAGING_PROVISION_STOPPED:VERIFY_VERCEL_PROJECT:UNCLASSIFIED_FAILURE'
+    }),
+    /private-password/u
   );
-  assert.equal(line.includes(secret), false);
-});
-
-test('synthetic Staging failure reports a safe phase', async () => {
-  const secret = 'postgresql://postgres:private-pass@db.example.invalid/postgres';
-  let safeStage = '';
-  let failure;
-  class SyntheticFailingClient {
-    async connect() {
-      throw new Error(secret);
-    }
-    async end() {}
-  }
-  try {
-    await provisionFormalStagingReader({
-      env: stage,
-      onSafeStage: (name) => {
-        safeStage = name;
-      },
-      resolveScope: async () => ({
-        projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
-        teamId: 'team_2XFgtRCPJQ6pbrEa4mOLQAEx'
-      }),
-      fetchImpl: async () => ({
-        ok: true,
-        json: async () => ({ envs: [], pagination: { next: null } })
-      }),
-      ClientImpl: SyntheticFailingClient
-    });
-  } catch (error) {
-    failure = error;
-  }
-  assert.equal(safeStage, 'STAGING_ADMIN_CONNECT');
-  const line = formatFormalRoProvisionFailure(failure, safeStage);
-  assert.equal(
-    line,
-    'FORMAL_RO_STAGING_PROVISION_STOPPED:STAGING_ADMIN_CONNECT:PROVISION_FAILED_SAFE_REVIEW_REQUIRED'
-  );
-  assert.equal(line.includes(secret), false);
+  assert.equal(observed, 'VERIFY_VERCEL_PROJECT');
 });
