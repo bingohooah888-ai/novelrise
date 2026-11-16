@@ -9,6 +9,7 @@ import { create020705StagingPreviewAdapter } from './staging-live-preview.mjs';
 import { create020705StagingJwtAdapter } from './staging-live-jwt.mjs';
 import { create020705ProtectedComprehensiveStagingSequence } from './protected-live-composition.mjs';
 import { inspect020705OwnerLedger } from '../staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
+import { verify020705SignedWatchdogArm } from '../staging-ai-02-07-05/signed-watchdog-arm.mjs';
 import { createOwnerNovelBibleConsentPermissionCheck } from '../../api/_lib/ai/owner-novel-bible-consent.js';
 
 const REPO = 'bingohooah888-ai/novelrise';
@@ -18,6 +19,48 @@ const SHA = /^[a-f0-9]{40}$/u;
 
 function deny() {
   throw new Error('AI_020705_STAGING_BINDING_DENIED');
+}
+
+/**
+ * Read-only, cryptographically authenticated independent Gate A observation.
+ * Existing Cloudflare A1/S2 candidates do NOT currently issue this active
+ * pre-paid receipt. Until an independently deployed, genuinely stopping
+ * controller signs a matching receipt, all Staging mutation stays NO-GO.
+ * A metadata boolean, runner heartbeat or self-signed fixture is not proof.
+ */
+export async function inspect020705IndependentGateABeforeMutation({
+  scope,
+  controller,
+  now = Date.now
+} = {}) {
+  if (scope?.repository !== REPO ||
+      scope?.stagingProjectRef !== STAGING ||
+      scope?.supabaseUrl !== URL ||
+      !SHA.test(scope?.mainSha ?? '') ||
+      !SHA.test(scope?.candidateSha ?? '') ||
+      scope?.capMicros > 1000000 ||
+      typeof controller?.verifyIndependentController !== 'function' ||
+      typeof controller?.readIndependentWatchdogArm !== 'function' ||
+      !controller?.trustedControllerPublicKey ||
+      typeof controller?.trustedControllerKeyId !== 'string' ||
+      typeof controller?.expectedChallengeNonce !== 'string' ||
+      typeof now !== 'function') return false;
+  try {
+    if (await controller.verifyIndependentController(scope) !== true) {
+      return false;
+    }
+    const envelope = await controller.readIndependentWatchdogArm(scope);
+    return verify020705SignedWatchdogArm({
+      scope,
+      envelope,
+      trustedControllerPublicKey: controller.trustedControllerPublicKey,
+      trustedControllerKeyId: controller.trustedControllerKeyId,
+      expectedChallengeNonce: controller.expectedChallengeNonce,
+      now
+    }) === true;
+  } catch {
+    return false;
+  }
 }
 
 export function create020705StagingLiveBindings({
@@ -193,7 +236,9 @@ export function create020705StagingLiveBindings({
       // Never mutate even one Staging row until the independently
       // authenticated CONTROLLER is verified. A missing external Gate A
       // is a real NO-GO, not a flag that a GitHub runner can self-assert.
-      if (await controller.verifyIndependentController(scope) !== true ||
+      if ((await inspect020705IndependentGateABeforeMutation({
+        scope, controller
+      })) !== true ||
           await evidence.readProviderRateProof(scope) !== true ||
           await evidence.readBillingProtection(scope) !== true) deny();
       const sequence = create020705ProtectedComprehensiveStagingSequence({
