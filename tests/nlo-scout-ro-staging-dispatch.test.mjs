@@ -56,16 +56,21 @@ function fixture(changes = {}) {
   const comments = [approval()];
   const api = async (method, path, body) => {
     calls.push({ method, path, body });
-    if (method === 'GET' && path === '/user')
+    if (method === 'GET' && path === '/user') {
       return changes.identity || owner;
-    if (method === 'GET' && path.endsWith('/git/ref/heads/main'))
+    }
+    if (method === 'GET' && path.endsWith('/git/ref/heads/main')) {
       return { object: { sha: changes.mainSha || sha } };
-    if (method === 'GET' && path.endsWith('/actions/workflows/' + C.workflow))
-      return changes.workflow || {
-        name: 'NOVELIGHT Formal Reader Staging Credential Provision (OWNER only)',
-        path: C.workflowPath,
-        state: 'active'
-      };
+    }
+    if (method === 'GET' && path.endsWith('/actions/workflows/' + C.workflow)) {
+      return (
+        changes.workflow || {
+          name: 'NOVELIGHT Formal Reader Staging Credential Provision (OWNER only)',
+          path: C.workflowPath,
+          state: 'active'
+        }
+      );
+    }
     if (method === 'GET' && path.includes('/contents/')) {
       return {
         type: 'file',
@@ -76,23 +81,26 @@ function fixture(changes = {}) {
             : scriptSha
       };
     }
-    if (method === 'GET' && path ===
-      '/repos/' + C.repo + '/issues/' + C.approvalIssue) {
+    const issuePath = '/repos/' + C.repo + '/issues/' + C.approvalIssue;
+    if (method === 'GET' && path === issuePath) {
       return { number: C.approvalIssue, state: 'open', user: owner };
     }
-    if (method === 'GET' && path.includes('/issues/comments/'))
+    if (method === 'GET' && path.includes('/issues/comments/')) {
       return changes.approval || approval();
-    if (method === 'GET' && path.endsWith('/issues/188/comments?per_page=100'))
+    }
+    if (method === 'GET' && path.endsWith('/issues/188/comments?per_page=100')) {
       return changes.saturated
         ? Array.from({ length: 100 }, (_, i) => ({ id: i }))
         : comments;
-    if (method === 'GET' && path.includes('/runs?'))
+    }
+    if (method === 'GET' && path.includes('/runs?')) {
       return changes.previousRun
         ? {
             total_count: 1,
             workflow_runs: [{ head_sha: sha, event: 'workflow_dispatch' }]
           }
         : { total_count: 0, workflow_runs: [] };
+    }
     if (method === 'POST' && path.endsWith('/issues/188/comments')) {
       const added = {
         id: 1235,
@@ -104,8 +112,9 @@ function fixture(changes = {}) {
       return added;
     }
     if (method === 'POST' && path.endsWith('/dispatches')) {
-      if (changes.failDispatch)
+      if (changes.failDispatch) {
         throw new Error('Bearer SECRET_NEVER_RETURN');
+      }
       return null;
     }
     throw new Error('Unexpected synthetic route');
@@ -140,7 +149,10 @@ test('authorized owner claims and dispatches exactly once', async () => {
     }
   });
   await assert.rejects(run(f), /ALREADY_CLAIMED/u);
-  assert.equal(f.calls.filter((c) => c.path.endsWith('/dispatches')).length, 1);
+  assert.equal(
+    f.calls.filter((c) => c.path.endsWith('/dispatches')).length,
+    1
+  );
 });
 
 test('wrong scope and missing owner proof cannot dispatch', async () => {
@@ -202,7 +214,13 @@ test('dispatch failure permanently spends claim and redacts error', async () => 
       error.safeCode === 'GITHUB_API_UNAVAILABLE' &&
       !error.message.includes('SECRET_NEVER_RETURN')
   );
-  assert.equal(f.calls.filter((c) => c.path.endsWith('/dispatches')).length, 1);
+  assert.equal(
+    f.calls.filter((c) => c.path.endsWith('/dispatches')).length,
+    1
+  );
   await assert.rejects(run(f), /ALREADY_CLAIMED/u);
-  assert.equal(f.calls.filter((c) => c.path.endsWith('/dispatches')).length, 1);
+  assert.equal(
+    f.calls.filter((c) => c.path.endsWith('/dispatches')).length,
+    1
+  );
 });
