@@ -53,7 +53,7 @@ function request(method, actor = OWNER, body) {
   };
 }
 
-function offlineHarness() {
+function offlineHarness({ restrictedRpc = false } = {}) {
   let actor = OWNER;
   let allowed = true;
   let row = null;
@@ -119,6 +119,15 @@ function offlineHarness() {
       };
     },
     async rpc(name, args) {
+      if (name === 'novelight_ai_owner_session_exists_v1') {
+        return {
+          data:
+            allowed &&
+            args.p_session_id === SESSION &&
+            args.p_actor_id === OWNER,
+          error: null
+        };
+      }
       if (name !== 'novelight_ai_owner_review_state_cas') {
         throw new Error('UNEXPECTED_SERVICE_RPC');
       }
@@ -158,8 +167,9 @@ function offlineHarness() {
         }
       };
     },
+    sessionLookupMode: restrictedRpc ? 'restricted_rpc' : undefined,
     // prettier-ignore
-    lookupOneSession: createOfflineReadOnlyAuthSessionLookup({
+    lookupOneSession: restrictedRpc ? undefined : createOfflineReadOnlyAuthSessionLookup({
       queryClient: {
         async query(statement, values) {
           assert.match(statement, /^SELECT EXISTS /u);
@@ -279,6 +289,31 @@ test('offline owner HTTP composition reads, commits by CAS and resumes', async (
     conflict
   );
   assert.equal(conflict.code, 409);
+  assert.equal(h.writes, 1);
+});
+
+test('restricted RPC session observer requires explicit opt-in and blocks revoked writes', async () => {
+  const h = offlineHarness({ restrictedRpc: true });
+  const before = reply();
+  await h.handler(request('GET'), before);
+  assert.equal(before.code, 200);
+  assert.equal(before.body.revision, 0);
+
+  const saved = reply();
+  await h.handler(
+    request('POST', OWNER, { expectedRevision: 0, reviewedIds: [] }),
+    saved
+  );
+  assert.equal(saved.code, 200);
+  assert.equal(h.writes, 1);
+
+  h.revoke();
+  const after = reply();
+  await h.handler(
+    request('POST', OWNER, { expectedRevision: 1, reviewedIds: [] }),
+    after
+  );
+  assert.notEqual(after.code, 200);
   assert.equal(h.writes, 1);
 });
 
