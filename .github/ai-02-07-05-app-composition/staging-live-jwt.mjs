@@ -112,9 +112,16 @@ export function create020705StagingJwtAdapter({
     });
     const user = r?.data?.user;
     if (user && UUID.test(user.id ?? '') &&
-        (!requestedId || user.id === requestedId) &&
         user.email === email &&
-        user.app_metadata?.internal_e2e === true) return user.id;
+        user.app_metadata?.internal_e2e === true) {
+      if (r.error || (requestedId && user.id !== requestedId)) {
+        // GoTrue can return a created user even when the requested fixed
+        // identity is ignored. Never orphan an unexpected synthetic account.
+        await cleanUser(user.id, email);
+        deny();
+      }
+      return user.id;
+    }
     deny();
   }
 
