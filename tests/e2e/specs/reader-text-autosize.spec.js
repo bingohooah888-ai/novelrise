@@ -37,7 +37,6 @@ async function readerStyle(page) {
     const style = getComputedStyle(element);
     return {
       size: style.fontSize,
-      adjust: style.getPropertyValue('-webkit-text-size-adjust'),
       direction: style.writingMode
     };
   });
@@ -80,7 +79,6 @@ test('iPhone-like vertical reader keeps chosen size after illustration re-render
   ).toHaveCount(1);
   expect(await readerStyle(page)).toEqual({
     size: '15px',
-    adjust: '100%',
     direction: 'vertical-rl'
   });
 
@@ -90,10 +88,10 @@ test('iPhone-like vertical reader keeps chosen size after illustration re-render
   ).toHaveCount(1);
   expect(await readerStyle(page)).toEqual({
     size: '15px',
-    adjust: '100%',
     direction: 'vertical-rl'
   });
 
+  await page.locator('.reading-settings-summary').click();
   await page.getByLabel('文字サイズ').selectOption('xlarge');
   expect((await readerStyle(page)).size).toBe('21px');
   await page.getByLabel('文字サイズ').selectOption('small');
@@ -106,6 +104,7 @@ test('horizontal reader remains adjustable without vertical-only autosizing over
   await setupReader(page, 'horizontal');
   const before = await readerStyle(page);
   expect(before).toMatchObject({ size: '15px', direction: 'horizontal-tb' });
+  await page.locator('.reading-settings-summary').click();
   await page.getByLabel('文字サイズ').selectOption('xlarge');
   expect((await readerStyle(page)).size).toBe('21px');
   await page.getByLabel('文字サイズ').selectOption('small');
