@@ -52,6 +52,9 @@ export function create020705StagingJwtAdapter({
       scope?.supabaseUrl !== URL ||
       scope?.prNumber !== 2895 ||
       scope?.maxPaidCalls !== 1 ||
+      !UUID.test(scope?.actorId ?? '') ||
+      scope?.novelId !== NOVEL ||
+      scope?.episodeId !== EPISODE ||
       typeof connectionString !== 'string' ||
       typeof secretKey !== 'string' || secretKey.length < 16 ||
       typeof publishableKey !== 'string' ||
@@ -88,21 +91,25 @@ export function create020705StagingJwtAdapter({
   async function ensureEmptyFixture() {
     const state = await database(
       'select (select count(*)::integer from public.novels where id in ($1,$4)) as novels, ' +
-      '(select count(*)::integer from public.episodes where id in ($2,$3)) as episodes',
-      [NOVEL, EPISODE, CLAIM_EPISODE, CLAIM_NOVEL]
+      '(select count(*)::integer from public.episodes where id in ($2,$3)) as episodes, ' +
+      '(select count(*)::integer from auth.users where id=$5) as owner_auth',
+      [NOVEL, EPISODE, CLAIM_EPISODE, CLAIM_NOVEL, scope.actorId]
     );
     if (state.rows?.length !== 1 ||
         state.rows[0].novels !== 0 ||
-        state.rows[0].episodes !== 0) deny();
+        state.rows[0].episodes !== 0 ||
+        state.rows[0].owner_auth !== 0) deny();
   }
 
-  async function createSynthetic(email, password) {
+  async function createSynthetic(email, password, requestedId) {
     const r = await serviceClient.auth.admin.createUser({
+      ...(requestedId ? { id: requestedId } : {}),
       email, password, email_confirm: true,
       app_metadata: { internal_e2e: true }
     });
     const user = r?.data?.user;
     if (user && UUID.test(user.id ?? '') &&
+        (!requestedId || user.id === requestedId) &&
         user.email === email &&
         user.app_metadata?.internal_e2e === true) return user.id;
     deny();
@@ -175,7 +182,7 @@ export function create020705StagingJwtAdapter({
       outsiderEmail = 'novelight-ai-020705-other-' + stamp + '@example.invalid';
       ownerPassword = randomBytes(32).toString('hex');
       outsiderPassword = randomBytes(32).toString('hex');
-      ownerId = await createSynthetic(ownerEmail, ownerPassword);
+      ownerId = await createSynthetic(ownerEmail, ownerPassword, scope.actorId);
       outsiderId = await createSynthetic(outsiderEmail, outsiderPassword);
       await assertSynthetic(ownerId, ownerEmail);
       await assertSynthetic(outsiderId, outsiderEmail);
