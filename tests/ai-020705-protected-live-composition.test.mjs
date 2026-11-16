@@ -231,6 +231,9 @@ function scenario({
       history.push('census');
       return {
         projectRef: STAGING,
+        userId: OWNER,
+        novelId: 41,
+        approvalCommentId: 777,
         runtimeDisabledZero: true,
         approvalTombstoneCount: 1,
         chunkClaimsRetained: 0, // Legacy one-shot fixture has no chunk claim.
