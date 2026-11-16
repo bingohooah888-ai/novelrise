@@ -187,8 +187,10 @@ export function create020705ComprehensiveStagingSequence({
         outcome: 'STAGING_SEQUENCE_PASS',
         projectRef: STAGING,
         candidateSha: scope.candidateSha,
-        migrationsInstalled: 2,
-        previewCount: 1,
+        migrationsInstalled: scope.existingMigrationsOnly === true ? 0 : 2,
+        migrationsVerified: scope.existingMigrationsOnly === true,
+        previewCount: scope.existingPreviewOnly === true ? 0 : 1,
+        existingPreviewVerified: scope.existingPreviewOnly === true,
         paidAttempts: 1,
         syntheticCleanupVerified: true,
         retainedClaimsPreserved: true
