@@ -10,6 +10,7 @@ import { create020705StagingJwtAdapter } from './staging-live-jwt.mjs';
 import { create020705ProtectedComprehensiveStagingSequence } from './protected-live-composition.mjs';
 import { inspect020705OwnerLedger } from '../staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
 import { verify020705SignedWatchdogArm } from '../staging-ai-02-07-05/signed-watchdog-arm.mjs';
+import { verify020705SignedRunnerDeath } from '../staging-ai-02-07-05/signed-runner-death-offline.mjs';
 import { createOwnerNovelBibleConsentPermissionCheck } from '../../api/_lib/ai/owner-novel-bible-consent.js';
 
 const REPO = 'bingohooah888-ai/novelrise';
@@ -61,6 +62,98 @@ export async function inspect020705IndependentGateABeforeMutation({
   } catch {
     return false;
   }
+}
+
+/**
+ * Connects to the EXISTING Cloudflare Gate A candidate's authenticated
+ * /_novelight/gatea/receipt endpoint AFTER independently verified runner
+ * death. This is a death/cleanup RECOVERY reader, never an active arm or
+ * permission to call a provider. The Worker is currently dormant; a 404
+ * or missing signed reply remains NO-GO.
+ */
+export function create020705CloudflareDeathReceiptReader({
+  scope,
+  workerOrigin,
+  ownerReadSignature,
+  challengeNonce,
+  trustedControllerPublicKey,
+  trustedControllerKeyId,
+  fetchImpl = globalThis.fetch
+} = {}) {
+  const nonceFormat = /^[A-Za-z0-9_-]{32,128}$/u;
+  const signatureFormat = /^[A-Za-z0-9_-]{86}$/u;
+  const keys = [
+    'repository', 'stagingProjectRef', 'mainSha',
+    'previewDeploymentId', 'actorId', 'novelId',
+    'episodeId', 'runId', 'approvalCommentId'
+  ];
+  let parsed;
+  try { parsed = new globalThis.URL(workerOrigin); }
+  catch { deny(); }
+  if (scope?.repository !== REPO ||
+      scope?.stagingProjectRef !== STAGING ||
+      !SHA.test(scope?.mainSha ?? '') ||
+      !/^dpl_[A-Za-z0-9]+$/u.test(scope?.previewDeploymentId ?? '') ||
+      !nonceFormat.test(challengeNonce ?? '') ||
+      !signatureFormat.test(ownerReadSignature ?? '') ||
+      !trustedControllerPublicKey ||
+      typeof trustedControllerKeyId !== 'string' ||
+      typeof fetchImpl !== 'function' ||
+      parsed.protocol !== 'https:' ||
+      parsed.username !== '' || parsed.password !== '' ||
+      parsed.search !== '' || parsed.hash !== '' ||
+      (parsed.pathname !== '/' && parsed.pathname !== '') ||
+      !/^novelight-ai-gatea-watchdog\.[a-z0-9-]+\.workers\.dev$/u
+        .test(parsed.hostname) ||
+      (parsed.port !== '' && parsed.port !== '443') ||
+      keys.some((key) => scope[key] == null)) deny();
+
+  const exact = Object.freeze(Object.fromEntries(
+    keys.map((key) => [key, scope[key]])
+  ));
+  let attempted = false;
+  return Object.freeze({
+    async readIndependentDeathProof(readScope) {
+      if (attempted ||
+          keys.some((key) => readScope?.[key] !== exact[key])) deny();
+      attempted = true;
+      try {
+        const response = await fetchImpl(
+          parsed.origin + '/_novelight/gatea/receipt',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              scope: exact,
+              nonce: challengeNonce,
+              signature: ownerReadSignature
+            }),
+            redirect: 'error',
+            signal: AbortSignal.timeout(10000)
+          }
+        );
+        if (response.status !== 200 ||
+            !/application\/json/u.test(response.headers.get('content-type') ?? ''))
+          deny();
+        const raw = await response.text();
+        if (raw.length > 8192) deny();
+        const data = JSON.parse(raw);
+        if (data?.authorizesMutation !== false ||
+            data?.authorizesPaidCall !== false ||
+            !verify020705SignedRunnerDeath({
+              envelope: data.envelope,
+              trustedControllerPublicKey,
+              trustedControllerKeyId,
+              expectedChallengeNonce: challengeNonce
+            }) ||
+            keys.some((key) => data.envelope.proof[key] !== exact[key])) deny();
+        // The existing detached-stop connector additionally checks
+        // freshness, independent run ID, death state, durable recovery
+        // claim, actual STOP and independent zero-residue census.
+        return data.envelope;
+      } catch { deny(); }
+    }
+  });
 }
 
 export function create020705StagingLiveBindings({
