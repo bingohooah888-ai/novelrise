@@ -1,20 +1,29 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+// prettier-ignore
 import {
   inspect020705PostRunOwnerApproval
 } from '../.github/staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
 
+// prettier-ignore
 const NOW = Date.parse('2026-11-16T12:30:00.000Z');
+// prettier-ignore
 const MAIN = 'a'.repeat(40);
+// prettier-ignore
 const CANDIDATE = 'b'.repeat(40);
+// prettier-ignore
 const BRANCH = 'staging/ai-02-07-05-owner-run-bound';
+// prettier-ignore
 const RUN = 12345;
+// prettier-ignore
 const USER = 'bingohooah888-ai';
+// prettier-ignore
 const intentPayload = {
   mainSha: MAIN, candidateSha: CANDIDATE,
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg',
   pr: 2895, scope: 'read-only-protected-entry-no-live-execution'
 };
+// prettier-ignore
 const approvalPayload = {
   actorId: '11111111-1111-4111-8111-111111111111',
   approvalScope: 'synthetic-one-provider-one-call-only',
@@ -35,12 +44,14 @@ const approvalPayload = {
   runId: RUN,
   stagingBranch: BRANCH
 };
+// prettier-ignore
 function owner(id, body, created_at = '2026-11-16T12:28:00.000Z') {
   return {
     id, body, created_at, updated_at: created_at,
     user: { login: USER }, author_association: 'OWNER'
   };
 }
+// prettier-ignore
 function fixtures() {
   return [
     owner(600, 'NOVELIGHT_STAGING_AI_020705_INTEGRATION_INTENT ' +
@@ -49,6 +60,7 @@ function fixtures() {
       JSON.stringify(approvalPayload))
   ];
 }
+// prettier-ignore
 function read(comments = fixtures(), patch = {}) {
   return inspect020705PostRunOwnerApproval({
     comments, intentCommentId: 600, runId: RUN,
@@ -57,6 +69,7 @@ function read(comments = fixtures(), patch = {}) {
   });
 }
 
+// prettier-ignore
 test('OWNER may approve only after the Actions run ID exists; result grants no execution', () => {
   const proof = read();
   assert.equal(proof.state, 'RUN_BOUND_OWNER_APPROVAL_READ_ONLY');
@@ -69,6 +82,7 @@ test('OWNER may approve only after the Actions run ID exists; result grants no e
   assert.equal(proof.authorizesPreviewCreation, false);
 });
 
+// prettier-ignore
 test('missing, duplicate, old, edited, or mismatched run approval fails closed', () => {
   const initial = fixtures();
   assert.throws(() => read(initial.slice(0, 1)), /OWNER_LEDGER_DENIED/u);
@@ -87,6 +101,7 @@ test('missing, duplicate, old, edited, or mismatched run approval fails closed',
     /OWNER_LEDGER_DENIED/u);
 });
 
+// prettier-ignore
 test('approval already CLAIMED or CONSUMED is not accepted again', () => {
   for (const status of ['CLAIMED', 'CONSUMED']) {
     const marker = {
@@ -98,6 +113,7 @@ test('approval already CLAIMED or CONSUMED is not accepted again', () => {
   }
 });
 
+// prettier-ignore
 test('unrelated older same-SHA approval is not a substitute for this run', () => {
   const comments = fixtures();
   const historical = owner(550, 'NOVELIGHT_STAGING_AI_020705_PAID_APPROVE ' +
@@ -105,6 +121,7 @@ test('unrelated older same-SHA approval is not a substitute for this run', () =>
   assert.equal(read([historical, ...comments]).approvalCommentId, 601);
 });
 
+// prettier-ignore
 test('amount above the single dollar cap or stale expiry is refused', () => {
   const comments = fixtures();
   const paid = (value) => owner(601,
