@@ -40,6 +40,56 @@ function hold(code) {
   });
 }
 
+// Intentionally fixed, non-sensitive diagnostic vocabulary. Never log raw errors.
+const SAFE_PROVISION_STAGES = new Set([
+  'VERIFY_CONTEXT',
+  'VERIFY_PINNED_CA',
+  'VERIFY_VERCEL_PROJECT',
+  'VERIFY_VERCEL_INVENTORY',
+  'STAGING_ADMIN_CONNECT',
+  'VERIFY_STAGING_ADMIN_TLS',
+  'VERIFY_STAGING_ADMIN_IDENTITY',
+  'VERIFY_STAGING_RO_ACL',
+  'PREPARE_STAGING_RO_CREDENTIAL',
+  'WRITE_STAGING_RO_PASSWORD',
+  'WRITE_VERCEL_PREVIEW_SECRET',
+  'VERIFY_VERCEL_PREVIEW_SECRET',
+  'ENABLE_STAGING_RO_LOGIN',
+  'STAGING_RO_CONNECT',
+  'VERIFY_STAGING_RO_LOGIN'
+]);
+
+const SAFE_PROVISION_CODES = new Set([
+  'UNTRUSTED_APPROVAL_CONTEXT',
+  'EXISTING_STAGING_SECRETS_REQUIRED',
+  'STAGING_DATABASE_IDENTITY_UNVERIFIED',
+  'GENERATED_PASSWORD_INVALID',
+  'DATABASE_ROUTE_INVALID',
+  'SCRAM_INPUT_INVALID',
+  'TLS_NOT_VERIFIED',
+  'ROLE_NOT_DORMANT_OR_UNSAFE',
+  'STAGING_READER_ACL_DRIFT',
+  'INVALID_RELATION',
+  'VERCEL_INVENTORY_UNAVAILABLE',
+  'VERCEL_INVENTORY_INCOMPLETE',
+  'VERCEL_SECRET_WRITE_UNVERIFIED',
+  'READONLY_LOGIN_NOT_VERIFIED',
+  'VERCEL_PROJECT_IDENTITY_MISMATCH',
+  'VERCEL_EXISTING_SECRET_REFUSED',
+  'PRIVILEGED_STAGING_ROLE_UNVERIFIED',
+  'VERCEL_POSTWRITE_METADATA_UNVERIFIED',
+  'ROLE_DISABLE_UNVERIFIED',
+  'PROVISION_FAILED_SAFE_REVIEW_REQUIRED'
+]);
+
+export function formatFormalRoProvisionFailure(error, stage) {
+  const safeStage = SAFE_PROVISION_STAGES.has(stage) ? stage : 'UNKNOWN_STAGE';
+  const safeCode = SAFE_PROVISION_CODES.has(error?.safeCode)
+    ? error.safeCode
+    : 'UNCLASSIFIED_FAILURE';
+  return 'FORMAL_RO_STAGING_PROVISION_STOPPED:' + safeStage + ':' + safeCode;
+}
+
 export function verifyFormalReaderProvisionContext(env) {
   if (
     env.GITHUB_ACTIONS !== 'true' ||
@@ -266,11 +316,15 @@ export async function provisionFormalStagingReader({
   env = process.env,
   fetchImpl = globalThis.fetch,
   resolveScope = resolveVercelProjectScope,
-  ClientImpl = Client
+  ClientImpl = Client,
+  onSafeStage = () => {}
 } = {}) {
+  onSafeStage('VERIFY_CONTEXT');
   verifyFormalReaderProvisionContext(env);
+  onSafeStage('VERIFY_PINNED_CA');
   const ca = readFileSync(OFFICIAL_SUPABASE_CA_FILE_PATH, 'utf8');
   verifyPinnedSupabaseRootCa(ca);
+  onSafeStage('VERIFY_VERCEL_PROJECT');
   const scope = await resolveScope({
     fetchImpl,
     token: env.VERCEL_API_TOKEN,
@@ -279,19 +333,26 @@ export async function provisionFormalStagingReader({
   if (scope.projectId !== PROJECT || scope.teamId !== TEAM) {
     hold('VERCEL_PROJECT_IDENTITY_MISMATCH');
   }
+  onSafeStage('VERIFY_VERCEL_INVENTORY');
   if ((await fetchEnvInventory(env.VERCEL_API_TOKEN, fetchImpl)).length !== 0) {
     hold('VERCEL_EXISTING_SECRET_REFUSED');
   }
+  onSafeStage('STAGING_ADMIN_CONNECT');
   const admin = new ClientImpl(connectionOptions(env.STAGING_DATABASE_URL, ca));
   let loginActivated = false;
   try {
+    onSafeStage('STAGING_ADMIN_CONNECT');
     await admin.connect();
+    onSafeStage('VERIFY_STAGING_ADMIN_TLS');
     await verifyTls(admin);
+    onSafeStage('VERIFY_STAGING_ADMIN_IDENTITY');
     const who = await admin.query('select current_user as name');
     if (who.rows[0]?.name !== 'postgres') hold('PRIVILEGED_STAGING_ROLE_UNVERIFIED');
+    onSafeStage('VERIFY_STAGING_RO_ACL');
     await verifyDormantRole(admin);
 
     // Generate only in this trusted runner. Never echo the password or hash.
+    onSafeStage('PREPARE_STAGING_RO_CREDENTIAL');
     const password = randomBytes(48).toString('base64url');
     const verifier = makeScramVerifier(password, randomBytes(16));
     const readerUrl = deriveFormalReaderDatabaseUrl(
@@ -300,8 +361,11 @@ export async function provisionFormalStagingReader({
     );
     // A password is set while the role remains NOLOGIN: a failed Vercel
     // write cannot produce a publicly usable partial credential.
+    onSafeStage('WRITE_STAGING_RO_PASSWORD');
     await admin.query('ALTER ROLE ' + ROLE + " PASSWORD '" + verifier + "'");
+    onSafeStage('WRITE_VERCEL_PREVIEW_SECRET');
     await storeBranchOnlySecret(env.VERCEL_API_TOKEN, readerUrl, fetchImpl);
+    onSafeStage('VERIFY_VERCEL_PREVIEW_SECRET');
     const created = await fetchEnvInventory(env.VERCEL_API_TOKEN, fetchImpl);
     if (
       created.length !== 1 ||
@@ -312,11 +376,14 @@ export async function provisionFormalStagingReader({
       hold('VERCEL_POSTWRITE_METADATA_UNVERIFIED');
     }
     // Authorization is still OFF: only the isolated reader login is enabled.
+    onSafeStage('ENABLE_STAGING_RO_LOGIN');
     await admin.query('ALTER ROLE ' + ROLE + ' LOGIN');
     loginActivated = true;
     const reader = new ClientImpl(connectionOptions(readerUrl, ca));
     try {
+      onSafeStage('STAGING_RO_CONNECT');
       await reader.connect();
+      onSafeStage('VERIFY_STAGING_RO_LOGIN');
       await verifyNewRole(reader);
     } finally {
       await reader.end().catch(() => {});
@@ -349,10 +416,11 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  provisionFormalStagingReader()
+  let safeStage = 'VERIFY_CONTEXT';
+  provisionFormalStagingReader({ onSafeStage: (stage) => { safeStage = stage; } })
     .then(() => console.log('FORMAL_RO_STAGING_CREDENTIAL_READY'))
-    .catch(() => {
-      console.error('FORMAL_RO_STAGING_PROVISION_STOPPED');
+    .catch((error) => {
+      console.error(formatFormalRoProvisionFailure(error, safeStage));
       process.exitCode = 1;
     });
 }

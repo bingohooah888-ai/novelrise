@@ -4,6 +4,7 @@ import test from 'node:test';
 import { URL } from 'node:url';
 import {
   deriveFormalReaderDatabaseUrl,
+  formatFormalRoProvisionFailure,
   makeScramVerifier,
   provisionFormalStagingReader,
   verifyFormalReaderProvisionContext
@@ -157,4 +158,58 @@ test('OWNER-only Staging RO workflow pins PR #2935 and stays manual', () => {
     () => verify({ GITHUB_EVENT_NAME: 'push' }),
     /UNTRUSTED_APPROVAL_CONTEXT/u
   );
+});
+
+test('failure messages allow only fixed safe codes', () => {
+  const secret = 'private-password';
+  const result = formatFormalRoProvisionFailure(
+    { safeCode: secret },
+    'STAGING_ADMIN_CONNECT'
+  );
+  assert.equal(
+    result,
+    'FORMAL_RO_STAGING_PROVISION_STOPPED:STAGING_ADMIN_CONNECT:UNCLASSIFIED_FAILURE'
+  );
+  assert.equal(result.includes(secret), false);
+  assert.equal(
+    formatFormalRoProvisionFailure(new Error(secret), secret),
+    'FORMAL_RO_STAGING_PROVISION_STOPPED:UNKNOWN_STAGE:UNCLASSIFIED_FAILURE'
+  );
+});
+
+test('context failure reports its stage without external access', async () => {
+  let observed = '';
+  let touched = false;
+  await assert.rejects(
+    provisionFormalStagingReader({
+      env: { ...stage, VERCEL_API_TOKEN: '' },
+      onSafeStage: (value) => {
+        observed = value;
+      },
+      fetchImpl: async () => {
+        touched = true;
+        throw new Error('unexpected network');
+      }
+    }),
+    /EXISTING_STAGING_SECRETS_REQUIRED/u
+  );
+  assert.equal(observed, 'VERIFY_CONTEXT');
+  assert.equal(touched, false);
+});
+
+test('synthetic scope failure identifies the safe stage', async () => {
+  let observed = '';
+  await assert.rejects(
+    provisionFormalStagingReader({
+      env: stage,
+      onSafeStage: (value) => {
+        observed = value;
+      },
+      resolveScope: async () => {
+        throw new Error('private-password');
+      }
+    }),
+    /private-password/u
+  );
+  assert.equal(observed, 'VERIFY_VERCEL_PROJECT');
 });
