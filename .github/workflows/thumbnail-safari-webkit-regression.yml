@@ -10,6 +10,9 @@ on:
       - api/thumbnail-render.js
       - novelight-episode-visual-editor.js
       - novelight-episode-illustrations.js
+      - novelight-reading-settings.css
+      - novelight-reading-settings.js
+      - tests/e2e/specs/reader-text-autosize.spec.js
       - episode-edit.html
       - episode.html
       - novelight-custom-cover.js
@@ -30,6 +33,9 @@ on:
       - api/thumbnail-render.js
       - novelight-episode-visual-editor.js
       - novelight-episode-illustrations.js
+      - novelight-reading-settings.css
+      - novelight-reading-settings.js
+      - tests/e2e/specs/reader-text-autosize.spec.js
       - episode-edit.html
       - episode.html
       - novelight-custom-cover.js
