@@ -24,6 +24,10 @@ SEARCH_CARD_COMPAT_MIGRATION="supabase/migrations/20260930210000_search_card_met
 cp supabase/migrations/20260930153337_search_card_metadata.sql "$SEARCH_CARD_COMPAT_MIGRATION"
 trap 'rm -f "$SEARCH_CARD_COMPAT_MIGRATION"' EXIT
 bash scripts/run-migration-replay.sh
+# The existing CI PostgreSQL 17 service runs this targeted two-connection
+# proof in its own disposable database. It never contacts hosted Supabase.
+# Always remove that database and restore the temporary CI role attribute.
+bash tests/rls/ai-020705-claim-cas-real-postgres.sh
 # Rehearse the unpublished follow-list SECURITY DEFINER RPCs only on
 # the disposable CI migration replay database (never hosted Supabase).
 # Actual Staging execution stays behind the OWNER staging approval gate.
