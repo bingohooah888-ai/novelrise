@@ -3,6 +3,8 @@ import test from 'node:test';
 
 // prettier-ignore
 import { create020705ComprehensiveStagingSequence } from '../.github/staging-ai-02-07-05/comprehensive-staging-sequence.mjs';
+// prettier-ignore
+import { create020705ProtectedComprehensiveStagingSequence } from '../.github/ai-02-07-05-app-composition/protected-live-composition.mjs';
 
 const MAIN = 'a'.repeat(40);
 const HEAD = 'b'.repeat(40);
@@ -220,4 +222,21 @@ test('cleanup failure prevents PASS even if JWT passed', async () => {
     create020705ComprehensiveStagingSequence(options).run(),
     /AI_020705_STAGING_SEQUENCE_DENIED/u
   );
+});
+
+// prettier-ignore
+test('trusted wrapper cannot replace the protected paid composition with an injected stub', async () => {
+  const { options, actions } = fixture();
+  let stubCalls = 0;
+  options.protectedPaidFactory = () => {
+    stubCalls += 1;
+    return { run: async () => ({ outcome: 'one_call_succeeded_and_cleanup_verified' }) };
+  };
+  await assert.rejects(
+    create020705ProtectedComprehensiveStagingSequence(options).run(),
+    /AI_020705_STAGING_SEQUENCE_DENIED/u
+  );
+  assert.equal(stubCalls, 0);
+  assert.equal(actions.includes('one-paid-executor'), false);
+  assert.equal(actions.includes('emergency-stop-cleanup'), true);
 });
