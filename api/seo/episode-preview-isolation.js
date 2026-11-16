@@ -64,7 +64,8 @@ export function prepareEpisodeReaderTemplate(template, env = process.env) {
 
   // The existing preview bootstrap resolves the validated Staging public
   // client. Never embed an environment value or Production URL in Preview HTML.
-  const replacement = 'const client=NovelightClient.createAuthClient(null,null);';
+  const replacement =
+    'const client=NovelightClient.createAuthClient(null,null);';
   const html = template.replace(PRODUCTION_CLIENT_PATTERN, replacement);
   if (html.includes(PRODUCTION_SUPABASE_HOST)) {
     throw new Error('EPISODE_PREVIEW_PRODUCTION_REFERENCE');
