@@ -164,12 +164,9 @@ function previewFixture({ missingFlag = false, wrongCommit = false } = {}) {
           url: 'novelight-synthetic.vercel.app',
           gitSource: { sha: wrongCommit ? MAIN : HEAD, ref: branch }
         };
-      } else if (url.endsWith('/api/deployment-revision')) {
+      } else if (url.endsWith('/api/ai-020705-staging-attestation')) {
         if (!opts.headers) status = 403;
-        payload = { commitSha: HEAD };
-      } else if (url.endsWith('/api/staging-browser-config')) {
-        payload = { supabaseUrl: URL,
-          supabasePublishableKey: 'sb_publishable_test' };
+        payload = { target: 'preview', commitSha: HEAD, supabaseUrl: URL };
       } else throw new Error('UNEXPECTED_URL');
       return { status, json: async () => payload };
     }
