@@ -162,6 +162,9 @@ function build({ badKey = false, killFailed = false } = {}) {
       calls.push('census');
       return {
         projectRef: scope.stagingProjectRef,
+        userId: synthetic.userId,
+        novelId: synthetic.novelId,
+        approvalCommentId: synthetic.approvalCommentId,
         runtimeDisabledZero: true,
         approvalTombstoneCount: 1,
         chunkClaimsRetained: 0, // Legacy one-shot fixture has no chunk claim.
