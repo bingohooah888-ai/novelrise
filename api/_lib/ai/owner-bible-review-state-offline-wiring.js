@@ -12,9 +12,21 @@ import {
 import { createSupabaseOwnerBibleReviewStateRepository } from './owner-bible-review-state-repository.js';
 import { createOfflineOwnerSessionCheck } from './owner-session-evidence.js';
 import { createOfflinePrivateSessionReader } from './owner-private-session-reader.js';
+import { createOfflineServiceRoleSessionLookup } from './owner-service-role-session-reader.js';
 
 function unavailable() {
   throw new Error('AI_OWNER_REVIEW_STATE_UNAVAILABLE');
+}
+
+// Explicit server-side opt-in only. Never interpret a request field or JWT
+// claim as authorization to turn on the restricted service-role session RPC.
+// Absence/unknown mode preserves the existing default-deny observer contract.
+function resolveSessionLookup({ lookupOneSession, sessionLookupMode, serviceClient }) {
+  if (sessionLookupMode === undefined) return lookupOneSession;
+  if (sessionLookupMode !== 'restricted_rpc' || lookupOneSession !== undefined) {
+    return null;
+  }
+  return createOfflineServiceRoleSessionLookup({ serviceClient });
 }
 
 export function createOfflineOwnerBibleReviewStateWiring({
@@ -23,15 +35,21 @@ export function createOfflineOwnerBibleReviewStateWiring({
   serviceClient,
   readOwnerPreview,
   lookupOneSession,
+  sessionLookupMode,
   nowEpochSeconds
 } = {}) {
+  const sessionLookup = resolveSessionLookup({
+    lookupOneSession,
+    sessionLookupMode,
+    serviceClient
+  });
   if (
     typeof serviceClient?.auth?.getClaims !== 'function' ||
     typeof serviceClient?.auth?.getUser !== 'function' ||
     typeof serviceClient?.from !== 'function' ||
     typeof serviceClient?.rpc !== 'function' ||
     typeof readOwnerPreview !== 'function' ||
-    typeof lookupOneSession !== 'function' ||
+    typeof sessionLookup !== 'function' ||
     typeof nowEpochSeconds !== 'function'
   ) {
     unavailable();
@@ -41,7 +59,7 @@ export function createOfflineOwnerBibleReviewStateWiring({
     checkSession: createOfflineOwnerSessionCheck({
       verifySignedClaims: (token) => serviceClient.auth.getClaims(token),
       readExistingSession: createOfflinePrivateSessionReader({
-        lookupOneSession
+        lookupOneSession: sessionLookup
       }),
       nowEpochSeconds
     })
@@ -69,8 +87,14 @@ export function createOfflineOwnerBibleReviewStateHttpWiring({
   serviceClient,
   createAuthorClient,
   lookupOneSession,
+  sessionLookupMode,
   nowEpochSeconds
 } = {}) {
+  const sessionLookup = resolveSessionLookup({
+    lookupOneSession,
+    sessionLookupMode,
+    serviceClient
+  });
   const disabled = () =>
     createOfflineOwnerBibleReviewStateApiHandler({ enabled: false, env });
   const config = resolveOwnerNovelBiblePreviewConfig(env);
@@ -84,7 +108,7 @@ export function createOfflineOwnerBibleReviewStateHttpWiring({
     typeof serviceClient?.from !== 'function' ||
     typeof serviceClient?.rpc !== 'function' ||
     typeof createAuthorClient !== 'function' ||
-    typeof lookupOneSession !== 'function' ||
+    typeof sessionLookup !== 'function' ||
     typeof nowEpochSeconds !== 'function'
   ) {
     return disabled();
@@ -149,7 +173,7 @@ export function createOfflineOwnerBibleReviewStateHttpWiring({
     ownerId: config.id,
     serviceClient,
     readOwnerPreview,
-    lookupOneSession,
+    lookupOneSession: sessionLookup,
     nowEpochSeconds
   });
   return createOfflineOwnerBibleReviewStateApiHandler({
