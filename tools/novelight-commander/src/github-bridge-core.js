@@ -1825,6 +1825,32 @@ async function actionGscIndexInspect(request) {
   return runGscReadOnlyBridgeAction({ args: request.args });
 }
 
+async function actionScoutRoStagingDispatch(request, config, sourceComment) {
+  const { readFile } = await import('node:fs/promises');
+  const registry = JSON.parse(
+    await readFile(
+      new URL('../../../.novelight/nlo-capabilities.json', import.meta.url),
+      'utf8'
+    )
+  );
+  const capability = registry.capabilities?.find(
+    (item) => item.id === 'nlo.github.scout-ro-staging-dispatch'
+  );
+  if (capability?.status !== 'enabled') {
+    throw new Error('SCOUT_RO_DISPATCH_HOLD:CAPABILITY_NOT_ENABLED');
+  }
+  const { dispatchScoutRoStagingOnce } = await import(
+    './scout-ro-staging-dispatch.js'
+  );
+  const token = getToken();
+  const result = await dispatchScoutRoStagingOnce({
+    request,
+    sourceComment,
+    api: (method, route, body) => githubApi(token, method, route, body)
+  });
+  return JSON.stringify(result, null, 2);
+}
+
 async function actionPoint10xStage38Dispatch(request, config, sourceComment) {
   const { dispatchPoint10xStage38Once } = await import(
     './point10x-staging-identity-dispatch.js'
@@ -1874,6 +1900,7 @@ const ACTIONS = new Map([
   ['supabase_staging_actions', actionSupabaseStagingNloReadOnly],
   ['supabase_staging_action_logs', actionSupabaseStagingNloReadOnly],
   ['point10x_stage38_dispatch', actionPoint10xStage38Dispatch],
+  ['scout_ro_staging_dispatch', actionScoutRoStagingDispatch],
   ['gsc_index_inspect', actionGscIndexInspect],
   ['cloudflare_account', actionCloudflareNloReadOnly],
   ['cloudflare_workers', actionCloudflareNloReadOnly],
