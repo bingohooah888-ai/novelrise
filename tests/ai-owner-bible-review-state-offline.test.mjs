@@ -781,10 +781,7 @@ test('review-state browser adapter uses a Staging-only, default-off server route
   assert.equal(existsSync(route), true);
   const source = readFileSync(route, 'utf8');
   assert.match(source, /enabled = false/);
-  assert.match(
-    source,
-    /enabled: isolatedStagingPreview/
-  );
+  assert.match(source, /enabled: isolatedStagingPreview/);
 });
 
 test('revocation after private preview but before CAS prevents a write', async () => {
