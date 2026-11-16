@@ -189,7 +189,9 @@ test('missing Secret identifies context stage without network access', async () 
   try {
     await provisionFormalStagingReader({
       env: { ...stage, VERCEL_API_TOKEN: '' },
-      onSafeStage: (name) => { safeStage = name; },
+      onSafeStage: (name) => {
+        safeStage = name;
+      },
       fetchImpl: async () => {
         touchedNetwork = true;
         throw new Error('unexpected external access');
@@ -212,9 +214,15 @@ test('synthetic Vercel scope failure prints no raw exception', async () => {
   try {
     await provisionFormalStagingReader({
       env: stage,
-      onSafeStage: (name) => { safeStage = name; },
-      resolveScope: async () => { throw new Error(secret); },
-      fetchImpl: async () => { throw new Error('network forbidden'); }
+      onSafeStage: (name) => {
+        safeStage = name;
+      },
+      resolveScope: async () => {
+        throw new Error(secret);
+      },
+      fetchImpl: async () => {
+        throw new Error('network forbidden');
+      }
     });
   } catch (error) {
     failure = error;
@@ -233,13 +241,17 @@ test('synthetic Staging connection failure identifies exact safe phase', async (
   let safeStage = '';
   let failure;
   class SyntheticFailingClient {
-    async connect() { throw new Error(secret); }
+    async connect() {
+      throw new Error(secret);
+    }
     async end() {}
   }
   try {
     await provisionFormalStagingReader({
       env: stage,
-      onSafeStage: (name) => { safeStage = name; },
+      onSafeStage: (name) => {
+        safeStage = name;
+      },
       resolveScope: async () => ({
         projectId: 'prj_SmotUNrcyuUntdWTayzWeJ8eQGqe',
         teamId: 'team_2XFgtRCPJQ6pbrEa4mOLQAEx'
