@@ -104,16 +104,17 @@ export function create020705ComprehensiveStagingSequence({
     async run() {
       if (attempted) deny();
       attempted = true;
+      let preflightPassed = false;
       let syntheticStarted = false;
       let paidStarted = false;
       let failed = false;
       let cleanupOk = true;
-      let censusOk = false;
+      let censusOk = true;
       let completed = false;
-      let errorCode = 'AI_020705_STAGING_SEQUENCE_DENIED';
       try {
         if (await verifyOwnerAndRefs(scope) !== true ||
             await verifyStagingIsolation(scope) !== true) deny();
+        preflightPassed = true;
 
         // A later SHA change invalidates the approval at EACH mutation gate.
         if (await verifyOwnerAndRefs(scope) !== true ||
@@ -170,14 +171,16 @@ export function create020705ComprehensiveStagingSequence({
             cleanupOk = false;
           }
         }
-        try {
-          censusOk = (await independentFinalCensus(scope)) === true;
-        } catch {
-          censusOk = false;
+        if (preflightPassed) {
+          try {
+            censusOk = (await independentFinalCensus(scope)) === true;
+          } catch {
+            censusOk = false;
+          }
         }
       }
       if (failed || !completed || !cleanupOk || !censusOk) {
-        throw new Error(errorCode);
+        deny();
       }
       // No original manuscript, JWT, personal data, request, or model text.
       return Object.freeze({
