@@ -160,7 +160,7 @@ test('OWNER-only Staging RO workflow pins PR #2935 and stays manual', () => {
   );
 });
 
-test('failure output is fixed vocabulary and never echoes untrusted errors', () => {
+test('safe failure output does not expose untrusted errors', () => {
   const secret = 'postgresql://postgres:private-pass@db.example.invalid/postgres';
   assert.equal(
     formatFormalRoProvisionFailure(
@@ -182,7 +182,7 @@ test('failure output is fixed vocabulary and never echoes untrusted errors', () 
   );
 });
 
-test('missing Secret identifies context stage without network access', async () => {
+test('missing Secret reports context before network access', async () => {
   let safeStage = '';
   let touchedNetwork = false;
   let failure;
@@ -236,7 +236,7 @@ test('synthetic Vercel scope failure prints no raw exception', async () => {
   assert.equal(line.includes(secret), false);
 });
 
-test('synthetic Staging connection failure identifies exact safe phase', async () => {
+test('synthetic Staging failure reports a safe phase', async () => {
   const secret = 'postgresql://postgres:private-pass@db.example.invalid/postgres';
   let safeStage = '';
   let failure;
