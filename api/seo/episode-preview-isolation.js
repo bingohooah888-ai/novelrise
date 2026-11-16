@@ -29,11 +29,6 @@ function isolatedSupabaseOrigin(value) {
   }
 }
 
-function scriptString(value) {
-  // Avoid prematurely terminating the inline script even if config drifts.
-  return JSON.stringify(value).replaceAll('<', '\\u003c');
-}
-
 /**
  * Production keeps the existing template byte-for-byte.
  * Preview is never allowed to return its template or query the database
@@ -67,12 +62,9 @@ export function prepareEpisodeReaderTemplate(template, env = process.env) {
     throw new Error('EPISODE_PREVIEW_TEMPLATE_DRIFT');
   }
 
-  const replacement =
-    'const client=supabase.createClient(' +
-    scriptString(config.supabaseUrl) +
-    ',' +
-    scriptString(config.supabasePublishableKey) +
-    ');';
+  // The existing preview bootstrap resolves the validated Staging public
+  // client. Never embed an environment value or Production URL in Preview HTML.
+  const replacement = 'const client=NovelightClient.createAuthClient(null,null);';
   const html = template.replace(PRODUCTION_CLIENT_PATTERN, replacement);
   if (html.includes(PRODUCTION_SUPABASE_HOST)) {
     throw new Error('EPISODE_PREVIEW_PRODUCTION_REFERENCE');
