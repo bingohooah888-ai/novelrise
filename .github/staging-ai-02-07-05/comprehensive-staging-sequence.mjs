@@ -159,10 +159,11 @@ export function create020705ComprehensiveStagingSequence({
       } catch {
         failed = true;
       } finally {
-        if (syntheticStarted) {
-          // Idempotent emergency stop + fixture cleanup must be supplied by
-          // the independent protected runner. Never delete claim tombstones.
-          // The paid runner also performs its own stop/cleanup/census.
+        if (syntheticStarted && !completed) {
+          // On a failed run, independently stop and reconcile the synthetic
+          // fixture. This callback MUST tolerate the paid executor having
+          // already cleaned it; permanent claim tombstones remain untouched.
+          // A successful protected paid run has already stopped/cleaned.
           try {
             cleanupOk = (await stopAndCleanup(scope, {
               paidStarted
