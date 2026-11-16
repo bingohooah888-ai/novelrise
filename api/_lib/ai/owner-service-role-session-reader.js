@@ -26,7 +26,10 @@ export function createOfflineServiceRoleSessionLookup({ serviceClient } = {}) {
         p_session_id: session,
         p_actor_id: owner
       });
-      return result?.error == null && result?.data === true;
+      if (result?.error !== null && result?.error !== undefined) {
+        return false;
+      }
+      return result?.data === true;
     } catch {
       return false;
     }
