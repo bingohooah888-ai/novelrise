@@ -190,7 +190,7 @@ export function create020705StagingMigrationAdapter({
     try {
       const versions = versionList(mainMigrationFiles()
         .map((name) => typeof name === 'string'
-          ? name.match(/^(20\\d{12})_[a-z0-9_]+\\.sql$/u)?.[1]
+          ? name.match(/^(20\d{12})_[a-z0-9_]+\.sql$/u)?.[1]
           : undefined)
         .filter(Boolean)
         .concat(REQUIRED.map((m) => m.version)));
