@@ -13,6 +13,13 @@ begin
     or pg_catalog.to_regprocedure(
       'public.novelight_ai_owner_review_state_cas(uuid,bigint,uuid,integer,jsonb)'
     ) is null
+    or pg_catalog.to_regprocedure(
+      'public.novelight_ai_owner_session_exists_v1(uuid,uuid)'
+    ) is null
+    or pg_catalog.to_regprocedure(
+      'novelight_ai_private.session_active_v1(uuid,uuid,boolean)'
+    ) is null
+    or pg_catalog.to_regnamespace('novelight_ai_private') is null
   then
     raise exception 'OWNER review rollback blocked: missing exact objects';
   end if;
@@ -25,7 +32,14 @@ $review_state_rollback_guard$;
 drop function public.novelight_ai_owner_review_state_cas(
   uuid, bigint, uuid, integer, jsonb
 ) restrict;
+drop function public.novelight_ai_owner_session_exists_v1(
+  uuid, uuid
+) restrict;
 drop table public.novelight_ai_owner_review_states restrict;
+drop function novelight_ai_private.session_active_v1(
+  uuid, uuid, boolean
+) restrict;
+drop schema novelight_ai_private restrict;
 
 commit;
 
