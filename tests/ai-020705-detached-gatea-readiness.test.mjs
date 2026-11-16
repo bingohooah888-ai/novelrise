@@ -5,13 +5,21 @@ import test from 'node:test';
 // prettier-ignore
 import { inspect020705IndependentGateABeforeMutation, create020705CloudflareDeathReceiptReader } from '../.github/ai-02-07-05-app-composition/staging-live-bindings.mjs';
 
+// prettier-ignore
 const REPO = 'bingohooah888-ai/novelrise';
+// prettier-ignore
 const STAGING = 'wmlzjgvxgoyrovdhbqbg';
+// prettier-ignore
 const MAIN = 'a'.repeat(40);
+// prettier-ignore
 const HEAD = 'b'.repeat(40);
+// prettier-ignore
 const NONCE = 'A'.repeat(44);
+// prettier-ignore
 const KEYID = 'independent-gatea-01';
+// prettier-ignore
 const NOW = Date.parse('2026-11-16T12:30:00Z');
+// prettier-ignore
 const keys = generateKeyPairSync('ed25519');
 
 // prettier-ignore
@@ -31,6 +39,7 @@ const scope = Object.freeze({
   approvalCommentId: 601
 });
 
+// prettier-ignore
 function signed(domain, field, receipt) {
   return {
     domain, keyId: KEYID, challengeNonce: NONCE,
@@ -41,6 +50,7 @@ function signed(domain, field, receipt) {
   };
 }
 
+// prettier-ignore
 function activeArmReceipt() {
   return {
     repository: REPO, stagingProjectRef: STAGING,
@@ -68,6 +78,7 @@ function activeArmReceipt() {
   };
 }
 
+// prettier-ignore
 function independentController(envelope) {
   return {
     trustedControllerPublicKey: keys.publicKey,
@@ -109,6 +120,7 @@ test('only independently signed fresh live Gate A arm can pass pre-mutation chec
   }), false);
 });
 
+// prettier-ignore
 function deathReceipt() {
   return {
     repository: REPO, stagingProjectRef: STAGING,
@@ -164,6 +176,7 @@ function recoveryFixture({ httpStatus = 200, tamper = false } = {}) {
   return { reader, actions, envelope };
 }
 
+// prettier-ignore
 test('Cloudflare detached death receipt is read only, cryptographically verified, and one-use', async () => {
   const { reader, actions, envelope } = recoveryFixture();
   assert.equal(actions.length, 0);
@@ -175,6 +188,7 @@ test('Cloudflare detached death receipt is read only, cryptographically verified
   assert.equal(actions.length, 1);
 });
 
+// prettier-ignore
 test('unreachable Cloudflare, forged signature, wrong scope, or unapproved domain deny', async () => {
   for (const args of [{ httpStatus: 404 }, { tamper: true }]) {
     const { reader } = recoveryFixture(args);
