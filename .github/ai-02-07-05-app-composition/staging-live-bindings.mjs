@@ -8,6 +8,7 @@ import { create020705StagingMigrationAdapter } from './staging-live-migrations.m
 import { create020705StagingPreviewAdapter } from './staging-live-preview.mjs';
 import { create020705StagingJwtAdapter } from './staging-live-jwt.mjs';
 import { create020705ProtectedComprehensiveStagingSequence } from './protected-live-composition.mjs';
+import { inspect020705OwnerLedger } from '../staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
 import { createOwnerNovelBibleConsentPermissionCheck } from '../../api/_lib/ai/owner-novel-bible-consent.js';
 
 const REPO = 'bingohooah888-ai/novelrise';
@@ -34,6 +35,18 @@ export function create020705StagingLiveBindings({
       !SHA.test(scope?.mainSha ?? '') ||
       !SHA.test(scope?.candidateSha ?? '') ||
       scope.mainSha === scope.candidateSha ||
+      scope.existingMigrationsOnly !== true ||
+      scope.existingPreviewOnly !== true ||
+      typeof scope.previewDeploymentId !== 'string' ||
+      !/^dpl_[A-Za-z0-9]+$/u.test(scope.previewDeploymentId) ||
+      typeof scope.consentRevision !== 'string' ||
+      !/^[a-z0-9][a-z0-9._-]{3,119}$/iu.test(scope.consentRevision) ||
+      typeof scope.actorId !== 'string' ||
+      !/^[0-9a-f-]{36}$/iu.test(scope.actorId) ||
+      !Number.isSafeInteger(scope.novelId) ||
+      !Number.isSafeInteger(scope.episodeId) ||
+      !Number.isSafeInteger(scope.runId) ||
+      !Number.isSafeInteger(scope.approvalCommentId) ||
       typeof fetchImpl !== 'function' ||
       !credentials ||
       !controller ||
@@ -77,6 +90,7 @@ export function create020705StagingLiveBindings({
     projectId: credentials.vercelProjectId,
     teamId: credentials.vercelTeamId,
     protectionBypass: credentials.vercelProtectionBypass,
+    existingDeploymentId: scope.previewDeploymentId,
     fetchImpl
   });
   const jwt = create020705StagingJwtAdapter({
@@ -87,7 +101,7 @@ export function create020705StagingLiveBindings({
   });
 
   async function github(path, { method = 'GET', body } = {}) {
-    if (!/^\/(?:git\/ref\/heads\/main|pulls\/2895|git\/ref\/heads\/staging%2Fai-02-07-05-[a-z0-9-]+|issues\/294\/comments(?:\?per_page=100&page=[1-9][0-9]*)?)$/u.test(path))
+    if (!/^\/(?:git\/ref\/heads\/main|pulls\/2895|issues\/294|git\/ref\/heads\/staging%2Fai-02-07-05-[a-z0-9-]+|issues\/294\/comments(?:\?per_page=100&page=[1-9][0-9]*)?)$/u.test(path))
       deny();
     let response;
     try {
@@ -110,17 +124,46 @@ export function create020705StagingLiveBindings({
   }
 
   async function verifyOwnerAndRefs() {
-    const [main, pr, branch] = await Promise.all([
+    const [main, pr, branch, issue, comments] = await Promise.all([
       github('/git/ref/heads/main'),
       github('/pulls/2895'),
-      github('/git/ref/heads/' + encodeURIComponent(scope.stagingBranch))
+      github('/git/ref/heads/' + encodeURIComponent(scope.stagingBranch)),
+      github('/issues/294'),
+      readComments()
     ]);
-    return main?.object?.sha === scope.mainSha &&
-      pr?.number === 2895 && pr?.state === 'open' &&
-      pr?.draft === true && pr?.merged !== true &&
-      pr?.head?.sha === scope.candidateSha &&
-      pr?.base?.sha === scope.mainSha &&
-      branch?.object?.sha === scope.candidateSha;
+    if (main?.object?.sha !== scope.mainSha ||
+        pr?.number !== 2895 || pr?.state !== 'open' ||
+        pr?.draft !== true || pr?.merged === true ||
+        pr?.head?.sha !== scope.candidateSha ||
+        pr?.base?.sha !== scope.mainSha ||
+        branch?.object?.sha !== scope.candidateSha ||
+        issue?.number !== 294 ||
+        issue?.title !== '[Staging Control] Supabase migration sync' ||
+        issue?.state !== 'open' ||
+        issue?.user?.login !== 'bingohooah888-ai') return false;
+    try {
+      inspect020705OwnerLedger({
+        comments, approvalCommentId: scope.approvalCommentId,
+        expected: {
+          actorId: scope.actorId,
+          novelId: scope.novelId,
+          episodeId: scope.episodeId,
+          mainSha: scope.mainSha,
+          candidateSha: scope.candidateSha,
+          stagingBranch: scope.stagingBranch,
+          repository: REPO,
+          runId: scope.runId,
+          approvalIssueNumber: 294,
+          previewDeploymentId: scope.previewDeploymentId,
+          capMicros: scope.capMicros,
+          consentRevision: scope.consentRevision
+        },
+        now: Date.now()
+      });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async function readComments() {
@@ -160,8 +203,10 @@ export function create020705StagingLiveBindings({
           return scope.supabaseUrl === URL &&
             await controller.verifyIndependentController(scope) === true;
         },
-        installReviewState: migration.installReviewState,
-        installChunkClaim: migration.installChunkClaim,
+        // A paid-one-shot approval is not a migration installation approval.
+        // Inspect the already approved pair; never apply DDL in this job.
+        installReviewState: migration.inspectInstalled,
+        installChunkClaim: migration.inspectInstalled,
         preparePreview: async () => {
           verifiedPreview = await preview.preparePreview();
           return verifiedPreview;
@@ -252,8 +297,8 @@ export function create020705StagingLiveBindings({
           return jwt.emergencyCleanup();
         },
         independentFinalCensus: async () =>
-          controller.independentCensus(scope) === true &&
-          jwt.finalCensus() === true
+          (await controller.independentCensus(scope)) === true &&
+          (await jwt.finalCensus()) === true
       });
       try {
         return await sequence.run();
