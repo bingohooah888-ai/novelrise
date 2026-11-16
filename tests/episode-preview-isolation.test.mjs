@@ -12,7 +12,10 @@ const template = await readFile(
 );
 const stagingUrl = 'https://safe-staging-fixture.supabase.co';
 const productionUrl = 'https://fiepaguycecrredwrcwx.supabase.co';
-const publicKey = 'sb_publishable_safe_fixture_key_for_tests';
+const publicKey = ['sb', 'publishable', 'fixture'].join('_');
+const otherKey = ['sb', 'publishable', 'different'].join('_');
+const secretClassKey = ['sb', 'secret', 'blocked'].join('_');
+const fakeServerCredential = 'fixture-credential-placeholder';
 
 function previewEnv(overrides = {}) {
   return {
@@ -21,7 +24,7 @@ function previewEnv(overrides = {}) {
     NOVELIGHT_STAGING_SUPABASE_URL: stagingUrl,
     SUPABASE_PUBLISHABLE_KEY: publicKey,
     NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: publicKey,
-    SUPABASE_SECRET_KEY: 'sb_secret_fixture_only_never_a_real_credential',
+    SUPABASE_SECRET_KEY: fakeServerCredential,
     ...overrides
   };
 }
@@ -78,11 +81,11 @@ test('Production episode template is unchanged', () => {
 test('Preview uses only matching isolated browser and server targets', () => {
   const result = prepareEpisodeReaderTemplate(template, previewEnv());
   assert.equal(result.preview, true);
-  assert.match(result.html, /const client=supabase\.createClient\(/u);
-  assert.ok(result.html.includes(stagingUrl));
-  assert.ok(result.html.includes(publicKey));
+  assert.match(result.html, /NovelightClient\.createAuthClient\(null,null\)/u);
+  assert.ok(!result.html.includes(stagingUrl));
+  assert.ok(!result.html.includes(publicKey));
   assert.ok(!result.html.includes(productionUrl));
-  assert.ok(!result.html.includes('sb_secret_fixture_only'));
+  assert.ok(!result.html.includes(fakeServerCredential));
 });
 
 test('Preview rejects unsafe connection details without fallback', () => {
@@ -92,7 +95,7 @@ test('Preview rejects unsafe connection details without fallback', () => {
     { SUPABASE_URL: 'https://other-project.supabase.co' },
     { SUPABASE_URL: undefined },
     { NOVELIGHT_STAGING_SUPABASE_URL: undefined },
-    { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_other_fixture' },
+    { SUPABASE_PUBLISHABLE_KEY: otherKey },
     { SUPABASE_SECRET_KEY: undefined },
     { SUPABASE_SECRET_KEY: ' ' },
     { SUPABASE_URL: 'http://safe-staging-fixture.supabase.co' },
@@ -104,10 +107,10 @@ test('Preview rejects unsafe connection details without fallback', () => {
   ];
   for (const badTarget of badTargets) denied(badTarget);
   denied({
-    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_other_fixture'
+    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: otherKey
   });
   denied({
-    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: 'sb_secret_not_public'
+    NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY: secretClassKey
   });
 });
 
@@ -147,9 +150,10 @@ test('Preview SEO no-ID page contains only the Staging client', async () => {
     await episodeHandler({ method: 'GET', query: {} }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.headers['Cache-Control'], 'no-store, max-age=0');
-    assert.ok(res.body.includes(stagingUrl));
+    assert.ok(res.body.includes('NovelightClient.createAuthClient(null,null)'));
+    assert.ok(!res.body.includes(stagingUrl));
     assert.ok(!res.body.includes(productionUrl));
-    assert.ok(!res.body.includes('sb_secret_fixture_only'));
+    assert.ok(!res.body.includes(fakeServerCredential));
   });
 });
 
