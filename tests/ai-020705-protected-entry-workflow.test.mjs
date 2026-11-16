@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+// prettier-ignore
 const yaml = readFileSync(
   new URL('../.github/workflows/ai-020705-staging-protected-entry.yml', import.meta.url),
   'utf8'
 );
 
+// prettier-ignore
 test('protected admission requires Issue 294 OWNER intent and trusted main', () => {
   assert.match(yaml, /issue_comment:/u);
   assert.match(yaml, /environment: staging/u);
@@ -17,6 +19,7 @@ test('protected admission requires Issue 294 OWNER intent and trusted main', () 
   assert.match(yaml, /no Staging mutation or paid authorization/u);
 });
 
+// prettier-ignore
 test('new protected entry cannot run live work from PR or secret by itself', () => {
   assert.doesNotMatch(yaml, /workflow_dispatch:/u);
   assert.doesNotMatch(yaml, /pull_request:/u);
