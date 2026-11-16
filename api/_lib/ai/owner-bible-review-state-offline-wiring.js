@@ -21,7 +21,11 @@ function unavailable() {
 // Explicit server-side opt-in only. Never interpret a request field or JWT
 // claim as authorization to turn on the restricted service-role session RPC.
 // Absence/unknown mode preserves the existing default-deny observer contract.
-function resolveSessionLookup({ lookupOneSession, sessionLookupMode, serviceClient }) {
+function resolveSessionLookup({
+  lookupOneSession,
+  sessionLookupMode,
+  serviceClient
+}) {
   if (sessionLookupMode === undefined) return lookupOneSession;
   if (sessionLookupMode !== 'restricted_rpc' || lookupOneSession !== undefined) {
     return null;
