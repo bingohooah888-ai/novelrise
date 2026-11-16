@@ -313,11 +313,9 @@ export function inspect020705PostRunOwnerApproval({
     typeof comment?.body === 'string' &&
     comment.body.startsWith(PREFIX + 'APPROVE ')
   );
-  const candidates = approvals.filter((comment) => {
-    const value = payload(comment.body, 'APPROVE');
-    return value?.runId === runId ||
-      (value?.mainSha === mainSha && value?.candidateSha === candidateSha);
-  });
+  const candidates = approvals.filter((comment) =>
+    payload(comment.body, 'APPROVE')?.runId === runId
+  );
   if (candidates.length !== 1 || !isOwner(candidates[0])) deny();
   const approval = candidates[0];
   if (!Number.isSafeInteger(approval.id) || approval.id === intentCommentId ||
