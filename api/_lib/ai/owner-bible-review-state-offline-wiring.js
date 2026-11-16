@@ -27,7 +27,10 @@ function resolveSessionLookup({
   serviceClient
 }) {
   if (sessionLookupMode === undefined) return lookupOneSession;
-  if (sessionLookupMode !== 'restricted_rpc' || lookupOneSession !== undefined) {
+  if (
+    sessionLookupMode !== 'restricted_rpc' ||
+    lookupOneSession !== undefined
+  ) {
     return null;
   }
   return createOfflineServiceRoleSessionLookup({ serviceClient });
