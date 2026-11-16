@@ -185,8 +185,46 @@ export function create020705StagingMigrationAdapter({
     }
   }
 
+  async function inspectInstalled() {
+    let client;
+    try {
+      const versions = versionList(mainMigrationFiles()
+        .map((name) => typeof name === 'string'
+          ? name.match(/^(20\\d{12})_[a-z0-9_]+\\.sql$/u)?.[1]
+          : undefined)
+        .filter(Boolean)
+        .concat(REQUIRED.map((m) => m.version)));
+      client = clientFactory();
+      await client.connect();
+      const context = await client.query(
+        'select current_database() as database_name, current_user as db_role'
+      );
+      if (context.rows?.[0]?.database_name !== 'postgres' ||
+          context.rows?.[0]?.db_role !== 'postgres') deny();
+      const history = await client.query(
+        'select version from supabase_migrations.schema_migrations order by version'
+      );
+      if (JSON.stringify(versionList(history.rows.map((r) => r.version))) !==
+          JSON.stringify(versions)) deny();
+      const catalog = await client.query(
+        "select to_regclass('public.novelight_ai_owner_review_states') is not null as review_table, " +
+        "to_regprocedure('public.novelight_ai_owner_review_state_cas(uuid,bigint,uuid,integer,jsonb)') is not null as review_rpc, " +
+        "to_regprocedure('public.novelight_ai_owner_session_exists_v1(uuid,uuid)') is not null as session_rpc, " +
+        "to_regclass('public.novelight_ai_chunk_claims') is not null as claim_table, " +
+        "to_regprocedure('public.novelight_ai_checkpoint_claim_once_v1(uuid,bigint,bigint,text,text,text,integer,text)') is not null as claim_rpc"
+      );
+      const row = catalog.rows?.[0];
+      if (!row || Object.values(row).some((value) => value !== true)) deny();
+      return true;
+    } catch { deny(); }
+    finally {
+      if (client) { try { await client.end(); } catch { /* fail closed */ } }
+    }
+  }
+
   return Object.freeze({
     installReviewState: () => apply(0),
-    installChunkClaim: () => apply(1)
+    installChunkClaim: () => apply(1),
+    inspectInstalled
   });
 }
