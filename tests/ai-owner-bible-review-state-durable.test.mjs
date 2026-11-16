@@ -183,8 +183,8 @@ test('private session lookup uses two bound UUIDs and the signed-session contrac
   });
   assert.equal(calls.length, 1);
   assert.match(calls[0].statement, /^SELECT EXISTS /u);
-  assert.match(calls[0].statement, /auth\\.sessions/u);
-  assert.match(calls[0].statement, /id = \\$1::uuid AND user_id = \\$2::uuid/u);
+  assert.ok(calls[0].statement.includes('auth.sessions'));
+  assert.ok(calls[0].statement.includes('id = $1::uuid AND user_id = $2::uuid'));
   assert.deepEqual(calls[0].values, [SESSION, ACTOR]);
   assert.doesNotMatch(calls[0].statement, new RegExp(SESSION, 'u'));
   assert.doesNotMatch(calls[0].statement, new RegExp(ACTOR, 'u'));
