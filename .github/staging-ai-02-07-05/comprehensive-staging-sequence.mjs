@@ -3,7 +3,6 @@
 // Staging adapters; importing/constructing this module performs NO I/O.
 // Do not mount under api/, invoke from a PR workflow, or interpret the
 // existence of this sequence as OWNER approval or permission to deploy.
-import { create020705ProtectedLiveComposition } from '../ai-02-07-05-app-composition/protected-live-composition.mjs';
 
 const REPO = 'bingohooah888-ai/novelrise';
 const STAGING = 'wmlzjgvxgoyrovdhbqbg';
@@ -65,9 +64,9 @@ function exactSynthetic(proof, scope) {
 /**
  * A protected, reviewed main-only caller must provide independent genuine
  * OWNER/SHA, Staging, migration, Preview and JWT observers. Boolean adapters
- * by themselves are NOT authentication. The paid factory is the existing
- * protected live composition: signed independent watchdog, durable claim,
- * externally enforceable budget, single provider call and cleanup stay there.
+ * by themselves are NOT authentication. A trusted main-only caller must
+ * inject the existing protected paid composition, never an unreviewed PR
+ * implementation. Watchdog, durable claim and billing remain in that module.
  *
  * This sequence never repairs migration history, retries, drops claims,
  * changes Production, or implicitly creates Preview/paid permissions.
@@ -83,7 +82,7 @@ export function create020705ComprehensiveStagingSequence({
   getProtectedPaidConfig,
   stopAndCleanup,
   independentFinalCensus,
-  protectedPaidFactory = create020705ProtectedLiveComposition
+  protectedPaidFactory
 } = {}) {
   if (!validScope(scope) ||
       [
