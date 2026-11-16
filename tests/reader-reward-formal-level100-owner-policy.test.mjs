@@ -51,27 +51,31 @@ function sandbox({
     ledgerUnitVersion: 'beta_one_point_per_yen',
     betaThresholdRows: thresholds,
     formalReleaseAtMs: release,
-    accounts: [{
-      userId,
-      accountCreatedAtMs: Date.parse('2026-10-01T00:00:00.000Z'),
-      verifiedBetaLedgerXp: 9570,
-      betaSummary: {
-        level: 30,
-        total_xp: 9570,
-        xp_into_level: 0,
-        xp_for_next_level: 0,
-        beta_level_max: true
+    accounts: [
+      {
+        userId,
+        accountCreatedAtMs: Date.parse('2026-10-01T00:00:00.000Z'),
+        verifiedBetaLedgerXp: 9570,
+        betaSummary: {
+          level: 30,
+          total_xp: 9570,
+          xp_into_level: 0,
+          xp_for_next_level: 0,
+          beta_level_max: true
+        }
       }
-    }],
-    canonicalLedgerRows: [{
-      id: betaLedgerId,
-      user_id: userId,
-      event_key: 'beta:original:once',
-      point_kind: 'badge',
-      point_value: 10,
-      status: 'confirmed',
-      reversal_of: null
-    }]
+    ],
+    canonicalLedgerRows: [
+      {
+        id: betaLedgerId,
+        user_id: userId,
+        event_key: 'beta:original:once',
+        point_kind: 'badge',
+        point_value: 10,
+        status: 'confirmed',
+        reversal_of: null
+      }
+    ]
   });
   assert.equal(opening.status, 'offline_handoff_quote_only');
   const synthetic = {
@@ -115,9 +119,11 @@ test('Lv99 to Lv100 with surplus: one initial 50 Point; full XP counts in mainte
   assert.deepEqual(first.firstLevelsRewarded, [100]);
   assert.equal(first.pointsAwarded, 50);
   assert.equal(
-    (await app.applyCommittedXp({
-      xpLedgerId: reachCap.verifiedXpLedgerRow.id
-    })).status,
+    (
+      await app.applyCommittedXp({
+        xpLedgerId: reachCap.verifiedXpLedgerRow.id
+      })
+    ).status,
     'already_applied'
   );
   const second = await app.applyCommittedXp({
@@ -131,9 +137,11 @@ test('Lv99 to Lv100 with surplus: one initial 50 Point; full XP counts in mainte
   assert.equal(second.pointsAwarded, 0);
 
   const ui =
-    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings({
-      request: async (input) => (await app.readerRequest(userId, input)).body
-    });
+    globalThis.NovelightFormalRewardReaderBindings.createFormalReaderRewardBindings(
+      {
+        request: async (input) => (await app.readerRequest(userId, input)).body
+      }
+    );
   const beforeReview = await ui.fetchSnapshot();
   assert.equal(beforeReview.account.level, 100);
   assert.equal(beforeReview.account.highestLevel, 100);
@@ -143,7 +151,9 @@ test('Lv99 to Lv100 with surplus: one initial 50 Point; full XP counts in mainte
   assert.equal(beforeReview.wallet.availablePoints, 150);
   assert.equal(beforeReview.wallet.exchangeEligiblePoints, 50);
   assert.deepEqual(
-    beforeReview.history.filter((row) => row.kind === 'level_up').map((row) => row.points),
+    beforeReview.history
+      .filter((row) => row.kind === 'level_up')
+      .map((row) => row.points),
     [50]
   );
   assert.equal(
@@ -166,10 +176,12 @@ test('Lv99 to Lv100 with surplus: one initial 50 Point; full XP counts in mainte
   assert.equal(afterReview.account.level, 100);
   assert.equal(afterReview.wallet.availablePoints, 150);
   assert.equal(afterReview.wallet.exchangeEligiblePoints, 50);
-  const dashboard = (await app.adminRequest({
-    method: 'GET',
-    query: { view: 'reward_overview' }
-  })).body;
+  const dashboard = (
+    await app.adminRequest({
+      method: 'GET',
+      query: { view: 'reward_overview' }
+    })
+  ).body;
   assert.equal(dashboard.issuedTotal, 50);
   assert.equal(dashboard.levelUpTotal, 50);
   assert.equal(dashboard.xpEarnedMonth, 1900);
@@ -189,23 +201,28 @@ test('XP already earned at Lv100 is applied once, advances revision and still pr
     app.applyCommittedXp({ xpLedgerId: reachCap.verifiedXpLedgerRow.id }),
     app.applyCommittedXp({ xpLedgerId: reachCap.verifiedXpLedgerRow.id })
   ]);
-  assert.deepEqual(
-    claims.map((claim) => claim.status).sort(),
-    ['already_applied', 'applied']
-  );
+  assert.deepEqual(claims.map((claim) => claim.status).sort(), [
+    'already_applied',
+    'applied'
+  ]);
   const next = await app.resumePendingSyntheticXp({ userId });
   assert.equal(next.status, 'caught_up');
   assert.equal(next.xpApplied, 1);
   assert.equal(next.reviews, 1);
-  const snapshot = (await app.readerRequest(userId, {
-    method: 'GET'
-  })).body;
+  const snapshot = (
+    await app.readerRequest(userId, {
+      method: 'GET'
+    })
+  ).body;
   assert.equal(snapshot.account.level, 100);
   assert.equal(snapshot.account.highestLevel, 100);
   assert.equal(snapshot.account.progressXp, 0);
   assert.equal(snapshot.wallet.availablePoints, 100);
   assert.equal(snapshot.wallet.exchangeEligiblePoints, 0);
-  assert.equal(snapshot.history.filter((row) => row.kind === 'level_up').length, 0);
+  assert.equal(
+    snapshot.history.filter((row) => row.kind === 'level_up').length,
+    0
+  );
   assert.equal(app.inspectSyntheticMaintenance()[0].earnedXp, 1900);
   const replay = await app.resumePendingSyntheticXp({ userId });
   assert.deepEqual(replay, {
@@ -227,17 +244,21 @@ test('inconsistent Lv100 progress is rejected without Point, state or XP claim m
     xpLedgerId: reachCap.verifiedXpLedgerRow.id
   });
   assert.equal(result.status, 'state_progress_inconsistent');
-  const snapshot = (await app.readerRequest(userId, {
-    method: 'GET'
-  })).body;
+  const snapshot = (
+    await app.readerRequest(userId, {
+      method: 'GET'
+    })
+  ).body;
   assert.equal(snapshot.account.level, 100);
   assert.equal(snapshot.account.progressXp, 7);
   assert.equal(snapshot.wallet.availablePoints, 100);
   assert.equal(snapshot.wallet.exchangeEligiblePoints, 0);
   assert.equal(
-    (await app.applyCommittedXp({
-      xpLedgerId: reachCap.verifiedXpLedgerRow.id
-    })).status,
+    (
+      await app.applyCommittedXp({
+        xpLedgerId: reachCap.verifiedXpLedgerRow.id
+      })
+    ).status,
     'state_progress_inconsistent'
   );
 });
