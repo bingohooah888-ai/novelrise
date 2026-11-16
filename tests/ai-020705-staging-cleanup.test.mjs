@@ -15,7 +15,7 @@ const SYNTHETIC = {
 };
 
 // prettier-ignore
-function fixture({ realUser = false, badCensus = false, failedDisable = false, chunkClaimCount = 0 } = {}) {
+function fixture({ realUser = false, badCensus = false, failedDisable = false, chunkClaimCount = 0, censusScopeOverrides = {} } = {}) {
   const calls = [];
   const serviceClient = {
     supabaseUrl: SYNTHETIC.supabaseUrl,
@@ -75,6 +75,10 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false, c
     }
   };
   const census = {
+    projectRef: SYNTHETIC.projectRef,
+    userId: SYNTHETIC.userId,
+    novelId: SYNTHETIC.novelId,
+    approvalCommentId: SYNTHETIC.approvalCommentId,
     runtimeDisabledZero: true,
     approvalTombstoneCount: 1,
     chunkClaimsRetained: chunkClaimCount,
@@ -90,7 +94,8 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false, c
     consents: 0,
     consentAudit: 0,
     usageRequests: 0,
-    usageAudit: 0
+    usageAudit: 0,
+    ...censusScopeOverrides
   };
   const cleanup = create020705StagingCleanup({
     serviceClient,
@@ -194,6 +199,25 @@ test('independent census requires explicit bounded claim retention evidence', as
   assert.equal(await fixture({ chunkClaimCount: 1 }).cleanup.finalCensus(), true);
   for (const count of [null, -1, 2, 0.5, '1']) {
     const { cleanup } = fixture({ chunkClaimCount: count });
+    await assert.rejects(
+      cleanup.finalCensus(),
+      /AI_020705_STAGING_CLEANUP_DENIED/u
+    );
+  }
+});
+
+// A 0/1 durable-claim count from any OTHER synthetic identity is not proof
+// that this verified actor/work has no leftover rows.
+test('independent claim census rejects mismatched synthetic identity markers', async () => {
+  const cases = [
+    { projectRef: 'different-project' },
+    { userId: '22222222-2222-4222-8222-222222222222' },
+    { novelId: 42 },
+    { approvalCommentId: 902 },
+    { userId: undefined }
+  ];
+  for (const censusScopeOverrides of cases) {
+    const { cleanup } = fixture({ censusScopeOverrides });
     await assert.rejects(
       cleanup.finalCensus(),
       /AI_020705_STAGING_CLEANUP_DENIED/u
