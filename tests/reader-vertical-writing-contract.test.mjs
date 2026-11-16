@@ -150,12 +150,12 @@ test('iOS vertical reader font size remains user-controlled', () => {
     const index = settingsCss.indexOf(selector + ' {');
     assert.notEqual(index, -1, selector);
     const rule = settingsCss.slice(index, settingsCss.indexOf('}', index));
-    assert.match(rule, /-webkit-text-size-adjust: 100%;/);
-    assert.match(rule, /text-size-adjust: 100%;/);
+    assert.match(rule, /-webkit-text-size-adjust: none;/);
+    assert.match(rule, /text-size-adjust: none;/);
   }
 
   assert.equal(
-    (settingsCss.match(/-webkit-text-size-adjust: 100%;/g) || []).length,
+    (settingsCss.match(/-webkit-text-size-adjust: none;/g) || []).length,
     3
   );
 });
