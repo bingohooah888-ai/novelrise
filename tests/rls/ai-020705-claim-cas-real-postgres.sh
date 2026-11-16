@@ -3,16 +3,16 @@
 # Never connect to Supabase Staging or Production. No service provisioning.
 set -euo pipefail
 
-HOST="$""{PGHOST:-127.0.0.1}"
-PORT="$""{PGPORT:-5432}"
-USER="$""{PGUSER:-postgres}"
+HOST="${PGHOST:-127.0.0.1}"
+PORT="${PGPORT:-5432}"
+USER="${PGUSER:-postgres}"
 if [[ "$GITHUB_ACTIONS" != true || "$CI" != true ||
       "$HOST" != 127.0.0.1 || "$PORT" != 5432 ||
       "$USER" != postgres ]]; then
   echo 'AI_020705_DISPOSABLE_CI_PG_REQUIRED' >&2
   exit 1
 fi
-export PGPASSWORD="$""{PGPASSWORD:-postgres}"
+export PGPASSWORD="${PGPASSWORD:-postgres}"
 DB=novelight_ai_020705_claim_disposable
 OWNER=11111111-1111-4111-8111-111111111111
 OTHER=22222222-2222-4222-8222-222222222222
