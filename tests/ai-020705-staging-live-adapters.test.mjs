@@ -3,11 +3,11 @@ import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 // prettier-ignore
-import { create020705StagingMigrationAdapter, unwrap020705StagingProposal } from '../.github/staging-ai-02-07-05/staging-live-migrations.mjs';
+import { create020705StagingMigrationAdapter, unwrap020705StagingProposal } from '../.github/ai-02-07-05-app-composition/staging-live-migrations.mjs';
 // prettier-ignore
-import { create020705StagingPreviewAdapter } from '../.github/staging-ai-02-07-05/staging-live-preview.mjs';
+import { create020705StagingPreviewAdapter } from '../.github/ai-02-07-05-app-composition/staging-live-preview.mjs';
 // prettier-ignore
-import { create020705StagingJwtAdapter } from '../.github/staging-ai-02-07-05/staging-live-jwt.mjs';
+import { create020705StagingJwtAdapter } from '../.github/ai-02-07-05-app-composition/staging-live-jwt.mjs';
 
 const STAGING = 'wmlzjgvxgoyrovdhbqbg';
 const URL = 'https://' + STAGING + '.supabase.co';
