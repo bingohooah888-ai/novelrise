@@ -3,6 +3,7 @@ import test from 'node:test';
 import { create020705StagingAttestationHandler } from '../api/ai-020705-staging-attestation.js';
 
 const SHA = 'a'.repeat(40);
+// prettier-ignore
 const ENV = {
   VERCEL_ENV: 'preview',
   NOVELIGHT_AI_020705_STAGING_PREVIEW_ENABLED: 'true',
@@ -10,6 +11,7 @@ const ENV = {
   VERCEL_GIT_COMMIT_SHA: SHA
 };
 
+// prettier-ignore
 function run(env, method = 'GET') {
   const response = {
     statusCode: null, headers: {}, body: null,
@@ -21,6 +23,7 @@ function run(env, method = 'GET') {
   return response;
 }
 
+// prettier-ignore
 test('exact isolated Staging Preview reveals only non-secret SHA and URL', () => {
   const result = run(ENV);
   assert.equal(result.statusCode, 200);
@@ -31,6 +34,7 @@ test('exact isolated Staging Preview reveals only non-secret SHA and URL', () =>
   assert.equal(result.headers['Cache-Control'], 'no-store');
 });
 
+// prettier-ignore
 test('Production, normal Preview, other Supabase and POST deny attestation', () => {
   for (const env of [
     { ...ENV, VERCEL_ENV: 'production' },
