@@ -8,7 +8,7 @@ import { create020705StagingMigrationAdapter } from './staging-live-migrations.m
 import { create020705StagingPreviewAdapter } from './staging-live-preview.mjs';
 import { create020705StagingJwtAdapter } from './staging-live-jwt.mjs';
 import { create020705ProtectedComprehensiveStagingSequence } from './protected-live-composition.mjs';
-import { inspect020705OwnerLedger } from '../staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
+import { inspect020705OwnerLedger, inspect020705PostRunOwnerApproval } from '../staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
 import { verify020705SignedWatchdogArm } from '../staging-ai-02-07-05/signed-watchdog-arm.mjs';
 import { verify020705SignedRunnerDeath } from '../staging-ai-02-07-05/signed-runner-death-offline.mjs';
 import { createOwnerNovelBibleConsentPermissionCheck } from '../../api/_lib/ai/owner-novel-bible-consent.js';
@@ -182,7 +182,13 @@ export function create020705StagingLiveBindings({
       !Number.isSafeInteger(scope.novelId) ||
       !Number.isSafeInteger(scope.episodeId) ||
       !Number.isSafeInteger(scope.runId) ||
+      scope.runId <= 0 ||
+      !Number.isSafeInteger(scope.intentCommentId) ||
+      scope.intentCommentId <= 0 ||
       !Number.isSafeInteger(scope.approvalCommentId) ||
+      scope.approvalCommentId <= 0 ||
+      !Number.isSafeInteger(scope.capMicros) ||
+      scope.capMicros < 1 || scope.capMicros > 1000000 ||
       typeof fetchImpl !== 'function' ||
       !credentials ||
       !controller ||
@@ -278,6 +284,19 @@ export function create020705StagingLiveBindings({
         issue?.state !== 'open' ||
         issue?.user?.login !== 'bingohooah888-ai') return false;
     try {
+      const afterRun = inspect020705PostRunOwnerApproval({
+        comments,
+        intentCommentId: scope.intentCommentId,
+        runId: scope.runId,
+        mainSha: scope.mainSha,
+        candidateSha: scope.candidateSha,
+        stagingBranch: scope.stagingBranch,
+        now: Date.now()
+      });
+      if (afterRun.approvalCommentId !== scope.approvalCommentId ||
+          afterRun.previewDeploymentId !== scope.previewDeploymentId ||
+          afterRun.capMicros !== scope.capMicros ||
+          afterRun.authorizesPaidCall !== false) return false;
       inspect020705OwnerLedger({
         comments, approvalCommentId: scope.approvalCommentId,
         expected: {
