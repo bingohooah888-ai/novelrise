@@ -20,6 +20,48 @@ function uuid(value) {
     : null;
 }
 
+// Dependency-injected, OFFLINE-ONLY bridge for a future separately authorized
+// server-side PostgreSQL session observer. It never constructs a connection,
+// accepts tokens or exposes private rows. The supplied server-owned PG client
+// must already have the narrowly scoped auth.sessions SELECT privilege; the
+// ordinary Supabase service_role does NOT have this in the observed Staging.
+// Do not mount or provide credentials before independent environment approval.
+// Parameter binding is mandatory; the signed session UUID is never interpolated.
+const SESSION_EXISTS_SQL =
+  'SELECT EXISTS (SELECT 1 FROM auth.sessions ' +
+  'WHERE id = $1::uuid AND user_id = $2::uuid) AS active';
+
+export function createOfflineReadOnlyAuthSessionLookup({ queryClient } = {}) {
+  return async function lookupOneSession({ sessionId, actorId } = {}) {
+    const session = uuid(sessionId);
+    const owner = uuid(actorId);
+    if (typeof queryClient?.query !== 'function' || !session || !owner) {
+      return false;
+    }
+
+    try {
+      const result = await queryClient.query(SESSION_EXISTS_SQL, [
+        session,
+        owner
+      ]);
+      const row = result?.rows?.[0];
+      // Only an actual one-row SELECT returning the primitive PG boolean
+      // can attest presence. A loose object, role error, unexpected row
+      // shape or failed lookup never authorizes a signed session.
+      return (
+        result?.command === 'SELECT' &&
+        result?.rowCount === 1 &&
+        result.rows.length === 1 &&
+        row &&
+        Object.keys(row).length === 1 &&
+        row.active === true
+      );
+    } catch {
+      return false;
+    }
+  };
+}
+
 export function createOfflinePrivateSessionReader({ lookupOneSession } = {}) {
   return async function readExistingSession({ sessionId, actorId } = {}) {
     const id = uuid(sessionId);
