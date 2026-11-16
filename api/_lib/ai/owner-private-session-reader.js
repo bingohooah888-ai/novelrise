@@ -48,7 +48,7 @@ export function createOfflineReadOnlyAuthSessionLookup({ queryClient } = {}) {
       // Only an actual one-row SELECT returning the primitive PG boolean
       // can attest presence. A loose object, role error, unexpected row
       // shape or failed lookup never authorizes a signed session.
-      return (
+      return Boolean(
         result?.command === 'SELECT' &&
         result?.rowCount === 1 &&
         result.rows.length === 1 &&
