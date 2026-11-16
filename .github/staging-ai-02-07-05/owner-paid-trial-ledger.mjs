@@ -294,7 +294,7 @@ export function inspect020705PostRunOwnerApproval({
     intentPayload = JSON.parse(intent.body.slice(intentPrefix.length));
   } catch { deny(); }
   if (!exactKeys(intentPayload, [
-    'mainSha', 'candidateSha', 'stagingProjectRef', 'pr', 'scope'
+    'candidateSha', 'mainSha', 'pr', 'scope', 'stagingProjectRef'
   ]) ||
       intentPayload.mainSha !== mainSha ||
       intentPayload.candidateSha !== candidateSha ||
