@@ -8,9 +8,9 @@ import { createOfflineOwnerBibleReviewStateWiring } from '../api/_lib/ai/owner-b
 import { createOfflineOwnerSessionCheck } from '../api/_lib/ai/owner-session-evidence.js';
 import {
   createOfflinePrivateSessionReader,
-  createOfflineReadOnlyAuthSessionLookup,
-  createOfflineServiceRoleSessionLookup
+  createOfflineReadOnlyAuthSessionLookup
 } from '../api/_lib/ai/owner-private-session-reader.js';
+import { createOfflineServiceRoleSessionLookup } from '../api/_lib/ai/owner-service-role-session-reader.js';
 import { createOfflineOwnerBibleReviewStateWorkflow } from '../api/_lib/ai/owner-bible-review-state-offline.js';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111';
@@ -283,10 +283,10 @@ test('private session probe RPC is parameterized, scoped and fail-closed', async
   });
   assert.equal(await lookup({ sessionId: SESSION, actorId: ACTOR }), true);
   assert.deepEqual(calls, [
-    ['novelight_ai_owner_session_exists_v1', {
-      p_session_id: SESSION,
-      p_actor_id: ACTOR
-    }]
+    [
+      'novelight_ai_owner_session_exists_v1',
+      { p_session_id: SESSION, p_actor_id: ACTOR }
+    ]
   ]);
   response = { data: 'true', error: null };
   assert.equal(await lookup({ sessionId: SESSION, actorId: ACTOR }), false);
@@ -295,11 +295,19 @@ test('private session probe RPC is parameterized, scoped and fail-closed', async
   response = { data: null, error: null };
   assert.equal(await lookup({ sessionId: SESSION, actorId: ACTOR }), false);
   assert.equal(await lookup({ sessionId: 'not-a-uuid', actorId: ACTOR }), false);
-  assert.equal(await createOfflineServiceRoleSessionLookup()({
-    sessionId: SESSION, actorId: ACTOR
-  }), false);
+  assert.equal(
+    await createOfflineServiceRoleSessionLookup()({
+      sessionId: SESSION,
+      actorId: ACTOR
+    }),
+    false
+  );
   const exploding = createOfflineServiceRoleSessionLookup({
-    serviceClient: { async rpc() { throw new Error('SECRET_NOT_FOR_LOGS'); } }
+    serviceClient: {
+      async rpc() {
+        throw new Error('SECRET_NOT_FOR_LOGS');
+      }
+    }
   });
   assert.equal(await exploding({ sessionId: SESSION, actorId: ACTOR }), false);
 });
@@ -596,11 +604,11 @@ test('SQL proposal requires service_role, RLS, ownership and signed session evid
     .split('\n')
     .filter((line) => !line.trimStart().startsWith('--'))
     .join('\n');
-  // Exactly one DEF INER may exist, only inside a non-exposed private schema.
+  // Exactly one SECURITY DEFINER may exist, only inside a non-exposed private schema.
   assert.equal((executableSql.match(/security definer/gi) ?? []).length, 1);
   assert.match(sql, /create schema novelight_ai_private;/);
   assert.match(sql, /create function novelight_ai_private\.session_active_v1/);
-  assert.match(sql, /language plpgsql security definer set search_path = ''/);
+  assert.match(sql, /language plpgsql security definer set search_path = '' as \$\$/);
   assert.match(
     sql,
     /revoke all on function novelight_ai_private\.session_active_v1[\s\S]*from public, anon, authenticated/
