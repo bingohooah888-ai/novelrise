@@ -6,6 +6,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import pg from 'pg';
 import { verifyStagingMigrationTarget } from '../../scripts/verify-staging-migration-target.mjs';
+import { createOwnerNovelBibleConsentActions } from '../../api/_lib/ai/owner-novel-bible-consent-actions.js';
 
 const REF = 'wmlzjgvxgoyrovdhbqbg';
 const URL = 'https://' + REF + '.supabase.co';
@@ -55,6 +56,8 @@ export function create020705StagingJwtAdapter({
       !UUID.test(scope?.actorId ?? '') ||
       scope?.novelId !== NOVEL ||
       scope?.episodeId !== EPISODE ||
+      typeof scope?.consentRevision !== 'string' ||
+      !/^[a-z0-9][a-z0-9._-]{3,119}$/iu.test(scope.consentRevision) ||
       typeof connectionString !== 'string' ||
       typeof secretKey !== 'string' || secretKey.length < 16 ||
       typeof publishableKey !== 'string' ||
@@ -239,7 +242,10 @@ export function create020705StagingJwtAdapter({
       const foreign = await outsiderClient
         .from('novelight_ai_owner_review_states')
         .select('actor_id,novel_id').eq('novel_id', NOVEL);
-      if (foreign.error || foreign.data?.length !== 0) deny();
+      // RLS can deny at the SQL privilege level (42501) or return zero
+      // rows. A transient/network/unknown error is NOT RLS evidence.
+      if (foreign.error && foreign.error.code !== '42501') deny();
+      if (!foreign.error && foreign.data?.length !== 0) deny();
       const outsiderToken = outsider?.data?.session?.access_token;
       if (typeof outsiderToken !== 'string') deny();
       const outsiderClaims = await serviceClient.auth.getClaims(outsiderToken);
@@ -283,6 +289,28 @@ export function create020705StagingJwtAdapter({
       );
       if (once.error || once.data !== true ||
           replay.error || replay.data !== false) deny();
+
+      // Explicit synthetic-owner consent is recorded with the existing
+      // consent-grant RPC while the REAL synthetic JWT is still active.
+      // This fixture must never be accepted as real-author consent.
+      const syntheticConsent = createOwnerNovelBibleConsentActions({
+        enabled: true,
+        ownerId,
+        authClient: serviceClient,
+        serviceClient,
+        policyRevision: scope.consentRevision
+      });
+      const granted = await syntheticConsent.grant({
+        token,
+        novelId: NOVEL,
+        processor: 'openai',
+        explicitAuthorAction: true,
+        acceptedExternalProcessing: true,
+        acceptedDisclosureRevision: scope.consentRevision
+      });
+      if (granted.status !== 'granted' ||
+          granted.policyRevision !== scope.consentRevision ||
+          granted.aiEnabled !== false) deny();
 
       const signOut = await authorClient.auth.signOut();
       if (signOut.error) deny();
