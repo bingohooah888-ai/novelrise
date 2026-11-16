@@ -17,6 +17,12 @@ test('protected admission requires Issue 294 OWNER intent and trusted main', () 
   assert.match(yaml, /NOVELIGHT_STAGING_AI_020705_INTEGRATION_INTENT/u);
   assert.match(yaml, /\.base\.sha == \$main and \.head\.sha == \$head/u);
   assert.match(yaml, /no Staging mutation or paid authorization/u);
+  assert.match(yaml, /GITHUB_RUN_ID/u);
+  assert.match(yaml, /GITHUB_RUN_ATTEMPT/u);
+  assert.match(yaml, /inspect020705PostRunOwnerApproval/u);
+  assert.match(yaml, /RUN_BOUND_OWNER_APPROVAL_READONLY_VERIFIED/u);
+  assert.match(yaml, /branchRef\?\.object\?\.sha !== candidateSha/u);
+  assert.match(yaml, /github\.token/u);
 });
 
 // prettier-ignore
