@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+// prettier-ignore
 import { create020705ComprehensiveStagingSequence } from '../.github/staging-ai-02-07-05/comprehensive-staging-sequence.mjs';
 
 const MAIN = 'a'.repeat(40);
@@ -8,6 +9,7 @@ const HEAD = 'b'.repeat(40);
 const PROJECT = 'wmlzjgvxgoyrovdhbqbg';
 const STAGING_URL = 'https://' + PROJECT + '.supabase.co';
 
+// prettier-ignore
 function fixture({ badPreview = false, badJwt = false, failPaid = false, cleanupFails = false, invalidRefs = false } = {}) {
   const actions = [];
   const scope = Object.freeze({
@@ -111,6 +113,7 @@ function fixture({ badPreview = false, badJwt = false, failPaid = false, cleanup
   return { scope, options, actions };
 }
 
+// prettier-ignore
 test('one bounded Staging sequence connects migration, Preview, JWT, paid executor and census', async () => {
   const { options, actions } = fixture();
   const sequence = create020705ComprehensiveStagingSequence(options);
@@ -137,6 +140,7 @@ test('one bounded Staging sequence connects migration, Preview, JWT, paid execut
   assert.equal(actions.filter((x) => x === 'one-paid-executor').length, 1);
 });
 
+// prettier-ignore
 test('missing scoped protected adapters, wrong repo or Production abort construction', () => {
   const { options } = fixture();
   assert.throws(
@@ -162,6 +166,7 @@ test('missing scoped protected adapters, wrong repo or Production abort construc
   );
 });
 
+// prettier-ignore
 test('approval drift blocks second migration, without Preview, JWT or paid call', async () => {
   const { options, actions } = fixture({ invalidRefs: true });
   const sequence = create020705ComprehensiveStagingSequence(options);
@@ -173,6 +178,7 @@ test('approval drift blocks second migration, without Preview, JWT or paid call'
   assert.equal(actions.includes('one-paid-executor'), false);
 });
 
+// prettier-ignore
 test('Preview SHA mismatch prevents synthetic Auth or any paid attempt', async () => {
   const { options, actions } = fixture({ badPreview: true });
   await assert.rejects(
@@ -183,6 +189,7 @@ test('Preview SHA mismatch prevents synthetic Auth or any paid attempt', async (
   assert.equal(actions.includes('one-paid-executor'), false);
 });
 
+// prettier-ignore
 test('JWT proof failure triggers synthetic cleanup without paid call', async () => {
   const { options, actions } = fixture({ badJwt: true });
   await assert.rejects(
@@ -194,6 +201,7 @@ test('JWT proof failure triggers synthetic cleanup without paid call', async () 
   assert.ok(actions.includes('independent-census'));
 });
 
+// prettier-ignore
 test('failed paid provider is sanitized, stopped and never retried', async () => {
   const { options, actions } = fixture({ failPaid: true });
   await assert.rejects(
@@ -205,6 +213,7 @@ test('failed paid provider is sanitized, stopped and never retried', async () =>
   assert.equal(actions.includes('independent-census'), true);
 });
 
+// prettier-ignore
 test('cleanup failure prevents PASS even if JWT passed', async () => {
   const { options } = fixture({ badJwt: true, cleanupFails: true });
   await assert.rejects(
