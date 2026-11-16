@@ -81,7 +81,10 @@ test('pending XP replay is explicitly invoked and processes review windows in ch
 
 test('both dormant SQL drafts retain Lv.100 XP claims and count full ledger XP for maintenance', () => {
   const baseline = readFileSync(
-    new URL('../docs/drafts/SCOUT_FORMAL_LEVEL_STATE_DRAFT.sql', import.meta.url),
+    new URL(
+      '../docs/drafts/SCOUT_FORMAL_LEVEL_STATE_DRAFT.sql',
+      import.meta.url
+    ),
     'utf8'
   );
   for (const draft of [baseline, source]) {
