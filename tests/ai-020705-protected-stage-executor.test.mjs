@@ -236,6 +236,9 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
       actions.push('census');
       return {
         projectRef: synthetic.projectRef,
+        userId: synthetic.userId,
+        novelId: synthetic.novelId,
+        approvalCommentId: synthetic.approvalCommentId,
         runtimeDisabledZero: !failedCensus,
         approvalTombstoneCount: 1,
         chunkClaimsRetained: 0, // Legacy one-shot fixture has no chunk claim.
