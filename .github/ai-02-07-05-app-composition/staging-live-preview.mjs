@@ -28,6 +28,7 @@ export function create020705StagingPreviewAdapter({
   projectId,
   teamId,
   protectionBypass,
+  existingDeploymentId = null,
   fetchImpl = globalThis.fetch,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 } = {}) {
@@ -41,6 +42,7 @@ export function create020705StagingPreviewAdapter({
       typeof projectId !== 'string' || !/^prj_[A-Za-z0-9]+$/u.test(projectId) ||
       (teamId != null && !/^team_[A-Za-z0-9]+$/u.test(teamId)) ||
       typeof protectionBypass !== 'string' || protectionBypass.length < 16 ||
+      (existingDeploymentId !== null && !DEPLOYMENT.test(existingDeploymentId)) ||
       typeof fetchImpl !== 'function' || typeof sleep !== 'function') deny();
 
   const suffix = teamId ? '?teamId=' + encodeURIComponent(teamId) : '';
@@ -128,24 +130,29 @@ export function create020705StagingPreviewAdapter({
       item.target.includes('preview')
     ).map((item) => item.key));
     if (REQUIRED_BRANCH_KEYS.some((name) => !scoped.has(name))) deny();
-    const creation = await request(
-      base + '/v13/deployments' + suffix,
-      {
-        method: 'POST',
-        payload: {
-          name: 'novelrise',
-          project: projectId,
-          gitSource: {
-            type: 'github',
-            repoId: project.link.repoId,
-            ref: scope.stagingBranch,
-            sha: scope.candidateSha
+    // Existing, separately approved Preview is a read-only operation.
+    // A paid OWNER approval names its exact ID before any synthetic fixture
+    // can be created; never silently create a different deployment instead.
+    let id = existingDeploymentId;
+    if (id === null) {
+      const creation = await request(
+        base + '/v13/deployments' + suffix,
+        {
+          method: 'POST',
+          payload: {
+            name: 'novelrise',
+            project: projectId,
+            gitSource: {
+              type: 'github',
+              repoId: project.link.repoId,
+              ref: scope.stagingBranch,
+              sha: scope.candidateSha
+            }
           }
-          // Deliberately omit target: Vercel defaults to Preview.
         }
-      }
-    );
-    const id = creation?.id;
+      );
+      id = creation?.id;
+    }
     if (!DEPLOYMENT.test(id ?? '')) deny();
     let deployed;
     for (let i = 0; i < 10; i += 1) {
