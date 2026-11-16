@@ -8,8 +8,8 @@ async function setupReader(page, writingMode) {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/tests/e2e/fixtures/episode-illustration-retry.html');
   await page.evaluate(() => {
-    document.body.className = 'novelight-page-episode';
-    document.body.innerHTML =
+    globalThis.document.body.className = 'novelight-page-episode';
+    globalThis.document.body.innerHTML =
       '<main><div id="readingSettingsMount"></div><article id="card"><div class="content"></div></article></main>';
     globalThis.NovelightProse = { renderInto() {} };
     globalThis.NovelightReaderTts = {};
@@ -18,7 +18,7 @@ async function setupReader(page, writingMode) {
   await page.addStyleTag({ path: '../../novelight-episode-illustrations.css' });
   await page.addScriptTag({ path: '../../novelight-reading-settings.js' });
   await page.evaluate((mode) => {
-    localStorage.setItem(
+    globalThis.localStorage.setItem(
       'novelight:reading-settings:v1',
       JSON.stringify({
         fontSize: 'small',
@@ -34,7 +34,7 @@ async function setupReader(page, writingMode) {
 
 async function readerStyle(page) {
   return page.locator('#card .content').evaluate((element) => {
-    const style = getComputedStyle(element);
+    const style = globalThis.getComputedStyle(element);
     return {
       size: style.fontSize,
       direction: style.writingMode
@@ -69,7 +69,7 @@ test('iPhone-like vertical reader keeps chosen size after illustration re-render
   ].join('\n');
   await page.evaluate((text) => {
     void globalThis.NovelightEpisodeIllustrations.mountReader({
-      root: document.querySelector('#card .content'),
+      root: globalThis.document.querySelector('#card .content'),
       episodeId: 73006,
       content: text
     });
