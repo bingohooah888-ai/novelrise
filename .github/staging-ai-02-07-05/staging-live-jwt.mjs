@@ -10,6 +10,7 @@ import { verifyStagingMigrationTarget } from '../../scripts/verify-staging-migra
 const REF = 'wmlzjgvxgoyrovdhbqbg';
 const URL = 'https://' + REF + '.supabase.co';
 const NOVEL = 998892071;
+const CLAIM_NOVEL = 998892074; // disposable proof only, tombstone retained
 const EPISODE = 998892072; // reserved for the eventual protected provider
 const CLAIM_EPISODE = 998892073; // distinct: proof never spends paid chunk
 const TITLE = 'NOVELIGHT合成試験';
@@ -76,6 +77,7 @@ export function create020705StagingJwtAdapter({
   let ownerPassword = null;
   let outsiderPassword = null;
   let createdNovel = false;
+  let createdClaimNovel = false;
   let paidApproved = false;
   let client = null;
 
@@ -85,9 +87,9 @@ export function create020705StagingJwtAdapter({
   }
   async function ensureEmptyFixture() {
     const state = await database(
-      'select (select count(*)::integer from public.novels where id=$1) as novels, ' +
+      'select (select count(*)::integer from public.novels where id in ($1,$4)) as novels, ' +
       '(select count(*)::integer from public.episodes where id in ($2,$3)) as episodes',
-      [NOVEL, EPISODE, CLAIM_EPISODE]
+      [NOVEL, EPISODE, CLAIM_EPISODE, CLAIM_NOVEL]
     );
     if (state.rows?.length !== 1 ||
         state.rows[0].novels !== 0 ||
@@ -136,6 +138,18 @@ export function create020705StagingJwtAdapter({
       ]);
       createdNovel = false;
     }
+    if (createdClaimNovel) {
+      const check = await database(
+        'select user_id::text from public.novels where id=$1',
+        [CLAIM_NOVEL]
+      );
+      if (check.rows?.length !== 1 || check.rows[0].user_id !== ownerId)
+        deny();
+      await database('delete from public.novels where id=$1 and user_id=$2', [
+        CLAIM_NOVEL, ownerId
+      ]);
+      createdClaimNovel = false;
+    }
     // Synthetic test replay claims are permanently retained by design.
     // These user deletions never touch rows in novelight_ai_chunk_claims.
     if (outsiderId) await cleanUser(outsiderId, outsiderEmail);
@@ -172,9 +186,14 @@ export function create020705StagingJwtAdapter({
       );
       createdNovel = true;
       await database(
+        "insert into public.novels(id,user_id,title,status) values($1,$2,$3,'draft')",
+        [CLAIM_NOVEL, ownerId, TITLE]
+      );
+      createdClaimNovel = true;
+      await database(
         "insert into public.episodes(id,novel_id,user_id,title,content,status) " +
-        "values($1,$2,$3,$4,$5,'draft'),($6,$2,$3,$4,$5,'draft')",
-        [EPISODE, NOVEL, ownerId, TITLE, CONTENT, CLAIM_EPISODE]
+        "values($1,$2,$3,$4,$5,'draft'),($6,$7,$3,$4,$5,'draft')",
+        [EPISODE, NOVEL, ownerId, TITLE, CONTENT, CLAIM_EPISODE, CLAIM_NOVEL]
       );
 
       const owner = await authorClient.auth.signInWithPassword({
@@ -227,7 +246,7 @@ export function create020705StagingJwtAdapter({
       if (conflict.error || conflict.data?.length !== 0) deny();
 
       const claimArgs = {
-        p_actor_id: ownerId, p_novel_id: NOVEL,
+        p_actor_id: ownerId, p_novel_id: CLAIM_NOVEL,
         p_episode_id: CLAIM_EPISODE,
         p_source_hash: SOURCE,
         p_previous_source_hash: null,
@@ -261,6 +280,17 @@ export function create020705StagingJwtAdapter({
       );
       if (!revokedSave.error && revokedSave.data?.length) deny();
 
+      // The claim test's own novel is removed; its journal stays immutable.
+      const claimOwner = await database(
+        'select user_id::text from public.novels where id=$1',
+        [CLAIM_NOVEL]
+      );
+      if (claimOwner.rows?.length !== 1 ||
+          claimOwner.rows[0].user_id !== ownerId) deny();
+      await database('delete from public.novels where id=$1 and user_id=$2', [
+        CLAIM_NOVEL, ownerId
+      ]);
+      createdClaimNovel = false;
       // Remove the second synthetic identity immediately; the protected
       // single-call cleanup handles only the OWNER and their reserved novel.
       await cleanUser(outsiderId, outsiderEmail);
@@ -293,15 +323,18 @@ export function create020705StagingJwtAdapter({
     if (!paidApproved || !client) deny();
     const result = await database(
       'select (select count(*)::integer from auth.users where id=$1) as users, ' +
-      '(select count(*)::integer from public.novels where id=$2) as novels, ' +
+      '(select count(*)::integer from public.novels where id in ($2,$5)) as novels, ' +
       '(select count(*)::integer from public.episodes where id in ($3,$4)) as episodes, ' +
       '(select count(*)::integer from public.novelight_ai_chunk_claims ' +
-      ' where actor_id=$1 and novel_id=$2) as claims',
-      [ownerId, NOVEL, EPISODE, CLAIM_EPISODE]
+      ' where actor_id=$1 and novel_id=$5) as proof_claims, ' +
+      '(select count(*)::integer from public.novelight_ai_chunk_claims ' +
+      ' where actor_id=$1 and novel_id=$2) as paid_claims',
+      [ownerId, NOVEL, EPISODE, CLAIM_EPISODE, CLAIM_NOVEL]
     );
     const row = result.rows?.[0];
     if (!row || row.users !== 0 || row.novels !== 0 ||
-        row.episodes !== 0 || row.claims !== 1) deny();
+        row.episodes !== 0 || row.proof_claims !== 1 ||
+        ![0,1].includes(row.paid_claims)) deny();
     return true;
   }
 
