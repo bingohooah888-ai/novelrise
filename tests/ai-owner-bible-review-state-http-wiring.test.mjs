@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createOfflineOwnerBibleReviewStateHttpWiring } from '../api/_lib/ai/owner-bible-review-state-offline-wiring.js';
+import { createOfflineReadOnlyAuthSessionLookup } from '../api/_lib/ai/owner-private-session-reader.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
@@ -157,8 +158,25 @@ function offlineHarness() {
         }
       };
     },
-    lookupOneSession: async ({ sessionId, actorId }) =>
-      allowed && sessionId === SESSION && actorId === OWNER,
+    lookupOneSession: createOfflineReadOnlyAuthSessionLookup({
+      queryClient: {
+        async query(statement, values) {
+          assert.match(statement, /^SELECT EXISTS /u);
+          assert.deepEqual(values.length, 2);
+          const [sessionId, actorId] = values;
+          return {
+            command: 'SELECT',
+            rowCount: 1,
+            rows: [
+              {
+                active:
+                  allowed && sessionId === SESSION && actorId === OWNER
+              }
+            ]
+          };
+        }
+      }
+    }),
     nowEpochSeconds: () => 1000
   });
   return {
