@@ -43,19 +43,22 @@ async function setupReader(
     await page.addScriptTag({ path: '../../novelight-prose.js' });
   }
   await page.addScriptTag({ path: '../../novelight-reading-settings.js' });
-  await page.evaluate(([mode, fontSize]) => {
-    globalThis.localStorage.setItem(
-      'novelight:reading-settings:v1',
-      JSON.stringify({
-        fontSize,
-        lineHeight: 'standard',
-        theme: 'light',
-        width: 'standard',
-        writingMode: mode
-      })
-    );
-    globalThis.NovelightReadingSettings.mount();
-  }, [writingMode, options.fontSize || 'small']);
+  await page.evaluate(
+    ([mode, fontSize]) => {
+      globalThis.localStorage.setItem(
+        'novelight:reading-settings:v1',
+        JSON.stringify({
+          fontSize,
+          lineHeight: 'standard',
+          theme: 'light',
+          width: 'standard',
+          writingMode: mode
+        })
+      );
+      globalThis.NovelightReadingSettings.mount();
+    },
+    [writingMode, options.fontSize || 'small']
+  );
 }
 
 async function readerStyle(page) {
