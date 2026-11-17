@@ -107,7 +107,25 @@ function fixture({ forged = false, killFails = false, zeroFails = false } = {}) 
     supabaseUrl: 'https://' + STAGING + '.supabase.co',
     from(table) {
       return {
-        update() { return query('stage-disabled'); },
+        update() {
+          return {
+            eq() { return this; },
+            select() { return this; },
+            async single() {
+              calls.push('stage-disabled');
+              return {
+                count: 1, error: null,
+                data: {
+                  singleton: 1, enabled: false,
+                  user_day_cap_micros: 0,
+                  user_month_cap_micros: 0,
+                  global_day_cap_micros: 0,
+                  global_month_cap_micros: 0
+                }
+              };
+            }
+          };
+        },
         delete() { return query('delete-' + table); },
         select() {
           return {
