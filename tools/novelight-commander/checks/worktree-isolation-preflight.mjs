@@ -33,7 +33,7 @@ function mock(options = {}) {
   };
   const lstat = async (candidate) => {
     calls.push({ type: 'lstat', candidate });
-    if (candidate === LOCAL || candidate === TARGET && options.collision) {
+    if (candidate === LOCAL || (options.collision && candidate.startsWith(LOCAL + path.sep))) {
       return {
         isSymbolicLink: () => false,
         isDirectory: () => true
