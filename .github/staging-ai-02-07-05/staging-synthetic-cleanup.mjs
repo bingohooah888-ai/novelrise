@@ -83,7 +83,7 @@ export function create020705StagingCleanup({
             row.enabled !== false ||
             ['user_day_cap_micros', 'user_month_cap_micros',
               'global_day_cap_micros', 'global_month_cap_micros']
-              .some((key) => Number(row[key]) !== 0)) safe = false;
+              .some((key) => row[key] !== 0 && row[key] !== '0')) safe = false;
       } catch {
         safe = false;
       }
