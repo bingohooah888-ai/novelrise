@@ -4,7 +4,7 @@ import {
   inspectIsolatedWorktree,
   isolatedWorktreeTarget
 } from './worktree-isolation-preflight.js';
-import { createSecurityConfig, resolveAllowedPath, redactSecrets } from './security.js';
+import { createSecurityConfig, redactSecrets } from './security.js';
 import { runOnce } from './processes.js';
 
 const OWNER = 'bingohooah888-ai';
