@@ -98,7 +98,8 @@ function scenario({
         return this;
       },
       single: async () => ({
-        error: null, count: 1,
+        error: null,
+        count: 1,
         data: {
           singleton: 1, enabled: false,
           user_day_cap_micros: 0,
