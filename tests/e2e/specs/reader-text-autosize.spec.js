@@ -300,8 +300,7 @@ async function runIllustrationABCase(page, css, name) {
   // The reported iPhone video showed a jump roughly 12-13 seconds after opening.
   await page.waitForFunction(
     () =>
-      performance.now() - globalThis.__novelightReaderABTrace.mountAt >=
-      13000,
+      performance.now() - globalThis.__novelightReaderABTrace.mountAt >= 13000,
     null,
     { timeout: 20000 }
   );
