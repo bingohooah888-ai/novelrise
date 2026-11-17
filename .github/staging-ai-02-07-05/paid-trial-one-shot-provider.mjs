@@ -38,7 +38,7 @@ export function createPaidTrialOneShotOpenAiProvider({
     !Number.isSafeInteger(approved?.episodeId) ||
     approved.episodeId <= 0 ||
     approved.provider !== 'openai' ||
-    approved.model !== 'gpt-5.6-luna' ||
+    approved.model !== 'gpt-6.1-sol' ||
     approved.routeCount !== 1 ||
     approved.maxProviderCalls !== 1 ||
     approved.noRetry !== true ||
@@ -75,7 +75,7 @@ export function createPaidTrialOneShotOpenAiProvider({
       // This is a guard immediately BEFORE a potentially billable network
       // request, after the outer Router's atomic budget reservation.
       if (
-        args?.model !== 'gpt-5.6-luna' ||
+        args?.model !== 'gpt-6.1-sol' ||
         !Number.isFinite(now()) ||
         now() >= expiresAt
       ) {
@@ -94,7 +94,7 @@ export function createPaidTrialOneShotOpenAiProvider({
           p_main_sha: approved.candidateSha ?? approved.mainSha,
           p_preview_deployment_id: approved.previewDeploymentId,
           p_provider: 'openai',
-          p_model: 'gpt-5.6-luna',
+          p_model: 'gpt-6.1-sol',
           p_ceiling_micros: approved.capMicros,
           p_expires_at: approved.expiresAt,
           p_project_ref: STAGING_REF

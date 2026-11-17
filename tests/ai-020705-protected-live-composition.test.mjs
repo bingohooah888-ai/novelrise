@@ -59,7 +59,7 @@ function scenario({
     previewDeploymentId: 'dpl_test123',
     capMicros: 1000000,
     provider: 'openai',
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     stagingProjectRef: STAGING,
     expiresAt,
     consentRevision: 'synthetic-policy'
@@ -80,7 +80,7 @@ function scenario({
           episodeId: 11,
           expiresAt,
           mainSha: MAIN,
-          model: 'gpt-5.6-luna',
+          model: 'gpt-6.1-sol',
           novelId: 41,
           previewDeploymentId: 'dpl_test123',
           provider: 'openai',
@@ -289,7 +289,7 @@ function scenario({
       assert.equal(options.method, 'POST');
       const body = JSON.parse(options.body);
       assert.equal(body.store, false);
-      assert.equal(body.model, 'gpt-5.6-luna');
+      assert.equal(body.model, 'gpt-6.1-sol');
       assert.equal(body.max_output_tokens, 256);
       assert.match(body.input, /玲奈/u);
       return {
@@ -322,7 +322,7 @@ function scenario({
     },
     route: {
       provider: 'openai',
-      model: 'gpt-5.6-luna',
+      model: 'gpt-6.1-sol',
       inputMicrosPerMillion: 10000,
       outputMicrosPerMillion: 20000,
       maxOutputTokens: 256

@@ -18,12 +18,12 @@ const APPROVED = {
   novelId: 41,
   episodeId: 11,
   provider: 'openai',
-  model: 'gpt-5.6-luna',
+  model: 'gpt-6.1-sol',
   routeCount: 1,
   maxProviderCalls: 1,
   noRetry: true,
   fallbackDisabled: true,
-  capMicros: 2528640,
+  capMicros: 1000000,
   mainSha: SHA,
   previewDeploymentId: 'dpl_test123',
   expiresAt: new Date(NOW + 3600000).toISOString(),
@@ -39,7 +39,7 @@ const DEPLOYMENT = {
   sha: SHA,
   id: 'dpl_test123'
 };
-const REQUEST = { model: 'gpt-5.6-luna', system: 'offline', user: 'synthetic' };
+const REQUEST = { model: 'gpt-6.1-sol', system: 'offline', user: 'synthetic' };
 
 // prettier-ignore
 function fixture({ changes = {}, deployment = {}, rpcReply, providerError } = {}) {
@@ -163,7 +163,7 @@ test('wrong deployment, budget, scope, expiry, model and claim fail closed', () 
 test('a model mismatch is rejected before any DB or network access', async () => {
   const { provider, counts } = fixture();
   await assert.rejects(
-    provider.generate({ ...REQUEST, model: 'other-model' }),
+    provider.generate({ ...REQUEST, model: 'gpt-5.6-luna' }),
     /AI_020705_PAID_ONE_SHOT_DENIED/u
   );
   assert.deepEqual(counts(), { rpcCalls: 0, modelCalls: 0 });

@@ -21,7 +21,7 @@ import { NOVEL_BIBLE_INFERENCE_SYSTEM } from '../../api/_lib/ai/owner-novel-bibl
 
 const STAGING_REF = 'wmlzjgvxgoyrovdhbqbg';
 const STAGING_URL = 'https://' + STAGING_REF + '.supabase.co';
-const MODEL = 'gpt-5.6-luna';
+const MODEL = 'gpt-6.1-sol';
 const HASH = /^[0-9a-f]{64}$/u;
 const keys = Object.freeze([
   'provider',
