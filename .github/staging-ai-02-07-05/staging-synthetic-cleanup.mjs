@@ -66,9 +66,24 @@ export function create020705StagingCleanup({
             user_month_cap_micros: 0,
             global_day_cap_micros: 0,
             global_month_cap_micros: 0
-          })
-          .eq('singleton', 1);
-        if (result?.error) safe = false;
+          }, { count: 'exact' })
+          .eq('singleton', 1)
+          .select(
+            'singleton,enabled,user_day_cap_micros,user_month_cap_micros,' +
+            'global_day_cap_micros,global_month_cap_micros'
+          )
+          .single();
+        // PostgREST can report error:null after updating ZERO rows.
+        // Require the one actual Staging runtime row and all five OFF
+        // settings, not an acknowledgement or injected boolean alone.
+        const row = result?.data;
+        if (result?.error ||
+            result?.count !== 1 ||
+            row?.singleton !== 1 ||
+            row.enabled !== false ||
+            ['user_day_cap_micros', 'user_month_cap_micros',
+              'global_day_cap_micros', 'global_month_cap_micros']
+              .some((key) => Number(row[key]) !== 0)) safe = false;
       } catch {
         safe = false;
       }
