@@ -15,7 +15,7 @@ const SYNTHETIC = {
 };
 
 // prettier-ignore
-function fixture({ realUser = false, badCensus = false, failedDisable = false, zeroRuntimeRows = false, unchangedRuntime = false, chunkClaimCount = 0, censusScopeOverrides = {} } = {}) {
+function fixture({ realUser = false, badCensus = false, failedDisable = false, zeroRuntimeRows = false, unchangedRuntime = false, nullBudget = false, chunkClaimCount = 0, censusScopeOverrides = {} } = {}) {
   const calls = [];
   const serviceClient = {
     supabaseUrl: SYNTHETIC.supabaseUrl,
@@ -49,7 +49,7 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false, z
               enabled: unchangedRuntime,
               user_day_cap_micros: 0,
               user_month_cap_micros: 0,
-              global_day_cap_micros: 0,
+              global_day_cap_micros: nullBudget ? null : 0,
               global_month_cap_micros: 0
             }
           };
@@ -151,7 +151,7 @@ test('stop attempts both Staging switch reset and external kill switch', async (
 
 // prettier-ignore
 test('zero-row Staging switch and non-zero OFF state never certify stop', async () => {
-  for (const variation of [{ zeroRuntimeRows: true }, { unchangedRuntime: true }]) {
+  for (const variation of [{ zeroRuntimeRows: true }, { unchangedRuntime: true }, { nullBudget: true }]) {
     const { cleanup, calls } = fixture(variation);
     assert.equal(await cleanup.stop(), false);
     assert.ok(calls.some((item) => item.action === 'disableExternal'));
