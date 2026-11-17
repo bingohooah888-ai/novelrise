@@ -220,7 +220,7 @@ test('offline signed Cloudflare DO notification reaches existing stop/revoke/cle
 // prettier-ignore
 test('missing independent binding, forged signature and wrong scope never perform recovery', async () => {
   const { entry, receipt, calls } = fixture({ forged: true });
-  assert.equal((await entry.handleRecoveryRequest(new Request(
+  assert.equal((await entry.handleRecoveryRequest(new globalThis.Request(
     'https://gatea-recovery.internal/_novelight/gatea/recover',
     { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scope, envelope: receipt }) }
@@ -233,7 +233,7 @@ test('missing independent binding, forged signature and wrong scope never perfor
   );
   const safe = fixture();
   const altered = { ...scope, runId: 702 };
-  assert.equal((await safe.entry.handleRecoveryRequest(new Request(
+  assert.equal((await safe.entry.handleRecoveryRequest(new globalThis.Request(
     'https://gatea-recovery.internal/_novelight/gatea/recover',
     { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scope: altered, envelope: safe.receipt }) }
