@@ -15,7 +15,7 @@ const SCOPE = {
   approvalCommentId: 700, runId: 1001,
   mainSha: SHA, previewDeploymentId: PREVIEW,
   actorId: UID, novelId: 41, episodeId: 11,
-  provider: 'openai', model: 'gpt-5.6-luna',
+  provider: 'openai', model: 'gpt-6.1-sol',
   capMicros: 10000000, consentRevision: 'synthetic-test-v1',
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg'
 };
@@ -39,7 +39,7 @@ function fixture({phase = 'claimed', active = false, failUrl = null,
     capMicros: 10000000, confirmation: 'STAGING PAID 1 CALL APPROVED',
     consentRevision: SCOPE.consentRevision, episodeId: 11,
     expiresAt: new Date(NOW + 600000).toISOString(), mainSha: SHA,
-    model: 'gpt-5.6-luna', novelId: 41, previewDeploymentId: PREVIEW,
+    model: 'gpt-6.1-sol', novelId: 41, previewDeploymentId: PREVIEW,
     provider: 'openai', stagingProjectRef: SCOPE.stagingProjectRef
   };
   const comments = [comment(700, 'APPROVE', approval)];

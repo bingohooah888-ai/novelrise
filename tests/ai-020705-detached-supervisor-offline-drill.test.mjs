@@ -14,7 +14,7 @@ const scope = {
   mainSha: SHA, previewDeploymentId: PREVIEW,
   approvalCommentId: 700, runId: 1001,
   actorId: UID, novelId: 41, episodeId: 11,
-  provider: 'openai', model: 'gpt-5.6-luna',
+  provider: 'openai', model: 'gpt-6.1-sol',
   capMicros: 10000000, consentRevision: 'synthetic-test-v1'
 };
 // prettier-ignore
@@ -24,7 +24,7 @@ function comments() {
     capMicros: 10000000, confirmation: 'STAGING PAID 1 CALL APPROVED',
     consentRevision: scope.consentRevision, episodeId: 11,
     expiresAt: new Date(NOW + 600000).toISOString(), mainSha: SHA,
-    model: 'gpt-5.6-luna', novelId: 41,
+    model: 'gpt-6.1-sol', novelId: 41,
     previewDeploymentId: PREVIEW, provider: 'openai',
     stagingProjectRef: scope.stagingProjectRef
   };

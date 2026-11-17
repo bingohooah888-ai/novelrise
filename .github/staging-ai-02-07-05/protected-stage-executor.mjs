@@ -83,7 +83,7 @@ export function create020705ProtectedStageExecutor({
     context.approvalCommentId < 1 ||
     expected?.stagingProjectRef !== STAGING_REF ||
     expected?.provider !== 'openai' ||
-    expected?.model !== 'gpt-5.6-luna' ||
+    expected?.model !== 'gpt-6.1-sol' ||
     !Number.isSafeInteger(expected?.capMicros) ||
     expected.capMicros < 1 ||
     expected.capMicros > 10000000 ||
@@ -108,7 +108,7 @@ export function create020705ProtectedStageExecutor({
       previewDeploymentId: expected.previewDeploymentId,
       capMicros: expected.capMicros
     }) ||
-    request?.model !== 'gpt-5.6-luna' ||
+    request?.model !== 'gpt-6.1-sol' ||
     typeof request?.system !== 'string' ||
     typeof request?.user !== 'string' ||
     request.user.length < 1 ||

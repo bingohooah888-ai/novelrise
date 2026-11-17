@@ -85,7 +85,7 @@ function setup() {
     },
     budget: {
       provider: 'openai',
-      model: 'gpt-5.6-luna',
+      model: 'gpt-6.1-sol',
       currency: 'JPY',
       capMicros: 10000000,
       maxPosts: 1,

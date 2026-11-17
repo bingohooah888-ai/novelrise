@@ -64,7 +64,7 @@ function validScope(s) {
     UUID.test(s.actorId ?? '') &&
     Number.isSafeInteger(s.novelId) && s.novelId > 0 &&
     Number.isSafeInteger(s.episodeId) && s.episodeId > 0 &&
-    s.provider === 'openai' && s.model === 'gpt-5.6-luna' &&
+    s.provider === 'openai' && s.model === 'gpt-6.1-sol' &&
     s.stagingProjectRef === 'wmlzjgvxgoyrovdhbqbg' &&
     Number.isSafeInteger(s.capMicros) &&
     s.capMicros >= 1 && s.capMicros <= 10000000 &&

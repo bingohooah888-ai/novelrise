@@ -23,7 +23,7 @@ export async function run020705SinglePaidTrial({
     claimed?.ownerLedgerClaimed !== true ||
     claimed?.authorizesPaidCall !== false ||
     !isPaidTrialOneShotGuardedProvider(guardedProvider) ||
-    request?.model !== 'gpt-5.6-luna' ||
+    request?.model !== 'gpt-6.1-sol' ||
     typeof request.system !== 'string' ||
     typeof request.user !== 'string' ||
     request.user.length > 36000 ||
@@ -114,7 +114,7 @@ export async function run020705SinglePaidTrial({
   return Object.freeze({
     outcome: 'one_call_succeeded_and_cleanup_verified',
     provider: 'openai',
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     ...(review ? { review } : {})
   });
 }

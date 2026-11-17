@@ -72,7 +72,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
     episodeId: 11,
     expiresAt,
     mainSha: SHA,
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     novelId: 41,
     previewDeploymentId: PREVIEW,
     provider: 'openai',
@@ -156,7 +156,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
       novelId: 41,
       episodeId: 11,
       provider: 'openai',
-      model: 'gpt-5.6-luna',
+      model: 'gpt-6.1-sol',
       routeCount: 1,
       maxProviderCalls: 1,
       noRetry: true,
@@ -207,7 +207,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
     previewDeploymentId: PREVIEW,
     capMicros: approval.capMicros,
     provider: 'openai',
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     stagingProjectRef: synthetic.projectRef
   };
   const proofs = Object.fromEntries([
@@ -225,7 +225,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
     serviceClient,
     authAdmin,
     guardedProvider,
-    request: { model: 'gpt-5.6-luna', system: 'synthetic', user: 'synthetic story' },
+    request: { model: 'gpt-6.1-sol', system: 'synthetic', user: 'synthetic story' },
     readComments: async () => comments,
     async writeComment(body) {
       actions.push(body.includes('_CLAIMED ') ? 'github-claim' : 'github-consumed');

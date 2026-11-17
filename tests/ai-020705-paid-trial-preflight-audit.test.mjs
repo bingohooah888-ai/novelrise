@@ -20,7 +20,7 @@ const evidence = Object.freeze({
   episodeId: 11,
   chunkIndex: 0,
   provider: 'openai',
-  model: 'gpt-5.6-luna',
+  model: 'gpt-6.1-sol',
   routeCount: 1,
   maxProviderCalls: 1,
   fallbackDisabled: true,

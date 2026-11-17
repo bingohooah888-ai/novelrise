@@ -215,7 +215,7 @@ export function create020705StagingLiveBindings({
       typeof credentials.vercelProtectionBypass !== 'string' ||
       typeof credentials.openAiApiKey !== 'string' ||
       pricing.provider !== 'openai' ||
-      pricing.model !== 'gpt-5.6-luna' ||
+      pricing.model !== 'gpt-6.1-sol' ||
       !Number.isSafeInteger(pricing.inputMicrosPerMillion) ||
       !Number.isSafeInteger(pricing.outputMicrosPerMillion) ||
       !Number.isSafeInteger(pricing.maxOutputTokens)) deny();
@@ -385,7 +385,7 @@ export function create020705StagingLiveBindings({
             previewDeploymentId: verifiedPreview.id,
             capMicros: scope.capMicros,
             provider: 'openai',
-            model: 'gpt-5.6-luna',
+            model: 'gpt-6.1-sol',
             stagingProjectRef: STAGING,
             expiresAt: scope.expiresAt,
             consentRevision: scope.consentRevision
