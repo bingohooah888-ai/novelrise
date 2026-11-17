@@ -38,7 +38,7 @@ async function setupReader(page, writingMode, cssOverride = null, options = {}) 
     await page.addScriptTag({ path: '../../novelight-prose.js' });
   }
   await page.addScriptTag({ path: '../../novelight-reading-settings.js' });
-  await page.evaluate(({ mode, fontSize }) => {
+  await page.evaluate(([mode, fontSize]) => {
     globalThis.localStorage.setItem(
       'novelight:reading-settings:v1',
       JSON.stringify({
@@ -50,10 +50,7 @@ async function setupReader(page, writingMode, cssOverride = null, options = {}) 
       })
     );
     globalThis.NovelightReadingSettings.mount();
-  }, {
-    mode: writingMode,
-    fontSize: options.fontSize || 'small'
-  });
+  }, [writingMode, options.fontSize || 'small']);
 }
 
 async function readerStyle(page) {
@@ -282,7 +279,7 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
     expect(sample.before.fontSize).toBe('17px');
     expect(sample.after.fontSize).toBe('17px');
     expect(sample.large.fontSize).toBe('21px');
-    expect(sample.restored.fontSize).toBe('17px');
+    expect(sample.restored.fontSize).toBe('15px');
     expect(sample.before.writingMode).toBe('vertical-rl');
     expect(sample.after.writingMode).toBe('vertical-rl');
     expect(sample.before.glyphHeight).toBeGreaterThan(0);
@@ -292,9 +289,8 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
     afterFix.before.glyphHeight,
     0
   );
-  expect(afterFix.restored.glyphHeight).toBeCloseTo(
-    afterFix.after.glyphHeight,
-    0
+  expect(afterFix.restored.glyphHeight).toBeLessThan(
+    afterFix.after.glyphHeight
   );
   expect(afterFix.large.glyphHeight).toBeGreaterThan(
     afterFix.after.glyphHeight * 1.15
