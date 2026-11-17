@@ -130,7 +130,10 @@ test('horizontal reader remains adjustable without vertical-only autosizing over
 });
 
 async function glyphMetrics(page) {
-  return page.locator('#card .content .nl-episode-prose-text').first().evaluate((holder) => {
+  return page
+    .locator('#card .content .nl-episode-prose-text')
+    .first()
+    .evaluate((holder) => {
     const root = holder.closest('.content');
     const node = holder.firstChild;
     if (!node || node.nodeType !== 3 || node.textContent.length < 5) {
@@ -240,7 +243,10 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
   });
 
   const fixedCSS = await readFile(
-    new globalThis.URL('../../../novelight-reading-settings.css', import.meta.url),
+    new globalThis.URL(
+      '../../../novelight-reading-settings.css',
+      import.meta.url
+    ),
     'utf8'
   );
   const fixLines = [
@@ -255,16 +261,8 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
   for (const rule of fixLines) baselineCSS = baselineCSS.replace(rule, '');
   expect(baselineCSS).not.toBe(fixedCSS);
 
-  const beforeFix = await runIllustrationABCase(
-    page,
-    baselineCSS,
-    'original-css'
-  );
-  const afterFix = await runIllustrationABCase(
-    page,
-    fixedCSS,
-    'fixed-css'
-  );
+  const beforeFix = await runIllustrationABCase(page, baselineCSS, 'original-css');
+  const afterFix = await runIllustrationABCase(page, fixedCSS, 'fixed-css');
 
   expect(blockedExternal).toHaveLength(0);
   for (const sample of [beforeFix, afterFix]) {
@@ -289,8 +287,7 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
     afterFix.after.glyphHeight * 1.15
   );
 
-  const inflationRatio =
-    beforeFix.after.glyphHeight / beforeFix.before.glyphHeight;
+  const inflationRatio = beforeFix.after.glyphHeight / beforeFix.before.glyphHeight;
   const baselineReproduced = inflationRatio > 1.2;
   // A passing fixed-size check is NOT a causal proof if the baseline is stable.
   console.log(
