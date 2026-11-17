@@ -61,9 +61,11 @@ function build({ badKey = false, killFailed = false } = {}) {
             },
             async single() {
               return {
-                count: 1, error: null,
+                count: 1,
+                error: null,
                 data: {
-                  singleton: 1, enabled: false,
+                  singleton: 1,
+                  enabled: false,
                   user_day_cap_micros: 0,
                   user_month_cap_micros: 0,
                   global_day_cap_micros: 0,
