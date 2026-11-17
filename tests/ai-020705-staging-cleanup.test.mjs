@@ -15,7 +15,7 @@ const SYNTHETIC = {
 };
 
 // prettier-ignore
-function fixture({ realUser = false, badCensus = false, failedDisable = false, chunkClaimCount = 0, censusScopeOverrides = {} } = {}) {
+function fixture({ realUser = false, badCensus = false, failedDisable = false, zeroRuntimeRows = false, unchangedRuntime = false, chunkClaimCount = 0, censusScopeOverrides = {} } = {}) {
   const calls = [];
   const serviceClient = {
     supabaseUrl: SYNTHETIC.supabaseUrl,
@@ -23,7 +23,7 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false, c
       const action = { table, operation: null, scopes: [], payload: null };
       const query = {
         select() {
-          action.operation = 'select';
+          if (action.operation !== 'update') action.operation = 'select';
           return query;
         },
         update(payload) {
@@ -38,6 +38,21 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false, c
         eq(key, value) {
           action.scopes.push([key, value]);
           return query;
+        },
+        async single() {
+          calls.push(action);
+          return {
+            count: zeroRuntimeRows ? 0 : 1,
+            error: null,
+            data: zeroRuntimeRows ? null : {
+              singleton: 1,
+              enabled: unchangedRuntime,
+              user_day_cap_micros: 0,
+              user_month_cap_micros: 0,
+              global_day_cap_micros: 0,
+              global_month_cap_micros: 0
+            }
+          };
         },
         async maybeSingle() {
           calls.push(action);
@@ -132,6 +147,15 @@ test('stop attempts both Staging switch reset and external kill switch', async (
     global_month_cap_micros: 0
   });
   assert.ok(calls.some((call) => call.action === 'disableExternal'));
+});
+
+// prettier-ignore
+test('zero-row Staging switch and non-zero OFF state never certify stop', async () => {
+  for (const variation of [{ zeroRuntimeRows: true }, { unchangedRuntime: true }]) {
+    const { cleanup, calls } = fixture(variation);
+    assert.equal(await cleanup.stop(), false);
+    assert.ok(calls.some((item) => item.action === 'disableExternal'));
+  }
 });
 
 // prettier-ignore
