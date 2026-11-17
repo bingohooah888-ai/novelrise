@@ -14,7 +14,7 @@ const largeIllustration =
       '<rect width="900" height="1300" fill="#cccccc"/></svg>'
   );
 
-async function setupReader(page, writingMode, cssOverride = null) {
+async function setupReader(page, writingMode, cssOverride = null, options = {}) {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/tests/e2e/fixtures/episode-illustration-retry.html');
   await page.evaluate(() => {
@@ -34,12 +34,15 @@ async function setupReader(page, writingMode, cssOverride = null) {
     await page.addStyleTag({ content: cssOverride });
   }
   await page.addStyleTag({ path: '../../novelight-episode-illustrations.css' });
+  if (options.realProse) {
+    await page.addScriptTag({ path: '../../novelight-prose.js' });
+  }
   await page.addScriptTag({ path: '../../novelight-reading-settings.js' });
-  await page.evaluate((mode) => {
+  await page.evaluate(({ mode, fontSize }) => {
     globalThis.localStorage.setItem(
       'novelight:reading-settings:v1',
       JSON.stringify({
-        fontSize: 'small',
+        fontSize,
         lineHeight: 'standard',
         theme: 'light',
         width: 'standard',
@@ -47,7 +50,10 @@ async function setupReader(page, writingMode, cssOverride = null) {
       })
     );
     globalThis.NovelightReadingSettings.mount();
-  }, writingMode);
+  }, {
+    mode: writingMode,
+    fontSize: options.fontSize || 'small'
+  });
 }
 
 async function readerStyle(page) {
@@ -186,7 +192,10 @@ async function runIllustrationABCase(page, css, name) {
       })
     });
   });
-  await setupReader(page, 'vertical', css);
+  await setupReader(page, 'vertical', css, {
+    fontSize: 'standard',
+    realProse: true
+  });
   const prose = [
     'これは縦書きで挿絵が読み込まれる前後の表示検証です。'.repeat(60),
     marker,
@@ -270,10 +279,10 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
 
   expect(blockedExternal).toHaveLength(0);
   for (const sample of [beforeFix, afterFix]) {
-    expect(sample.before.fontSize).toBe('15px');
-    expect(sample.after.fontSize).toBe('15px');
+    expect(sample.before.fontSize).toBe('17px');
+    expect(sample.after.fontSize).toBe('17px');
     expect(sample.large.fontSize).toBe('21px');
-    expect(sample.restored.fontSize).toBe('15px');
+    expect(sample.restored.fontSize).toBe('17px');
     expect(sample.before.writingMode).toBe('vertical-rl');
     expect(sample.after.writingMode).toBe('vertical-rl');
     expect(sample.before.glyphHeight).toBeGreaterThan(0);
