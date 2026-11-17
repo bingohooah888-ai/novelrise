@@ -169,11 +169,12 @@ async function glyphMetrics(page) {
       }
       const textBox = holder.getBoundingClientRect();
       const style = globalThis.getComputedStyle(root);
+      const bodyStyle = globalThis.document.body.style;
       return {
         fontSize: style.fontSize,
-        requestedFontSize: globalThis.document.body.style.getPropertyValue('--reader-font-size').trim(),
+        requestedFontSize: bodyStyle.getPropertyValue('--reader-font-size').trim(),
         writingMode: style.writingMode,
-        textSizeAdjust: style.getPropertyValue('-webkit-text-size-adjust') || style.getPropertyValue('text-size-adjust') || null,
+        textSizeAdjust: style.webkitTextSizeAdjust || style.textSizeAdjust || null,
         viewportWidth: globalThis.innerWidth,
         visualViewportWidth: globalThis.visualViewport?.width ?? null,
         devicePixelRatio: globalThis.devicePixelRatio,
@@ -234,10 +235,14 @@ async function runIllustrationABCase(page, css, name) {
       return response;
     };
     const observer = new MutationObserver(() => {
-      const img = globalThis.document.querySelector('#card .content .episode-inline-illustration img');
+      const img = globalThis.document.querySelector(
+        '#card .content .episode-inline-illustration img'
+      );
       if (!img || trace.imageInsertedAt !== null) return;
       trace.imageInsertedAt = performance.now();
-      const loaded = () => { trace.imageLoadedAt = performance.now(); };
+      const loaded = () => {
+        trace.imageLoadedAt = performance.now();
+      };
       if (img.complete && img.naturalWidth > 0) loaded();
       else img.addEventListener('load', loaded, { once: true });
     });
@@ -278,8 +283,12 @@ async function runIllustrationABCase(page, css, name) {
     null,
     { timeout: 10000 }
   );
-  await page.evaluate(() => new Promise((resolve) =>
-    requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+      )
+  );
   const afterImage = await glyphMetrics(page);
   await test.info().attach(name + '-after.png', {
     body: await page.screenshot({ animations: 'disabled' }),
@@ -287,14 +296,17 @@ async function runIllustrationABCase(page, css, name) {
   });
   // The reported iPhone video showed a jump roughly 12-13 seconds after opening.
   await page.waitForFunction(
-    () => performance.now() - globalThis.__novelightReaderABTrace.mountAt >= 13000,
+    () =>
+      performance.now() - globalThis.__novelightReaderABTrace.mountAt >=
+      13000,
     null,
     { timeout: 20000 }
   );
   const late = await glyphMetrics(page);
   const timing = await page.evaluate(() => {
     const trace = globalThis.__novelightReaderABTrace;
-    const offset = (value) => value === null ? null : Number((value - trace.mountAt).toFixed(1));
+    const offset = (value) =>
+      value === null ? null : Number((value - trace.mountAt).toFixed(1));
     return {
       apiRequestMs: offset(trace.apiStartedAt),
       apiResponseMs: offset(trace.apiResponseAt),
@@ -370,8 +382,12 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
     expect(sample.late.fontSize).toBe('17px');
     expect(sample.before.requestedFontSize).toBe('17px');
     expect(sample.late.requestedFontSize).toBe('17px');
-    expect(sample.timing.apiResponseMs).toBeGreaterThan(sample.timing.apiRequestMs);
-    expect(sample.timing.imageLoadedMs).toBeGreaterThanOrEqual(sample.timing.apiResponseMs);
+    expect(sample.timing.apiResponseMs).toBeGreaterThan(
+      sample.timing.apiRequestMs
+    );
+    expect(sample.timing.imageLoadedMs).toBeGreaterThanOrEqual(
+      sample.timing.apiResponseMs
+    );
     expect(sample.timing.lateCheckpointMs).toBeGreaterThanOrEqual(13000);
     expect(sample.large.fontSize).toBe('21px');
     expect(sample.restored.fontSize).toBe('15px');
@@ -380,7 +396,8 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
     expect(sample.before.glyphHeight).toBeGreaterThan(0);
     expect(sample.after.glyphHeight).toBeGreaterThan(0);
   }
-  for (const measurement of [afterFix.after, afterFix.afterImage, afterFix.late]) {
+  const fixedMeasurements = [afterFix.after, afterFix.afterImage, afterFix.late];
+  for (const measurement of fixedMeasurements) {
     expect(measurement.glyphHeight).toBeCloseTo(afterFix.before.glyphHeight, 0);
   }
   expect(afterFix.restored.glyphHeight).toBeLessThan(
@@ -390,17 +407,18 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
     afterFix.after.glyphHeight * 1.15
   );
 
-  const inflationRatio = Math.max(
-    beforeFix.after.glyphHeight,
-    beforeFix.afterImage.glyphHeight,
-    beforeFix.late.glyphHeight
-  ) / beforeFix.before.glyphHeight;
+  const inflationRatio =
+    Math.max(
+      beforeFix.after.glyphHeight,
+      beforeFix.afterImage.glyphHeight,
+      beforeFix.late.glyphHeight
+    ) / beforeFix.before.glyphHeight;
   const baselineReproduced = inflationRatio > 1.2;
-  const fixResolved = baselineReproduced && [
-    afterFix.after,
-    afterFix.afterImage,
-    afterFix.late
-  ].every((sample) => sample.glyphHeight / afterFix.before.glyphHeight < 1.1);
+  const fixResolved =
+    baselineReproduced &&
+    fixedMeasurements.every(
+      (sample) => sample.glyphHeight / afterFix.before.glyphHeight < 1.1
+    );
   // A passing fixed-size check is NOT a causal proof if the baseline is stable.
   console.log(
     'OFFLINE_WEBKIT_AB',
@@ -408,7 +426,13 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
       baselineReproduced,
       inflationRatio: Number(inflationRatio.toFixed(3)),
       fixResolved,
-      mobileContext: { isMobile: true, hasTouch: true, width: 390, height: 844, deviceScaleFactor: 3 },
+      mobileContext: {
+        isMobile: true,
+        hasTouch: true,
+        width: 390,
+        height: 844,
+        deviceScaleFactor: 3
+      },
       baseline: beforeFix,
       corrected: afterFix,
       externalRequests: blockedExternal.length,
