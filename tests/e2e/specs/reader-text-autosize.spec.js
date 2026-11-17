@@ -172,9 +172,12 @@ async function glyphMetrics(page) {
       const bodyStyle = globalThis.document.body.style;
       return {
         fontSize: style.fontSize,
-        requestedFontSize: bodyStyle.getPropertyValue('--reader-font-size').trim(),
+        requestedFontSize: bodyStyle
+          .getPropertyValue('--reader-font-size')
+          .trim(),
         writingMode: style.writingMode,
-        textSizeAdjust: style.webkitTextSizeAdjust || style.textSizeAdjust || null,
+        textSizeAdjust:
+          style.webkitTextSizeAdjust || style.textSizeAdjust || null,
         viewportWidth: globalThis.innerWidth,
         visualViewportWidth: globalThis.visualViewport?.width ?? null,
         devicePixelRatio: globalThis.devicePixelRatio,
@@ -396,7 +399,11 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
     expect(sample.before.glyphHeight).toBeGreaterThan(0);
     expect(sample.after.glyphHeight).toBeGreaterThan(0);
   }
-  const fixedMeasurements = [afterFix.after, afterFix.afterImage, afterFix.late];
+  const fixedMeasurements = [
+    afterFix.after,
+    afterFix.afterImage,
+    afterFix.late
+  ];
   for (const measurement of fixedMeasurements) {
     expect(measurement.glyphHeight).toBeCloseTo(afterFix.before.glyphHeight, 0);
   }
