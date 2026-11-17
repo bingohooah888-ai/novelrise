@@ -185,10 +185,6 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
         typeof this.env?.GATEA_RUNNER_PUB_SPKI !== 'string' ||
         typeof this.env?.GATEA_CONTROLLER_PRIVATE_PKCS8 !== 'string' ||
         typeof this.env?.GATEA_GITHUB_ACTIONS_READ_TOKEN !== 'string' ||
-        // Receipt storage does not itself stop or clean up Staging.
-        // Keep live arm OFF without a separately bound recovery service.
-        this.env?.GATEA_RECOVERY_DISPATCH_ENABLED !== 'true' ||
-        typeof this.env?.GATEA_RECOVERY_CONTROLLER?.fetch !== 'function' ||
         typeof this.ctx?.storage?.transactionSync !== 'function' ||
         typeof this.ctx.storage.sql?.exec !== 'function' ||
         typeof this.ctx.storage.setAlarm !== 'function') deny();
@@ -214,6 +210,11 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
   }
   async arm({ scope, nonce, controllerRunId, expiresAtMs, signature } = {}) {
     this.check();
+    // A1 compatibility: a leftover alarm must remain inert without an S2
+    // ledger. Only a NEW live S2 arm requires a real separate receiver.
+    if (this.env?.GATEA_RECOVERY_DISPATCH_ENABLED !== 'true' ||
+        typeof this.env?.GATEA_RECOVERY_CONTROLLER?.fetch !== 'function')
+      deny();
     const now = Date.now();
     if (!validScope(scope) || !NONCE.test(nonce ?? '') ||
         !positive(controllerRunId) || controllerRunId === scope.runId ||
@@ -294,6 +295,15 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
     if (liveTable.length !== 1) return;
     const current = this.row();
     if (!current || current.state !== 'WATCHING') return;
+    if (this.env?.GATEA_RECOVERY_DISPATCH_ENABLED !== 'true' ||
+        typeof this.env?.GATEA_RECOVERY_CONTROLLER?.fetch !== 'function') {
+      this.ctx.storage.transactionSync(() => {
+        this.ctx.storage.sql.exec(
+          "UPDATE gatea_live_once SET state='FAILED_CLOSED' WHERE id=1 AND state='WATCHING'"
+        );
+      });
+      return; // no recovery, public endpoint, or retry
+    }
     const now = Date.now();
     if (now < current.deadline_ms) {
       await this.ctx.storage.setAlarm(current.deadline_ms);
