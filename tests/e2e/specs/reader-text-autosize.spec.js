@@ -14,7 +14,12 @@ const largeIllustration =
       '<rect width="900" height="1300" fill="#cccccc"/></svg>'
   );
 
-async function setupReader(page, writingMode, cssOverride = null, options = {}) {
+async function setupReader(
+  page,
+  writingMode,
+  cssOverride = null,
+  options = {}
+) {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/tests/e2e/fixtures/episode-illustration-retry.html');
   await page.evaluate(() => {
