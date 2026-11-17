@@ -7,11 +7,21 @@ test.use({ serviceWorkers: 'block' });
 const imageId = '12345678-1234-4234-8234-123456789abc';
 const marker = '[[NOVELIGHT_ILLUSTRATION:' + imageId + ']]';
 const image = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+const largeIllustration =
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1300">' +
+      '<rect width="900" height="1300" fill="#cccccc"/></svg>'
+  );
 
 async function setupReader(page, writingMode, cssOverride = null) {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/tests/e2e/fixtures/episode-illustration-retry.html');
   await page.evaluate(() => {
+    const viewport = globalThis.document.createElement('meta');
+    viewport.name = 'viewport';
+    viewport.content = 'width=device-width,initial-scale=1.0';
+    globalThis.document.head.append(viewport);
     globalThis.document.body.className = 'novelight-page-episode';
     globalThis.document.body.innerHTML =
       '<main><div id="readingSettingsMount"></div><article id="card"><div class="content"></div></article></main>';
@@ -167,7 +177,9 @@ async function runIllustrationABCase(page, css, name) {
       contentType: 'application/json',
       body: JSON.stringify({
         aiUsage: false,
-        assets: [{ id: imageId, url: image, width: 1, height: 1 }]
+        assets: [
+          { id: imageId, url: largeIllustration, width: 900, height: 1300 }
+        ]
       })
     });
   });
