@@ -1,11 +1,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {
+  inspectIsolatedWorktree,
+  isolatedWorktreeTarget
+} from './worktree-isolation-preflight.js';
 import { createSecurityConfig, resolveAllowedPath, redactSecrets } from './security.js';
 import { runOnce } from './processes.js';
 
 const OWNER = 'bingohooah888-ai';
 const REPOSITORY = 'novelrise';
-const CONTROL_ISSUE = 797;
+const CONTROL_ISSUE = 1837;
 const CONTROL_TITLE = '[NOVELIGHT Commander] Local Bridge';
 const CONTROL_MARKER = 'NOVELIGHT_COMMANDER_CONTROL_V1';
 const CONTROL_PREFIX = 'NOVELIGHT_NLO_WORKTREE_REQUEST ';
@@ -68,8 +72,8 @@ async function loadConfig() {
     security,
     root: security.primary,
     pollSeconds: Math.max(60, Math.min(300, Number(raw.pollSeconds || 10))),
-    statePath: path.join(path.dirname(configPath), 'worktree-safe-bridge-state.json'),
-    worktreesRoot: resolveAllowedPath('.novelight-commander/worktrees', security)
+    statePath: path.join(path.dirname(configPath), 'worktree-safe-bridge-1837-state.json'),
+    localAppData: String(process.env.LOCALAPPDATA || '')
   };
 }
 
@@ -136,8 +140,11 @@ function parseRequest(comment) {
   catch { throw new Error('Worktree request is not valid JSON.'); }
   if (!REQUEST_ID_RE.test(String(request?.requestId || ''))) throw new Error('Invalid requestId.');
   request.branch = assertBranch(request.branch);
-  if (!['status', 'apply_file', 'preflight', 'commit_push', 'cleanup'].includes(request.operation)) throw new Error('Unsupported worktree operation.');
+  if (!['status', 'apply_file', 'preflight', 'commit_push', 'cleanup', 'isolation_preflight'].includes(request.operation)) throw new Error('Unsupported worktree operation.');
   if (request.expectedHead != null && !SHA_RE.test(String(request.expectedHead))) throw new Error('Invalid expectedHead.');
+  if (request.operation === 'isolation_preflight' && !SHA_RE.test(String(request.expectedHead || ''))) {
+    throw new Error('NLO_ISOLATION_PREFLIGHT_REQUIRES_PINNED_HEAD');
+  }
   if (['apply_file', 'commit_push', 'cleanup'].includes(request.operation) && request.confirmation !== MUTATION_CONFIRMATION) {
     throw new Error('Explicit chat approval marker is required for worktree mutation.');
   }
@@ -158,8 +165,30 @@ async function remoteHead(config, branch) {
 }
 
 function worktreePath(config, branch) {
-  const slug = branch.replace(/[^A-Za-z0-9._-]/g, '_');
-  return path.join(config.worktreesRoot, slug);
+  return isolatedWorktreeTarget(config.localAppData, branch);
+}
+
+async function isolationPreflight(config, request) {
+  // The only network access is authenticated GitHub GET. No fetch or writes.
+  let remote;
+  try {
+    const safeRef = request.branch.split('/').map(encodeURIComponent).join('/');
+    const response = await githubApi(
+      getToken(),
+      'GET',
+      '/repos/' + OWNER + '/' + REPOSITORY + '/git/ref/heads/' + safeRef
+    );
+    remote = response?.object?.sha;
+  } catch {
+    throw new Error('NLO_ISOLATION_PREFLIGHT_REMOTE_UNVERIFIED');
+  }
+  return await inspectIsolatedWorktree({
+    repoRoot: config.root,
+    localAppData: config.localAppData,
+    branch: request.branch,
+    expectedHead: request.expectedHead,
+    remoteHead: remote
+  });
 }
 
 async function pathExists(target) {
@@ -168,15 +197,24 @@ async function pathExists(target) {
 }
 
 async function ensureWorktree(config, branch, expectedHead) {
-  const remote = await remoteHead(config, branch);
-  if (expectedHead && remote !== expectedHead) throw new Error(`Remote branch moved: expected ${expectedHead}, observed ${remote}.`);
   const target = worktreePath(config, branch);
-  await fs.mkdir(config.worktreesRoot, { recursive: true });
-  if (!(await pathExists(target))) {
-    await runGit(config, ['worktree', 'add', '--detach', target, remote], config.root, 120000);
+  // Existing status/test operations MUST NOT implicitly create a worktree.
+  // Separate creation approval and an isolation preflight are required.
+  let info;
+  try {
+    info = await fs.lstat(target);
+  } catch {
+    throw new Error('NLO_WORKTREE_CREATION_REQUIRES_SEPARATE_APPROVAL');
+  }
+  if (!info.isDirectory() || info.isSymbolicLink()) {
+    throw new Error('NLO_WORKTREE_TARGET_UNVERIFIED');
+  }
+  const remote = await remoteHead(config, branch);
+  if (expectedHead && remote !== expectedHead) {
+    throw new Error('NLO_WORKTREE_REMOTE_HEAD_MISMATCH');
   }
   const head = await runGit(config, ['rev-parse', 'HEAD'], target);
-  if (head !== remote) throw new Error(`Existing worktree HEAD ${head} does not match remote ${remote}. Cleanup or reconcile it explicitly.`);
+  if (head !== remote) throw new Error('NLO_WORKTREE_HEAD_MISMATCH');
   return { target, head, remote };
 }
 
@@ -274,6 +312,9 @@ async function cleanup(config, request) {
 }
 
 async function handle(config, request) {
+  if (request.operation === 'isolation_preflight') {
+    return await isolationPreflight(config, request);
+  }
   if (request.operation === 'status') return await statusResult(config, request);
   if (request.operation === 'apply_file') return await applyFile(config, request);
   if (request.operation === 'preflight') return await preflight(config, request);
