@@ -1,15 +1,27 @@
+// prettier-ignore
 import assert from 'node:assert/strict';
+// prettier-ignore
 import { generateKeyPairSync, sign } from 'node:crypto';
+// prettier-ignore
 import test from 'node:test';
+// prettier-ignore
 import { dispatch020705DeathToRecoveryController } from '../.github/staging-ai-02-07-05/cloudflare-gatea-live-candidate.mjs';
+// prettier-ignore
 import { create020705ExistingWatchdogEntrypoint } from '../.github/staging-ai-02-07-05/existing-watchdog-entrypoint.mjs';
 
+// prettier-ignore
 const NOW = Date.parse('2026-11-14T11:30:00Z');
+// prettier-ignore
 const STAGING = 'wmlzjgvxgoyrovdhbqbg';
+// prettier-ignore
 const ACTOR = '11111111-1111-4111-8111-111111111111';
+// prettier-ignore
 const KID = 'gatea-independent-key';
+// prettier-ignore
 const NONCE = 'N'.repeat(44);
+// prettier-ignore
 const keys = generateKeyPairSync('ed25519');
+// prettier-ignore
 const scope = Object.freeze({
   repository: 'bingohooah888-ai/novelrise',
   stagingProjectRef: STAGING,
@@ -21,11 +33,13 @@ const scope = Object.freeze({
   runId: 700,
   approvalCommentId: 601
 });
+// prettier-ignore
 const COUNTS = [
   'users', 'identities', 'sessions', 'profiles', 'novels', 'episodes',
   'facts', 'analysis', 'reviewCandidates', 'consents', 'consentAudit',
   'usageRequests', 'usageAudit'
 ];
+// prettier-ignore
 function signedReceipt() {
   const proof = {
     ...scope,
@@ -52,6 +66,7 @@ function signedReceipt() {
 }
 // Offline stand-ins for a separately deployed controller; these mocks are
 // NOT evidence that real Cloudflare/Vercel/Supabase authorities exist.
+// prettier-ignore
 function fixture({ forged = false, killFails = false, zeroFails = false } = {}) {
   const calls = [];
   const receipt = signedReceipt();
@@ -175,6 +190,7 @@ function fixture({ forged = false, killFails = false, zeroFails = false } = {}) 
   return { calls, entry, receipt };
 }
 
+// prettier-ignore
 test('offline signed Cloudflare DO notification reaches existing stop/revoke/cleanup/census exactly once', async () => {
   const { entry, receipt, calls } = fixture();
   const service = { fetch: (request) => entry.handleRecoveryRequest(request) };
@@ -201,6 +217,7 @@ test('offline signed Cloudflare DO notification reaches existing stop/revoke/cle
   assert.equal(calls.length, previousLength);
 });
 
+// prettier-ignore
 test('missing independent binding, forged signature and wrong scope never perform recovery', async () => {
   const { entry, receipt, calls } = fixture({ forged: true });
   assert.equal((await entry.handleRecoveryRequest(new Request(
@@ -224,6 +241,7 @@ test('missing independent binding, forged signature and wrong scope never perfor
   assert.deepEqual(safe.calls, []);
 });
 
+// prettier-ignore
 test('independent transport STOP or zero-census failure cannot return success', async () => {
   for (const flags of [{ killFails: true }, { zeroFails: true }]) {
     const { entry, receipt, calls } = fixture(flags);
