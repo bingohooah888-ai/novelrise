@@ -53,11 +53,19 @@ function build({ badKey = false, killFailed = false } = {}) {
         update() {
           calls.push('stop');
           return {
-            eq() {
-              return this;
-            },
-            then(resolve) {
-              resolve({ error: null });
+            eq() { return this; },
+            select() { return this; },
+            async single() {
+              return {
+                count: 1, error: null,
+                data: {
+                  singleton: 1, enabled: false,
+                  user_day_cap_micros: 0,
+                  user_month_cap_micros: 0,
+                  global_day_cap_micros: 0,
+                  global_month_cap_micros: 0
+                }
+              };
             }
           };
         },
