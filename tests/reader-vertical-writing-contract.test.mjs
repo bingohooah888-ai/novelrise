@@ -159,17 +159,3 @@ test('iOS vertical reader font size remains user-controlled', () => {
     3
   );
 });
-
-test('temporary Prettier formatting diagnostic for A/B test', async () => {
-  const prettier = await import('prettier');
-  const filename = 'tests/e2e/specs/reader-text-autosize.spec.js';
-  const source = await readFile(filename, 'utf8');
-  const options = await prettier.resolveConfig(filename);
-  const formatted = await prettier.format(source, {
-    ...options,
-    filepath: filename
-  });
-  console.log('A_B_PRETTIER_DUMP_START');
-  console.log(formatted);
-  console.log('A_B_PRETTIER_DUMP_END');
-});
