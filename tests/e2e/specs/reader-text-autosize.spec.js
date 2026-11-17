@@ -134,35 +134,35 @@ async function glyphMetrics(page) {
     .locator('#card .content .nl-episode-prose-text')
     .first()
     .evaluate((holder) => {
-    const root = holder.closest('.content');
-    const node = holder.firstChild;
-    if (!node || node.nodeType !== 3 || node.textContent.length < 5) {
-      throw new Error('A/B prose text fixture is incomplete');
-    }
-    const glyphHeights = [];
-    const glyphWidths = [];
-    for (let index = 0; index < 5; index += 1) {
-      const range = globalThis.document.createRange();
-      range.setStart(node, index);
-      range.setEnd(node, index + 1);
-      const rect = range.getBoundingClientRect();
-      glyphHeights.push(Number(rect.height.toFixed(2)));
-      glyphWidths.push(Number(rect.width.toFixed(2)));
-      range.detach();
-    }
-    const textBox = holder.getBoundingClientRect();
-    const style = globalThis.getComputedStyle(root);
-    return {
-      fontSize: style.fontSize,
-      writingMode: style.writingMode,
-      textSizeAdjust: style.getPropertyValue('-webkit-text-size-adjust'),
-      glyphHeight: glyphHeights[0],
-      glyphWidth: glyphWidths[0],
-      glyphHeights,
-      textBoxWidth: Number(textBox.width.toFixed(2)),
-      textBoxHeight: Number(textBox.height.toFixed(2))
-    };
-  });
+      const root = holder.closest('.content');
+      const node = holder.firstChild;
+      if (!node || node.nodeType !== 3 || node.textContent.length < 5) {
+        throw new Error('A/B prose text fixture is incomplete');
+      }
+      const glyphHeights = [];
+      const glyphWidths = [];
+      for (let index = 0; index < 5; index += 1) {
+        const range = globalThis.document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + 1);
+        const rect = range.getBoundingClientRect();
+        glyphHeights.push(Number(rect.height.toFixed(2)));
+        glyphWidths.push(Number(rect.width.toFixed(2)));
+        range.detach();
+      }
+      const textBox = holder.getBoundingClientRect();
+      const style = globalThis.getComputedStyle(root);
+      return {
+        fontSize: style.fontSize,
+        writingMode: style.writingMode,
+        textSizeAdjust: style.getPropertyValue('-webkit-text-size-adjust'),
+        glyphHeight: glyphHeights[0],
+        glyphWidth: glyphWidths[0],
+        glyphHeights,
+        textBoxWidth: Number(textBox.width.toFixed(2)),
+        textBoxHeight: Number(textBox.height.toFixed(2))
+      };
+    });
 }
 
 async function runIllustrationABCase(page, css, name) {
@@ -261,7 +261,11 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
   for (const rule of fixLines) baselineCSS = baselineCSS.replace(rule, '');
   expect(baselineCSS).not.toBe(fixedCSS);
 
-  const beforeFix = await runIllustrationABCase(page, baselineCSS, 'original-css');
+  const beforeFix = await runIllustrationABCase(
+    page,
+    baselineCSS,
+    'original-css'
+  );
   const afterFix = await runIllustrationABCase(page, fixedCSS, 'fixed-css');
 
   expect(blockedExternal).toHaveLength(0);
@@ -287,7 +291,8 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
     afterFix.after.glyphHeight * 1.15
   );
 
-  const inflationRatio = beforeFix.after.glyphHeight / beforeFix.before.glyphHeight;
+  const inflationRatio =
+    beforeFix.after.glyphHeight / beforeFix.before.glyphHeight;
   const baselineReproduced = inflationRatio > 1.2;
   // A passing fixed-size check is NOT a causal proof if the baseline is stable.
   console.log(
