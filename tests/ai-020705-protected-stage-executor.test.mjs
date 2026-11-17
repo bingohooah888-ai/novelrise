@@ -91,6 +91,17 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
   function dbChain() {
     const chain = {
       eq() { return chain; },
+      select() { return chain; },
+      single: async () => ({
+        error: null, count: 1,
+        data: {
+          singleton: 1, enabled: false,
+          user_day_cap_micros: 0,
+          user_month_cap_micros: 0,
+          global_day_cap_micros: 0,
+          global_month_cap_micros: 0
+        }
+      }),
       maybeSingle: async () => ({
         error: null,
         data: { id: 41, user_id: OWNER_ID }
