@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
 import { expect, test } from '@playwright/test';
-import { format as formatSource } from 'prettier';
 
 test.use({
   serviceWorkers: 'block',
@@ -336,13 +335,6 @@ test('offline WebKit A/B: rendered glyphs before and after illustration reflow',
   page
 }) => {
   test.setTimeout(90000);
-  // FORMAT_PROBE_START - temporary test-only formatter inspection, removed next commit.
-  let originalSource = await readFile(new globalThis.URL(import.meta.url), 'utf8');
-  originalSource = originalSource.replace("import { format as formatSource } from 'prettier';\\n", '');
-  originalSource = originalSource.replace(/  \/\/ FORMAT_PROBE_START[^\\n]*\\n[\\s\\S]*?  \/\/ FORMAT_PROBE_END\\n/, '');
-  const formattedSource = await formatSource(originalSource, { parser: 'babel' });
-  console.log('PRETTIER_FINAL_SOURCE', JSON.stringify(formattedSource));
-  // FORMAT_PROBE_END
   const baseURL = new globalThis.URL(test.info().project.use.baseURL);
   expect(baseURL.protocol).toBe('http:');
   expect(baseURL.hostname).toBe('127.0.0.1');
