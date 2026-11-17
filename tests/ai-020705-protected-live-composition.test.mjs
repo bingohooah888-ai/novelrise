@@ -97,6 +97,16 @@ function scenario({
       select() {
         return this;
       },
+      single: async () => ({
+        error: null, count: 1,
+        data: {
+          singleton: 1, enabled: false,
+          user_day_cap_micros: 0,
+          user_month_cap_micros: 0,
+          global_day_cap_micros: 0,
+          global_month_cap_micros: 0
+        }
+      }),
       maybeSingle: async () => ({
         data: { id: 41, user_id: OWNER },
         error: null
