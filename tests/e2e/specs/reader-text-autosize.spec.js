@@ -232,19 +232,19 @@ async function runIllustrationABCase(page, css, name) {
       if (!String(target).includes('/api/episode-illustrations')) {
         return originalFetch(...args);
       }
-      trace.apiStartedAt = performance.now();
+      trace.apiStartedAt = globalThis.performance.now();
       const response = await originalFetch(...args);
-      trace.apiResponseAt = performance.now();
+      trace.apiResponseAt = globalThis.performance.now();
       return response;
     };
-    const observer = new MutationObserver(() => {
+    const observer = new globalThis.MutationObserver(() => {
       const img = globalThis.document.querySelector(
         '#card .content .episode-inline-illustration img'
       );
       if (!img || trace.imageInsertedAt !== null) return;
-      trace.imageInsertedAt = performance.now();
+      trace.imageInsertedAt = globalThis.performance.now();
       const loaded = () => {
-        trace.imageLoadedAt = performance.now();
+        trace.imageLoadedAt = globalThis.performance.now();
       };
       if (img.complete && img.naturalWidth > 0) loaded();
       else img.addEventListener('load', loaded, { once: true });
@@ -260,7 +260,7 @@ async function runIllustrationABCase(page, css, name) {
     '挿絵が表示された後も文章が続きます。'.repeat(60)
   ].join('\n');
   await page.evaluate((content) => {
-    globalThis.__novelightReaderABTrace.mountAt = performance.now();
+    globalThis.__novelightReaderABTrace.mountAt = globalThis.performance.now();
     void globalThis.NovelightEpisodeIllustrations.mountReader({
       root: globalThis.document.querySelector('#card .content'),
       episodeId: 73006,
@@ -289,7 +289,9 @@ async function runIllustrationABCase(page, css, name) {
   await page.evaluate(
     () =>
       new Promise((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(resolve))
+        globalThis.requestAnimationFrame(() =>
+          globalThis.requestAnimationFrame(resolve)
+        )
       )
   );
   const afterImage = await glyphMetrics(page);
@@ -300,7 +302,9 @@ async function runIllustrationABCase(page, css, name) {
   // The reported iPhone video showed a jump roughly 12-13 seconds after opening.
   await page.waitForFunction(
     () =>
-      performance.now() - globalThis.__novelightReaderABTrace.mountAt >= 13000,
+      globalThis.performance.now() -
+        globalThis.__novelightReaderABTrace.mountAt >=
+      13000,
     null,
     { timeout: 20000 }
   );
@@ -318,7 +322,7 @@ async function runIllustrationABCase(page, css, name) {
         trace.apiResponseAt === null || trace.imageLoadedAt === null
           ? null
           : Number((trace.imageLoadedAt - trace.apiResponseAt).toFixed(1)),
-      lateCheckpointMs: offset(performance.now()),
+      lateCheckpointMs: offset(globalThis.performance.now()),
       userAgent: globalThis.navigator.userAgent,
       touchPoints: globalThis.navigator.maxTouchPoints,
       isCoarsePointer: globalThis.matchMedia('(pointer: coarse)').matches
