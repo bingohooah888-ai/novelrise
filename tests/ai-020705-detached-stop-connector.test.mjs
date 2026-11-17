@@ -53,8 +53,12 @@ function build({ badKey = false, killFailed = false } = {}) {
         update() {
           calls.push('stop');
           return {
-            eq() { return this; },
-            select() { return this; },
+            eq() {
+              return this;
+            },
+            select() {
+              return this;
+            },
             async single() {
               return {
                 count: 1, error: null,
