@@ -29,6 +29,7 @@ export function createPaidTrialOneShotOpenAiProvider({
   if (
     serviceClient?.supabaseUrl !== STAGING_URL ||
     typeof serviceClient?.rpc !== 'function' ||
+    typeof serviceClient?.from !== 'function' ||
     typeof underlyingProvider?.generate !== 'function' ||
     !Number.isSafeInteger(approved?.commentId) ||
     approved.commentId <= 0 ||
@@ -103,6 +104,35 @@ export function createPaidTrialOneShotOpenAiProvider({
       // Any DB outage/missing migration/duplicate/timeout consumes no
       // permission in-process and cannot fall back to a model invocation.
       if (error || data !== true || now() >= expiresAt) deny();
+      // Re-read Staging OFF after one-use claim, before provider dispatch.
+      // Independent of Cloudflare quotas but not a final race-free fence.
+      // Any failure leaves the claim spent: no retry, no provider POST.
+      let permitted = false;
+      try {
+        const result = await serviceClient
+          .from('novelight_ai_runtime_settings')
+          .select('singleton,enabled,user_day_cap_micros,' +
+            'user_month_cap_micros,global_day_cap_micros,' +
+            'global_month_cap_micros')
+          .eq('singleton', 1)
+          .single();
+        const row = result?.data;
+        const capValid = (value) => {
+          const n = typeof value === 'string' &&
+            /^(0|[1-9][0-9]{0,15})$/u.test(value)
+            ? Number(value) : value;
+          return Number.isSafeInteger(n) &&
+            n >= approved.capMicros && n <= 10000000;
+        };
+        permitted = !result?.error && row?.singleton === 1 &&
+          row.enabled === true &&
+          ['user_day_cap_micros', 'user_month_cap_micros',
+            'global_day_cap_micros', 'global_month_cap_micros']
+            .every((key) => capValid(row[key]));
+      } catch {
+        permitted = false;
+      }
+      if (!permitted || now() >= expiresAt) deny();
       // No retry here, even if underlyingProvider returns a retryable error.
       return underlyingProvider.generate(args);
     }

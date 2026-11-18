@@ -491,3 +491,45 @@ compatibility is unknown; OWNER CLAIMED is absent; model names
 differ; issuer identity, stop, JWT deny, separate census or off-quota
 admission is not real and independently verified. Leave default
 Controller 404-only, all live flags OFF, and no automatic paid retry.
+
+
+## 2026-11-18 implementation-first Staging pre-send fence
+
+The existing one-shot protected provider now checks the authoritative
+Staging \`novelight_ai_runtime_settings\` singleton **after** its atomic
+one-use DB claim and **immediately before** calling the provider.
+It rejects OFF, missing readback, insufficient/invalid caps, or a DB
+error; the already-spent claim remains spent with no retry. This relies
+on Supabase, not Cloudflare, so a Cloudflare Free quota outage alone
+cannot bypass this check when the protected Staging service client
+is correctly wired. No new infrastructure, Worker, DO or migration.
+The final read-to-provider-send race and already-transmitted POST remain
+**non-cancellable** and unproven, so this is NOT independent STOP proof.
+
+**Next separate OWNER approvals (not granted by this commit):**
+1. Read-only pin of original active Watchdog UUID
+   \`9948be49-3e37-41c6-8289-7f46e782013b\`, old DO class and namespace
+   \`015ef5be967f4fbfbad31ab24a22bf26\`, SQLite state, alarms, spent
+   claims and safe rollback target. A1 source bundle hash
+   \`0f9612d77a3cbbb217dd37388230bf79ef2b90530665ad4ce4d43b12106e503d\`
+   was independently found in the original OWNER one-shot script
+   and matches the previous LF-normalized editor copy.
+2. Provision at most one **inactive** private isolated Controller and
+   separately authenticated identity/census/STOP clients, connecting
+   existing DO claim and synthetic-only cleanup. Keep all flags OFF,
+   workers.dev OFF, no paid POST or publicly reachable route.
+   Prove rollback compatibility without renaming or recreating DO.
+3. Under a different approval, prove exact Staging runtime OFF,
+   synthetic Preview/transport kill, JWT rejection, synthetic-only
+   cleanup and second-credential zero census, plus a Cloudflare-quota
+   outage drill without exhausting live account quotas. Authoritative
+   Supabase STOP privilege must exist outside the failed Worker.
+4. Only after Gate A: reconcile applied Staging SQL model
+   \`gpt-5.6-luna\` versus OWNER/Provider \`gpt-6.1-sol\`,
+   create fresh OWNER Issue #294 approval, and separately authorize
+   bounded synthetic Preview/one paid POST if eligible.
+
+**Cost now:** zero Cloudflare deploy/AI/Staging writes, no additional
+external billing. Future quotas/roles/requests/caps need exact separate
+approval. **Gate A NO-GO** pending real STOP, independent controller,
+JWT deny, census, safe SQLite rollback and bounded cost proof.

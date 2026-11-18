@@ -42,7 +42,8 @@ const DEPLOYMENT = {
 const REQUEST = { model: 'gpt-6.1-sol', system: 'offline', user: 'synthetic' };
 
 // prettier-ignore
-function fixture({ changes = {}, deployment = {}, rpcReply, providerError } = {}) {
+function fixture({ changes = {}, deployment = {}, rpcReply, providerError,
+  runtimeReply } = {}) {
   let rpcCalls = 0;
   let modelCalls = 0;
   const consumed = new Set();
@@ -52,6 +53,31 @@ function fixture({ changes = {}, deployment = {}, rpcReply, providerError } = {}
     now: () => NOW,
     serviceClient: {
       supabaseUrl: DEPLOYMENT.supabaseUrl,
+      from(table) {
+        assert.equal(table, 'novelight_ai_runtime_settings');
+        return {
+          select() {
+            return {
+              eq(column, id) {
+                assert.equal(column, 'singleton');
+                assert.equal(id, 1);
+                return {
+                  async single() {
+                    if (runtimeReply !== undefined) return runtimeReply;
+                    return {error: null, data: {
+                      singleton: 1, enabled: true,
+                      user_day_cap_micros: 10000000,
+                      user_month_cap_micros: 10000000,
+                      global_day_cap_micros: 10000000,
+                      global_month_cap_micros: 10000000
+                    }};
+                  }
+                };
+              }
+            };
+          }
+        };
+      },
       async rpc(name, args) {
         rpcCalls += 1;
         assert.equal(name, 'novelight_ai_020705_claim_once');
@@ -188,4 +214,36 @@ test('migration is private service-only, immutable and atomically unique', () =>
   assert.match(sql, /to service_role/u);
   assert.match(sql, /v_runtime.enabled is not true/u);
   assert.doesNotMatch(sql, /delete from public\.novelight_ai_020705_one_shot_claims/iu);
+});
+
+// prettier-ignore
+test('Cloudflare outage plus Staging OFF or low cap blocks dispatch after claim', async () => {
+  const runtime = {singleton: 1, enabled: true,
+    user_day_cap_micros: 10000000, user_month_cap_micros: 10000000,
+    global_day_cap_micros: 10000000, global_month_cap_micros: 10000000};
+  for (const runtimeReply of [
+    {data: {...runtime, enabled: false}, error: null},
+    {data: {...runtime, global_day_cap_micros: 0}, error: null},
+    {data: {...runtime, user_day_cap_micros: 'invalid'}, error: null},
+    {data: null, error: {code: 'PGRST116'}},
+    {data: null, error: null}
+  ]) {
+    const {provider, counts} = fixture({runtimeReply});
+    await assert.rejects(provider.generate(REQUEST),
+      /AI_020705_PAID_ONE_SHOT_DENIED/u);
+    assert.deepEqual(counts(), {rpcCalls: 1, modelCalls: 0});
+    await assert.rejects(provider.generate(REQUEST),
+      /AI_020705_PAID_ONE_SHOT_DENIED/u);
+    assert.equal(counts().modelCalls, 0);
+  }
+});
+// prettier-ignore
+test('post-claim staging readback supports verified numeric-string caps', async () => {
+  const {provider, counts} = fixture({runtimeReply: {error: null, data: {
+    singleton: 1, enabled: true,
+    user_day_cap_micros: '10000000', user_month_cap_micros: '10000000',
+    global_day_cap_micros: '10000000', global_month_cap_micros: '10000000'
+  }}});
+  assert.equal((await provider.generate(REQUEST)).text, '{"suggestions":[]}');
+  assert.deepEqual(counts(), {rpcCalls: 1, modelCalls: 1});
 });
