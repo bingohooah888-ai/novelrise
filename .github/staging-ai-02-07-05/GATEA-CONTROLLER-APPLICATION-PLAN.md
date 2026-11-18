@@ -257,3 +257,66 @@ pins model `gpt-5.6-luna`, whereas the current OWNER ledger reader
 expects `gpt-6.1-sol`. This source mismatch is an additional NO-GO
 until the separately approved actual Staging schema, provider/model support,
 approval and migration plan are reconciled. No SQL was edited or applied.
+ 
+
+## 2026-11-18: Cloudflare full-version pinning correction (NO-GO)
+
+GitHub-only audit found that signed capabilities used to accept an unhyphenated
+32-64 character hexadecimal `watchdogFullVersionId`. The official Cloudflare
+Workers Version API returns UUID IDs, including dashes; this type mismatch
+would deny a legitimate full ID and was insufficient to bind the observation
+to the **actual pinned deployment**.
+
+The dormant observer now demands:
+- `GATEA_WATCHDOG_PINNED_VERSION_ID`: a **complete** Cloudflare UUID with
+  the observed prefix `9948be49`, independently obtained from the active
+  deployment rather than inferred from GitHub or a signed self-report;
+- `GATEA_WATCHDOG_PINNED_ARTIFACT_SHA256`: a 64-hex checksum of the
+  authenticated downloaded immutable deployed artifact (canonicalization
+  and modules must be fixed by the reviewer); and
+- a fresh independent Ed25519 signed capability response that matches both
+  pinned values byte-for-byte and declares reviewed source parity.
+
+These are hypothetical future **nonsecret** binding values and are **not
+configured** by this PR. A claimed source parity flag or signed digest
+cannot replace actual Cloudflare API inspection of active deployment,
+version content/modules, DO exports and existing SQLite binding.
+The Controller's deployed default remains 404-only.
+
+### Exact read-only evidence acquisition and rollback checklist
+
+1. Under *separate read-only* Cloudflare access, inspect account
+   `6831b18fe814232fa2dd4c470b95aa15`, Worker
+   `novelight-ai-gatea-watchdog` and the **active deployment**, including
+   100% traffic allocation. Record full UUID, deployment ID, timestamps
+   and any multi-version split. Confirm it is the version with prefix
+   `9948be49` and not merely the latest uploaded version.
+2. Read that exact version's immutable modules and binding/exports metadata
+   from the Cloudflare Workers Version API. Canonicalize and hash fetched
+   source artifacts in an isolated reviewer process; compare directly with
+   the original A1 sources and deployed Wrangler/bundler output, NOT GitHub
+   file hashes alone. Earlier repository report
+   `docs/reports/AI-020705-S2-CLOUDFLARE-A1-LIVE-CANDIDATE-20261114.md`
+   has only the local A1 source digests and explicitly says Cloudflare bytes
+   were NOT retrieved.
+3. Independently establish `GATEA_WATCHDOG`'s live class name,
+   backing namespace `015ef5be967f4fbfbad31ab24a22bf26`, SQLite
+   backend and original instance name `ai-020705-<runId>`. Do not rename,
+   delete, transfer or recreate a DO class/namespace. Avoid copying
+   synthetic fixtures to a new namespace and calling it a rollback.
+4. Before any future version deployment, preserve the exact original
+   rollback target, version UUID, read-only row/tombstone/alarm inventory
+   and binding graph. Cloudflare rollback can be blocked by a DO class
+   lifecycle change; a rollback also does not revert persistent SQLite
+   state or connected resource changes. Verify schema compatibility for
+   both forward and prior versions, and require separately approved
+   non-mutating rollback plan validation.
+5. The proposed Controller default remains inert and its two signed
+   observer Service Bindings, read-only credentials, HMAC key, Ed25519
+   key lifecycle, independent off-Cloudflare quota STOP and Staging-only
+   authority remain unprovisioned. No real STOP or census is proved.
+
+**NO-GO** on missing full version, unverifiable artifact bytes, binding
+or SQLite mismatch, unsafe rollback, unsatisfied quotas/fences, or failed
+real Staging Auth/STOP/census. No deployment or secret changes in this
+code-only audit.

@@ -7,6 +7,10 @@ import { create020705IndependentObserverPortsCandidate } from '../.github/stagin
 // prettier-ignore
 const NOW = Date.parse('2026-11-18T07:00:00Z');
 // prettier-ignore
+const VERSION = '9948be49-1111-4111-8111-111111111111';
+// prettier-ignore
+const ARTIFACT = 'c'.repeat(64);
+// prettier-ignore
 const identity = {controllerRunId: 2002, runId: 1001, approvalCommentId: 700,
   mainSha: 'a'.repeat(40), previewDeploymentId: 'dpl_fixture123'};
 // prettier-ignore
@@ -24,7 +28,9 @@ const counts = ['users','identities','sessions','profiles','novels','episodes',
   'facts','analysis','reviewCandidates','consents','consentAudit',
   'usageRequests','usageAudit'];
 // prettier-ignore
-function setup({tamper = false, censusTamper = false, stale = false} = {}) {
+function setup({tamper = false, censusTamper = false, stale = false,
+  observedVersion = VERSION, pinnedVersion = VERSION,
+  observedArtifact = ARTIFACT, pinnedArtifact = ARTIFACT} = {}) {
   const idKeys = generateKeyPairSync('ed25519');
   const censusKeys = generateKeyPairSync('ed25519');
   const idKeyId = 'offrunner-identity-key';
@@ -45,7 +51,9 @@ function setup({tamper = false, censusTamper = false, stale = false} = {}) {
     providerDispatchFenceVerified: true,
     jwtAccessDenyVerified: true,
     sqliteRollbackPreservedVerified: true,
-    watchdogFullVersionId: 'a'.repeat(64),
+    watchdogFullVersionId: observedVersion,
+    watchdogArtifactSha256: observedArtifact,
+    watchdogSourceParityVerified: true,
     inFlightProviderRequests: 0,
     providerCancellationMode: 'NOT_GUARANTEED'};
   const census = {sourceKind: 'SEPARATE_STAGING_READONLY_CENSUS',
@@ -84,6 +92,8 @@ function setup({tamper = false, censusTamper = false, stale = false} = {}) {
     censusPublicKey: censusKeys.publicKey.export({type:'spki',format:'der'})
       .toString('base64'),
     identityKeyId: idKeyId, censusKeyId,
+    expectedWatchdogVersionId: pinnedVersion,
+    expectedWatchdogArtifactSha256: pinnedArtifact,
     cryptoImpl: webcrypto, now: () => NOW
   });
   return ports;
@@ -116,3 +126,24 @@ test('no observer, shared identity service, or mismatched scopes deny', async ()
   await assert.rejects(setup().independentCensus({...target, novelId: -1}),
     /INDEPENDENT_OBSERVER_NO_GO/u);
 });
+
+ // prettier-ignore
+ test('full Cloudflare version and source artifact must match independent pins', async () => {
+   for (const change of [
+     {observedVersion: '9948be49-1111-4111-8111-111111111112'},
+     {observedVersion: '9948be49'},
+     {observedArtifact: 'd'.repeat(64)}
+   ]) {
+     await assert.rejects(
+       setup(change).readIndependentCapabilities({scope, controllerRunId: 2002}),
+       /INDEPENDENT_OBSERVER_NO_GO/u
+     );
+   }
+   assert.throws(() => setup({pinnedVersion: '9948be49'}),
+     /INDEPENDENT_OBSERVER_NO_GO/u);
+   assert.throws(() => setup({pinnedVersion:
+     '22222222-1111-4111-8111-111111111111'}),
+   /INDEPENDENT_OBSERVER_NO_GO/u);
+   assert.throws(() => setup({pinnedArtifact: 'unverified'}),
+     /INDEPENDENT_OBSERVER_NO_GO/u);
+ });

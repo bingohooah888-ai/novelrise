@@ -20,6 +20,11 @@ const KID = /^[A-Za-z0-9_-]{8,64}$/u;
 const SIG = /^[A-Za-z0-9_-]{86}$/u;
 const SHA = /^[a-f0-9]{40}$/u;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+// Cloudflare Workers versions are UUIDs; an eight-character display prefix
+// or an unsigned self-assertion cannot pin the actual deployed version.
+const VERSION = /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iu;
+const ARTIFACT_SHA256 = /^[a-f0-9]{64}$/u;
+const CURRENT_WATCHDOG_PREFIX = '9948be49';
 const positive = (v) => Number.isSafeInteger(v) && v > 0;
 function deny() { throw new Error('AI_020705_INDEPENDENT_OBSERVER_NO_GO'); }
 function exact(a, b) {
@@ -75,6 +80,7 @@ async function verifySignature(publicKey, signature, body, cryptoImpl) {
 export function create020705IndependentObserverPortsCandidate({
   identityService, censusService, identityPublicKey, censusPublicKey,
   identityKeyId, censusKeyId,
+  expectedWatchdogVersionId, expectedWatchdogArtifactSha256,
   cryptoImpl = globalThis.crypto, now = Date.now
 } = {}) {
   if (!identityService || !censusService ||
@@ -86,6 +92,9 @@ export function create020705IndependentObserverPortsCandidate({
       identityPublicKey === censusPublicKey ||
       typeof identityPublicKey !== 'string' ||
       typeof censusPublicKey !== 'string' ||
+      !VERSION.test(expectedWatchdogVersionId ?? '') ||
+      !expectedWatchdogVersionId.startsWith(CURRENT_WATCHDOG_PREFIX) ||
+      !ARTIFACT_SHA256.test(expectedWatchdogArtifactSha256 ?? '') ||
       !cryptoImpl?.subtle ||
       typeof cryptoImpl.getRandomValues !== 'function' ||
       typeof now !== 'function') deny();
@@ -173,7 +182,10 @@ export function create020705IndependentObserverPortsCandidate({
         evidence.providerDispatchFenceVerified !== true ||
         evidence.jwtAccessDenyVerified !== true ||
         evidence.sqliteRollbackPreservedVerified !== true ||
-        !/^[a-f0-9]{32,64}$/u.test(evidence.watchdogFullVersionId ?? '') ||
+        evidence.watchdogFullVersionId !== expectedWatchdogVersionId ||
+        evidence.watchdogArtifactSha256 !==
+          expectedWatchdogArtifactSha256 ||
+        evidence.watchdogSourceParityVerified !== true ||
         evidence.inFlightProviderRequests !== 0 ||
         evidence.providerCancellationMode !== 'NOT_GUARANTEED') deny();
     const proof = Object.freeze({...evidence});

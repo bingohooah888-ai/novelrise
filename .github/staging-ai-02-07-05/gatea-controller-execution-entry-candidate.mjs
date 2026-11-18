@@ -99,7 +99,10 @@ export function create020705SignedObserverBoundControllerEntryCandidate(ports = 
           identityPublicKey: env.GATEA_IDENTITY_PUB_SPKI,
           censusPublicKey: env.GATEA_CENSUS_PUB_SPKI,
           identityKeyId: env.GATEA_IDENTITY_KEY_ID,
-          censusKeyId: env.GATEA_CENSUS_KEY_ID
+          censusKeyId: env.GATEA_CENSUS_KEY_ID,
+          expectedWatchdogVersionId: env.GATEA_WATCHDOG_PINNED_VERSION_ID,
+          expectedWatchdogArtifactSha256:
+            env.GATEA_WATCHDOG_PINNED_ARTIFACT_SHA256
         });
         const entry = create020705GithubBoundControllerEntryCandidate({
           ...ports,
