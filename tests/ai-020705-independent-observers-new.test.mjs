@@ -127,23 +127,23 @@ test('no observer, shared identity service, or mismatched scopes deny', async ()
     /INDEPENDENT_OBSERVER_NO_GO/u);
 });
 
- // prettier-ignore
- test('full Cloudflare version and source artifact must match independent pins', async () => {
-   for (const change of [
-     {observedVersion: '9948be49-1111-4111-8111-111111111112'},
-     {observedVersion: '9948be49'},
-     {observedArtifact: 'd'.repeat(64)}
-   ]) {
-     await assert.rejects(
-       setup(change).readIndependentCapabilities({scope, controllerRunId: 2002}),
-       /INDEPENDENT_OBSERVER_NO_GO/u
-     );
-   }
-   assert.throws(() => setup({pinnedVersion: '9948be49'}),
-     /INDEPENDENT_OBSERVER_NO_GO/u);
-   assert.throws(() => setup({pinnedVersion:
-     '22222222-1111-4111-8111-111111111111'}),
-   /INDEPENDENT_OBSERVER_NO_GO/u);
-   assert.throws(() => setup({pinnedArtifact: 'unverified'}),
-     /INDEPENDENT_OBSERVER_NO_GO/u);
- });
+// prettier-ignore
+test('full Cloudflare version and source artifact must match independent pins', async () => {
+  for (const change of [
+    {observedVersion: '9948be49-1111-4111-8111-111111111112'},
+    {observedVersion: '9948be49'},
+    {observedArtifact: 'd'.repeat(64)}
+  ]) {
+    await assert.rejects(
+      setup(change).readIndependentCapabilities({scope, controllerRunId: 2002}),
+      /INDEPENDENT_OBSERVER_NO_GO/u
+    );
+  }
+  assert.throws(() => setup({pinnedVersion: '9948be49'}),
+    /INDEPENDENT_OBSERVER_NO_GO/u);
+  assert.throws(() => setup({pinnedVersion:
+    '22222222-1111-4111-8111-111111111111'}),
+  /INDEPENDENT_OBSERVER_NO_GO/u);
+  assert.throws(() => setup({pinnedArtifact: 'unverified'}),
+    /INDEPENDENT_OBSERVER_NO_GO/u);
+});
