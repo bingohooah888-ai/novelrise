@@ -110,7 +110,7 @@ test('missing trust, invalid query and default Worker fail closed', async () => 
   const entry = create020705GithubBoundControllerEntryCandidate({
     verifyIndependentControllerIdentity: async () => true
   });
-  const request = new Request('https://gatea-recovery.internal/_novelight/gatea/recover');
+  const request = new globalThis.Request('https://gatea-recovery.internal/_novelight/gatea/recover');
   assert.equal((await entry.fetch(request, {})).status, 404);
   assert.equal((await inert.fetch(request, {
     GATEA_CONTROLLER_LIVE_ENABLED: 'true',
