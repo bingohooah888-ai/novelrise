@@ -346,6 +346,28 @@ test('one-shot Staging DB claim stores tested candidate SHA; no model retry', as
   };
   const serviceClient = {
     supabaseUrl: URL,
+    from(table) {
+      if (table !== 'novelight_ai_runtime_settings') throw Error('unexpected table');
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                async single() {
+                  return {error: null, data: {
+                    singleton: 1, enabled: true,
+                    user_day_cap_micros: 10000000,
+                    user_month_cap_micros: 10000000,
+                    global_day_cap_micros: 10000000,
+                    global_month_cap_micros: 10000000
+                  }};
+                }
+              };
+            }
+          };
+        }
+      };
+    },
     rpc: async (_name, input) => {
       params.push(input);
       return { data: params.length === 1, error: null };

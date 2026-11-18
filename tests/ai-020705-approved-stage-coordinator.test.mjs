@@ -50,6 +50,28 @@ function setup({ fail = false, census = true } = {}) {
     now: () => NOW,
     serviceClient: {
       supabaseUrl: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
+      from(table) {
+        assert.equal(table, 'novelight_ai_runtime_settings');
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  async single() {
+                    return {error: null, data: {
+                      singleton: 1, enabled: true,
+                      user_day_cap_micros: 10000000,
+                      user_month_cap_micros: 10000000,
+                      global_day_cap_micros: 10000000,
+                      global_month_cap_micros: 10000000
+                    }};
+                  }
+                };
+              }
+            };
+          }
+        };
+      },
       async rpc() {
         actions.push('db-claim');
         if (consumed) return { data: false, error: null };

@@ -123,7 +123,22 @@ function scenario({
     from(table) {
       return {
         select() {
-          return chain();
+          if (table !== 'novelight_ai_runtime_settings') return chain();
+          return {
+            eq() {
+              return {
+                async single() {
+                  return {error: null, data: {
+                    singleton: 1, enabled: true,
+                    user_day_cap_micros: 10000000,
+                    user_month_cap_micros: 10000000,
+                    global_day_cap_micros: 10000000,
+                    global_month_cap_micros: 10000000
+                  }};
+                }
+              };
+            }
+          };
         },
         insert() {
           history.push('audit:' + table);
