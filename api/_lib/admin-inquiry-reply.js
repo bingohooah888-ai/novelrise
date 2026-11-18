@@ -115,7 +115,6 @@ async function sendReplyEmail({ env, fetchImpl, id, to, subject, message }) {
   return { id: responseBody.id };
 }
 
-
 async function listReplyHistory(supabase, id) {
   const { data, error } = await supabase
     .from('admin_inquiry_replies')
