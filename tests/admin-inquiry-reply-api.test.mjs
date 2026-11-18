@@ -44,13 +44,23 @@ function createSupabase() {
       assert.equal(table, 'admin_inquiry_replies');
       return {
         insert(row) {
-          const saved = { ...row, id: auditRows.length + 1 };
-          auditRows.push(saved);
+          // Model the migration's partial UNIQUE constraint: the claim is
+          // exclusive while sending or sent, but released on confirmed failure.
+          const duplicate = auditRows.some(
+            (existing) =>
+              existing.idempotency_key === row.idempotency_key &&
+              ['sending', 'sent'].includes(existing.status)
+          );
+          const saved = duplicate ? null : { ...row, id: auditRows.length + 1 };
+          if (saved) auditRows.push(saved);
           return {
             select() {
               return {
                 async single() {
-                  return { data: { id: saved.id }, error: null };
+                  return {
+                    data: saved ? { id: saved.id } : null,
+                    error: duplicate ? { code: '23505' } : null
+                  };
                 }
               };
             }
@@ -161,8 +171,9 @@ test('admin inquiry reply sends only to the server-side inquiry address and reso
 
 test('admin inquiry reply uses the support sender address', async () => {
   let resendRequest;
+  const supabase = createSupabase();
   const handler = createAdminInquiryReplyHandler({
-    supabase: createSupabase(),
+    supabase,
     env: {
       NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID,
       RESEND_API_KEY: 'test-resend-key'
@@ -197,6 +208,10 @@ test('admin inquiry reply uses the support sender address', async () => {
   const payload = JSON.parse(resendRequest.init.body);
   assert.equal(payload.from, 'NOVELIGHT <support@novelight.jp>');
   assert.deepEqual(payload.to, ['author@example.com']);
+  assert.equal(
+    supabase.auditRows[0].idempotency_key,
+    resendRequest.init.headers['Idempotency-Key']
+  );
 });
 
 test('admin inquiry reply rejects malformed payload before delivery', async () => {
@@ -403,4 +418,117 @@ test('reply send success is not presented as a failure when list reload throws',
   assert.match(statusEl.textContent, /返信メールを送信し/);
   assert.match(statusEl.textContent, /画面の再読み込みに失敗/);
   assert.doesNotMatch(statusEl.textContent, /送信できませんでした/);
+});
+
+test('private reply schema requires an atomic active/sent uniqueness constraint', () => {
+  const sql = readFileSync(
+    new URL(
+      '../supabase/migrations/20261118221000_admin_inquiry_reply_history.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(sql, /idempotency_key\s+text\s+not\s+null/i);
+  assert.match(
+    sql,
+    /create\s+unique\s+index[^;]*?on\s+public\.admin_inquiry_replies\s*\(idempotency_key\)\s*where\s+status\s+in\s*\('sending',\s*'sent'\)/i
+  );
+});
+
+test('unknown delivery outcome blocks a repeat POST before calling Resend again', async () => {
+  const supabase = createSupabase();
+  let sends = 0;
+  const handler = createAdminInquiryReplyHandler({
+    supabase,
+    env: { NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID, RESEND_API_KEY: 'test-key' },
+    getInquiry: async () => ({ id: 27, email: 'author@example.com' }),
+    fetchImpl: async () => {
+      sends += 1;
+      throw new TypeError('timeout after request submission');
+    }
+  });
+  const body = { id: 27, subject: '確認', message: '返信本文' };
+  const first = await run(handler, request(body));
+  const second = await run(handler, request(body));
+  assert.equal(first.statusCode, 503);
+  assert.equal(first.body.deliveryStatus, 'unknown');
+  assert.equal(second.statusCode, 409);
+  assert.match(second.body.error, /送信中または送信済み/);
+  assert.equal(sends, 1);
+  assert.equal(supabase.auditRows.length, 1);
+  assert.equal(supabase.auditRows[0].status, 'sending');
+});
+
+test('concurrent POSTs acquire exactly one atomic claim', async () => {
+  const supabase = createSupabase();
+  let sends = 0;
+  let releaseSend;
+  let signalStart;
+  const started = new Promise((resolve) => {
+    signalStart = resolve;
+  });
+  const sending = new Promise((resolve) => {
+    releaseSend = resolve;
+  });
+  const handler = createAdminInquiryReplyHandler({
+    supabase,
+    env: { NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID },
+    getInquiry: async () => ({ id: 27, email: 'author@example.com' }),
+    sendReply: async () => {
+      sends += 1;
+      signalStart();
+      await sending;
+      return { id: 'resend-accepted' };
+    },
+    setResolved: async () => ({ id: 27, status: 'resolved' })
+  });
+  const body = { id: 27, subject: '確認', message: '返信本文' };
+  const firstPending = run(handler, request(body));
+  await started;
+  const second = await run(handler, request(body));
+  assert.equal(second.statusCode, 409);
+  assert.equal(sends, 1);
+  assert.equal(supabase.auditRows.length, 1);
+  assert.equal(supabase.auditRows[0].status, 'sending');
+  releaseSend();
+  const first = await firstPending;
+  assert.equal(first.statusCode, 200);
+  assert.equal(supabase.auditRows[0].status, 'sent');
+  const third = await run(handler, request(body));
+  assert.equal(third.statusCode, 409);
+  assert.equal(sends, 1);
+});
+
+test('confirmed Resend rejection releases the atomic claim for a retry', async () => {
+  const supabase = createSupabase();
+  let sends = 0;
+  const handler = createAdminInquiryReplyHandler({
+    supabase,
+    env: { NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID },
+    getInquiry: async () => ({ id: 27, email: 'author@example.com' }),
+    sendReply: async () => {
+      sends += 1;
+      if (sends === 1) {
+        const error = new Error('rejected');
+        error.code = 'RESEND_REJECTED';
+        error.httpStatus = 422;
+        throw error;
+      }
+      return { id: 'accepted-after-rejection' };
+    },
+    setResolved: async () => ({ id: 27, status: 'resolved' })
+  });
+  const body = { id: 27, subject: '確認', message: '返信本文' };
+  const first = await run(handler, request(body));
+  assert.equal(first.statusCode, 502);
+  assert.equal(supabase.auditRows[0].status, 'failed');
+  const second = await run(handler, request(body));
+  assert.equal(second.statusCode, 200);
+  assert.equal(supabase.auditRows.length, 2);
+  assert.equal(supabase.auditRows[1].status, 'sent');
+  assert.equal(
+    supabase.auditRows[0].idempotency_key,
+    supabase.auditRows[1].idempotency_key
+  );
+  assert.equal(sends, 2);
 });

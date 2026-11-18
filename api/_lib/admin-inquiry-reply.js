@@ -139,7 +139,7 @@ async function listReplyHistory(supabase, id) {
   return data ?? [];
 }
 
-async function beginReplyAudit(supabase, adminUserId, id, reply) {
+async function beginReplyAudit(supabase, adminUserId, id, reply, to) {
   const { data, error } = await supabase
     .from('admin_inquiry_replies')
     .insert({
@@ -147,6 +147,7 @@ async function beginReplyAudit(supabase, adminUserId, id, reply) {
       admin_user_id: adminUserId,
       subject: reply.subject,
       message: reply.message,
+      idempotency_key: idempotencyKey({ id, to, ...reply }),
       status: 'sending'
     })
     .select('id')
@@ -212,8 +213,20 @@ export function createAdminInquiryReplyHandler({
         return res.status(409).json({ error: 'Inquiry email is unavailable' });
       }
 
-      // Persist first. If the private audit table is unavailable, do not send.
-      const auditId = await beginReplyAudit(supabase, admin.id, id, reply);
+      // The private table's partial UNIQUE index acquires the send claim
+      // atomically, including across independent function instances.
+      let auditId;
+      try {
+        auditId = await beginReplyAudit(supabase, admin.id, id, reply, to);
+      } catch (error) {
+        if (error?.code === '23505') {
+          return res.status(409).json({
+            error:
+              '同じ返信は送信中または送信済みです。返信履歴とResendの記録を確認してから操作してください。'
+          });
+        }
+        throw error;
+      }
       let delivery;
       try {
         delivery = await sendReply({
