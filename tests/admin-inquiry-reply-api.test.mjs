@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 
 import { createAdminInquiryReplyHandler } from '../api/_lib/admin-inquiry-reply.js';
@@ -219,8 +221,9 @@ test('admin inquiry reply rejects malformed payload before delivery', async () =
 
 test('admin inquiry reply does not resolve when email delivery fails', async () => {
   let resolved = false;
+  const supabase = createSupabase();
   const handler = createAdminInquiryReplyHandler({
-    supabase: createSupabase(),
+    supabase,
     env: {
       NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID,
       RESEND_API_KEY: 'test-resend-key'
@@ -253,6 +256,7 @@ test('admin inquiry reply does not resolve when email delivery fails', async () 
 
   assert.equal(res.statusCode, 502);
   assert.equal(resolved, false);
+  assert.equal(supabase.auditRows[0].status, 'failed');
 });
 
 test('reply history is available only through the authenticated ADMIN handler', async () => {
@@ -320,4 +324,82 @@ test('email is not sent if the private reply audit cannot be created', async () 
   );
   assert.equal(response.statusCode, 500);
   assert.equal(delivered, false);
+});
+
+test('ambiguous delivery transport failure keeps reply status unconfirmed', async () => {
+  const supabase = createSupabase();
+  let resolved = false;
+  const handler = createAdminInquiryReplyHandler({
+    supabase,
+    env: { NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID, RESEND_API_KEY: 'test-key' },
+    getInquiry: async () => ({ id: 27, email: 'author@example.com' }),
+    fetchImpl: async () => {
+      throw new TypeError('network disconnected after submission');
+    },
+    setResolved: async () => {
+      resolved = true;
+    }
+  });
+  const response = await run(
+    handler,
+    request({ id: 27, subject: '件名', message: '返信本文' })
+  );
+  assert.equal(response.statusCode, 503);
+  assert.equal(response.body.deliveryStatus, 'unknown');
+  assert.match(response.body.error, /再送しないでください/);
+  assert.equal(supabase.auditRows.length, 1);
+  assert.equal(supabase.auditRows[0].status, 'sending');
+  assert.equal(resolved, false);
+});
+
+test('ambiguous Resend responses never mark an email as failed', async () => {
+  for (const { status, ok, body } of [
+    { status: 200, ok: true, body: {} },
+    { status: 500, ok: false, body: { message: 'gateway error' } },
+    { status: 429, ok: false, body: { message: 'rate limit' } }
+  ]) {
+    const supabase = createSupabase();
+    const handler = createAdminInquiryReplyHandler({
+      supabase,
+      env: { NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID, RESEND_API_KEY: 'test-key' },
+      getInquiry: async () => ({ id: 27, email: 'author@example.com' }),
+      fetchImpl: async () => ({ status, ok, json: async () => body })
+    });
+    const response = await run(
+      handler,
+      request({ id: 27, subject: '件名', message: '返信本文' })
+    );
+    assert.equal(response.statusCode, 503, 'HTTP ' + status);
+    assert.equal(response.body.deliveryStatus, 'unknown');
+    assert.equal(supabase.auditRows[0].status, 'sending');
+  }
+});
+
+test('reply send success is not presented as a failure when list reload throws', async () => {
+  const html = readFileSync(
+    new URL('../admin-inquiries.html', import.meta.url),
+    'utf8'
+  );
+  const begin = html.indexOf('  async function sendReply(');
+  const end = html.indexOf("\n  document.getElementById('filters')", begin);
+  assert.ok(begin > 0 && end > begin, 'reply UI function was found');
+  const statusEl = { className: '', textContent: '' };
+  const sendReply = runInNewContext(html.slice(begin, end) + '\nsendReply;', {
+    statusEl,
+    window: { confirm: () => true },
+    console: { error: () => {} },
+    adminFetch: async () => ({ inquiry: { id: 27, status: 'resolved' } }),
+    loadList: async () => {
+      throw new Error('list refresh failed');
+    },
+    openDetail: async () => {
+      throw new Error('detail refresh failed');
+    }
+  });
+  const button = { disabled: false };
+  await sendReply(27, { value: '件名' }, { value: '返信本文' }, button);
+  assert.equal(button.disabled, false);
+  assert.match(statusEl.textContent, /返信メールを送信し/);
+  assert.match(statusEl.textContent, /画面の再読み込みに失敗/);
+  assert.doesNotMatch(statusEl.textContent, /送信できませんでした/);
 });

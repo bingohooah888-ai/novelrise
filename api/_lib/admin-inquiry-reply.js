@@ -106,8 +106,21 @@ async function sendReplyEmail({ env, fetchImpl, id, to, subject, message }) {
 
   const responseBody = await response.json().catch(() => ({}));
   if (!response.ok || !responseBody?.id) {
-    const error = new Error('Resend rejected inquiry reply');
-    error.code = 'RESEND_REJECTED';
+    // Missing confirmation, timeouts and transient failures are not proof of rejection.
+    const definitelyRejected =
+      !response.ok &&
+      response.status >= 400 &&
+      response.status < 500 &&
+      response.status !== 408 &&
+      response.status !== 429;
+    const error = new Error(
+      definitelyRejected
+        ? 'Resend rejected inquiry reply'
+        : 'Resend reply delivery outcome is unknown'
+    );
+    error.code = definitelyRejected
+      ? 'RESEND_REJECTED'
+      : 'RESEND_DELIVERY_UNKNOWN';
     error.httpStatus = response.status;
     throw error;
   }
@@ -212,6 +225,20 @@ export function createAdminInquiryReplyHandler({
           message: reply.message
         });
       } catch (error) {
+        // An ambiguous outcome stays "sending": never claim it was not delivered.
+        if (
+          error?.code !== 'RESEND_REJECTED' &&
+          error?.code !== 'RESEND_NOT_CONFIGURED'
+        ) {
+          console.error('NOVELIGHT reply delivery outcome is unknown', {
+            status: error?.httpStatus ?? null
+          });
+          return res.status(503).json({
+            error:
+              '送信結果を確認できません。Resendの送信記録を確認するまで再送しないでください。',
+            deliveryStatus: 'unknown'
+          });
+        }
         try {
           await finishReplyAudit(supabase, auditId, { status: 'failed' });
         } catch (auditError) {
