@@ -26,7 +26,7 @@ function validScope(s) {
  * This is not an independent audit of STOP or an authority to call paid AI.
  */
 export function create020705DurableAtomicClaimsCandidate({
-  storage, scope, controllerRunId
+  storage, scope, controllerRunId, verifyDurableState
 } = {}) {
   if (!validScope(scope) || !positive(controllerRunId) ||
       controllerRunId === scope.runId ||
@@ -50,6 +50,11 @@ export function create020705DurableAtomicClaimsCandidate({
           incoming.episodeId !== scope.episodeId) return false;
       try {
         return storage.transactionSync(() => {
+          // The Watchdog checks its stored row INSIDE this transaction.
+          if (verifyDurableState !== undefined &&
+              (typeof verifyDurableState !== 'function' ||
+               verifyDurableState({ kind, scope: incoming, nonce,
+                 controllerRunId }) !== true)) return false;
           storage.sql.exec(
             'CREATE TABLE IF NOT EXISTS gatea_atomic_claims_v1 (' +
             ' claim_kind TEXT NOT NULL, run_key TEXT NOT NULL,' +

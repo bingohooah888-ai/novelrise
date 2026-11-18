@@ -3,6 +3,7 @@
 // OWNER approvals, capability proofs and Staging-only execution ports.
 import { create020705ControllerCandidate } from './cloudflare-gatea-controller-candidate.mjs';
 import { create020705ControllerArmIssuer } from './gatea-controller-arm-issuer-candidate.mjs';
+import { create020705PrivateDoClaimPort } from './gatea-controller-do-claim-port-candidate.mjs';
 
 const REPO = 'bingohooah888-ai/novelrise';
 const STAGING = 'wmlzjgvxgoyrovdhbqbg';
@@ -25,13 +26,13 @@ export function create020705TrustedControllerBootstrapCandidate({
   readOwnerApprovedScope, verifyOwnerApprovalAttestation,
   readIndependentCapabilities, verifyCapabilityAttestation,
   makeStagingStopPorts, verifyStagingPortAttestation,
-  inspectIndependentArm, claimArmOnce, signWithControllerKey,
+  inspectIndependentArm, signWithControllerKey,
   now = Date.now
 } = {}) {
   if (![readOwnerApprovedScope, verifyOwnerApprovalAttestation,
     readIndependentCapabilities, verifyCapabilityAttestation,
     makeStagingStopPorts, verifyStagingPortAttestation,
-    inspectIndependentArm, claimArmOnce, signWithControllerKey, now]
+    inspectIndependentArm, signWithControllerKey, now]
     .every((fn) => typeof fn === 'function')) deny();
   const controller = create020705ControllerCandidate({
     async resolveTrustedRun(query) {
@@ -55,7 +56,7 @@ export function create020705TrustedControllerBootstrapCandidate({
         deny();
       return capabilities;
     },
-    async makeStagingStopPorts(trusted) {
+    async makeStagingStopPorts(trusted, env) {
       const ports = await makeStagingStopPorts(trusted);
       if (ports?.synthetic?.verifiedSynthetic !== true ||
           ports.synthetic.projectRef !== STAGING ||
@@ -67,14 +68,47 @@ export function create020705TrustedControllerBootstrapCandidate({
           typeof ports?.authAdmin?.getUserById !== 'function' ||
           typeof ports?.authAdmin?.deleteUser !== 'function' ||
           (await verifyStagingPortAttestation(ports, trusted)) !== true) deny();
-      return ports;
+      const claims = create020705PrivateDoClaimPort({
+        namespace: env?.GATEA_CLAIM_LEDGER,
+        hmacSecret: env?.GATEA_CLAIM_HMAC_KEY,
+        scope: trusted.scope, controllerRunId: trusted.controllerRunId
+      });
+      // Caller-supplied mocks never satisfy the real recovery claim port.
+      return Object.freeze({ ...ports, claimRecoveryOnce: claims.claimRecoveryOnce });
     }
-  });
-  const issuer = create020705ControllerArmIssuer({
-    inspectIndependentArm, claimArmOnce, signWithControllerKey, now
   });
   return Object.freeze({
     fetch: (request, env) => controller.fetch(request, env),
-    issueArmReceipt: (args) => issuer.issue(args)
+    async issueArmReceipt(args, env) {
+      if (env?.GATEA_CONTROLLER_LIVE_ENABLED !== 'true') deny();
+      // ARM may include candidateSha/stagingBranch/capMicros, but the
+      // original DO ledger stores only the nine immutable run fields.
+      const fields = [
+        'repository', 'stagingProjectRef', 'mainSha', 'previewDeploymentId',
+        'actorId', 'novelId', 'episodeId', 'runId', 'approvalCommentId'
+      ];
+      const doScope = Object.fromEntries(
+        fields.map((key) => [key, args?.scope?.[key]])
+      );
+      const claims = create020705PrivateDoClaimPort({
+        namespace: env.GATEA_CLAIM_LEDGER,
+        hmacSecret: env.GATEA_CLAIM_HMAC_KEY,
+        scope: doScope, controllerRunId: args?.controllerRunId
+      });
+      const issuer = create020705ControllerArmIssuer({
+        inspectIndependentArm,
+        claimArmOnce: (claim) => {
+          if (claim?.scope !== args?.scope ||
+              claim?.nonce !== args?.nonce ||
+              claim?.controllerRunId !== args?.controllerRunId) deny();
+          return claims.claimArmOnce({
+            scope: doScope, nonce: claim.nonce,
+            controllerRunId: claim.controllerRunId
+          });
+        },
+        signWithControllerKey, now
+      });
+      return issuer.issue(args);
+    }
   });
 }

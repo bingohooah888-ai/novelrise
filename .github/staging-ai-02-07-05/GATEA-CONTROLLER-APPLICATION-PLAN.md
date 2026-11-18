@@ -102,3 +102,32 @@ Watchdog, preserving original A1/DO data and flags OFF; (5) verify immutable
 versions, SQLite, failure containment and actual STOP authority; (6) separately
 approve a bounded synthetic Staging stop/auth/census and runner-failure drill,
 with no paid AI POST, no Production connection and no automatic retries.
+
+## 2026-11-18 internal DO claim connection (candidate only)
+
+- The prospective Controller receives `GATEA_CLAIM_LEDGER` as a **private cross-Worker binding** to the original `novelight-ai-gatea-watchdog` DO class. It must address the exact pre-existing `ai-020705-<runId>` instance. It does not create a new namespace.
+- The existing S2 *source candidate* now exports an authenticated private DO fetch Durable Object private fetch handler. The live row and persisted signed-death receipt are checked **within the SQLite transaction** before a unique INSERT. A duplicate, changed scope, nonce, wrong state, missing receipt or missing binding returns NO-GO; no retries.
+- `GATEA_CLAIM_LEDGER_ENABLED` remains **false** alongside all existing S2 flags. The Controller default remains 404-only. These are not deployed configurations.
+- A recovery claim does not imply STOP, Auth revocation, fixture cleanup, zero census or the ability to cancel already dispatched provider requests. Existing `detached-stop-connector.mjs` still performs and checks those steps. Controller-side real credentials and independently verified STOP/census implementations are **not yet available** and may not be replaced with fixture booleans.
+- Do not turn any flag on or deploy any candidate until OWNER has separately approved signed OWNER scope provenance, isolated Controller identity, Cloudflare version/rollback proof, minimal Staging-only stop/delete roles, independent census role, Vercel Preview stop, Ed25519 key lifecycle, bounded costs, and a synthetic no-paid-POST failure drill.
+
+### Private DO fetch, secrets, and explicitly missing real privileges
+
+Existing A1 is a legacy Durable Object class, so the Controller never relies
+on an unproven modern RPC method. `GATEA_CLAIM_LEDGER` is instead a private
+cross-Worker DO namespace binding pointing to the existing Watchdog Worker.
+Only an exact private `POST /_novelight/gatea/claim` on the DO stub, signed
+with a 32-byte HMAC-SHA256 key `GATEA_CLAIM_HMAC_KEY` (future Secret in both
+isolated Workers), may attempt to claim the existing run-scoped SQLite row.
+The main/public Worker does NOT route to this path. Request MAC freshness is
+10 seconds; SQLite row state/nonce/signed-death fields and unique claim are
+checked in one transaction. Missing Secret, binding or enabled flag fails
+closed. All new settings are proposed only; **nothing is deployed**.
+
+Live OWNER identity/signature verification, ARM trust source, provider STOP,
+Vercel Preview stop, JWT/session invalidation, scoped synthetic deletion,
+separately credentialed census and rollback cannot be proven by injected
+callbacks, simulated booleans or offline tests. Those require separately
+approved real endpoints, narrow Staging-only credentials and a live bounded
+failure drill. Never enable a public admission endpoint or paid AI as part
+of this code-only change.

@@ -3,6 +3,7 @@
 // NOT deployed, no route, trigger, secret, arm, paid call or Staging side effect.
 // Only an independently authorized Cloudflare service binding may invoke DO RPC.
 import {GateAWatchdogDurableObject as SyntheticA1} from './cloudflare-gatea-a1-preserved.mjs';
+import {handle020705PrivateDoClaimFetch} from './gatea-private-claim-fetch-handler-candidate.mjs';
 
 const REPO = 'bingohooah888-ai/novelrise';
 const PROJECT = 'wmlzjgvxgoyrovdhbqbg';
@@ -393,10 +394,14 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
     return Object.freeze({ envelope: JSON.parse(current.receipt),
       authorizesMutation: false, authorizesPaidCall: false });
   }
-  async fetch() {
-    // Explicitly no public admission, even after code deployment.
-    return new Response(null, {
-      status: 404, headers: { 'cache-control': 'no-store' }
+  async fetch(request) {
+    // A1 is a legacy DO class. The private HMAC-authenticated fetch is
+    // reachable only from a separately approved cross-Worker DO binding.
+    // The default Worker fetch never forwards this path to the DO.
+    return handle020705PrivateDoClaimFetch({
+      request, env: this.env, storage: this.ctx.storage,
+      readCurrent: () => this.row(),
+      ensureWatchdogReady: () => this.check()
     });
   }
 }

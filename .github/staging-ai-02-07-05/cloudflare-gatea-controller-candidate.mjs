@@ -86,7 +86,7 @@ export function create020705ControllerCandidate({
             capabilities?.stagingStopAuthorityVerified !== true ||
             capabilities?.syntheticRevocationVerified !== true ||
             capabilities?.independentCensusVerified !== true) return blocked();
-        const ports = await makeStagingStopPorts(trusted);
+        const ports = await makeStagingStopPorts(trusted, env);
         // No default credentials or permissive fallback. All privileges must
         // be provisioned outside GitHub under later explicit OWNER approval.
         if (ports?.synthetic?.verifiedSynthetic !== true ||
