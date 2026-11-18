@@ -156,6 +156,51 @@ export function create020705CloudflareDeathReceiptReader({
   });
 }
 
+// Separate signed observer returns a scoped readback object, never a
+// caller-supplied boolean. A mismatched query or report must fail closed.
+// This function validates the shape; the injected observer must verify
+// Ed25519 and actual independent Staging readback before returning it.
+// prettier-ignore
+const CENSUS_ZERO = [
+  'users', 'identities', 'sessions', 'profiles', 'novels', 'episodes',
+  'facts', 'analysis', 'reviewCandidates', 'consents', 'consentAudit',
+  'usageRequests', 'usageAudit'
+];
+// prettier-ignore
+const CENSUS_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+// prettier-ignore
+export async function verify020705IndependentStagingCensus({
+  scope, independentCensus
+} = {}) {
+  if (scope?.stagingProjectRef !== STAGING ||
+      !CENSUS_UUID.test(scope?.actorId ?? '') ||
+      !Number.isSafeInteger(scope?.novelId) || scope.novelId <= 0 ||
+      !Number.isSafeInteger(scope?.approvalCommentId) ||
+      scope.approvalCommentId <= 0 ||
+      typeof independentCensus !== 'function') return false;
+  const target = Object.freeze({
+    projectRef: STAGING, userId: scope.actorId,
+    novelId: scope.novelId, approvalCommentId: scope.approvalCommentId
+  });
+  try {
+    const report = await independentCensus(target);
+    return report?.sourceKind === 'SEPARATE_STAGING_READONLY_CENSUS' &&
+      report.projectRef === target.projectRef &&
+      report.userId === target.userId &&
+      report.novelId === target.novelId &&
+      report.approvalCommentId === target.approvalCommentId &&
+      report.runtimeDisabledZero === true &&
+      report.approvalTombstoneCount === 1 &&
+      Number.isSafeInteger(report.chunkClaimsRetained) &&
+      report.chunkClaimsRetained >= 0 &&
+      report.chunkClaimsRetained <= 1 &&
+      CENSUS_ZERO.every((key) => report[key] === 0);
+  } catch {
+    return false;
+  }
+}
+
 export function create020705StagingLiveBindings({
   scope,
   credentials,
@@ -459,7 +504,9 @@ export function create020705StagingLiveBindings({
           return stopped && cleaned;
         },
         independentFinalCensus: async () =>
-          (await controller.independentCensus(scope)) === true &&
+          (await verify020705IndependentStagingCensus({
+            scope, independentCensus: controller.independentCensus
+          })) === true &&
           (await jwt.finalCensus()) === true
       });
       try {

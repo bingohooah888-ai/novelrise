@@ -8,6 +8,8 @@ import { create020705StagingMigrationAdapter, unwrap020705StagingProposal } from
 import { create020705StagingPreviewAdapter } from '../.github/ai-02-07-05-app-composition/staging-live-preview.mjs';
 // prettier-ignore
 import { create020705StagingJwtAdapter } from '../.github/ai-02-07-05-app-composition/staging-live-jwt.mjs';
+// prettier-ignore
+import { verify020705IndependentStagingCensus } from '../.github/ai-02-07-05-app-composition/staging-live-bindings.mjs';
 
 const STAGING = 'wmlzjgvxgoyrovdhbqbg';
 const URL = 'https://' + STAGING + '.supabase.co';
@@ -205,4 +207,59 @@ test('JWT proof will never construct a live adapter for Production or missing se
   assert.throws(() => create020705StagingJwtAdapter({
     scope: { ...scope, supabaseUrl: 'https://fiepaguycecrredwrcwx.supabase.co' }
   }), /AI_020705_STAGING_JWT_DENIED|supabaseUrl is required|supabaseKey is required/u);
+});
+
+// Synthetic signed-census adapter: no Supabase, Worker, keys or credentials.
+// prettier-ignore
+test('final census queries an exact synthetic target and checks scoped readback', async () => {
+  const requested = [];
+  const scope = {
+    stagingProjectRef: STAGING,
+    actorId: '11111111-1111-4111-8111-111111111111',
+    novelId: 41,
+    approvalCommentId: 777
+  };
+  const counts = {
+    users: 0, identities: 0, sessions: 0, profiles: 0,
+    novels: 0, episodes: 0, facts: 0, analysis: 0,
+    reviewCandidates: 0, consents: 0, consentAudit: 0,
+    usageRequests: 0, usageAudit: 0
+  };
+  const report = {
+    sourceKind: 'SEPARATE_STAGING_READONLY_CENSUS',
+    projectRef: STAGING, userId: scope.actorId,
+    novelId: 41, approvalCommentId: 777,
+    runtimeDisabledZero: true, approvalTombstoneCount: 1,
+    chunkClaimsRetained: 1, ...counts
+  };
+  const observer = async (target) => {
+    requested.push(target);
+    return {...report};
+  };
+  assert.equal(await verify020705IndependentStagingCensus({
+    scope, independentCensus: observer
+  }), true);
+  assert.deepEqual(requested, [{
+    projectRef: STAGING, userId: scope.actorId,
+    novelId: 41, approvalCommentId: 777
+  }]);
+  for (const bad of [
+    true, null, {...report, sourceKind: 'runner-self-report'},
+    {...report, userId: '22222222-2222-4222-8222-222222222222'},
+    {...report, sessions: 1},
+    {...report, runtimeDisabledZero: false},
+    {...report, approvalTombstoneCount: 0},
+    {...report, chunkClaimsRetained: 2},
+    {...report, analysis: undefined}
+  ]) {
+    assert.equal(await verify020705IndependentStagingCensus({
+      scope, independentCensus: async () => bad
+    }), false);
+  }
+  assert.equal(await verify020705IndependentStagingCensus({
+    scope: {...scope, actorId: 'not-a-uuid'}, independentCensus: observer
+  }), false);
+  assert.equal(await verify020705IndependentStagingCensus({
+    scope, independentCensus: async () => { throw Error('observer outage'); }
+  }), false);
 });
