@@ -3,6 +3,7 @@
 // privileged clients from request bodies, GitHub comments or environment.
 import { create020705TrustedControllerBootstrapCandidate } from './gatea-controller-trusted-bootstrap-candidate.mjs';
 import { create020705GithubControllerOwnerPortCandidate } from './gatea-controller-github-owner-port-candidate.mjs';
+import { create020705IndependentObserverPortsCandidate } from './gatea-controller-independent-observers-candidate.mjs';
 
 function blocked() {
   return new Response(null, {
@@ -70,6 +71,48 @@ export function create020705GithubBoundControllerEntryCandidate(ports = {}) {
         return await create020705ControllerExecutionEntryCandidate({
           ...ports, ...owner
         }).fetch(request, env);
+      } catch { return blocked(); }
+    }
+  });
+}
+
+/**
+ * Explicit opt-in bridge to independently signed identity/capability and
+ * separately signed read-only census services. No public default routes.
+ * This does NOT provision those services, their keys, Staging credentials,
+ * provider cancellation, Preview suspension, or real off-quota authority.
+ */
+export function create020705SignedObserverBoundControllerEntryCandidate(ports = {}) {
+  if (typeof ports.makeStagingStopPorts !== 'function' ||
+      typeof ports.verifyStagingPortAttestation !== 'function' ||
+      typeof ports.inspectIndependentArm !== 'function' ||
+      typeof ports.signWithControllerKey !== 'function') deny();
+  return Object.freeze({
+    async fetch(request, env) {
+      if (env?.GATEA_CONTROLLER_LIVE_ENABLED !== 'true' ||
+          env?.GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED !== 'true')
+        return blocked();
+      try {
+        const observer = create020705IndependentObserverPortsCandidate({
+          identityService: env.GATEA_IDENTITY_OBSERVER,
+          censusService: env.GATEA_CENSUS_OBSERVER,
+          identityPublicKey: env.GATEA_IDENTITY_PUB_SPKI,
+          censusPublicKey: env.GATEA_CENSUS_PUB_SPKI,
+          identityKeyId: env.GATEA_IDENTITY_KEY_ID,
+          censusKeyId: env.GATEA_CENSUS_KEY_ID
+        });
+        const entry = create020705GithubBoundControllerEntryCandidate({
+          ...ports,
+          ...observer,
+          makeStagingStopPorts: async (trusted) => {
+            const supplied = await ports.makeStagingStopPorts(trusted);
+            if (!supplied || typeof supplied !== 'object') deny();
+            return Object.freeze({
+              ...supplied, independentCensus: observer.independentCensus
+            });
+          }
+        });
+        return await entry.fetch(request, env);
       } catch { return blocked(); }
     }
   });

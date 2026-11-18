@@ -40,7 +40,14 @@ function setup({tamper = false, censusTamper = false, stale = false} = {}) {
     runId: 1001, verifiedIndependentSource: true,
     signedDeathProofAvailable: true, atomicRecoveryClaimAvailable: true,
     stagingStopAuthorityVerified: true, syntheticRevocationVerified: true,
-    independentCensusVerified: true};
+    independentCensusVerified: true,
+    quotaIndependentStopVerified: true,
+    providerDispatchFenceVerified: true,
+    jwtAccessDenyVerified: true,
+    sqliteRollbackPreservedVerified: true,
+    watchdogFullVersionId: 'a'.repeat(64),
+    inFlightProviderRequests: 0,
+    providerCancellationMode: 'NOT_GUARANTEED'};
   const census = {sourceKind: 'SEPARATE_STAGING_READONLY_CENSUS',
     ...target, runtimeDisabledZero: true, approvalTombstoneCount: 1,
     chunkClaimsRetained: 1,
@@ -60,7 +67,7 @@ function setup({tamper = false, censusTamper = false, stale = false} = {}) {
       let signature = sign(null, Buffer.from(JSON.stringify(packet)), key)
         .toString('base64url');
       if (tamper && kind === 'identity') signature =
-        'Z' + signature.slice(1);
+        (signature[0] === 'A' ? 'B' : 'A') + signature.slice(1);
       const evidence = censusTamper && kind === 'census'
         ? {...data, sessions: 1} : data;
       return new globalThis.Response(JSON.stringify({

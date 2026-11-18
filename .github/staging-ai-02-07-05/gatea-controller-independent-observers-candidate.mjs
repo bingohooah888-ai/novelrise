@@ -28,14 +28,22 @@ function exact(a, b) {
     Object.keys(a).every((key) => Object.hasOwn(b, key) && a[key] === b[key]);
 }
 function validRun(s) {
+  const extensions = ['candidateSha', 'stagingBranch', 'capMicros'];
+  const extended = extensions.some((key) => Object.hasOwn(s ?? {}, key));
   return s?.repository === REPO && s?.stagingProjectRef === STAGING &&
-    Object.keys(s).length === NAMES.length &&
+    Object.keys(s).length === NAMES.length + (extended ? 3 : 0) &&
     NAMES.every((key) => Object.hasOwn(s, key)) &&
+    Object.keys(s).every((key) => NAMES.includes(key) ||
+      extensions.includes(key)) &&
     SHA.test(s.mainSha ?? '') &&
     /^dpl_[A-Za-z0-9]+$/u.test(s.previewDeploymentId ?? '') &&
     UUID.test(s.actorId ?? '') &&
     ['novelId', 'episodeId', 'runId', 'approvalCommentId']
-      .every((key) => positive(s[key]));
+      .every((key) => positive(s[key])) &&
+    (!extended || (SHA.test(s.candidateSha ?? '') &&
+      s.candidateSha !== s.mainSha &&
+      /^staging\/ai-02-07-05-[a-z0-9-]+$/u.test(s.stagingBranch ?? '') &&
+      positive(s.capMicros) && s.capMicros <= 10000000));
 }
 function base64(data) {
   return btoa(String.fromCharCode(...new Uint8Array(data)))
@@ -160,7 +168,14 @@ export function create020705IndependentObserverPortsCandidate({
         evidence.atomicRecoveryClaimAvailable !== true ||
         evidence.stagingStopAuthorityVerified !== true ||
         evidence.syntheticRevocationVerified !== true ||
-        evidence.independentCensusVerified !== true) deny();
+        evidence.independentCensusVerified !== true ||
+        evidence.quotaIndependentStopVerified !== true ||
+        evidence.providerDispatchFenceVerified !== true ||
+        evidence.jwtAccessDenyVerified !== true ||
+        evidence.sqliteRollbackPreservedVerified !== true ||
+        !/^[a-f0-9]{32,64}$/u.test(evidence.watchdogFullVersionId ?? '') ||
+        evidence.inFlightProviderRequests !== 0 ||
+        evidence.providerCancellationMode !== 'NOT_GUARANTEED') deny();
     const proof = Object.freeze({...evidence});
     attested.set(proof, trusted);
     return proof;

@@ -170,3 +170,78 @@ Auth deletion/revocation privileges, a *separate* census-read identity,
 independently pinned Ed25519 keys and HMAC Secret, and a strict Free-tier
 quota/kill budget. Cloudflare changes, Staging mutation and any paid AI call
 require future scoped approval after the live blockers are resolved.
+
+
+## 2026-11-18 continuation: code-only signed identity and census observability
+
+Added dormant `gatea-controller-independent-observers-candidate.mjs` and
+`create020705SignedObserverBoundControllerEntryCandidate`. These reuse the
+existing GitHub OWNER source, Controller factory, SQLite DO claim, signed-death
+recovery connector, and synthetic-only STOP/CLEANUP. No duplicate database,
+namespace, removal flow, public route, deployment or secret was added.
+
+The proposed Controller can now require **two distinct private Service
+Bindings, two distinct Ed25519 pinned public keys and key IDs**, with fresh
+32-byte random challenges and exact signed run/census scopes. Untrusted,
+stale, modified or unsigned responses fail closed. The signed capability
+observation additionally requires:
+- exact account/Worker/DO namespace and full (not short) Watchdog version;
+- separately verified provider-dispatch fence and zero in-flight provider
+  requests, acknowledging that cancellation after provider dispatch is
+  **NOT GUARANTEED**;
+- a separately verified STOP path that survives Cloudflare Free-tier quota
+  exhaustion; a second Worker on the *same* Free-tier account is insufficient;
+- an access-deny fence for outstanding Supabase JWTs (sign-out and user deletion
+  do **not** immediately revoke existing access JWTs);
+- preservation of existing DO namespace/SQLite rows and rollback provenance;
+- separately credentialed census with scoped DB/Auth counts and retained
+  claims, not an assertion of fabricated zeros.
+
+The Controller default **remains a permanent 404**; the opt-in composition
+factory is not connected to the deployed Wrangler default. A signature from
+an independently keyed observer proves message authenticity, **not** that
+the signer actually executed STOP/census. Live proof requires auditing the
+observer's actual GET-only database/Auth reads, independent credential and
+network boundaries, and an approved synthetic failure drill. An untrusted
+factory callback returning `true` is never a live audit.
+
+### Required future connection roles and exact permissions (not provisioned)
+1. Cloudflare read-only access to inventory version IDs, original deploy
+   artifacts, DO binding/SQLite origin and an executable rollback path;
+   separate deploy privilege only after a new approval.
+2. GitHub Issue #294 and Actions run GET-only access; no write permission
+   for the Controller OWNER source.
+3. Controller-only identity signer/private service, isolated from the
+   paid Runner. Only the Controller receives the attestor Service Binding.
+4. Staging-only stop/operator role for AI runtime OFF, exact Preview ID
+   suspension, transport kill, and synthetic-user-only cleanup. Do not grant
+   Production or unrestricted general-user deletion.
+5. Independently operated Staging census **read-only** principal for Auth
+   users/identities/sessions and exact scoped app tables. Do not reuse stop
+   or deletion credentials. Verify retained approval/claim tombstones.
+6. Provider cancellation, quota-independent admission fence, expiration of
+   outstanding access JWTs, and STOP authority must be demonstrated rather
+   than deduced from API acknowledgments.
+
+### Activation and rollback contract (still NO-GO)
+**Before any future deploy:** independently capture and compare the entire
+immutable Watchdog source/artifact digest, full Cloudflare version IDs,
+exact existing SQLite DO namespace/instance row inventory, signed deployment
+provenance, and a reversible plan retaining prior Worker/DO classes,
+migrations, rows, alarm state, and consumed claim tombstones. Review any
+binding migration to the legacy SQLite class; never recreate the namespace.
+Keep the candidate flags OFF, protect staging/production boundaries, and
+do not enable paid POST. Test rollback with a non-mutating dry-plan before
+approving a separately bounded synthetic STOP drill.
+
+**Cost:** code-only changes incur no new Cloudflare, Supabase, Vercel or
+provider requests. Future Cloudflare Free has finite daily requests, CPU and
+DO quotas; exceeding a limit can prevent Controller execution, so on-quota
+STOP alone cannot be credited. Any Worker/service provisioning or paid-plan
+upgrade requires separate OWNER approval and an explicit ceiling. No
+external quota-independent STOP or in-flight cancellation proof exists.
+
+**Gate A: NO-GO.** The source now includes a stronger runtime connection
+contract but no provisioned identity/census Service Bindings, real Staging
+stop/revocation roles, verified off-quota admission fence, deployed version
+proof, rollback drill, or independently observed zero-residue census.
