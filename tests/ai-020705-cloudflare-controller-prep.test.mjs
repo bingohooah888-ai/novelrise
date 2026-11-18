@@ -33,7 +33,7 @@ const scope = Object.freeze({
 });
 // prettier-ignore
 const request = (s = scope, path = '/_novelight/gatea/recover') =>
-  new Request('https://gatea-recovery.internal' + path, {
+  new globalThis.Request('https://gatea-recovery.internal' + path, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ scope: s, envelope: {} })

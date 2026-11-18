@@ -60,3 +60,45 @@ No Cloudflare deployment, request, Staging operation, or paid API expense is
 incurred by this code-only change. Future Workers/DO usage is subject to
 Cloudflare's prevailing limits and plan. Obtain an approved spending ceiling
 before activation and ensure a safe, independent stop if quota is exhausted.
+
+## 2026-11-18: isolated candidate implementation / blocked live ports
+
+The following are **code-only** and have no Cloudflare, Supabase, GitHub,
+Vercel, JWT or AI I/O at module import. The previous Controller default
+remains hard-404 even if accidentally deployed; all candidate flags stay OFF.
+
+- `gatea-controller-trusted-bootstrap-candidate.mjs`: composes the existing
+  Controller receiver and ARM issuer only with independently verified,
+  immutable OWNER approval, signed Controller capabilities, and exact Staging
+  identity. No concrete secrets, transports or privileges are included.
+- `gatea-controller-arm-reader-candidate.mjs`: pre-paid ARM reader for the
+  existing protected gate. Requires independent identity attestation, the
+  pinned Ed25519 ARM signature, a trusted nonce, and a separate durable
+  single-use receipt claim; denies missing/forged/stale proofs and replay.
+- `gatea-controller-atomic-claims-candidate.mjs`: SQLite transactionSync
+  and unique INSERT OR IGNORE candidate for existing Watchdog DO storage;
+  run+approval uniqueness survives nonce/key rotation within the **same**
+  approved DO instance. It does not prove real cross-process atomicity until
+  DO routing, identity, storage backend and concurrent crash drills pass.
+- The existing `detached-stop-connector.mjs` and
+  `staging-synthetic-cleanup.mjs` remain the single Staging STOP/Revocation/
+  fixture cleanup/census implementation; do NOT add duplicate delete paths.
+
+**Still not implemented or verified in a live independent Controller:**
+Cloudflare Service Binding execution; OWNER scope authentication and pinned
+identity attestation; actual remote STOP and provider in-flight cancellation;
+Staging-only Admin/JWT revocation; exact Vercel Preview disabling; independently
+credentialed read-back/census; durable one-shot routing/fencing and concurrent
+recovery; pinned signing key rotation; safe crash recovery. All of these require
+separate, narrowly scoped approvals for infrastructure and credentials. A
+simulated PASS is NOT evidence. Gate A remains NO-GO.
+
+**Next one-time activation package for OWNER approval (not performed here):**
+(1) set a monetary ceiling and rollback plan; (2) create at most one isolated
+Controller Worker without public routes; (3) provision separate least-privilege
+staging-only and read-only/census identities and pinned keys without exposing
+secret values; (4) connect one internal Service Binding to the existing S2
+Watchdog, preserving original A1/DO data and flags OFF; (5) verify immutable
+versions, SQLite, failure containment and actual STOP authority; (6) separately
+approve a bounded synthetic Staging stop/auth/census and runner-failure drill,
+with no paid AI POST, no Production connection and no automatic retries.
