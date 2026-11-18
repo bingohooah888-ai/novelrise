@@ -111,7 +111,8 @@ export function create020705TrustedControllerBootstrapCandidate({
       const query = Object.freeze({
         repository: REPO, stagingProjectRef: STAGING,
         runId: args.scope.runId,
-        approvalCommentId: args.scope.approvalCommentId
+        approvalCommentId: args.scope.approvalCommentId,
+        arm: true
       });
       let approval;
       try { approval = await readOwnerApprovedScope(query); }
