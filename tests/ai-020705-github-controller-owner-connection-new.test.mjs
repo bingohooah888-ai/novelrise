@@ -23,7 +23,8 @@ function fixture(tamper = {}) {
     approvalScope: 'synthetic-one-provider-one-call-only',
     capMicros: 1000000, confirmation: 'STAGING PAID 1 CALL APPROVED',
     consentRevision: 'synthetic-test-v1', episodeId: 11,
-    expiresAt: new Date(NOW + 600000).toISOString(), mainSha: SHA,
+    expiresAt: new Date(tamper.expired ? NOW - 1000 : NOW + 600000)
+      .toISOString(), mainSha: SHA,
     model: 'gpt-6.1-sol', novelId: 41,
     previewDeploymentId: 'dpl_fixture123', provider: 'openai',
     stagingProjectRef: QUERY.stagingProjectRef,
@@ -81,6 +82,8 @@ test('GitHub OWNER approval yields separately scoped recovery and ARM proofs', a
   assert.equal(Object.keys(recovery.scope).length, 9);
   assert.equal(recovery.scope.mainSha, SHA);
   assert.equal(await port.verifyOwnerApprovalAttestation(recovery, QUERY), true);
+  assert.equal(await port.verifyOwnerApprovalAttestation(recovery,
+    {...QUERY, arm: true}), false);
   assert.equal(await port.verifyOwnerApprovalAttestation({...recovery}, QUERY), false);
   const arm = await port.readOwnerApprovedScope({...QUERY, arm: true});
   assert.equal(arm.scope.candidateSha, 'b'.repeat(40));
@@ -116,4 +119,13 @@ test('missing trust, invalid query and default Worker fail closed', async () => 
     GATEA_CONTROLLER_LIVE_ENABLED: 'true',
     GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED: 'true'
   })).status, 404);
+});
+
+// prettier-ignore
+test('expired approval remains readable for recovery, never for new ARM', async () => {
+  const port = source(fixture({expired:true}).fetchImpl);
+  const prior = await port.readOwnerApprovedScope(QUERY);
+  assert.equal(await port.verifyOwnerApprovalAttestation(prior, QUERY), true);
+  await assert.rejects(port.readOwnerApprovedScope({...QUERY, arm:true}),
+    /CONTROLLER_OWNER_SOURCE_NO_GO/u);
 });

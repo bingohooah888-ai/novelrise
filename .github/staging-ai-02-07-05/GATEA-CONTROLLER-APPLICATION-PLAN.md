@@ -245,3 +245,15 @@ external quota-independent STOP or in-flight cancellation proof exists.
 contract but no provisioned identity/census Service Bindings, real Staging
 stop/revocation roles, verified off-quota admission fence, deployed version
 proof, rollback drill, or independently observed zero-residue census.
+
+### Further fail-closed safeguards
+The GitHub OWNER proof is bound to the exact recovery-vs-ARM purpose.
+Expired approvals may be inspected for recovery/cleanup but can never
+issue a new ARM. This adds no ability to spend or call the provider.
+
+The historical proposed migration
+`20261101060000_novelight_ai_020705_one_shot_claim.sql`
+pins model `gpt-5.6-luna`, whereas the current OWNER ledger reader
+expects `gpt-6.1-sol`. This source mismatch is an additional NO-GO
+until the separately approved actual Staging schema, provider/model support,
+approval and migration plan are reconciled. No SQL was edited or applied.

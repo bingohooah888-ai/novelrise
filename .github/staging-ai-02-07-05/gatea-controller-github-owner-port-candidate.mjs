@@ -28,7 +28,7 @@ export function create020705GithubControllerOwnerPortCandidate({
       !positive(controllerRunId) ||
       typeof verifyIndependentControllerIdentity !== 'function' ||
       typeof fetchImpl !== 'function' || typeof now !== 'function') deny();
-  const verified = new WeakSet();
+  const verified = new WeakMap();
   async function readOwnerApprovedScope(query) {
     try {
       const names = Object.keys(query ?? {}).sort().join(',');
@@ -75,6 +75,10 @@ export function create020705GithubControllerOwnerPortCandidate({
           !UUID.test(approved.actorId ?? '') ||
           !positive(approved.novelId) || !positive(approved.episodeId) ||
           !positive(approved.capMicros) || approved.capMicros > 10000000 ||
+          (query.arm === true && (
+            !Number.isFinite(Date.parse(approved.expiresAt)) ||
+            Date.parse(approved.expiresAt) <= now()
+          )) ||
           (candidate && (
             approved.repository !== REPO ||
             approved.approvalIssueNumber !== 294 ||
@@ -120,17 +124,17 @@ export function create020705GithubControllerOwnerPortCandidate({
         approvalCommentId: query.approvalCommentId, controllerRunId,
         sourceVerified: true, ownerApproved: true, scope
       });
-      verified.add(proof);
+      verified.set(proof, Object.freeze({arm: query.arm === true}));
       return proof;
     } catch { deny(); }
   }
   return Object.freeze({
     readOwnerApprovedScope,
     verifyOwnerApprovalAttestation: async (proof, query) =>
-      !!proof && verified.has(proof) &&
+      !!proof &&
+      verified.get(proof)?.arm === (query?.arm === true) &&
       proof.repository === REPO && proof.stagingProjectRef === PROJECT &&
       proof.runId === query?.runId &&
-      proof.approvalCommentId === query?.approvalCommentId &&
-      (query?.arm === true || !Object.hasOwn(proof.scope, 'candidateSha'))
+      proof.approvalCommentId === query?.approvalCommentId
   });
 }
