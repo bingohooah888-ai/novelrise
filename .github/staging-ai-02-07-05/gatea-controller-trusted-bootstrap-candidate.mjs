@@ -10,10 +10,41 @@ const STAGING = 'wmlzjgvxgoyrovdhbqbg';
 const URL = 'https://' + STAGING + '.supabase.co';
 const positive = (v) => Number.isSafeInteger(v) && v > 0;
 function deny() { throw new Error('AI_020705_CONTROLLER_BOOTSTRAP_NO_GO'); }
-function matchingScope(a, b) {
-  return a?.repository === REPO && a.stagingProjectRef === STAGING &&
-    a.runId === b?.runId && a.approvalCommentId === b?.approvalCommentId;
+const SCOPE_KEYS = [
+  'repository', 'stagingProjectRef', 'mainSha', 'previewDeploymentId',
+  'actorId', 'novelId', 'episodeId', 'runId', 'approvalCommentId'
+];
+const OPTIONAL_SCOPE_KEYS = ['candidateSha', 'stagingBranch', 'capMicros'];
+function matchingQuery(a, b) {
+  return a?.repository === REPO && a?.stagingProjectRef === STAGING &&
+    b?.repository === REPO && b?.stagingProjectRef === STAGING &&
+    positive(a?.runId) && a.runId === b?.runId &&
+    positive(a?.approvalCommentId) &&
+    a.approvalCommentId === b?.approvalCommentId;
 }
+function matchingScope(a, b) {
+  if (!matchingQuery(a, b) || !a || !b ||
+      Object.keys(a).length !== Object.keys(b).length ||
+      Object.keys(a).some((key) =>
+        !SCOPE_KEYS.includes(key) && !OPTIONAL_SCOPE_KEYS.includes(key)) ||
+      !SCOPE_KEYS.every((key) =>
+        Object.hasOwn(a, key) && Object.hasOwn(b, key) &&
+        a[key] === b[key])) return false;
+  return Object.keys(a).every((key) =>
+    Object.hasOwn(b, key) && a[key] === b[key]);
+}
+function independentlyApproved(approval, query) {
+  return approval?.repository === REPO &&
+    approval?.stagingProjectRef === STAGING &&
+    approval?.runId === query?.runId &&
+    approval?.approvalCommentId === query?.approvalCommentId &&
+    approval?.ownerApproved === true &&
+    approval?.sourceVerified === true &&
+    positive(approval?.controllerRunId) &&
+    approval.controllerRunId !== query.runId &&
+    matchingQuery(approval.scope, query);
+}
+
 
 /**
  * Dependencies are intentionally not implemented with HTTP defaults.
@@ -37,15 +68,7 @@ export function create020705TrustedControllerBootstrapCandidate({
   const controller = create020705ControllerCandidate({
     async resolveTrustedRun(query) {
       const approval = await readOwnerApprovedScope(query);
-      if (approval?.repository !== REPO ||
-          approval?.stagingProjectRef !== STAGING ||
-          approval.runId !== query.runId ||
-          approval.approvalCommentId !== query.approvalCommentId ||
-          approval?.ownerApproved !== true ||
-          approval?.sourceVerified !== true ||
-          !positive(approval.controllerRunId) ||
-          approval.controllerRunId === query.runId ||
-          !matchingScope(approval.scope, query) ||
+      if (!independentlyApproved(approval, query) ||
           (await verifyOwnerApprovalAttestation(approval, query)) !== true)
         deny();
       return Object.freeze(approval);
@@ -80,7 +103,34 @@ export function create020705TrustedControllerBootstrapCandidate({
   return Object.freeze({
     fetch: (request, env) => controller.fetch(request, env),
     async issueArmReceipt(args, env) {
-      if (env?.GATEA_CONTROLLER_LIVE_ENABLED !== 'true') deny();
+      if (env?.GATEA_CONTROLLER_LIVE_ENABLED !== 'true' ||
+          !args?.scope || !positive(args.controllerRunId)) deny();
+      // Before issuing a signed pre-paid ARM, authenticate the actual OWNER
+      // approval and every immutable scope field against a separate source.
+      // A signed ARM itself is never evidence of stop/revoke authority.
+      const query = Object.freeze({
+        repository: REPO, stagingProjectRef: STAGING,
+        runId: args.scope.runId,
+        approvalCommentId: args.scope.approvalCommentId
+      });
+      let approval;
+      try { approval = await readOwnerApprovedScope(query); }
+      catch { deny(); }
+      if (!independentlyApproved(approval, query) ||
+          approval.controllerRunId !== args.controllerRunId ||
+          !matchingScope(approval.scope, args.scope) ||
+          (await verifyOwnerApprovalAttestation(approval, query)) !== true)
+        deny();
+      let capabilities;
+      try { capabilities = await readIndependentCapabilities(approval); }
+      catch { deny(); }
+      if (capabilities?.verifiedIndependentSource !== true ||
+          capabilities?.separateFromRunner !== true ||
+          capabilities?.stagingStopAuthorityVerified !== true ||
+          capabilities?.syntheticRevocationVerified !== true ||
+          capabilities?.independentCensusVerified !== true ||
+          (await verifyCapabilityAttestation(capabilities, approval)) !== true)
+        deny();
       // ARM may include candidateSha/stagingBranch/capMicros, but the
       // original DO ledger stores only the nine immutable run fields.
       const fields = [

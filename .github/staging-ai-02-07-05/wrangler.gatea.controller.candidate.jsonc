@@ -1,6 +1,6 @@
 {
   "name": "novelight-ai-gatea-controller",
-  "main": "./cloudflare-gatea-controller-candidate.mjs",
+  "main": "./gatea-controller-execution-entry-candidate.mjs",
   "account_id": "6831b18fe814232fa2dd4c470b95aa15",
   "compatibility_date": "2026-11-03",
   "compatibility_flags": ["nodejs_compat"],
@@ -16,6 +16,7 @@
   "workers_dev": false,
   "preview_urls": false,
   "vars": {
-    "GATEA_CONTROLLER_LIVE_ENABLED": "false"
+    "GATEA_CONTROLLER_LIVE_ENABLED": "false",
+    "GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED": "false"
   }
 }

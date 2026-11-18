@@ -131,3 +131,42 @@ callbacks, simulated booleans or offline tests. Those require separately
 approved real endpoints, narrow Staging-only credentials and a live bounded
 failure drill. Never enable a public admission endpoint or paid AI as part
 of this code-only change.
+
+## 2026-11-18 OWNER-authenticated ARM guard and opt-in entrypoint
+
+- `gatea-controller-trusted-bootstrap-candidate.mjs` now requires an
+  independently sourced OWNER approval and attestation for **every immutable
+  run-scope field** (repository, Staging project, main SHA, Preview ID, actor,
+  novel, episode, run ID and approval comment) before issuing any signed ARM.
+  Candidate SHA, branch and cap must also match when present. An earlier
+  ARM-issuer path had no such pre-signature OWNER check; the new code denies
+  forged scope, missing independent stop evidence and failed attestations
+  before touching the atomic DO ledger or signer.
+- `gatea-controller-execution-entry-candidate.mjs` is the proposed
+  executable composition factory, with a default Worker that **always 404s**.
+  The candidate Wrangler main points to that inert default. It requires both
+  `GATEA_CONTROLLER_LIVE_ENABLED` and
+  `GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED` (both default false), a
+  private existing-DO binding and a valid independently provisioned HMAC
+  Secret before the opt-in factory can process a recovery.
+- New negative tests check that default/incomplete admission, unauthenticated
+  OWNER approval, mismatched actor/novel scope and unverified independent
+  capabilities cannot issue an ARM or invoke privileged ports.
+
+**IMPORTANT: no authenticated live bootstrap exists in the repo yet.**
+The execution factory accepts externally supplied trusted functions; these
+are still abstract contracts, not a verified Cloudflare identity or concrete
+least-privilege Staging ports. The current GitHub OWNER ledger reader and
+synthetic-only cleanup code should be reused in a separately approved
+credentials-equipped runtime. Never use a boolean/mock response as live
+authority. The actual S2 STOP, JWT revocation, Vercel Preview disable and
+independent zero-census abilities remain unproven. Preserve Gate A NO-GO.
+
+**Readiness prerequisites, not completed by this PR:** obtain a verifiable
+snapshot and pinned full version of the existing 9948be49 deployment; prove
+A1 rollback without SQL/DO state loss; separately approve and provision
+GitHub issues:read/actions:read, exact Staging-only disable/stop and synthetic
+Auth deletion/revocation privileges, a *separate* census-read identity,
+independently pinned Ed25519 keys and HMAC Secret, and a strict Free-tier
+quota/kill budget. Cloudflare changes, Staging mutation and any paid AI call
+require future scoped approval after the live blockers are resolved.
