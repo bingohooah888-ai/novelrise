@@ -13,9 +13,16 @@
       }
     ]
   },
+  "services": [
+    {
+      "binding": "GATEA_RECOVERY_CONTROLLER",
+      "service": "novelight-ai-gatea-controller"
+    }
+  ],
   "vars": {
     "GATEA_LIVE_ENABLED": "false",
-    "GATEA_HTTP_ADMISSION_ENABLED": "false"
+    "GATEA_HTTP_ADMISSION_ENABLED": "false",
+    "GATEA_RECOVERY_DISPATCH_ENABLED": "false"
   },
   "exports": {
     "GateAWatchdogDurableObject": {
