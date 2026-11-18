@@ -129,7 +129,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
               return {
                 async single() {
                   return {error: null, data: {
-                    singleton: 1, enabled: true,
+                    singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
                     user_day_cap_micros: 10000000,
                     user_month_cap_micros: 10000000,
                     global_day_cap_micros: 10000000,

@@ -111,7 +111,7 @@ export function createPaidTrialOneShotOpenAiProvider({
       try {
         const result = await serviceClient
           .from('novelight_ai_runtime_settings')
-          .select('singleton,enabled,user_day_cap_micros,' +
+          .select('singleton,enabled,updated_at,user_day_cap_micros,' +
             'user_month_cap_micros,global_day_cap_micros,' +
             'global_month_cap_micros')
           .eq('singleton', 1)
@@ -124,7 +124,17 @@ export function createPaidTrialOneShotOpenAiProvider({
           return Number.isSafeInteger(n) &&
             n >= approved.capMicros && n <= 10000000;
         };
-        permitted = !result?.error && row?.singleton === 1 &&
+        // OFF by expiry: an independently authorized Staging issuer must
+        // update this existing row for each bounded one-shot permit. The
+        // paid runner must NEVER renew its own admission timestamp.
+        // A missing update fails closed even if Cloudflare cannot signal STOP.
+        const leaseAtMs = Date.parse(row?.updated_at);
+        const sendAtMs = now();
+        permitted = Number.isFinite(leaseAtMs) &&
+          Number.isFinite(sendAtMs) &&
+          leaseAtMs <= sendAtMs &&
+          sendAtMs - leaseAtMs <= 15000 &&
+          !result?.error && row?.singleton === 1 &&
           row.enabled === true &&
           ['user_day_cap_micros', 'user_month_cap_micros',
             'global_day_cap_micros', 'global_month_cap_micros']

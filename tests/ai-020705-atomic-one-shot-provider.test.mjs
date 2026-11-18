@@ -65,7 +65,7 @@ function fixture({ changes = {}, deployment = {}, rpcReply, providerError,
                   async single() {
                     if (runtimeReply !== undefined) return runtimeReply;
                     return {error: null, data: {
-                      singleton: 1, enabled: true,
+                      singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
                       user_day_cap_micros: 10000000,
                       user_month_cap_micros: 10000000,
                       global_day_cap_micros: 10000000,
@@ -218,7 +218,7 @@ test('migration is private service-only, immutable and atomically unique', () =>
 
 // prettier-ignore
 test('Cloudflare outage plus Staging OFF or low cap blocks dispatch after claim', async () => {
-  const runtime = {singleton: 1, enabled: true,
+  const runtime = {singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
     user_day_cap_micros: 10000000, user_month_cap_micros: 10000000,
     global_day_cap_micros: 10000000, global_month_cap_micros: 10000000};
   for (const runtimeReply of [
@@ -240,10 +240,37 @@ test('Cloudflare outage plus Staging OFF or low cap blocks dispatch after claim'
 // prettier-ignore
 test('post-claim staging readback supports verified numeric-string caps', async () => {
   const {provider, counts} = fixture({runtimeReply: {error: null, data: {
-    singleton: 1, enabled: true,
+    singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
     user_day_cap_micros: '10000000', user_month_cap_micros: '10000000',
     global_day_cap_micros: '10000000', global_month_cap_micros: '10000000'
   }}});
+  assert.equal((await provider.generate(REQUEST)).text, '{"suggestions":[]}');
+  assert.deepEqual(counts(), {rpcCalls: 1, modelCalls: 1});
+});
+
+// prettier-ignore
+test('a stale or absent Staging lease denies a paid POST even without STOP notice', async () => {
+  const live = {
+    singleton: 1, enabled: true,
+    user_day_cap_micros: 10000000, user_month_cap_micros: 10000000,
+    global_day_cap_micros: 10000000, global_month_cap_micros: 10000000
+  };
+  for (const updated_at of [
+    undefined, '', 'not-a-date',
+    new Date(NOW - 15001).toISOString(),
+    new Date(NOW + 1).toISOString()
+  ]) {
+    const {provider, counts} = fixture({runtimeReply: {
+      data: {...live, updated_at}, error: null
+    }});
+    await assert.rejects(provider.generate(REQUEST),
+      /AI_020705_PAID_ONE_SHOT_DENIED/u);
+    assert.deepEqual(counts(), {rpcCalls: 1, modelCalls: 0});
+  }
+  const {provider, counts} = fixture({runtimeReply: {
+    data: {...live, updated_at: new Date(NOW - 15000).toISOString()},
+    error: null
+  }});
   assert.equal((await provider.generate(REQUEST)).text, '{"suggestions":[]}');
   assert.deepEqual(counts(), {rpcCalls: 1, modelCalls: 1});
 });
