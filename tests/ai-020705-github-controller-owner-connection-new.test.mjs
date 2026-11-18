@@ -1,13 +1,21 @@
+// prettier-ignore
 import assert from 'node:assert/strict';
+// prettier-ignore
 import test from 'node:test';
+// prettier-ignore
 import { create020705GithubControllerOwnerPortCandidate } from '../.github/staging-ai-02-07-05/gatea-controller-github-owner-port-candidate.mjs';
+// prettier-ignore
 import inert, { create020705GithubBoundControllerEntryCandidate } from '../.github/staging-ai-02-07-05/gatea-controller-execution-entry-candidate.mjs';
 
+// prettier-ignore
 const NOW = Date.parse('2026-11-18T07:00:00Z');
+// prettier-ignore
 const QUERY = {repository: 'bingohooah888-ai/novelrise',
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg',
   runId: 1001, approvalCommentId: 700};
+// prettier-ignore
 const SHA = 'a'.repeat(40);
+// prettier-ignore
 function fixture(tamper = {}) {
   const date = new Date(NOW - 60000).toISOString();
   const approval = {
@@ -57,6 +65,7 @@ function fixture(tamper = {}) {
   };
   return {fetchImpl, getCalls: () => calls};
 }
+// prettier-ignore
 function source(fetchImpl, attested = true) {
   return create020705GithubControllerOwnerPortCandidate({
     token: 'read-only-fixture-token', controllerRunId: 2002,
@@ -64,6 +73,7 @@ function source(fetchImpl, attested = true) {
     fetchImpl, now: () => NOW
   });
 }
+// prettier-ignore
 test('GitHub OWNER approval yields separately scoped recovery and ARM proofs', async () => {
   const {fetchImpl, getCalls} = fixture();
   const port = source(fetchImpl);
@@ -79,6 +89,7 @@ test('GitHub OWNER approval yields separately scoped recovery and ARM proofs', a
     {...QUERY, arm: true}), true);
   assert.equal(getCalls(), 10);
 });
+// prettier-ignore
 test('unverified identity, forged SHA and forged bot are rejected', async () => {
   await assert.rejects(source(fixture().fetchImpl, false)
     .readOwnerApprovedScope(QUERY), /CONTROLLER_OWNER_SOURCE_NO_GO/u);
@@ -87,6 +98,7 @@ test('unverified identity, forged SHA and forged bot are rejected', async () => 
       .readOwnerApprovedScope(QUERY), /CONTROLLER_OWNER_SOURCE_NO_GO/u);
   }
 });
+// prettier-ignore
 test('missing trust, invalid query and default Worker fail closed', async () => {
   assert.throws(() => create020705GithubControllerOwnerPortCandidate(),
     /CONTROLLER_OWNER_SOURCE_NO_GO/u);
