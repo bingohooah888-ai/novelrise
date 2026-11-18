@@ -344,6 +344,7 @@ test('one-shot Staging DB claim stores tested candidate SHA; no model retry', as
     sha: CANDIDATE,
     id: PREVIEW
   };
+  // prettier-ignore
   const serviceClient = {
     supabaseUrl: URL,
     from(table) {

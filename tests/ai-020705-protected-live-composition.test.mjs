@@ -118,6 +118,7 @@ function scenario({
       }
     };
   }
+  // prettier-ignore
   const serviceClient = {
     supabaseUrl: URL,
     from(table) {
