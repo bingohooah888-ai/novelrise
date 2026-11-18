@@ -25,7 +25,9 @@ function createResponse() {
 }
 
 function createSupabase() {
+  const auditRows = [];
   return {
+    auditRows,
     auth: {
       async getUser(token) {
         assert.equal(token, 'valid-token');
@@ -34,6 +36,52 @@ function createSupabase() {
           error: null
         };
       }
+    },
+    from(table) {
+      assert.equal(table, 'admin_inquiry_replies');
+      return {
+        insert(row) {
+          const saved = { ...row, id: auditRows.length + 1 };
+          auditRows.push(saved);
+          return {
+            select() {
+              return {
+                async single() {
+                  return { data: { id: saved.id }, error: null };
+                }
+              };
+            }
+          };
+        },
+        update(values) {
+          return {
+            async eq(column, id) {
+              assert.equal(column, 'id');
+              Object.assign(auditRows.find((row) => row.id === id), values);
+              return { error: null };
+            }
+          };
+        },
+        select() {
+          return {
+            eq(column, id) {
+              assert.equal(column, 'inquiry_id');
+              return {
+                order() {
+                  return {
+                    async limit() {
+                      return {
+                        data: auditRows.filter((row) => row.inquiry_id === id),
+                        error: null
+                      };
+                    }
+                  };
+                }
+              };
+            }
+          };
+        }
+      };
     }
   };
 }
@@ -202,4 +250,68 @@ test('admin inquiry reply does not resolve when email delivery fails', async () 
 
   assert.equal(res.statusCode, 502);
   assert.equal(resolved, false);
+});
+
+test('reply history is available only through the authenticated ADMIN handler', async () => {
+  const supabase = createSupabase();
+  supabase.auditRows.push({
+    id: 1,
+    inquiry_id: 27,
+    subject: '先の返信',
+    message: '保存された本文',
+    status: 'sent',
+    sent_at: '2026-11-18T10:00:00Z'
+  });
+  const handler = createAdminInquiryReplyHandler({
+    supabase,
+    env: { NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID },
+    getInquiry: async (_db, id) => ({ id, email: 'author@example.com' })
+  });
+  const req = request();
+  req.method = 'GET';
+  req.query = { id: '27' };
+  const response = await run(handler, req);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.replies[0].message, '保存された本文');
+  assert.equal(response.headers.get('cache-control'), 'private, no-store, max-age=0');
+
+  const denied = request();
+  denied.method = 'GET';
+  denied.query = { id: '27' };
+  delete denied.headers.authorization;
+  const unauthorized = await run(handler, denied);
+  assert.equal(unauthorized.statusCode, 401);
+});
+
+test('email is not sent if the private reply audit cannot be created', async () => {
+  let delivered = false;
+  const supabase = createSupabase();
+  supabase.from = () => ({
+    insert() {
+      return {
+        select() {
+          return {
+            async single() {
+              return { data: null, error: new Error('audit unavailable') };
+            }
+          };
+        }
+      };
+    }
+  });
+  const handler = createAdminInquiryReplyHandler({
+    supabase,
+    env: { NOVELIGHT_ADMIN_USER_IDS: ADMIN_ID },
+    getInquiry: async () => ({ id: 27, email: 'author@example.com' }),
+    sendReply: async () => {
+      delivered = true;
+      return { id: 'unexpected' };
+    }
+  });
+  const response = await run(
+    handler,
+    request({ id: 27, subject: '題名', message: '本文' })
+  );
+  assert.equal(response.statusCode, 500);
+  assert.equal(delivered, false);
 });
