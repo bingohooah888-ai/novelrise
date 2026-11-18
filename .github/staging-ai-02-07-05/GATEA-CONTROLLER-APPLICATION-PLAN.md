@@ -320,3 +320,174 @@ The Controller's deployed default remains 404-only.
 or SQLite mismatch, unsafe rollback, unsatisfied quotas/fences, or failed
 real Staging Auth/STOP/census. No deployment or secret changes in this
 code-only audit.
+
+## 2026-11-18 read-only pre-deployment audit: verified blockers and approval sequence
+
+**Scope:** GitHub Draft PR #2895 at
+\`f1e8d430981256025a68159388ad88669c7513b1\`; Cloudflare/Supabase/
+Vercel live credentials, Secrets, Bindings, deployments, Staging mutations
+and paid AI calls were **not** used. This is evidence classification,
+NOT Gate A approval or an executable release procedure.
+
+### 1. What was directly observed
+
+- PR #2895 was open/Draft at the pinned HEAD; prior automatically run CI
+  #44315597545 and CodeQL #44315597573 both concluded success.
+- GitHub Issue #294, titled \`[Staging Control] Supabase migration sync\`,
+  was open and returned exactly **198** comments via the read-only
+  GitHub connector. In those 198 bodies, the exact
+  \`NOVELIGHT_STAGING_AI_020705_PAID_APPROVE \`,
+  \`NOVELIGHT_STAGING_AI_020705_PAID_CLAIMED \`, and
+  \`NOVELIGHT_STAGING_AI_020705_PAID_CONSUMED \` prefixes each occurred
+  **zero times**. This is a dated observation, not an immutable statement.
+  The existing GitHub OWNER port requires a valid approved/CLAIMED ledger
+  and must remain NO-GO. Do not forge an approval or move to a new ledger.
+- The repository's proposed SQL migration
+  \`supabase/migrations/20261101060000_novelight_ai_020705_one_shot_claim.sql\`
+  accepts only \`gpt-5.6-luna\`, but the OWNER ledger, candidate reader
+  and new preflight plan require \`gpt-6.1-sol\`. The **applied** Staging
+  schema/model eligibility were not queried and remain UNKNOWN; do not
+  modify or apply SQL to reconcile this without a separate approval.
+- \`api/_lib/ai/providers.js\` sends ordinary \`POST /v1/responses\`
+  using \`AbortSignal.timeout\`, without \`background:true\`.
+  The official OpenAI cancellation endpoint requires a response created
+  in background mode. Aborting the local fetch does not certify a
+  completed/cancelled provider-side request or zero spend:
+  https://developers.openai.com/api/reference/resources/responses/methods/cancel
+  Preserve no retry and pessimistic one-shot reservation.
+- Prior repo report
+  \`docs/reports/AI-020705-S2-CLOUDFLARE-A1-LIVE-CANDIDATE-20261114.md\`
+  pins only **local** A1 source SHA-256 values and explicitly states
+  that no remote deployed JS bytes were fetched or compared.
+- Browser tabs contained no authenticated Cloudflare dashboard tab;
+  available saved browser profile sign-in metadata showed GitHub/Google,
+  not Cloudflare. No installed Cloudflare management connector was
+  available. No complete live Watchdog Version UUID, active Deployment
+  response, source content, actual binding map, quota telemetry, DO
+  SQLite row inventory or executable rollback proof was obtained.
+  The observed \`9948be49\` is only an **unverified short prefix** here.
+
+### 2. Strictly read-only Cloudflare evidence acquisition (future approval)
+
+Account in the code-only candidate:
+\`6831b18fe814232fa2dd4c470b95aa15\`;
+Worker: \`novelight-ai-gatea-watchdog\`.
+Grant the narrowest **Workers Content Read-Only** permission to this
+one Worker/account where supported, not Workers Write/Admin, and do
+not transmit the token or source files containing secrets via chat.
+A metadata-only role may not expose the deployed script content;
+grant no write access merely to work around a failed GET.
+
+Use authenticated **GET** endpoints only, checking response origin,
+pagination and access scopes:
+
+1. \`/accounts/{account_id}/workers/scripts/{script_name}/deployments\`
+   to identify the **active** deployment, not merely the latest upload;
+   then \`.../deployments/{deployment_id}\` to record deployment UUID,
+   all versions, weights totaling 100%, and provenance.
+   https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/deployments/methods/get/
+2. \`/accounts/{account_id}/workers/scripts/{script_name}/versions/{version_id}\`
+   for the exact full UUID, source hash/metadata and bindings.
+   https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/versions/methods/get/
+3. The script \`.../content/v2\` GET may show the current script content;
+   do **not** assume it reproduces arbitrary historical version bytes.
+   Compare the active version's verified content/hash and bundled modules
+   to reproducible A1 output with explicit canonicalization. If the
+   immutable bytes cannot be fetched for the active UUID, mark parity
+   UNKNOWN instead of hashing a GitHub source file.
+   https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/content/methods/get/
+4. \`/accounts/{account_id}/workers/durable_objects/namespaces\`
+   and \`.../namespaces/{id}/objects\`: inspect namespace ID,
+   class, backing storage type, object identities and
+   \`hasStoredData\` metadata. These are **not** proof of SQLite
+   table rows or alarms. In particular, namespace
+   \`015ef5be967f4fbfbad31ab24a22bf26\`, legacy class
+   \`GateAWatchdogDurableObject\`, and any run-scoped
+   \`ai-020705-<runId>\` instance must be verified as live.
+   https://developers.cloudflare.com/api/resources/durable_objects/subresources/namespaces/subresources/objects/methods/list/
+
+SQLite Data Studio can execute SQL and also **write** to a DO. Any
+targeted SELECT-only row/alarm/tombstone snapshot requires separate
+approval and credential/interface controls; it is not covered merely
+by this read-only metadata inventory. No \`UPDATE\`, \`DELETE\`,
+\`PRAGMA\` mutation, \`wrangler deploy\`, rollback or alarm operation:
+https://developers.cloudflare.com/durable-objects/observability/data-studio/
+
+### 3. Data-preserving rollback acceptance criteria
+
+Before any later deployment, capture the active deployment UUID, **full
+version UUID**, all modules and bundle hash, old/new DO class exports,
+\`migrations\` versus \`exports\`, Service Bindings, and a read-only
+record of \`gatea_watchdog_local\`, \`gatea_live_once\`,
+\`gatea_atomic_claims_v1\` where they exist, and the DO alarm.
+Respect that some tables may not yet exist: an absent candidate table
+is not a reason to initialize or alter storage during audit. Preserve
+paid claim tombstones across every rollback. Never create a substitute
+DO namespace or transfer/rename/delete the existing class.
+
+Rolling back a Worker code version does **not** roll back Durable
+Object data. A class lifecycle change or changed connected resources
+can block version rollback; changed SQLite schema can break the old
+version even if it deploys. Require a demonstrably valid prior-version
+target and compatible schema/metadata, plus a separate OWNER-approved
+non-mutating dry plan before any actual rollout:
+https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/
+
+### 4. The currently missing independent authority
+
+- Cloudflare Service Bindings, HMAC private claim, Ed25519 identity and
+  signed census **are code-only candidates**; no independent runtime,
+  actual signer, isolated source, or role was provisioned here.
+- The STOP role must bind only the Staging project
+  \`wmlzjgvxgoyrovdhbqbg\`, the exactly approved Vercel Preview and
+  the verified synthetic actor. Disallow Production credentials and
+  unrestricted user cleanup. Actual account/session revocation must
+  also deny already-issued JWTs on sensitive requests; deleting a
+  Supabase user alone does not invalidate the outstanding JWT.
+  https://supabase.com/docs/guides/auth/managing-user-data
+- The census signer must use a distinct read-only identity and query
+  the verified Staging project, auth identities/sessions and scoped
+  application rows; zero counts must not be self-asserted by STOP.
+- Workers Free documents 100,000 requests/day (account-level).
+  Its request quota exhaustion, CPU limits or DO SQLite storage
+  exhaustion may prevent the same-account Worker/DO STOP from running.
+  No same-account Controller or alarm is off-quota. Require a
+  separate failure-domain admission fence that blocks **new** paid
+  POSTs even if Cloudflare cannot run, and explicitly bound/persist
+  any uncertain in-flight call; no retries:
+  https://developers.cloudflare.com/workers/platform/limits/
+- The existing OpenAI provider uses an ordinary non-background POST.
+  **Already submitted processing must be treated as non-cancellable**
+  without independently proven provider-side cancellation and response
+  identity. Prevent a new POST first; do not claim that killing Runner,
+  Preview or fetch cancels the transmitted attempt.
+
+### 5. Incremental permissions/costs and hard STOP conditions
+
+**Approval A (recommended next):** only read-only Cloudflare Work
+session or individually scoped Content Read-Only API token to verify
+the active deployment/full UUID, artifact provenance, namespace and
+binding metadata. Additional paid-service commitment **JPY 0**,
+no new card, upgrade, deployment, Worker request, auth mutation or AI
+POST. API evidence must be redacted to non-secret IDs/hash metadata.
+No permission to execute SQL in Data Studio in this scope.
+
+**Approval B (later, only if A matches):** a separate, explicit,
+SELECT-only DO SQLite/alarm snapshot via a controlled interface with
+verified non-mutating permissions, plus an executable, independently
+reviewed *rollback plan*, not rollback itself. Any usage of the DO
+Data Studio counts against Cloudflare resource activity and requires
+an agreed request/row budget; do not assume free or zero side effects.
+
+**Approval C (later):** individually approved isolated Controller
+deployment and separated Staging stop/delete/census credentials with
+cost ceiling, fail-closed off-quota fence and narrowly bounded
+synthetic no-paid-POST failure drill. Paid AI model/POST and Production
+would require still later, separate approvals.
+
+**Immediate NO-GO** if active version is not byte-parity proven; old
+DO namespace/class/SQLite tombstones cannot be preserved; rollback
+compatibility is unknown; OWNER CLAIMED is absent; model names
+differ; issuer identity, stop, JWT deny, separate census or off-quota
+admission is not real and independently verified. Leave default
+Controller 404-only, all live flags OFF, and no automatic paid retry.
