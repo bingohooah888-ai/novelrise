@@ -57,7 +57,10 @@ function createSupabase() {
           return {
             async eq(column, id) {
               assert.equal(column, 'id');
-              Object.assign(auditRows.find((row) => row.id === id), values);
+              Object.assign(
+                auditRows.find((row) => row.id === id),
+                values
+              );
               return { error: null };
             }
           };
