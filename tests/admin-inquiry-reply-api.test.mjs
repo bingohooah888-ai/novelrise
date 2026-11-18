@@ -273,7 +273,10 @@ test('reply history is available only through the authenticated ADMIN handler', 
   const response = await run(handler, req);
   assert.equal(response.statusCode, 200);
   assert.equal(response.body.replies[0].message, '保存された本文');
-  assert.equal(response.headers.get('cache-control'), 'private, no-store, max-age=0');
+  assert.equal(
+    response.headers.get('cache-control'),
+    'private, no-store, max-age=0'
+  );
 
   const denied = request();
   denied.method = 'GET';
