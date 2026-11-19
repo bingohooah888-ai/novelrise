@@ -10,7 +10,8 @@ const pinned = '8f9e81effe7f2a116460ea8538aea553d1775cc0';
 test('reply-history deploy is pinned to one migration', () => {
   const before = workflow.indexOf('name: Isolate Staging-only AI migration');
   const check = workflow.indexOf('name: Require approved pending migrations');
-  const dryRunCommand = 'run: supabase db push --linked --dry-run --include-all';
+  const dryRunCommand =
+    'run: supabase db push --linked --dry-run --include-all';
   const deployCommand = 'run: supabase db push --linked --yes --include-all';
   const dry = workflow.indexOf(dryRunCommand);
   const deploy = workflow.indexOf(deployCommand);
@@ -39,5 +40,6 @@ test('postcheck restores the AI migration without applying it', () => {
   assert.ok(postcheck.includes('mv -- "$isolated" "$staging_only"'));
   assert.ok(postcheck.includes('git hash-object "$staging_only"'));
   assert.ok(postcheck.includes(pinned));
-  assert.ok(postcheck.includes('if [ "$pending_migrations" != "$expected_pending" ]; then'));
+  const mismatch = 'if [ "$pending_migrations" != "$expected_pending" ]; then';
+  assert.ok(postcheck.includes(mismatch));
 });
