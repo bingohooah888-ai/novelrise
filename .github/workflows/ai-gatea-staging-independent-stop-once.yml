@@ -1,7 +1,7 @@
 name: NOVELIGHT Gate A Staging Independent STOP (one-shot)
 
 # Cloudflare-independent, OWNER-triggered STOP only. It cannot arm AI or call providers.
-# The staging Environment must later receive a NEW dedicated, column-scoped DB role
+# The staging Environment must receive a NEW dedicated, STOP-only DB role
 # secret named GATEA_STAGING_STOP_DATABASE_URL; never reuse STAGING_DATABASE_URL.
 # This is an independent STOP execution path, not yet automatic failure detection.
 on:
@@ -99,7 +99,15 @@ jobs:
           command -v psql >/dev/null
           role_check="$(psql "$GATEA_STOP_DATABASE_URL" -XqAt -v ON_ERROR_STOP=1 -c "
             SELECT CASE WHEN current_user = 'novelight_gatea_stop'
+               AND rolcanlogin AND NOT rolinherit
                AND NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)
+               AND has_function_privilege(current_user, 'gatea_stop_private.stop_once()', 'EXECUTE')
+               AND NOT has_table_privilege(current_user, 'public.novelight_ai_runtime_settings', 'UPDATE')
+               AND NOT has_column_privilege(current_user, 'public.novelight_ai_runtime_settings', 'enabled', 'UPDATE')
+               AND NOT has_column_privilege(current_user, 'public.novelight_ai_runtime_settings', 'user_day_cap_micros', 'UPDATE')
+               AND NOT has_column_privilege(current_user, 'public.novelight_ai_runtime_settings', 'user_month_cap_micros', 'UPDATE')
+               AND NOT has_column_privilege(current_user, 'public.novelight_ai_runtime_settings', 'global_day_cap_micros', 'UPDATE')
+               AND NOT has_column_privilege(current_user, 'public.novelight_ai_runtime_settings', 'global_month_cap_micros', 'UPDATE')
                AND NOT EXISTS (
                  SELECT 1 FROM pg_auth_members
                  WHERE member = (SELECT oid FROM pg_roles WHERE rolname = current_user)
@@ -110,28 +118,7 @@ jobs:
           psql "$GATEA_STOP_DATABASE_URL" -Xq -v ON_ERROR_STOP=1 --single-transaction --file - <<'SQL'
           SET LOCAL lock_timeout = '3s';
           SET LOCAL statement_timeout = '10s';
-          DO $stop$
-          DECLARE affected integer;
-          BEGIN
-            UPDATE public.novelight_ai_runtime_settings
-               SET enabled = false,
-                   user_day_cap_micros = 0,
-                   user_month_cap_micros = 0,
-                   global_day_cap_micros = 0,
-                   global_month_cap_micros = 0,
-                   updated_at = now()
-             WHERE singleton = 1
-               AND enabled IS TRUE
-               AND user_day_cap_micros = 0
-               AND user_month_cap_micros = 0
-               AND global_day_cap_micros = 0
-               AND global_month_cap_micros = 0;
-            GET DIAGNOSTICS affected = ROW_COUNT;
-            IF affected <> 1 THEN
-              RAISE EXCEPTION 'GATEA_STOP_EXPECTED_ONE_ARMED_ROW_NO_GO';
-            END IF;
-          END
-          $stop$;
+          SELECT gatea_stop_private.stop_once();
           SQL
           readback="$(psql "$GATEA_STOP_DATABASE_URL" -XqAt -v ON_ERROR_STOP=1 -c "
             SELECT enabled::text, user_day_cap_micros, user_month_cap_micros,
