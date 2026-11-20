@@ -335,6 +335,35 @@ jobs:
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
+      - name: Isolate Staging-only AI migration for approved reply-history release
+        if: env.APPROVED_MIGRATIONS == '20261118221000'
+        shell: bash
+        run: |
+          set -euo pipefail
+          staging_only='supabase/migrations/20261101060000_novelight_ai_020705_one_shot_claim.sql'
+          pinned_blob='8f9e81effe7f2a116460ea8538aea553d1775cc0'
+          isolated="$RUNNER_TEMP/novelight-staging-only-ai-migration.sql"
+
+          test -f "$staging_only" && test ! -e "$isolated" || {
+            echo 'Safety stop: Staging-only migration input or isolation destination is unexpected.'
+            exit 1
+          }
+          test "$(git hash-object "$staging_only")" = "$pinned_blob" || {
+            echo 'Safety stop: Staging-only migration content differs from the reviewed blob.'
+            exit 1
+          }
+
+          supabase migration list --linked | tee /tmp/reply-history-before-isolation.txt
+          bash scripts/extract-supabase-pending.sh /tmp/reply-history-before-isolation.txt > /tmp/reply-history-pending.txt
+          printf '%s\n' '20261101060000' '20261118221000' > /tmp/reply-history-expected.txt
+          if ! diff -u /tmp/reply-history-expected.txt /tmp/reply-history-pending.txt; then
+            echo 'Safety stop: Production pending migrations are not exactly the reviewed pair.'
+            exit 1
+          fi
+
+          # Exclude only in this ephemeral runner, never from the Git repository.
+          mv -- "$staging_only" "$isolated"
+
       - name: Require approved pending migrations at Production boundary
         run: bash scripts/verify-supabase-pending.sh
 
@@ -350,11 +379,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          expected_pending=''
+          if [ "$APPROVED_MIGRATIONS" = '20261118221000' ]; then
+            staging_only='supabase/migrations/20261101060000_novelight_ai_020705_one_shot_claim.sql'
+            isolated="$RUNNER_TEMP/novelight-staging-only-ai-migration.sql"
+            test ! -e "$staging_only" && test -f "$isolated" || {
+              echo 'Safety stop: Staging-only migration isolation was not preserved.'
+              exit 1
+            }
+            mv -- "$isolated" "$staging_only"
+            test "$(git hash-object "$staging_only")" = '8f9e81effe7f2a116460ea8538aea553d1775cc0' || {
+              echo 'Safety stop: Restored Staging-only migration differs from the reviewed blob.'
+              exit 1
+            }
+            expected_pending='20261101060000'
+          fi
+
           supabase migration list --linked | tee /tmp/post-deploy-migration-list.txt
           pending_migrations="$(bash scripts/extract-supabase-pending.sh /tmp/post-deploy-migration-list.txt)"
-          if [ -n "$pending_migrations" ]; then
-            echo 'Production still has pending migrations after the approved deploy.'
-            printf '%s\n' "$pending_migrations"
+          if [ "$pending_migrations" != "$expected_pending" ]; then
+            echo 'Safety stop: Production pending migrations differ from the approved post-deploy state.'
+            printf 'Expected remaining: %s\nActual remaining: %s\n' "$expected_pending" "$pending_migrations"
             exit 1
           fi
 
