@@ -16,7 +16,7 @@ const SCOPE = {
   mainSha: SHA, previewDeploymentId: PREVIEW,
   actorId: '11111111-1111-4111-8111-111111111111',
   novelId: 41, episodeId: 11, provider: 'openai',
-  model: 'gpt-5.6-luna', capMicros: 10000000,
+  model: 'gpt-6.1-sol', capMicros: 10000000,
   consentRevision: 'synthetic-test-v1',
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg'
 };
@@ -31,7 +31,7 @@ function fixture() {
     capMicros: SCOPE.capMicros, confirmation: 'STAGING PAID 1 CALL APPROVED',
     consentRevision: SCOPE.consentRevision, episodeId: SCOPE.episodeId,
     expiresAt: new Date(NOW + 600000).toISOString(), mainSha: SHA,
-    model: 'gpt-5.6-luna', novelId: SCOPE.novelId,
+    model: 'gpt-6.1-sol', novelId: SCOPE.novelId,
     previewDeploymentId: PREVIEW, provider: 'openai',
     stagingProjectRef: SCOPE.stagingProjectRef
   };

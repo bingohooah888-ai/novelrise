@@ -63,7 +63,7 @@ export function resolve020705GuardedTrialScope(env = {}, now = Date.now()) {
     !Array.isArray(routes) ||
     routes.length !== 1 ||
     routes[0]?.provider !== 'openai' ||
-    routes[0]?.model !== 'gpt-5.6-luna' ||
+    routes[0]?.model !== 'gpt-6.1-sol' ||
     !maxMicros || maxMicros > 10000000 ||
     !commentId || !runId || !novelId || !episodeId ||
     env.NOVELIGHT_AI_TRIAL_ALLOWED_CHUNK_INDEX !== '0' ||
@@ -143,7 +143,7 @@ export function createOwnerNovelBible020705GuardedLiveTrialBridge({
           mainSha: scope.mainSha,
           previewDeploymentId: scope.previewDeploymentId,
           provider: 'openai',
-          model: 'gpt-5.6-luna',
+          model: 'gpt-6.1-sol',
           capMicros: scope.capMicros,
           stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg',
           consentRevision: env.NOVELIGHT_AI_CONSENT_POLICY_REVISION
@@ -166,7 +166,7 @@ export function createOwnerNovelBible020705GuardedLiveTrialBridge({
             novelId: scope.novelId,
             episodeId: scope.episodeId,
             provider: 'openai',
-            model: 'gpt-5.6-luna',
+            model: 'gpt-6.1-sol',
             routeCount: 1,
             maxProviderCalls: 1,
             noRetry: true,

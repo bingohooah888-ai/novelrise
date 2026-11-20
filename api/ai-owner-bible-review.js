@@ -85,6 +85,57 @@ export function createOwnerBibleReviewApiHandler({
     if (!novelId) return fail(res, 400, 'INVALID_NOVEL_ID');
 
     let decision = null;
+    let transfer = null;
+    let beforeId = null;
+    if (req.method === 'GET') {
+      const requestedTransfer =
+        req.query?.transfer_candidate_id !== undefined ||
+        req.query?.expected_revision !== undefined;
+      if (requestedTransfer) {
+        // This is a separate, read-only GET to revalidate a candidate at
+        // the moment the author clicks transfer, not a cached list response.
+        if (
+          Object.keys(req.query ?? {}).some(
+            (key) =>
+              ![
+                'novel_id',
+                'transfer_candidate_id',
+                'expected_revision'
+              ].includes(key)
+          )
+        ) {
+          return fail(res, 400, 'INVALID_TRANSFER_REQUEST');
+        }
+        if (
+          typeof req.query.transfer_candidate_id !== 'string' ||
+          typeof req.query.expected_revision !== 'string'
+        ) {
+          return fail(res, 400, 'INVALID_TRANSFER_REQUEST');
+        }
+        const candidateId = integerId(req.query.transfer_candidate_id);
+        const expectedRevision = integerId(req.query.expected_revision);
+        if (!candidateId || !expectedRevision || expectedRevision < 2) {
+          return fail(res, 400, 'INVALID_TRANSFER_REQUEST');
+        }
+        transfer = { candidateId, expectedRevision };
+      } else {
+        // The browser only controls a positive keyset cursor, never sort,
+        // offset, owner, status, page size or provider configuration.
+        if (
+          Object.keys(req.query ?? {}).some(
+            (key) => !['novel_id', 'before_id'].includes(key)
+          ) ||
+          (req.query?.before_id !== undefined &&
+            typeof req.query.before_id !== 'string')
+        ) {
+          return fail(res, 400, 'INVALID_REVIEW_PAGE');
+        }
+        if (req.query?.before_id !== undefined) {
+          beforeId = integerId(req.query.before_id);
+          if (!beforeId) return fail(res, 400, 'INVALID_REVIEW_PAGE');
+        }
+      }
+    }
     if (req.method === 'POST') {
       // Browser must send the authenticated bearer and a non-simple custom
       // header. Require real same-origin Origin, not just absence of CORS.
@@ -128,7 +179,13 @@ export function createOwnerBibleReviewApiHandler({
         repository
       });
       if (req.method === 'GET') {
-        return res.status(200).json(await workflow.list({ token, novelId }));
+        return res
+          .status(200)
+          .json(
+            transfer
+              ? await workflow.verifyTransfer({ token, novelId, ...transfer })
+              : await workflow.list({ token, novelId, beforeId })
+          );
       }
       return res.status(200).json(
         await workflow.decide({

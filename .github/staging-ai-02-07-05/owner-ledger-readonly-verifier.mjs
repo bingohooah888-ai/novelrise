@@ -22,6 +22,14 @@ const APPROVAL_KEYS = [
 const CLAIM_KEYS = [
   'approvalCommentId', 'mainSha', 'previewDeploymentId', 'runId'
 ].sort();
+const CANDIDATE_APPROVAL_KEYS = [
+  ...APPROVAL_KEYS, 'approvalIssueNumber', 'candidateSha',
+  'repository', 'runId', 'stagingBranch'
+].sort();
+const CANDIDATE_CLAIM_KEYS = [
+  ...CLAIM_KEYS, 'candidateSha', 'stagingBranch'
+].sort();
+const STAGING_BRANCH = /^staging\/ai-02-07-05-[a-z0-9-]+$/u;
 const CONSUME_KEYS = ['approvalCommentId', 'result', 'runId'].sort();
 const RESULTS = new Set(['success', 'failure', 'cancelled', 'skipped']);
 
@@ -64,12 +72,16 @@ function validScope(s) {
     UUID.test(s.actorId ?? '') &&
     Number.isSafeInteger(s.novelId) && s.novelId > 0 &&
     Number.isSafeInteger(s.episodeId) && s.episodeId > 0 &&
-    s.provider === 'openai' && s.model === 'gpt-5.6-luna' &&
+    s.provider === 'openai' && s.model === 'gpt-6.1-sol' &&
     s.stagingProjectRef === 'wmlzjgvxgoyrovdhbqbg' &&
     Number.isSafeInteger(s.capMicros) &&
     s.capMicros >= 1 && s.capMicros <= 10000000 &&
     typeof s.consentRevision === 'string' &&
-    /^[a-z0-9][a-z0-9._-]{3,119}$/iu.test(s.consentRevision);
+    /^[a-z0-9][a-z0-9._-]{3,119}$/iu.test(s.consentRevision) &&
+    ((s.candidateSha === undefined && s.stagingBranch === undefined) ||
+      (SHA.test(s.candidateSha ?? '') &&
+        s.candidateSha !== s.mainSha &&
+        STAGING_BRANCH.test(s.stagingBranch ?? '')));
 }
 
 /**
@@ -126,7 +138,9 @@ export function inspect020705ReadOnlyOwnerLedger({
   if (approvals.length !== 1 ||
       !userIs(approvals[0], OWNER, OWNER_ID, 'User') ||
       approvals[0].author_association !== 'OWNER') deny();
-  const approval = parseEntry(approvals[0].body, 'APPROVE', APPROVAL_KEYS);
+  const candidate = scope.candidateSha !== undefined;
+  const approval = parseEntry(approvals[0].body, 'APPROVE',
+    candidate ? CANDIDATE_APPROVAL_KEYS : APPROVAL_KEYS);
   if (approval.confirmation !== 'STAGING PAID 1 CALL APPROVED' ||
       approval.approvalScope !== 'synthetic-one-provider-one-call-only' ||
       approval.mainSha !== scope.mainSha ||
@@ -139,6 +153,13 @@ export function inspect020705ReadOnlyOwnerLedger({
       approval.capMicros !== scope.capMicros ||
       approval.consentRevision !== scope.consentRevision ||
       approval.stagingProjectRef !== scope.stagingProjectRef ||
+      (candidate && (
+        approval.repository !== REPO ||
+        approval.approvalIssueNumber !== ISSUE ||
+        approval.runId !== scope.runId ||
+        approval.candidateSha !== scope.candidateSha ||
+        approval.stagingBranch !== scope.stagingBranch
+      )) ||
       !Number.isFinite(Date.parse(approval.expiresAt)) ||
       Date.parse(approval.expiresAt) <= Date.parse(approvals[0].created_at) ||
       Date.parse(approval.expiresAt) - Date.parse(approvals[0].created_at) >
@@ -159,11 +180,17 @@ export function inspect020705ReadOnlyOwnerLedger({
     if (kind === 'APPROVE') {
       if (!userIs(c, OWNER, OWNER_ID, 'User') ||
           c.author_association !== 'OWNER') deny();
-      parseEntry(c.body, kind, APPROVAL_KEYS);
+      const isCandidate = c.body.includes('"candidateSha"');
+      parseEntry(c.body, kind,
+        isCandidate ? CANDIDATE_APPROVAL_KEYS : APPROVAL_KEYS);
       continue;
     }
+    const claimIsCandidate = kind === 'CLAIMED' &&
+      c.body.includes('"candidateSha"');
     const row = parseEntry(c.body, kind,
-      kind === 'CLAIMED' ? CLAIM_KEYS : CONSUME_KEYS);
+      kind === 'CLAIMED'
+        ? (claimIsCandidate ? CANDIDATE_CLAIM_KEYS : CLAIM_KEYS)
+        : CONSUME_KEYS);
     if (!Number.isSafeInteger(row.approvalCommentId) ||
         row.approvalCommentId < 1 ||
         !Number.isSafeInteger(row.runId) || row.runId < 1 ||
@@ -178,7 +205,12 @@ export function inspect020705ReadOnlyOwnerLedger({
     if (kind === 'CLAIMED') {
       if (claim || consumed ||
           row.mainSha !== scope.mainSha ||
-          row.previewDeploymentId !== scope.previewDeploymentId) deny();
+          row.previewDeploymentId !== scope.previewDeploymentId ||
+          claimIsCandidate !== candidate ||
+          (candidate && (
+            row.candidateSha !== scope.candidateSha ||
+            row.stagingBranch !== scope.stagingBranch
+          ))) deny();
       claim = c;
     } else {
       if (!claim || consumed || c.id <= claim.id) deny();

@@ -158,7 +158,7 @@ test('novel deletion or ownership transfer rejects even an empty snapshot', asyn
   );
 });
 
-test('read-only Staging catalog precheck has no session-row query or grants', () => {
+test('read-only Staging catalog precheck checks installer permissions without Auth grants', () => {
   const text = readFileSync(PREFLIGHT, 'utf8');
   const executable = runnable(text);
   assert.match(text, /NOT A MIGRATION\. DO NOT EXECUTE/);
@@ -166,23 +166,24 @@ test('read-only Staging catalog precheck has no session-row query or grants', ()
   assert.match(executable, /to_regclass\('auth\.sessions'\)/);
   assert.match(
     executable,
-    /has_schema_privilege\('service_role', 'auth', 'USAGE'\)/
+    /has_schema_privilege\(current_user, 'auth', 'USAGE'\)/
   );
   assert.match(
     executable,
-    /has_any_column_privilege\([\s\S]*'service_role', sessions_oid, 'UPDATE'/
+    /has_any_column_privilege\(current_user, sessions_oid, 'UPDATE'\)/
   );
   assert.match(
     executable,
     /has_any_column_privilege\([\s\S]*'service_role', novels_oid, 'UPDATE'/
   );
+  assert.match(executable, /to_regnamespace\('novelight_ai_private'\)/);
   assert.match(
     executable,
     /has_function_privilege\('anon', cas_oid, 'EXECUTE'\)/
   );
   assert.match(
     executable,
-    /has_function_privilege\('authenticated', cas_oid, 'EXECUTE'\)/
+    /has_function_privilege\('authenticated', probe_oid, 'EXECUTE'\)/
   );
   assert.doesNotMatch(executable, /\bfrom\s+auth\.sessions\s+[a-z_]+/i);
   assert.doesNotMatch(
@@ -191,7 +192,7 @@ test('read-only Staging catalog precheck has no session-row query or grants', ()
   );
 });
 
-test('installation proposal fails closed on unavailable FOR SHARE privilege', () => {
+test('installation proposal uses a private session guard without service_role Auth grants', () => {
   const text = readFileSync(SQL, 'utf8');
   const program = runnable(text);
   const guard = program.indexOf('do $review_state_privilege_guard$');
@@ -204,23 +205,26 @@ test('installation proposal fails closed on unavailable FOR SHARE privilege', ()
   assert.ok(guard > 0 && guard < table && table < func);
   assert.match(
     program,
-    /has_column_privilege\('service_role', v_auth_sessions, 'id', 'SELECT'\)/
+    /has_column_privilege\(current_user,v_sessions,'id','SELECT'\)/
   );
   assert.match(
     program,
-    /has_column_privilege\('service_role', v_auth_sessions, 'user_id', 'SELECT'\)/
+    /has_column_privilege\(current_user,v_sessions,'not_after','SELECT'\)/
   );
   assert.match(
     program,
-    /has_any_column_privilege\('service_role', v_auth_sessions, 'UPDATE'\)/
+    /has_any_column_privilege\(current_user,v_sessions,'UPDATE'\)/
   );
   assert.match(
     program,
-    /has_any_column_privilege\('service_role', v_novels, 'UPDATE'\)/
+    /has_any_column_privilege\('service_role',v_novels,'UPDATE'\)/
   );
-  assert.match(program, /raise exception using errcode = '42501'/);
+  assert.match(program, /create schema novelight_ai_private;/);
+  assert.match(program, /novelight_ai_private\.session_active_v1\(/);
+  assert.match(program, /for share of s/);
+  assert.match(program, /raise exception using errcode='42501'/);
   assert.doesNotMatch(program, /\bgrant\s+update\s+on\s+auth\.sessions/i);
-  assert.doesNotMatch(program, /\bsecurity\s+definer\b/i);
+  assert.equal((program.match(/security definer/gi) ?? []).length, 1);
 });
 
 test('rollback proposal aborts when nonempty; drops only exact Staging review objects without cascade', () => {
@@ -239,6 +243,15 @@ test('rollback proposal aborts when nonempty; drops only exact Staging review ob
     program,
     /drop table public\.novelight_ai_owner_review_states restrict/
   );
+  assert.match(
+    program,
+    /drop function public\.novelight_ai_owner_session_exists_v1\(/
+  );
+  assert.match(
+    program,
+    /drop function novelight_ai_private\.session_active_v1\(/
+  );
+  assert.match(program, /drop schema novelight_ai_private restrict/);
   assert.doesNotMatch(program, /\bcascade\b/i);
   assert.doesNotMatch(program, /\bauth\.\w+\b/);
   assert.doesNotMatch(program, /\bsupabase_migrations\b/i);

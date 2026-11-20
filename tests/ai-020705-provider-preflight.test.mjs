@@ -7,16 +7,16 @@ import { quoteAiProviderCeiling } from '../api/_lib/ai/price-quote.js';
 import { createOpenAiTextProvider } from '../api/_lib/ai/providers.js';
 import { reviewNovelBibleInference } from '../api/_lib/ai/novel-bible-inference-review.js';
 
-// Price snapshots verified from provider documentation on 2026-11-01.
+// OpenAI Sol Standard pricing verified 2026-11-17; Gemini retains the 2026-11-01 snapshot.
 // NOT runtime price authorization or a guarantee of current billing.
 // prettier-ignore
 const CANDIDATES = [
   {
     provider: 'openai',
-    model: 'gpt-5.6-luna',
-    inputUsdMicrosPerMillion: 200000,
-    outputUsdMicrosPerMillion: 1200000,
-    expectedCeilingMicros: 2528640
+    model: 'gpt-6.1-sol',
+    inputUsdMicrosPerMillion: 2000000,
+    outputUsdMicrosPerMillion: 10000000,
+    expectedCeilingMicros: 24672000
   },
   {
     provider: 'gemini',
@@ -28,7 +28,7 @@ const CANDIDATES = [
 ];
 
 // prettier-ignore
-test('02-07-05 single-model official-price snapshot stays under proposed cap', () => {
+test('02-07-05 official-price snapshot flags Sol over the existing trial cap', () => {
   for (const candidate of CANDIDATES) {
     const plan = quoteAiProviderCeiling({
       routes: [{
@@ -45,7 +45,11 @@ test('02-07-05 single-model official-price snapshot stays under proposed cap', (
     assert.equal(plan.routes.length, 1);
     assert.equal(plan.quoteMicrosJPY, candidate.expectedCeilingMicros);
     assert.ok(plan.quoteMicrosJPY > 0);
-    assert.ok(plan.quoteMicrosJPY < 10000000);
+    if (candidate.model === 'gpt-6.1-sol') {
+      assert.ok(plan.quoteMicrosJPY > 10000000);
+    } else {
+      assert.ok(plan.quoteMicrosJPY < 10000000);
+    }
     assert.equal(plan.routes[0].model, candidate.model);
   }
 });
@@ -60,7 +64,7 @@ test('02-07-05 selected model adapter keeps synthetic request private', async ()
       assert.equal(url, 'https://api.openai.com/v1/responses');
       assert.equal(options.method, 'POST');
       const body = JSON.parse(options.body);
-      assert.equal(body.model, 'gpt-5.6-luna');
+      assert.equal(body.model, 'gpt-6.1-sol');
       assert.equal(body.max_output_tokens, 1024);
       assert.equal(body.store, false);
       assert.equal(body.truncation, 'disabled');
@@ -84,7 +88,7 @@ test('02-07-05 selected model adapter keeps synthetic request private', async ()
     }
   });
   const result = await provider.generate({
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     system: '合成文のみを検証する',
     user: '架空の資料だけを抽出する',
     maxOutputTokens: 1024,

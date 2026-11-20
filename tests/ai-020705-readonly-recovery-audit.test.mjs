@@ -15,7 +15,7 @@ const SCOPE = {
   issueNumber: 294, approvalCommentId: 700, runId: 1001,
   mainSha: SHA, previewDeploymentId: PREVIEW,
   actorId: USER_ID, novelId: 41, episodeId: 11,
-  provider: 'openai', model: 'gpt-5.6-luna',
+  provider: 'openai', model: 'gpt-6.1-sol',
   capMicros: 10000000, consentRevision: 'synthetic-test-v1',
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg'
 };
@@ -42,7 +42,7 @@ function ledger(phase = 'consumed') {
     consentRevision: SCOPE.consentRevision,
     episodeId: SCOPE.episodeId,
     expiresAt: new Date(NOW + 600000).toISOString(),
-    mainSha: SHA, model: 'gpt-5.6-luna',
+    mainSha: SHA, model: 'gpt-6.1-sol',
     novelId: SCOPE.novelId, previewDeploymentId: PREVIEW,
     provider: 'openai', stagingProjectRef: SCOPE.stagingProjectRef
   };

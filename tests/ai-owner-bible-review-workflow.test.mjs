@@ -92,7 +92,13 @@ function setup(options = {}) {
       assert.equal(actorId, OWNER);
       assert.equal(novelId, 354);
       assert.equal(episodeId, 41);
-      assert.equal(sourceHash, HASH);
+      const currentHash = planNovelBibleEpisodeChanges({
+        principal: { id: OWNER },
+        novel: NOVEL,
+        episodes: [state.episode],
+        analyses: []
+      }).pending[0].sourceHash;
+      assert.equal(sourceHash, currentHash);
       assert.equal(candidates[0].provenance, 'ai_inferred');
       assert.equal(candidates[0].requiresAuthorReview, true);
       assert.doesNotMatch(JSON.stringify(candidates), /author_confirmed/);
@@ -119,6 +125,20 @@ function setup(options = {}) {
       }
       state.hashes.set(requestHash, ids);
       return { count: candidates.length };
+    },
+    async listPending({ actorId, novelId }) {
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 354);
+      return [...state.records.values()]
+        .filter((row) => row.status === 'pending')
+        .map((row) => ({ ...row }));
+    },
+    async listAccepted({ actorId, novelId }) {
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 354);
+      return [...state.records.values()]
+        .filter((row) => row.status === 'accepted')
+        .map((row) => ({ ...row }));
     },
     async readCandidate({ actorId, novelId, candidateId }) {
       const row = state.records.get(candidateId);
@@ -314,4 +334,402 @@ test('fail closed for bad repository and settings', async () => {
   state.storedCanon = [{ kind: 'made-up-kind', key: '凛' }];
   await assert.rejects(stage(), /AI_OWNER_REVIEW_DENIED/);
   assert.equal(state.records.size, 0);
+});
+
+test('owner list quarantines stale pending and accepted records without writes', async () => {
+  const f = setup();
+  await f.stage();
+  let result = await f.workflow.list({ token: TOKEN, novelId: 354 });
+  assert.equal(result.candidates.length, 1);
+  assert.deepEqual(result.staleCandidates, []);
+  assert.equal(result.candidates[0].status, 'pending');
+
+  f.state.episode.title = '改稿された題名';
+  result = await f.workflow.list({ token: TOKEN, novelId: 354 });
+  assert.deepEqual(result.candidates, []);
+  assert.deepEqual(result.acceptedCandidates, []);
+  assert.equal(result.staleCandidates.length, 1);
+  assert.equal(result.staleCandidates[0].status, 'pending');
+  assert.equal(result.staleCandidates[0].staleReason, 'source_changed');
+  await assert.rejects(f.decide(), /AI_BIBLE_INFERENCE_INVALID/u);
+  assert.equal(f.state.records.get(1).status, 'pending');
+
+  // A previously accepted suggestion is historical evidence, not author
+  // canon and not eligible for a new notes transfer after source changes.
+  f.state.episode.title = EPISODE.title;
+  await f.decide();
+  f.state.episode.content += '改稿';
+  result = await f.workflow.list({ token: TOKEN, novelId: 354 });
+  assert.equal(result.acceptedCandidates.length, 0);
+  assert.equal(result.staleCandidates.length, 1);
+  assert.equal(result.staleCandidates[0].status, 'accepted');
+  assert.equal(result.staleCandidates[0].staleReason, 'source_changed');
+  assert.equal(f.state.records.get(1).revision, 2);
+  assert.equal(f.state.storedCanon[0].key, '凛');
+});
+
+test('missing episode stays in a read-only stale list, never auto-deleted', async () => {
+  const f = setup();
+  await f.stage();
+  f.state.episode = null;
+  const list = await f.workflow.list({ token: TOKEN, novelId: 354 });
+  assert.deepEqual(list.candidates, []);
+  assert.equal(list.staleCandidates.length, 1);
+  assert.equal(list.staleCandidates[0].staleReason, 'episode_missing');
+  assert.equal(f.state.records.get(1).status, 'pending');
+  assert.equal(f.state.records.size, 1);
+});
+
+test('foreign-work episode, unauthenticated owner and malformed source reject listing', async () => {
+  const f = setup();
+  await f.stage();
+  await assert.rejects(
+    f.workflow.list({ token: 'not-a-valid-owner-token', novelId: 354 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+  f.state.episode.novel_id = 999;
+  await assert.rejects(
+    f.workflow.list({ token: TOKEN, novelId: 354 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+  f.state.episode.novel_id = 354;
+  f.state.episode.content = null;
+  await assert.rejects(
+    f.workflow.list({ token: TOKEN, novelId: 354 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+});
+
+test('same fact kind/key from a revised chapter is independently staged and reviewed', async () => {
+  const { state, stage, decide, workflow } = setup();
+  // Legacy source: explicit review is persisted but NEVER author canon.
+  assert.equal((await stage()).stagedCount, 1);
+  const firstRequestHash = [...state.hashes.keys()][0];
+  await decide();
+  assert.equal(state.records.get(1).status, 'accepted');
+  assert.equal(state.storedCanon[0].key, '凛');
+
+  // Revised source still contains the same cited passage and suggestion.
+  // Its factKind+factKey are unchanged; its chapter content hash differs.
+  state.episode.content += ' そして港を出発した。';
+  const revisedHash = planNovelBibleEpisodeChanges({
+    principal: { id: OWNER },
+    novel: NOVEL,
+    episodes: [state.episode],
+    analyses: []
+  }).pending[0].sourceHash;
+  const latest = await stage({ sourceHash: revisedHash });
+  assert.equal(latest.stagedCount, 1);
+  assert.equal(state.hashes.size, 2);
+  assert.notEqual([...state.hashes.keys()][1], firstRequestHash);
+  assert.equal(state.records.size, 2);
+  assert.equal(state.records.get(1).sourceHash, HASH);
+  assert.equal(state.records.get(2).sourceHash, revisedHash);
+  assert.equal(state.records.get(2).factKind, state.records.get(1).factKind);
+  assert.equal(state.records.get(2).factKey, state.records.get(1).factKey);
+  assert.equal(state.records.get(2).status, 'pending');
+
+  // Replaying the SAME revised source must not create a third record.
+  assert.equal((await stage({ sourceHash: revisedHash })).stagedCount, 0);
+  assert.equal(state.records.size, 2);
+  let list = await workflow.list({ token: TOKEN, novelId: 354 });
+  assert.equal(list.candidates.length, 1);
+  assert.equal(list.candidates[0].id, 2);
+  assert.equal(list.candidates[0].replacesOutdatedVersion, true);
+  assert.equal(list.staleCandidates.length, 1);
+  assert.equal(list.staleCandidates[0].id, 1);
+  assert.equal(list.staleCandidates[0].status, 'accepted');
+  assert.equal(list.staleCandidates[0].staleReason, 'source_changed');
+  assert.equal(list.acceptedCandidates.length, 0);
+
+  // Only the NEW record is reviewable, old review history remains unchanged.
+  await assert.rejects(
+    decide({ candidateId: 1, expectedRevision: 2 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+  assert.equal(
+    (
+      await decide({
+        candidateId: 2,
+        expectedRevision: 1,
+        action: 'accept'
+      })
+    ).status,
+    'accepted'
+  );
+  list = await workflow.list({ token: TOKEN, novelId: 354 });
+  assert.deepEqual(list.candidates, []);
+  assert.equal(list.acceptedCandidates.length, 1);
+  assert.equal(list.acceptedCandidates[0].id, 2);
+  assert.equal(list.acceptedCandidates[0].replacesOutdatedVersion, true);
+  assert.equal(list.staleCandidates[0].id, 1);
+  assert.equal(state.records.get(1).revision, 2);
+  assert.equal(state.records.get(2).revision, 2);
+  assert.deepEqual(state.storedCanon, [{ kind: 'character', key: '凛' }]);
+});
+
+test('different episode or different fact key never receives false newer-version label', async () => {
+  const { state, stage, workflow } = setup();
+  await stage();
+  state.episode.content += '追記。';
+  const revisedHash = planNovelBibleEpisodeChanges({
+    principal: { id: OWNER },
+    novel: NOVEL,
+    episodes: [state.episode],
+    analyses: []
+  }).pending[0].sourceHash;
+  // Simulate a different key in the same revised chapter; both rows are kept.
+  state.records.set(2, {
+    ...state.records.get(1),
+    id: 2,
+    sourceHash: revisedHash,
+    factKey: '別の人物',
+    revision: 1
+  });
+  const list = await workflow.list({ token: TOKEN, novelId: 354 });
+  assert.equal(list.candidates.length, 1);
+  assert.equal(list.candidates[0].replacesOutdatedVersion, undefined);
+  assert.equal(list.staleCandidates.length, 1);
+  assert.equal(list.staleCandidates[0].id, 1);
+});
+
+test('130 mixed review candidates page newest first with all historical rows recoverable', async () => {
+  const records = Array.from({ length: 130 }, (_, index) => {
+    const id = index + 1;
+    const status = id % 4 === 0 ? 'accepted' : 'pending';
+    return {
+      id,
+      actorId: OWNER,
+      novelId: 354,
+      sourceEpisodeId: 41,
+      sourceHash: id % 3 === 0 ? 'b'.repeat(64) : HASH,
+      factKind: 'character',
+      factKey: '凛',
+      summary: '候補 ' + id,
+      evidence: SUGGESTION.evidence,
+      status,
+      provenance: 'ai_inferred',
+      revision: status === 'accepted' ? 2 : 1
+    };
+  });
+  const reads = [];
+  const repository = {
+    listAuthorConfirmed: async () => [],
+    savePendingBatch: async () => ({ count: 0 }),
+    readCandidate: async () => null,
+    compareAndSwapDecision: async () => null,
+    async listPriorVersionIds({ actorId, novelId, candidates }) {
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 354);
+      return candidates
+        .filter((item) =>
+          records.some(
+            (old) =>
+              old.id < item.id &&
+              old.actorId === actorId &&
+              old.novelId === novelId &&
+              old.sourceEpisodeId === item.episodeId &&
+              old.factKind === item.factKind &&
+              old.factKey === item.factKey &&
+              old.sourceHash !== item.sourceHash
+          )
+        )
+        .map((item) => item.id);
+    },
+    async listReviewPage({ actorId, novelId, beforeId }) {
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 354);
+      reads.push(beforeId);
+      const matches = records
+        .filter((row) => beforeId === null || row.id < beforeId)
+        .sort((a, b) => b.id - a.id);
+      return {
+        rows: matches.slice(0, 25),
+        nextBeforeId: matches.length > 25 ? matches[24].id : null
+      };
+    }
+  };
+  const { workflow, state } = setup({ repository });
+  const ids = [];
+  let cursor = null;
+  let pages = 0;
+  do {
+    const page = await workflow.list({
+      token: TOKEN,
+      novelId: 354,
+      beforeId: cursor
+    });
+    const all = [
+      ...page.candidates,
+      ...page.acceptedCandidates,
+      ...page.staleCandidates
+    ];
+    assert.ok(all.length > 0 && all.length <= 25);
+    assert.equal(new Set(all.map((row) => row.id)).size, all.length);
+    if (pages === 0) assert.equal(Math.max(...all.map((row) => row.id)), 130);
+    for (const item of page.staleCandidates) {
+      assert.equal(item.staleReason, 'source_changed');
+      assert.equal(item.id % 3, 0);
+    }
+    ids.push(...all.map((row) => row.id));
+    cursor = page.pagination.nextBeforeId;
+    pages += 1;
+  } while (cursor !== null && pages <= 6);
+  assert.equal(pages, 6);
+  assert.deepEqual(
+    [...ids].sort((a, b) => b - a),
+    Array.from({ length: 130 }, (_, index) => 130 - index)
+  );
+  assert.equal(new Set(ids).size, 130);
+  assert.deepEqual(reads, [null, 106, 81, 56, 31, 6]);
+  assert.equal(state.records.size, 0);
+});
+
+test('page cursor and forged unordered or repeated candidate rows fail closed', async () => {
+  const row = {
+    id: 40,
+    actorId: OWNER,
+    novelId: 354,
+    sourceEpisodeId: 41,
+    sourceHash: HASH,
+    factKind: 'character',
+    factKey: '凛',
+    summary: '再登場',
+    evidence: SUGGESTION.evidence,
+    provenance: 'ai_inferred',
+    status: 'pending',
+    revision: 1
+  };
+  const make = (rows, nextBeforeId = null) =>
+    setup({
+      repository: {
+        listAuthorConfirmed: async () => [],
+        savePendingBatch: async () => ({ count: 0 }),
+        readCandidate: async () => null,
+        compareAndSwapDecision: async () => null,
+        listReviewPage: async () => ({ rows, nextBeforeId })
+      }
+    }).workflow;
+  for (const rows of [
+    [row, row],
+    [{ ...row, id: 39 }, row],
+    [{ ...row, status: 'rejected' }],
+    [{ ...row, novelId: 999 }],
+    [{ ...row, actorId: OTHER }],
+    [{ ...row, id: 41 }]
+  ]) {
+    await assert.rejects(
+      make(rows).list({ token: TOKEN, novelId: 354, beforeId: 41 }),
+      /AI_OWNER_REVIEW_DENIED/u
+    );
+  }
+  await assert.rejects(
+    make([row], 40).list({ token: TOKEN, novelId: 354 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+  await assert.rejects(
+    make([]).list({ token: OTHER, novelId: 354 }),
+    /AI_OWNER_REVIEW_DENIED/u
+  );
+});
+
+test('newest same-key proposal shows revised label even when older chapter version is five pages away', async () => {
+  const records = Array.from({ length: 130 }, (_, i) => ({
+    id: i + 1,
+    actorId: OWNER,
+    novelId: 354,
+    sourceEpisodeId: 41,
+    sourceHash: i === 0 ? 'b'.repeat(64) : HASH,
+    factKind: 'character',
+    factKey: i === 0 || i === 129 ? '凛' : '別の人物 ' + i,
+    summary: '候補 ' + i,
+    evidence: SUGGESTION.evidence,
+    provenance: 'ai_inferred',
+    status: i === 0 ? 'accepted' : 'pending',
+    revision: i === 0 ? 2 : 1
+  }));
+  const repository = {
+    listAuthorConfirmed: async () => [],
+    savePendingBatch: async () => ({ count: 0 }),
+    readCandidate: async () => null,
+    compareAndSwapDecision: async () => null,
+    async listReviewPage({ beforeId }) {
+      const selected = records
+        .filter((row) => beforeId === null || row.id < beforeId)
+        .sort((a, b) => b.id - a.id);
+      return {
+        rows: selected.slice(0, 25),
+        nextBeforeId: selected.length > 25 ? selected[24].id : null
+      };
+    },
+    async listPriorVersionIds({ candidates }) {
+      return candidates
+        .filter((item) =>
+          records.some(
+            (old) =>
+              old.id < item.id &&
+              old.sourceEpisodeId === item.episodeId &&
+              old.factKind === item.factKind &&
+              old.factKey === item.factKey &&
+              old.sourceHash !== item.sourceHash
+          )
+        )
+        .map((item) => item.id);
+    }
+  };
+  const { workflow, state } = setup({ repository });
+  const first = await workflow.list({ token: TOKEN, novelId: 354 });
+  assert.equal(first.candidates.length, 25);
+  assert.equal(first.staleCandidates.length, 0);
+  assert.equal(first.candidates[0].id, 130);
+  assert.equal(first.candidates[0].replacesOutdatedVersion, true);
+  assert.equal(first.candidates[1].replacesOutdatedVersion, undefined);
+  assert.equal(first.pagination.nextBeforeId, 106);
+  const oldest = await workflow.list({
+    token: TOKEN,
+    novelId: 354,
+    beforeId: 6
+  });
+  assert.equal(oldest.staleCandidates.length, 1);
+  assert.equal(oldest.staleCandidates[0].id, 1);
+  assert.equal(oldest.staleCandidates[0].status, 'accepted');
+  assert.equal(oldest.staleCandidates[0].staleReason, 'source_changed');
+  assert.equal(state.records.size, 0);
+  assert.equal(state.storedCanon[0].key, '凛');
+});
+
+test('paged history lookup fails closed on fabricated or foreign candidate IDs', async () => {
+  const row = {
+    id: 30,
+    actorId: OWNER,
+    novelId: 354,
+    sourceEpisodeId: 41,
+    sourceHash: HASH,
+    factKind: 'character',
+    factKey: '凛',
+    summary: '現在の候補',
+    evidence: SUGGESTION.evidence,
+    provenance: 'ai_inferred',
+    status: 'pending',
+    revision: 1
+  };
+  for (const bad of [[29], [30, 30], ['30'], [999]]) {
+    const { workflow } = setup({
+      repository: {
+        listAuthorConfirmed: async () => [],
+        savePendingBatch: async () => ({ count: 0 }),
+        readCandidate: async () => null,
+        compareAndSwapDecision: async () => null,
+        listReviewPage: async () => ({
+          rows: [row],
+          nextBeforeId: null
+        }),
+        listPriorVersionIds: async () => bad
+      }
+    });
+    await assert.rejects(
+      workflow.list({ token: TOKEN, novelId: 354 }),
+      /AI_OWNER_REVIEW_DENIED/u
+    );
+  }
 });

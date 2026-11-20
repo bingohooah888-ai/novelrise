@@ -24,7 +24,7 @@ const APPROVED = {
   episodeId: 12,
   consentRevision: 'test-policy-v1',
   provider: 'openai',
-  model: 'gpt-5.6-luna',
+  model: 'gpt-6.1-sol',
   capMicros: 10000000,
   expiresAt: new Date(NOW + 1800000).toISOString()
 };
@@ -69,7 +69,7 @@ function fixtures() {
       consentRevision: APPROVED.consentRevision, expiresAt: APPROVED.expiresAt
     },
     readBillingProtection: {
-      provider: 'openai', model: 'gpt-5.6-luna', currency: 'JPY',
+      provider: 'openai', model: 'gpt-6.1-sol', currency: 'JPY',
       providerAccountVerified: true, currentOfficialRatesVerified: true,
       exchangeRateVerified: true, singleAttemptNoRetry: true,
       capEnforcedExternally: true, worstCaseTotalMicros: 8000000

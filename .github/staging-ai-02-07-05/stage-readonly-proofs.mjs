@@ -4,7 +4,7 @@
 const REF = 'wmlzjgvxgoyrovdhbqbg';
 const URL = 'https://' + REF + '.supabase.co';
 const REPO = 'bingohooah888-ai/novelrise';
-const MODEL = 'gpt-5.6-luna';
+const MODEL = 'gpt-6.1-sol';
 const MIGRATION = '20261101060000_novelight_ai_020705_one_shot_claim';
 const SHA = /^[a-f0-9]{40}$/u;
 const BRANCH = /^staging\/ai-02-07-05-[a-z0-9-]+$/u;

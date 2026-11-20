@@ -37,7 +37,7 @@ function setup({ fail = false, census = true } = {}) {
         episodeId: 11,
         expiresAt: new Date(NOW + 3600000).toISOString(),
         mainSha: SHA,
-        model: 'gpt-5.6-luna',
+        model: 'gpt-6.1-sol',
         novelId: 41,
         previewDeploymentId: PREVIEW,
         provider: 'openai',
@@ -50,6 +50,28 @@ function setup({ fail = false, census = true } = {}) {
     now: () => NOW,
     serviceClient: {
       supabaseUrl: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
+      from(table) {
+        assert.equal(table, 'novelight_ai_runtime_settings');
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  async single() {
+                    return {error: null, data: {
+                      singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
+                      user_day_cap_micros: 10000000,
+                      user_month_cap_micros: 10000000,
+                      global_day_cap_micros: 10000000,
+                      global_month_cap_micros: 10000000
+                    }};
+                  }
+                };
+              }
+            };
+          }
+        };
+      },
       async rpc() {
         actions.push('db-claim');
         if (consumed) return { data: false, error: null };
@@ -71,7 +93,7 @@ function setup({ fail = false, census = true } = {}) {
       novelId: 41,
       episodeId: 11,
       provider: 'openai',
-      model: 'gpt-5.6-luna',
+      model: 'gpt-6.1-sol',
       routeCount: 1,
       maxProviderCalls: 1,
       noRetry: true,
@@ -97,7 +119,7 @@ function setup({ fail = false, census = true } = {}) {
       mainSha: SHA,
       previewDeploymentId: PREVIEW,
       provider: 'openai',
-      model: 'gpt-5.6-luna',
+      model: 'gpt-6.1-sol',
       capMicros: 10000000,
       actorId: OWNER,
       novelId: 41,
@@ -114,7 +136,7 @@ function setup({ fail = false, census = true } = {}) {
       });
     },
     guardedProvider,
-    request: { model: 'gpt-5.6-luna', system: 'synthetic', user: 'fiction' },
+    request: { model: 'gpt-6.1-sol', system: 'synthetic', user: 'fiction' },
     stop: async () => { actions.push('stop'); return true; },
     cleanup: async () => { actions.push('cleanup'); return true; },
     finalCensus: async () => { actions.push('census'); return census; }

@@ -15,7 +15,7 @@ const SYNTHETIC = {
 };
 
 // prettier-ignore
-function fixture({ realUser = false, badCensus = false, failedDisable = false } = {}) {
+function fixture({ realUser = false, badCensus = false, failedDisable = false, zeroRuntimeRows = false, unchangedRuntime = false, nullBudget = false, chunkClaimCount = 0, censusScopeOverrides = {} } = {}) {
   const calls = [];
   const serviceClient = {
     supabaseUrl: SYNTHETIC.supabaseUrl,
@@ -23,7 +23,7 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false } 
       const action = { table, operation: null, scopes: [], payload: null };
       const query = {
         select() {
-          action.operation = 'select';
+          if (action.operation !== 'update') action.operation = 'select';
           return query;
         },
         update(payload) {
@@ -38,6 +38,21 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false } 
         eq(key, value) {
           action.scopes.push([key, value]);
           return query;
+        },
+        async single() {
+          calls.push(action);
+          return {
+            count: zeroRuntimeRows ? 0 : 1,
+            error: null,
+            data: zeroRuntimeRows ? null : {
+              singleton: 1,
+              enabled: unchangedRuntime,
+              user_day_cap_micros: 0,
+              user_month_cap_micros: 0,
+              global_day_cap_micros: nullBudget ? null : 0,
+              global_month_cap_micros: 0
+            }
+          };
         },
         async maybeSingle() {
           calls.push(action);
@@ -75,8 +90,13 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false } 
     }
   };
   const census = {
+    projectRef: SYNTHETIC.projectRef,
+    userId: SYNTHETIC.userId,
+    novelId: SYNTHETIC.novelId,
+    approvalCommentId: SYNTHETIC.approvalCommentId,
     runtimeDisabledZero: true,
     approvalTombstoneCount: 1,
+    chunkClaimsRetained: chunkClaimCount,
     users: 0,
     identities: 0,
     sessions: 0,
@@ -89,7 +109,8 @@ function fixture({ realUser = false, badCensus = false, failedDisable = false } 
     consents: 0,
     consentAudit: 0,
     usageRequests: 0,
-    usageAudit: 0
+    usageAudit: 0,
+    ...censusScopeOverrides
   };
   const cleanup = create020705StagingCleanup({
     serviceClient,
@@ -129,6 +150,15 @@ test('stop attempts both Staging switch reset and external kill switch', async (
 });
 
 // prettier-ignore
+test('zero-row Staging switch and non-zero OFF state never certify stop', async () => {
+  for (const variation of [{ zeroRuntimeRows: true }, { unchangedRuntime: true }, { nullBudget: true }]) {
+    const { cleanup, calls } = fixture(variation);
+    assert.equal(await cleanup.stop(), false);
+    assert.ok(calls.some((item) => item.action === 'disableExternal'));
+  }
+});
+
+// prettier-ignore
 test('external kill switch failure is reported even when DB reset succeeds', async () => {
   const { cleanup, calls } = fixture({ failedDisable: true });
   assert.equal(await cleanup.stop(), false);
@@ -152,6 +182,7 @@ test('cleanup deletes only synthetic usage rows and the validated novel/user', a
   assert.ok(!deleted.some((c) =>
     c.table === 'novelight_ai_external_consent_action_audit'
   ));
+  assert.ok(!deleted.some((c) => c.table === 'novelight_ai_chunk_claims'));
   assert.ok(calls.some((c) => c.action === 'deleteAuth'));
   assert.ok(calls.some((c) => c.action === 'revokeSessions'));
   assert.ok(calls.findIndex((c) => c.action === 'revokeSessions') < calls.findIndex((c) => c.action === 'deleteAuth'));
@@ -181,4 +212,39 @@ test('Production URL is refused and final census is independently mandatory', as
     cleanup.finalCensus(),
     /AI_020705_STAGING_CLEANUP_DENIED/u
   );
+});
+
+// A claim is deliberately retained even when all synthetic fixtures are gone.
+// The count must be scoped to the synthetic actor+novel by an independent
+// observer; it is not a claim that a model was actually billed.
+// prettier-ignore
+test('independent census requires explicit bounded claim retention evidence', async () => {
+  assert.equal(await fixture({ chunkClaimCount: 0 }).cleanup.finalCensus(), true);
+  assert.equal(await fixture({ chunkClaimCount: 1 }).cleanup.finalCensus(), true);
+  for (const count of [null, -1, 2, 0.5, '1']) {
+    const { cleanup } = fixture({ chunkClaimCount: count });
+    await assert.rejects(
+      cleanup.finalCensus(),
+      /AI_020705_STAGING_CLEANUP_DENIED/u
+    );
+  }
+});
+
+// A 0/1 durable-claim count from any OTHER synthetic identity is not proof
+// that this verified actor/work has no leftover rows.
+test('independent claim census rejects mismatched synthetic identity markers', async () => {
+  const cases = [
+    { projectRef: 'different-project' },
+    { userId: '22222222-2222-4222-8222-222222222222' },
+    { novelId: 42 },
+    { approvalCommentId: 902 },
+    { userId: undefined }
+  ];
+  for (const censusScopeOverrides of cases) {
+    const { cleanup } = fixture({ censusScopeOverrides });
+    await assert.rejects(
+      cleanup.finalCensus(),
+      /AI_020705_STAGING_CLEANUP_DENIED/u
+    );
+  }
 });

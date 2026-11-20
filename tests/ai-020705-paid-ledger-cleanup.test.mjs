@@ -16,13 +16,13 @@ const SHA = 'a'.repeat(40);
 const approvalBody = {
   actorId: OWNER,
   approvalScope: 'synthetic-one-provider-one-call-only',
-  capMicros: 2528640,
+  capMicros: 1000000,
   confirmation: 'STAGING PAID 1 CALL APPROVED',
   consentRevision: 'test-policy-v1',
   episodeId: 11,
   expiresAt: new Date(NOW + 3600000).toISOString(),
   mainSha: SHA,
-  model: 'gpt-5.6-luna',
+  model: 'gpt-6.1-sol',
   novelId: 41,
   previewDeploymentId: 'dpl_test123',
   provider: 'openai',
@@ -42,8 +42,8 @@ const expected = {
   mainSha: SHA,
   previewDeploymentId: 'dpl_test123',
   provider: 'openai',
-  model: 'gpt-5.6-luna',
-  capMicros: 2528640,
+  model: 'gpt-6.1-sol',
+  capMicros: 1000000,
   actorId: OWNER,
   novelId: 41,
   episodeId: 11,
@@ -78,12 +78,12 @@ function runtime({ failModel = false } = {}) {
       novelId: 41,
       episodeId: 11,
       provider: 'openai',
-      model: 'gpt-5.6-luna',
+      model: 'gpt-6.1-sol',
       routeCount: 1,
       maxProviderCalls: 1,
       noRetry: true,
       fallbackDisabled: true,
-      capMicros: 2528640,
+      capMicros: 1000000,
       mainSha: SHA,
       previewDeploymentId: 'dpl_test123',
       expiresAt: approvalBody.expiresAt,
@@ -101,6 +101,28 @@ function runtime({ failModel = false } = {}) {
     now: () => NOW,
     serviceClient: {
       supabaseUrl: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
+      from(table) {
+        assert.equal(table, 'novelight_ai_runtime_settings');
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  async single() {
+                    return {error: null, data: {
+                      singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
+                      user_day_cap_micros: 10000000,
+                      user_month_cap_micros: 10000000,
+                      global_day_cap_micros: 10000000,
+                      global_month_cap_micros: 10000000
+                    }};
+                  }
+                };
+              }
+            };
+          }
+        };
+      },
       async rpc() {
         log.push('claim');
         if (claimed) return { data: false };
@@ -200,7 +222,7 @@ test('runner requires a claimed ledger and a real one-shot guarded provider', as
     run020705SinglePaidTrial({
       claimed: { ownerLedgerClaimed: false, authorizesPaidCall: false },
       guardedProvider: state.guardedProvider,
-      request: { model: 'gpt-5.6-luna', system: 's', user: 'u' },
+      request: { model: 'gpt-6.1-sol', system: 's', user: 'u' },
       stop: async () => true,
       cleanup: async () => true,
       finalCensus: async () => true
@@ -211,7 +233,7 @@ test('runner requires a claimed ledger and a real one-shot guarded provider', as
     run020705SinglePaidTrial({
       claimed: { ownerLedgerClaimed: true, authorizesPaidCall: false },
       guardedProvider: { async generate() { throw new Error('bypass'); } },
-      request: { model: 'gpt-5.6-luna', system: 's', user: 'u' },
+      request: { model: 'gpt-6.1-sol', system: 's', user: 'u' },
       stop: async () => true,
       cleanup: async () => true,
       finalCensus: async () => true
@@ -227,7 +249,7 @@ test('the only model attempt is always followed by stop, cleanup, census', async
   const response = await run020705SinglePaidTrial({
     claimed: { ownerLedgerClaimed: true, authorizesPaidCall: false },
     guardedProvider: state.guardedProvider,
-    request: { model: 'gpt-5.6-luna', system: 's', user: 'u' },
+    request: { model: 'gpt-6.1-sol', system: 's', user: 'u' },
     stop: async () => { state.log.push('stop'); return true; },
     cleanup: async () => { state.log.push('cleanup'); return true; },
     finalCensus: async () => { state.log.push('census'); return true; }
@@ -247,7 +269,7 @@ test('provider error never retries but still stops and cleans', async () => {
     run020705SinglePaidTrial({
       claimed: { ownerLedgerClaimed: true, authorizesPaidCall: false },
       guardedProvider: state.guardedProvider,
-      request: { model: 'gpt-5.6-luna', system: 's', user: 'u' },
+      request: { model: 'gpt-6.1-sol', system: 's', user: 'u' },
       stop: async () => { state.log.push('stop'); return true; },
       cleanup: async () => { state.log.push('cleanup'); return true; },
       finalCensus: async () => { state.log.push('census'); return true; }
@@ -267,7 +289,7 @@ test('failed stop cannot skip cleanup or census; final result stays failure', as
     run020705SinglePaidTrial({
       claimed: { ownerLedgerClaimed: true, authorizesPaidCall: false },
       guardedProvider: state.guardedProvider,
-      request: { model: 'gpt-5.6-luna', system: 's', user: 'u' },
+      request: { model: 'gpt-6.1-sol', system: 's', user: 'u' },
       stop: async () => { state.log.push('stop'); throw new Error('offline'); },
       cleanup: async () => { state.log.push('cleanup'); return false; },
       finalCensus: async () => { state.log.push('census'); return true; }

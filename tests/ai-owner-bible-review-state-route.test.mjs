@@ -99,6 +99,33 @@ test('missing session or invalid config blocks client setup', async () => {
   assert.equal(created, 0);
 });
 
+test('restricted RPC mode is Staging-pinned and never enables the default route', async () => {
+  let created = 0;
+  const handler = (env) =>
+    createOwnerBibleReviewStateApiHandler({
+      enabled: true,
+      env,
+      sessionLookupMode: 'restricted_rpc',
+      createServiceClient() {
+        created += 1;
+        return fakeService();
+      }
+    });
+  const wrong = response();
+  await handler(ENV)(request(), wrong);
+  assert.equal(wrong.statusCode, 503);
+  assert.equal(created, 0);
+
+  const staging = {
+    ...ENV,
+    SUPABASE_URL: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+  };
+  const result = response();
+  await handler(staging)(request(), result);
+  assert.notEqual(result.statusCode, 200);
+  assert.equal(created, 1);
+});
+
 test('invalid requests never touch the privileged client', async () => {
   let created = 0;
   const handler = createOwnerBibleReviewStateApiHandler({

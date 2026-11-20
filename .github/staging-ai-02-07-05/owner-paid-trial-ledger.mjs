@@ -86,7 +86,7 @@ export function inspect020705OwnerLedger({ comments, approvalCommentId, expected
     approved.confirmation !== 'STAGING PAID 1 CALL APPROVED' ||
     approved.approvalScope !== 'synthetic-one-provider-one-call-only' ||
     approved.provider !== 'openai' ||
-    approved.model !== 'gpt-5.6-luna' ||
+    approved.model !== 'gpt-6.1-sol' ||
     approved.stagingProjectRef !== 'wmlzjgvxgoyrovdhbqbg' ||
     !SHA.test(approved.mainSha) ||
     !DEPLOYMENT.test(approved.previewDeploymentId) ||
@@ -257,4 +257,104 @@ export function verify020705ClaimedOwnerApproval({
       snapshot.previewDeploymentId
   ) deny();
   return Object.freeze({ ...snapshot, ownerLedgerClaimed: true });
+}
+
+
+/**
+ * Read-only handoff after GitHub Actions assigns GITHUB_RUN_ID.
+ * An OWNER intent opens the run; only a LATER, distinct OWNER approval
+ * for that exact run is eligible. Reuses the existing one-use paid ledger:
+ * no approval creation, CLAIMED write, credentials or paid permission here.
+ */
+export function inspect020705PostRunOwnerApproval({
+  comments,
+  intentCommentId,
+  runId,
+  mainSha,
+  candidateSha,
+  stagingBranch,
+  now = Date.now()
+} = {}) {
+  if (!Array.isArray(comments) ||
+      !Number.isSafeInteger(intentCommentId) || intentCommentId < 1 ||
+      !Number.isSafeInteger(runId) || runId < 1 ||
+      !SHA.test(mainSha ?? '') || !SHA.test(candidateSha ?? '') ||
+      mainSha === candidateSha ||
+      !BRANCH.test(stagingBranch ?? '') ||
+      !Number.isFinite(now)) deny();
+
+  const intentRows = comments.filter((comment) => comment?.id === intentCommentId);
+  if (intentRows.length !== 1 || !isOwner(intentRows[0])) deny();
+  const intent = intentRows[0];
+  const intentPrefix = 'NOVELIGHT_STAGING_AI_020705_INTEGRATION_INTENT ';
+  if (typeof intent.body !== 'string' ||
+      !intent.body.startsWith(intentPrefix)) deny();
+  let intentPayload;
+  try {
+    intentPayload = JSON.parse(intent.body.slice(intentPrefix.length));
+  } catch { deny(); }
+  if (!exactKeys(intentPayload, [
+    'candidateSha', 'mainSha', 'pr', 'scope', 'stagingProjectRef'
+  ]) ||
+      intentPayload.mainSha !== mainSha ||
+      intentPayload.candidateSha !== candidateSha ||
+      intentPayload.stagingProjectRef !== 'wmlzjgvxgoyrovdhbqbg' ||
+      intentPayload.pr !== 2895 ||
+      intentPayload.scope !== 'read-only-protected-entry-no-live-execution' ||
+      typeof intent.created_at !== 'string' ||
+      !Number.isFinite(Date.parse(intent.created_at)) ||
+      Date.parse(intent.created_at) > now ||
+      (intent.updated_at != null &&
+        intent.updated_at !== intent.created_at)) deny();
+
+  // The approval is a separate OWNER comment posted after the run started.
+  // A duplicate or edited approval cannot be resolved by 'first wins'.
+  const approvals = comments.filter((comment) =>
+    typeof comment?.body === 'string' &&
+    comment.body.startsWith(PREFIX + 'APPROVE ')
+  );
+  const candidates = approvals.filter((comment) =>
+    payload(comment.body, 'APPROVE')?.runId === runId
+  );
+  if (candidates.length !== 1 || !isOwner(candidates[0])) deny();
+  const approval = candidates[0];
+  if (!Number.isSafeInteger(approval.id) || approval.id === intentCommentId ||
+      !Number.isFinite(Date.parse(approval.created_at)) ||
+      Date.parse(approval.created_at) <= Date.parse(intent.created_at) ||
+      Date.parse(approval.created_at) > now ||
+      (approval.updated_at != null &&
+        approval.updated_at !== approval.created_at)) deny();
+  const approved = payload(approval.body, 'APPROVE');
+  if (approved?.runId !== runId ||
+      approved?.mainSha !== mainSha ||
+      approved?.candidateSha !== candidateSha ||
+      approved?.stagingBranch !== stagingBranch ||
+      approved?.capMicros > 1000000) deny();
+
+  const checked = inspect020705OwnerLedger({
+    comments,
+    approvalCommentId: approval.id,
+    expected: {
+      mainSha,
+      candidateSha,
+      stagingBranch,
+      repository: REPO,
+      approvalIssueNumber: 294,
+      runId,
+      previewDeploymentId: approved.previewDeploymentId,
+      capMicros: approved.capMicros
+    },
+    now
+  });
+  return Object.freeze({
+    state: 'RUN_BOUND_OWNER_APPROVAL_READ_ONLY',
+    runId,
+    approvalCommentId: checked.approvalCommentId,
+    previewDeploymentId: checked.previewDeploymentId,
+    candidateSha,
+    capMicros: checked.capMicros,
+    authorizesPaidCall: false,
+    authorizesStagingWrite: false,
+    authorizesPreviewCreation: false
+  });
 }

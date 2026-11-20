@@ -209,3 +209,322 @@ test('proposed SQL is restricted to service_role and not in migrations', async (
   assert.match(sql, /p_expected_revision/);
   assert.match(sql, /status = 'pending'/);
 });
+
+test('service repository keyset pages 130 rows without ever skipping or repeating', async () => {
+  const records = Array.from({ length: 130 }, (_, i) => ({
+    id: i + 1,
+    actor_id: OWNER,
+    novel_id: 354,
+    source_episode_id: 41,
+    source_hash: HASH,
+    fact_kind: 'character',
+    fact_key: '凛',
+    summary: '候補 ' + (i + 1),
+    evidence: '鍵を持っていた',
+    status: i % 2 ? 'accepted' : 'pending',
+    revision: i % 2 ? 2 : 1
+  }));
+  const queries = [];
+  const serviceClient = {
+    from(table) {
+      assert.equal(table, 'novelight_ai_review_candidates');
+      const filters = [];
+      let beforeId = null;
+      return {
+        select() {
+          return this;
+        },
+        eq(key, value) {
+          filters.push([key, value]);
+          return this;
+        },
+        in(key, values) {
+          assert.equal(key, 'status');
+          assert.deepEqual(values, ['pending', 'accepted']);
+          return this;
+        },
+        lt(key, value) {
+          assert.equal(key, 'id');
+          beforeId = value;
+          return this;
+        },
+        order(key, options) {
+          assert.equal(key, 'id');
+          assert.deepEqual(options, { ascending: false });
+          return this;
+        },
+        async limit(number) {
+          assert.equal(number, 26);
+          assert.deepEqual(filters, [
+            ['actor_id', OWNER],
+            ['novel_id', 354]
+          ]);
+          queries.push(beforeId);
+          return {
+            data: records
+              .filter((row) => beforeId === null || row.id < beforeId)
+              .sort((a, b) => b.id - a.id)
+              .slice(0, number),
+            error: null
+          };
+        }
+      };
+    },
+    rpc() {}
+  };
+  const store = createSupabaseOwnerBibleReviewRepository({
+    serviceClient,
+    authorClient: { rpc() {} }
+  });
+  let beforeId = null;
+  const ids = [];
+  do {
+    const page = await store.listReviewPage({
+      actorId: OWNER,
+      novelId: 354,
+      beforeId
+    });
+    assert.ok(page.rows.length > 0 && page.rows.length <= 25);
+    ids.push(...page.rows.map((row) => row.id));
+    beforeId = page.nextBeforeId;
+  } while (beforeId !== null);
+  assert.deepEqual(
+    ids,
+    Array.from({ length: 130 }, (_, i) => 130 - i)
+  );
+  assert.deepEqual(queries, [null, 106, 81, 56, 31, 6]);
+});
+
+test('repository rejects malformed or unsafe review cursors before reads', async () => {
+  const { store } = adapter();
+  for (const beforeId of [-1, 0, 'NaN', {}, 1.5]) {
+    await assert.rejects(
+      store.listReviewPage({ actorId: OWNER, novelId: 354, beforeId }),
+      /AI_REVIEW_STORAGE_UNAVAILABLE/u
+    );
+  }
+  await assert.rejects(
+    store.listReviewPage({
+      actorId: 'not-an-owner',
+      novelId: 354,
+      beforeId: null
+    }),
+    /AI_REVIEW_STORAGE_UNAVAILABLE/u
+  );
+});
+
+test('cross-page older revision lookup enforces exact work, chapter and fact identity', async () => {
+  const currentHash = 'c'.repeat(64);
+  const historical = [
+    {
+      id: 1,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '凛',
+      // A previously rejected source is still a distinct historical version.
+      status: 'rejected',
+      source_hash: HASH
+    },
+    {
+      id: 2,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: currentHash
+    },
+    {
+      id: 3,
+      actor_id: OWNER,
+      novel_id: 355,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: HASH
+    },
+    {
+      id: 4,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 42,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: HASH
+    },
+    {
+      id: 5,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'event',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: HASH
+    },
+    {
+      id: 6,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '別名',
+      status: 'pending',
+      source_hash: HASH
+    },
+    {
+      id: 7,
+      actor_id: '22222222-2222-4222-8222-222222222222',
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: HASH
+    },
+    {
+      id: 150,
+      actor_id: OWNER,
+      novel_id: 354,
+      source_episode_id: 41,
+      fact_kind: 'character',
+      fact_key: '凛',
+      status: 'pending',
+      source_hash: HASH
+    }
+  ];
+  const searches = [];
+  const serviceClient = {
+    from(name) {
+      assert.equal(name, 'novelight_ai_review_candidates');
+      const filters = [];
+      return {
+        select(columns) {
+          assert.equal(columns, 'id');
+          return this;
+        },
+        eq(column, value) {
+          filters.push((row) => row[column] === value);
+          return this;
+        },
+        in(column, values) {
+          filters.push((row) => values.includes(row[column]));
+          return this;
+        },
+        neq(column, value) {
+          filters.push((row) => row[column] !== value);
+          return this;
+        },
+        lt(column, value) {
+          filters.push((row) => row[column] < value);
+          return this;
+        },
+        order(column, options) {
+          assert.equal(column, 'id');
+          assert.deepEqual(options, { ascending: false });
+          return this;
+        },
+        async limit(size) {
+          assert.equal(size, 1);
+          searches.push(filters.length);
+          return {
+            data: historical
+              .filter((row) => filters.every((testRow) => testRow(row)))
+              .sort((a, b) => b.id - a.id)
+              .slice(0, 1)
+              .map(({ id }) => ({ id })),
+            error: null
+          };
+        }
+      };
+    },
+    rpc() {}
+  };
+  const repo = createSupabaseOwnerBibleReviewRepository({
+    serviceClient,
+    authorClient: { rpc() {} }
+  });
+  const candidates = [
+    {
+      id: 130,
+      episodeId: 41,
+      factKind: 'character',
+      factKey: '凛',
+      sourceHash: currentHash
+    },
+    {
+      id: 131,
+      episodeId: 42,
+      factKind: 'character',
+      factKey: '凛',
+      sourceHash: currentHash
+    },
+    {
+      id: 132,
+      episodeId: 41,
+      factKind: 'event',
+      factKey: '凛',
+      sourceHash: currentHash
+    },
+    {
+      id: 133,
+      episodeId: 41,
+      factKind: 'character',
+      factKey: '別名',
+      sourceHash: currentHash
+    }
+  ];
+  assert.deepEqual(
+    await repo.listPriorVersionIds({
+      actorId: OWNER,
+      novelId: 354,
+      candidates
+    }),
+    [130, 131, 132, 133]
+  );
+  // False positive controls: matching current source is NOT a prior revision.
+  assert.deepEqual(
+    await repo.listPriorVersionIds({
+      actorId: OWNER,
+      novelId: 354,
+      candidates: [
+        { ...candidates[0], sourceHash: HASH, id: 100 },
+        { ...candidates[0], factKey: '不在の人物', id: 101 },
+        { ...candidates[0], episodeId: 99, id: 102 }
+      ]
+    }),
+    [100]
+  );
+  assert.equal(searches.length, 7);
+  assert.ok(searches.every((count) => count === 7));
+});
+
+test('prior-version lookup rejects malformed values and bound violations before DB', async () => {
+  const { store } = adapter();
+  const current = {
+    id: 130,
+    episodeId: 41,
+    factKind: 'character',
+    factKey: '凛',
+    sourceHash: HASH
+  };
+  const bad = [
+    [current, current],
+    [{ ...current, sourceHash: 'invalid' }],
+    [{ ...current, factKey: '' }],
+    [{ ...current, factKind: 'admin' }],
+    [{ ...current, episodeId: 0 }],
+    Array.from({ length: 26 }, (_, i) => ({ ...current, id: i + 1 }))
+  ];
+  for (const candidates of bad) {
+    await assert.rejects(
+      store.listPriorVersionIds({ actorId: OWNER, novelId: 354, candidates }),
+      /AI_REVIEW_STORAGE_UNAVAILABLE/u
+    );
+  }
+});

@@ -68,7 +68,7 @@ function config() {
       internationalTransfer: 'mock, no transfer'
     }]),
     NOVELIGHT_AI_TRIAL_ROUTES_JSON: JSON.stringify([{
-      provider: 'openai', model: 'gpt-5.6-luna',
+      provider: 'openai', model: 'gpt-6.1-sol',
       inputMicrosPerMillion: 60000000,
       outputMicrosPerMillion: 360000000,
       maxOutputTokens: 1024
@@ -87,7 +87,7 @@ function comments({ consumed = false, claimed = true } = {}) {
     episodeId: 11,
     expiresAt: new Date(NOW + 3600000).toISOString(),
     mainSha: SHA,
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     novelId: 41,
     previewDeploymentId: PREVIEW,
     provider: 'openai',

@@ -36,7 +36,7 @@ function signedApproval() {
         episodeId: 11,
         expiresAt: new Date(NOW + 3600000).toISOString(),
         mainSha: SHA,
-        model: 'gpt-5.6-luna',
+        model: 'gpt-6.1-sol',
         novelId: 41,
         previewDeploymentId: PREVIEW,
         provider: 'openai',

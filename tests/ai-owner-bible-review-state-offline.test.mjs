@@ -3,6 +3,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 
+import '../novelight-ai-bible-trial-panel.js';
+import '../novelight-ai-bible-review-actions.js';
+import '../novelight-ai-bible-note-transfer.js';
 import '../novelight-ai-bible-author-workspace.js';
 import '../novelight-ai-bible-owner-panel.js';
 import '../novelight-ai-bible-owner-studio.js';
@@ -643,6 +646,9 @@ class FakeElement {
   get textContent() {
     return this._text + this.children.map((c) => c.textContent).join('');
   }
+  append(...nodes) {
+    for (const node of nodes) this.appendChild(node);
+  }
   appendChild(node) {
     this.children.push(node);
     return node;
@@ -761,7 +767,7 @@ test('complete offline author journey persists confirmation and resumes after re
   assert.equal(reopened.children[0].children[0].textContent, '');
 });
 
-test('review-state browser adapter uses a default-off server route', () => {
+test('review-state browser adapter uses a Staging-only, default-off server route', () => {
   const html = readFileSync(
     new URL('../story-notes.html', import.meta.url),
     'utf8'
@@ -775,10 +781,7 @@ test('review-state browser adapter uses a default-off server route', () => {
   assert.equal(existsSync(route), true);
   const source = readFileSync(route, 'utf8');
   assert.match(source, /enabled = false/);
-  assert.match(
-    source,
-    /export default createOwnerBibleReviewStateApiHandler\(\)/
-  );
+  assert.match(source, /enabled: isolatedStagingPreview/);
 });
 
 test('revocation after private preview but before CAS prevents a write', async () => {
@@ -813,4 +816,244 @@ test('wrong owner for a second work never reaches snapshot storage', async () =>
   );
   assert.equal(f.calls.reads, 0);
   assert.equal(f.calls.cas, 0);
+});
+
+// The full flow is synthetic-only. It cannot contact Supabase or a model.
+// prettier-ignore
+test('one offline author journey confirms candidate, reloads, CAS-saves and explicitly drafts notes', async () => {
+  const f = fixture();
+  const { handler } = makeApi(f);
+  const session = { user: { id: OWNER }, access_token: TOKEN };
+  const main = new FakeElement('main', null);
+  const editor = {};
+  for (const name of [
+    'noteForm', 'noteId', 'noteType', 'character', 'characterField',
+    'title', 'body', 'formTitle', 'save', 'cancel', 'titleCount', 'bodyCount'
+  ]) {
+    editor[name] = { value: '', textContent: '', hidden: true };
+  }
+  const doc = {
+    getElementById(id) {
+      return id === 'main-content' ? main : editor[id] ?? null;
+    },
+    createElement(tagName) {
+      return new FakeElement(tagName, doc);
+    }
+  };
+  const listeners = new Set();
+  const client = {
+    auth: {
+      async getSession() {
+        return { data: { session }, error: null };
+      },
+      onAuthStateChange(fn) {
+        listeners.add(fn);
+        return { data: { subscription: { unsubscribe() { listeners.delete(fn); } } } };
+      }
+    }
+  };
+  const reviewState = createBrowserAdapter({
+    enabled: true,
+    client,
+    novelId: 17,
+    ownerId: OWNER,
+    fetcher: async (_url, options) => {
+      const res = response();
+      const headers = Object.fromEntries(
+        Object.entries(options.headers).map(([key, value]) => [key.toLowerCase(), value])
+      );
+      await handler({
+        method: options.method,
+        query: { novel_id: '17' },
+        headers: {
+          ...headers,
+          host: 'novelight.jp',
+          origin: 'https://novelight.jp',
+          'sec-fetch-site': 'same-origin'
+        },
+        ...(options.body ? { body: JSON.parse(options.body) } : {})
+      }, res);
+      return { ok: res.statusCode === 200, status: res.statusCode, json: async () => res.body };
+    }
+  });
+
+  let pending = null;
+  let staged = 0;
+  let reviews = 0;
+  let transferred = 0;
+  let savedNotes = 0;
+  const candidate = {
+    id: 7,
+    episodeId: 11,
+    revision: 1,
+    status: 'pending',
+    kind: 'character',
+    key: '凛',
+    summary: '青い鍵を持つ人物。',
+    evidence: '凛は青い鍵を持っていた。'
+  };
+  const ownerFetch = async (url, options) => {
+    assert.equal(options.headers.Authorization, 'Bearer ' + TOKEN);
+    if (url.startsWith('/api/ai-owner-novel-bible?')) {
+      return { ok: true, json: async () => preview() };
+    }
+    if (url.startsWith('/api/ai-owner-bible-analyze?')) {
+      return {
+        ok: true,
+        json: async () => ({ trialReady: true, novelId: 17, episodeId: 11, chunkIndex: 0 })
+      };
+    }
+    if (url.startsWith('/api/ai-owner-bible-review?')) {
+      if (url.includes('transfer_candidate_id=')) {
+        assert.equal(options.method, 'GET');
+        return {
+          ok: true,
+          json: async () => ({
+            novelId: 17,
+            transferReady: true,
+            candidate: { ...pending }
+          })
+        };
+      }
+      if (options.method === 'POST') {
+        reviews += 1;
+        const decision = JSON.parse(options.body);
+        assert.deepEqual(decision, {
+          candidateId: 7,
+          expectedRevision: 1,
+          action: 'accept'
+        });
+        pending = { ...pending, revision: 2, status: 'accepted' };
+        return {
+          ok: true,
+          json: async () => ({
+            candidateId: 7,
+            novelId: 17,
+            status: 'accepted',
+            revision: 2,
+            canonModified: false
+          })
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          novelId: 17,
+          aiGenerated: false,
+          candidates: pending?.status === 'pending' ? [{ ...pending }] : [],
+          acceptedCandidates: pending?.status === 'accepted' ? [{ ...pending }] : []
+        })
+      };
+    }
+    throw new Error('UNAPPROVED_SYNTHETIC_URL');
+  };
+  const studio = globalThis.NovelightAiBibleOwnerStudio;
+  const trial = globalThis.NovelightAiBibleTrialPanel;
+  assert.equal(await studio.attach({
+    client,
+    novelId: 17,
+    ownerId: OWNER,
+    doc,
+    fetcher: ownerFetch,
+    readReviewState: reviewState.read,
+    saveReviewState: reviewState.save
+  }), true);
+  const studioSection = main.children[0];
+  const previewChecks = findClass(studioSection, 'novelight-ai-workspace-reviewed-button');
+  assert.ok(previewChecks);
+  assert.equal(f.calls.cas, 0);
+
+  const offlineTrial = {
+    enabled: true,
+    async inspectPlan() {
+      return {
+        novelId: 17,
+        episodeId: 11,
+        chunkCount: 1,
+        nextChunkIndex: 0,
+        status: 'ready'
+      };
+    },
+    async stage({ token, novelId, episodeId, chunkIndex }) {
+      assert.equal(token, TOKEN);
+      assert.deepEqual([novelId, episodeId, chunkIndex], [17, 11, 0]);
+      staged += 1;
+      pending = { ...candidate };
+      return { novelId: 17, stagedCount: 1, requiresAuthorReview: true };
+    },
+    async onAccepted(current) {
+      transferred += 1;
+      const existing = editor.title.value;
+      return globalThis.NovelightAiBibleNoteTransfer.prepare({
+        candidate: current,
+        doc,
+        allowReplace: () => existing === ''
+      });
+    }
+  };
+  assert.equal(await trial.attach({
+    client,
+    novelId: 17,
+    ownerId: OWNER,
+    doc,
+    fetcher: ownerFetch,
+    offlineTrial
+  }), true);
+  const trialSection = main.children[1];
+  const inspect = findClass(trialSection, 'btn novelight-ai-bible-inspect-plan');
+  const stage = trialSection.children.find((node) => node.textContent === 'この1話をAI解析する');
+  const refresh = findClass(trialSection, 'btn novelight-ai-bible-refresh-views');
+  assert.ok(inspect);
+  assert.ok(stage);
+  assert.equal(refresh.disabled, true);
+  await inspect.listeners.get('click')();
+  await stage.listeners.get('click')();
+  assert.equal(staged, 1);
+  assert.equal(reviews, 0);
+  assert.equal(transferred, 0);
+
+  // Only a deliberate author decision changes candidate status.
+  const firstReview = main.children[2];
+  const accept = firstReview.children[1].children[0].children[1];
+  await accept.listeners.get('click')();
+  assert.equal(reviews, 1);
+  assert.equal(pending.status, 'accepted');
+  assert.equal(f.calls.cas, 0);
+  assert.equal(transferred, 0);
+
+  // A distinct read-only refresh opens the latest accepted candidate,
+  // while the separate Bible review checkbox remains unsaved.
+  await refresh.listeners.get('click')();
+  const refreshedReview = main.children.at(-1);
+  assert.equal(firstReview.removed, true);
+  assert.match(refreshedReview.textContent, /確認済み候補/u);
+  assert.equal(f.calls.cas, 0);
+  const reviewedButton = findClass(studioSection, 'novelight-ai-workspace-reviewed-button');
+  await reviewedButton.listeners.get('click')();
+  assert.equal(f.calls.cas, 1);
+  assert.equal((await reviewState.read({ novelId: 17 })).revision, 1);
+  assert.equal(transferred, 0);
+  // The existing owner reader must recover the persisted checklist on reload.
+  assert.equal(await studio.refresh({ client, novelId: 17, ownerId: OWNER, doc }), true);
+  assert.match(studioSection.textContent, /保存済みの確認済み：1\/2件/u);
+
+  // No note transfer occurs on acceptance, list refresh or checklist save.
+  assert.equal(editor.title.value, '');
+  assert.equal(savedNotes, 0);
+  const currentAccepted = refreshedReview.children[1];
+  const acceptedRow = currentAccepted.children.find(
+    (node) => node.children?.some((child) => child.children?.some(
+      (leaf) => leaf.textContent === '創作ノートに転記して編集（保存は別途）'
+    ))
+  );
+  assert.ok(acceptedRow);
+  const transfer = acceptedRow.children[1].children[0];
+  await transfer.listeners.get('click')();
+  assert.equal(transferred, 1);
+  assert.equal(editor.title.value, '凛');
+  assert.match(editor.body.value, /必要に応じて修正してから保存/u);
+  assert.equal(editor.save.textContent, '内容を確認して保存');
+  assert.equal(savedNotes, 0);
+  assert.equal(staged, 1);
+  assert.equal(reviews, 1);
 });

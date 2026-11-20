@@ -29,6 +29,7 @@ export function createPaidTrialOneShotOpenAiProvider({
   if (
     serviceClient?.supabaseUrl !== STAGING_URL ||
     typeof serviceClient?.rpc !== 'function' ||
+    typeof serviceClient?.from !== 'function' ||
     typeof underlyingProvider?.generate !== 'function' ||
     !Number.isSafeInteger(approved?.commentId) ||
     approved.commentId <= 0 ||
@@ -38,7 +39,7 @@ export function createPaidTrialOneShotOpenAiProvider({
     !Number.isSafeInteger(approved?.episodeId) ||
     approved.episodeId <= 0 ||
     approved.provider !== 'openai' ||
-    approved.model !== 'gpt-5.6-luna' ||
+    approved.model !== 'gpt-6.1-sol' ||
     approved.routeCount !== 1 ||
     approved.maxProviderCalls !== 1 ||
     approved.noRetry !== true ||
@@ -75,7 +76,7 @@ export function createPaidTrialOneShotOpenAiProvider({
       // This is a guard immediately BEFORE a potentially billable network
       // request, after the outer Router's atomic budget reservation.
       if (
-        args?.model !== 'gpt-5.6-luna' ||
+        args?.model !== 'gpt-6.1-sol' ||
         !Number.isFinite(now()) ||
         now() >= expiresAt
       ) {
@@ -94,7 +95,7 @@ export function createPaidTrialOneShotOpenAiProvider({
           p_main_sha: approved.candidateSha ?? approved.mainSha,
           p_preview_deployment_id: approved.previewDeploymentId,
           p_provider: 'openai',
-          p_model: 'gpt-5.6-luna',
+          p_model: 'gpt-6.1-sol',
           p_ceiling_micros: approved.capMicros,
           p_expires_at: approved.expiresAt,
           p_project_ref: STAGING_REF
@@ -103,6 +104,45 @@ export function createPaidTrialOneShotOpenAiProvider({
       // Any DB outage/missing migration/duplicate/timeout consumes no
       // permission in-process and cannot fall back to a model invocation.
       if (error || data !== true || now() >= expiresAt) deny();
+      // Re-read Staging OFF after one-use claim, before provider dispatch.
+      // Independent of Cloudflare quotas but not a final race-free fence.
+      // Any failure leaves the claim spent: no retry, no provider POST.
+      let permitted = false;
+      try {
+        const result = await serviceClient
+          .from('novelight_ai_runtime_settings')
+          .select('singleton,enabled,updated_at,user_day_cap_micros,' +
+            'user_month_cap_micros,global_day_cap_micros,' +
+            'global_month_cap_micros')
+          .eq('singleton', 1)
+          .single();
+        const row = result?.data;
+        const capValid = (value) => {
+          const n = typeof value === 'string' &&
+            /^(0|[1-9][0-9]{0,15})$/u.test(value)
+            ? Number(value) : value;
+          return Number.isSafeInteger(n) &&
+            n >= approved.capMicros && n <= 10000000;
+        };
+        // OFF by expiry: an independently authorized Staging issuer must
+        // update this existing row for each bounded one-shot permit. The
+        // paid runner must NEVER renew its own admission timestamp.
+        // A missing update fails closed even if Cloudflare cannot signal STOP.
+        const leaseAtMs = Date.parse(row?.updated_at);
+        const sendAtMs = now();
+        permitted = Number.isFinite(leaseAtMs) &&
+          Number.isFinite(sendAtMs) &&
+          leaseAtMs <= sendAtMs &&
+          sendAtMs - leaseAtMs <= 15000 &&
+          !result?.error && row?.singleton === 1 &&
+          row.enabled === true &&
+          ['user_day_cap_micros', 'user_month_cap_micros',
+            'global_day_cap_micros', 'global_month_cap_micros']
+            .every((key) => capValid(row[key]));
+      } catch {
+        permitted = false;
+      }
+      if (!permitted || now() >= expiresAt) deny();
       // No retry here, even if underlyingProvider returns a retryable error.
       return underlyingProvider.generate(args);
     }

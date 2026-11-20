@@ -3,6 +3,7 @@
 // NOT deployed, no route, trigger, secret, arm, paid call or Staging side effect.
 // Only an independently authorized Cloudflare service binding may invoke DO RPC.
 import {GateAWatchdogDurableObject as SyntheticA1} from './cloudflare-gatea-a1-preserved.mjs';
+import {handle020705PrivateDoClaimFetch} from './gatea-private-claim-fetch-handler-candidate.mjs';
 
 const REPO = 'bingohooah888-ai/novelrise';
 const PROJECT = 'wmlzjgvxgoyrovdhbqbg';
@@ -112,6 +113,64 @@ async function sign020705Death({ proof, keyId, nonce, pkcs8, cryptoImpl }) {
   });
 }
 
+/**
+ * Deliver a signed runner-death notification only to a distinct Cloudflare
+ * service binding. Never a public URL, paid runner, or in-process fallback.
+ * The receiver must verify the signature, atomically claim recovery, stop
+ * provider transport, disable Staging AI, revoke synthetic sessions, clean
+ * the synthetic fixture, and perform an independent zero-residue census.
+ *
+ * An HTTP acknowledgement is NOT proof of the actual independent census,
+ * so the DO remains CLAIMED rather than labelling itself STOPPED.
+ */
+export async function dispatch020705DeathToRecoveryController({
+  service,
+  scope,
+  envelope
+} = {}) {
+  if (!validScope(scope) ||
+      typeof service?.fetch !== 'function' ||
+      envelope?.domain !== DOMAIN_DEATH ||
+      envelope?.proof?.kind !== 'detached-controller-runner-death' ||
+      envelope?.proof?.runnerConfirmedDead !== true ||
+      !FIELDS.every((key) => envelope.proof[key] === scope[key]) ||
+      !NONCE.test(envelope?.challengeNonce ?? '') ||
+      !NAME.test(envelope?.keyId ?? '') ||
+      !/^[A-Za-z0-9_-]{86}$/u.test(envelope?.signature ?? '')) deny();
+  const payload = JSON.stringify({ scope, envelope });
+  if (payload.length > 4096) deny();
+  try {
+    const response = await service.fetch(new Request(
+      'https://gatea-recovery.internal/_novelight/gatea/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload
+      }
+    ));
+    if (response?.status !== 200 ||
+        !/application\/json/iu.test(
+          response.headers?.get?.('content-type') ?? ''
+        )) deny();
+    const raw = await response.text();
+    if (raw.length > 2048) deny();
+    const result = JSON.parse(raw);
+    if (
+      Object.keys(result ?? {}).sort().join(',') !==
+        'approvalCommentId,controllerRunId,noPaidRetry,runId,status' ||
+      result.status !== 'INDEPENDENT_STAGING_STOP_AND_CLEANUP_VERIFIED' ||
+      result.noPaidRetry !== true ||
+      result.runId !== scope.runId ||
+      result.approvalCommentId !== scope.approvalCommentId ||
+      result.controllerRunId !== envelope.proof.controllerRunId
+    ) deny();
+    return Object.freeze({
+      dispatchedToSeparateController: true,
+      cleanupVerifiedByCloudflare: false,
+      noPaidRetry: true
+    });
+  } catch { deny(); }
+}
+
 // The class name is deliberately identical to the existing A1 binding.
 // Deploying this CANDIDATE would REPLACE the existing class implementation;
 // that is not authorized in this turn. No new Worker / DO is defined.
@@ -152,6 +211,11 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
   }
   async arm({ scope, nonce, controllerRunId, expiresAtMs, signature } = {}) {
     this.check();
+    // A1 compatibility: a leftover alarm must remain inert without an S2
+    // ledger. Only a NEW live S2 arm requires a real separate receiver.
+    if (this.env?.GATEA_RECOVERY_DISPATCH_ENABLED !== 'true' ||
+        typeof this.env?.GATEA_RECOVERY_CONTROLLER?.fetch !== 'function')
+      deny();
     const now = Date.now();
     if (!validScope(scope) || !NONCE.test(nonce ?? '') ||
         !positive(controllerRunId) || controllerRunId === scope.runId ||
@@ -232,6 +296,15 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
     if (liveTable.length !== 1) return;
     const current = this.row();
     if (!current || current.state !== 'WATCHING') return;
+    if (this.env?.GATEA_RECOVERY_DISPATCH_ENABLED !== 'true' ||
+        typeof this.env?.GATEA_RECOVERY_CONTROLLER?.fetch !== 'function') {
+      this.ctx.storage.transactionSync(() => {
+        this.ctx.storage.sql.exec(
+          "UPDATE gatea_live_once SET state='FAILED_CLOSED' WHERE id=1 AND state='WATCHING'"
+        );
+      });
+      return; // no recovery, public endpoint, or retry
+    }
     const now = Date.now();
     if (now < current.deadline_ms) {
       await this.ctx.storage.setAlarm(current.deadline_ms);
@@ -293,7 +366,18 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
         JSON.stringify(envelope)
       );
     });
-    return Object.freeze({ state: 'CLAIMED', noPaidRetry: true });
+    // Real GitHub terminal evidence and a one-shot stored signed receipt
+    // already exist. An independent controller must handle recovery now.
+    // No retries, no temporary public endpoint and no paid-runner fallback.
+    await dispatch020705DeathToRecoveryController({
+      service: this.env.GATEA_RECOVERY_CONTROLLER,
+      scope,
+      envelope
+    });
+    return Object.freeze({
+      state: 'CLAIMED', noPaidRetry: true,
+      cleanupVerifiedByCloudflare: false
+    });
   }
   async readReceipt({ scope, nonce, signature } = {}) {
     this.check();
@@ -310,10 +394,14 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
     return Object.freeze({ envelope: JSON.parse(current.receipt),
       authorizesMutation: false, authorizesPaidCall: false });
   }
-  async fetch() {
-    // Explicitly no public admission, even after code deployment.
-    return new Response(null, {
-      status: 404, headers: { 'cache-control': 'no-store' }
+  async fetch(request) {
+    // A1 is a legacy DO class. The private HMAC-authenticated fetch is
+    // reachable only from a separately approved cross-Worker DO binding.
+    // The default Worker fetch never forwards this path to the DO.
+    return handle020705PrivateDoClaimFetch({
+      request, env: this.env, storage: this.ctx.storage,
+      readCurrent: () => this.row(),
+      ensureWatchdogReady: () => this.check()
     });
   }
 }

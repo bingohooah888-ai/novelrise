@@ -66,9 +66,24 @@ export function create020705StagingCleanup({
             user_month_cap_micros: 0,
             global_day_cap_micros: 0,
             global_month_cap_micros: 0
-          })
-          .eq('singleton', 1);
-        if (result?.error) safe = false;
+          }, { count: 'exact' })
+          .eq('singleton', 1)
+          .select(
+            'singleton,enabled,user_day_cap_micros,user_month_cap_micros,' +
+            'global_day_cap_micros,global_month_cap_micros'
+          )
+          .single();
+        // PostgREST can report error:null after updating ZERO rows.
+        // Require the one actual Staging runtime row and all five OFF
+        // settings, not an acknowledgement or injected boolean alone.
+        const row = result?.data;
+        if (result?.error ||
+            result?.count !== 1 ||
+            row?.singleton !== 1 ||
+            row.enabled !== false ||
+            ['user_day_cap_micros', 'user_month_cap_micros',
+              'global_day_cap_micros', 'global_month_cap_micros']
+              .some((key) => row[key] !== 0 && row[key] !== '0')) safe = false;
       } catch {
         safe = false;
       }
@@ -129,6 +144,9 @@ export function create020705StagingCleanup({
       if (novelDelete?.error) deny();
       const userDelete = await authAdmin.deleteUser(synthetic.userId);
       if (userDelete?.error) deny();
+      // Never delete the per-chunk claim journal either: it is a permanent
+      // replay guard. Cleanup removes only eligible synthetic fixtures; its
+      // independent census must explicitly account for retained claim rows.
       // The non-secret, consumed approval tombstone is intentionally never
       // deleted, even after Staging fixture data reaches zero.
       return true;
@@ -141,10 +159,25 @@ export function create020705StagingCleanup({
         novelId: synthetic.novelId,
         approvalCommentId: synthetic.approvalCommentId
       });
+      // A spent per-chunk claim is an intentional durable tombstone, not
+      // leftover fixture data. Require an independent scoped count instead of
+      // deleting it or incorrectly claiming every AI table has zero rows.
+      // The protected paid trial permits at most one chunk; an absent count,
+      // negative count or multiple claims is UNKNOWN/NO-GO. The detached
+      // observer must count by the verified synthetic actor + novel scope.
+      // Scope markers must also echo the exact project/user/novel/approval.
+      // An unrelated 0/1 count must never certify this cleanup.
       if (
         !report ||
+        report.projectRef !== synthetic.projectRef ||
+        report.userId !== synthetic.userId ||
+        report.novelId !== synthetic.novelId ||
+        report.approvalCommentId !== synthetic.approvalCommentId ||
         report.runtimeDisabledZero !== true ||
         report.approvalTombstoneCount !== 1 ||
+        !Number.isSafeInteger(report.chunkClaimsRetained) ||
+        report.chunkClaimsRetained < 0 ||
+        report.chunkClaimsRetained > 1 ||
         COUNTS_ZERO.some((name) => report[name] !== 0)
       ) {
         deny();

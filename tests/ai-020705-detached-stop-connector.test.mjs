@@ -56,8 +56,22 @@ function build({ badKey = false, killFailed = false } = {}) {
             eq() {
               return this;
             },
-            then(resolve) {
-              resolve({ error: null });
+            select() {
+              return this;
+            },
+            async single() {
+              return {
+                count: 1,
+                error: null,
+                data: {
+                  singleton: 1,
+                  enabled: false,
+                  user_day_cap_micros: 0,
+                  user_month_cap_micros: 0,
+                  global_day_cap_micros: 0,
+                  global_month_cap_micros: 0
+                }
+              };
             }
           };
         },
@@ -162,8 +176,12 @@ function build({ badKey = false, killFailed = false } = {}) {
       calls.push('census');
       return {
         projectRef: scope.stagingProjectRef,
+        userId: synthetic.userId,
+        novelId: synthetic.novelId,
+        approvalCommentId: synthetic.approvalCommentId,
         runtimeDisabledZero: true,
         approvalTombstoneCount: 1,
+        chunkClaimsRetained: 0, // Legacy one-shot fixture has no chunk claim.
         ...Object.fromEntries(COUNTS.map((name) => [name, 0]))
       };
     },

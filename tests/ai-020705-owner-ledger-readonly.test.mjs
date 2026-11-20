@@ -21,7 +21,7 @@ const scope = {
   novelId: 41,
   episodeId: 11,
   provider: 'openai',
-  model: 'gpt-5.6-luna',
+  model: 'gpt-6.1-sol',
   capMicros: 10000000,
   consentRevision: 'synthetic-test-v1',
   stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg'
@@ -50,7 +50,7 @@ function records() {
     episodeId: 11,
     expiresAt: new Date(NOW + 1200000).toISOString(),
     mainSha: SHA,
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     novelId: 41,
     previewDeploymentId: PREVIEW,
     provider: 'openai',

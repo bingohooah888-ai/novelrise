@@ -169,8 +169,20 @@ export function createOwnerBibleReviewWorkflow({
     if (!result.candidates.length) {
       return { novelId: novel.id, stagedCount: 0 };
     }
+    // The per-batch idempotency key includes the authoritative chapter
+    // revision, not just factKind/factKey. An identical suggestion from a
+    // revised manuscript is a NEW proposal, while replaying the exact same
+    // source remains idempotent in the existing SQL RPC.
     const identity = createHash('sha256')
-      .update(JSON.stringify([actorId, novel.id, result.candidates]))
+      .update(
+        JSON.stringify([
+          actorId,
+          novel.id,
+          positiveId(episodeId),
+          sourceHash,
+          result.candidates
+        ])
+      )
       .digest('hex');
     const saved = await repository.savePendingBatch({
       actorId,
@@ -277,15 +289,164 @@ export function createOwnerBibleReviewWorkflow({
     };
   }
 
-  // Candidate listing is still private author data. No inference or write.
-  async function list({ token, novelId }) {
+  // Owner-only read for the explicit "transfer to Story Notes" click.
+  // Never trust a list cached in the browser: check the candidate's current
+  // accepted revision, work/episode ownership and manuscript hash afresh.
+  // No notes, canon or review rows are modified here.
+  async function verifyTransfer({
+    token,
+    novelId,
+    candidateId,
+    expectedRevision
+  }) {
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 2) {
+      denied();
+    }
     const actorId = await authenticate(token);
     const novel = await loadNovel(actorId, novelId);
-    if (typeof repository.listPending !== 'function') denied();
-    const rows = await repository.listPending({
+    const id = positiveId(candidateId);
+    const row = await repository.readCandidate({
       actorId,
-      novelId: novel.id
+      novelId: novel.id,
+      candidateId: id
     });
+    if (
+      !row ||
+      positiveId(row.id) !== id ||
+      row.actorId !== actorId ||
+      positiveId(row.novelId) !== novel.id ||
+      row.provenance !== 'ai_inferred' ||
+      row.status !== 'accepted' ||
+      row.revision !== expectedRevision ||
+      typeof row.sourceHash !== 'string' ||
+      !SHA256.test(row.sourceHash) ||
+      !KINDS.has(row.factKind)
+    ) {
+      denied();
+    }
+    const episode = await loadEpisode(novel.id, row.sourceEpisodeId);
+    if (
+      typeof episode.title !== 'string' ||
+      typeof episode.content !== 'string' ||
+      Buffer.byteLength(episode.title, 'utf8') > 8192 ||
+      Buffer.byteLength(episode.content, 'utf8') > 1000000
+    ) {
+      denied();
+    }
+    const currentHash = createHash('sha256')
+      .update(JSON.stringify([episode.title, episode.content]))
+      .digest('hex');
+    if (currentHash !== row.sourceHash) {
+      throw new Error('AI_BIBLE_INFERENCE_INVALID');
+    }
+    const candidate = {
+      id,
+      revision: expectedRevision,
+      episodeId: positiveId(row.sourceEpisodeId),
+      kind: row.factKind,
+      key: boundedText(row.factKey, 120),
+      summary: boundedText(row.summary, 320),
+      evidence: boundedText(row.evidence, 160),
+      status: 'accepted'
+    };
+    if (!episode.content.includes(candidate.evidence)) denied();
+    return { novelId: novel.id, transferReady: true, candidate };
+  }
+
+  // Candidate listing is still private author data. No inference or write.
+  // Resolve each referenced episode once from the authoritative server,
+  // never from author-submitted IDs, cached UI data or model output.
+  // Deleted episodes are stale; a foreign-work episode fails closed.
+  async function currentSourceHashes(novelId, episodeIds) {
+    const hashes = new Map();
+    await Promise.all(
+      episodeIds.map(async (id) => {
+        const response = await serviceClient
+          .from('episodes')
+          .select('id,novel_id,title,content')
+          .eq('id', id)
+          .maybeSingle();
+        if (response?.error) denied();
+        const episode = response?.data;
+        if (episode === null) {
+          hashes.set(id, null);
+          return;
+        }
+        if (
+          !episode ||
+          positiveId(episode.id) !== id ||
+          positiveId(episode.novel_id) !== novelId ||
+          typeof episode.title !== 'string' ||
+          typeof episode.content !== 'string' ||
+          Buffer.byteLength(episode.title, 'utf8') > 8192 ||
+          Buffer.byteLength(episode.content, 'utf8') > 1000000
+        ) {
+          denied();
+        }
+        hashes.set(
+          id,
+          createHash('sha256')
+            .update(JSON.stringify([episode.title, episode.content]))
+            .digest('hex')
+        );
+      })
+    );
+    return hashes;
+  }
+
+  async function list({ token, novelId, beforeId = null }) {
+    if (beforeId !== null) positiveId(beforeId);
+    const actorId = await authenticate(token);
+    const novel = await loadNovel(actorId, novelId);
+    const paged = typeof repository.listReviewPage === 'function';
+    let rows;
+    let acceptedRows;
+    let nextBeforeId = null;
+    if (paged) {
+      const page = await repository.listReviewPage({
+        actorId,
+        novelId: novel.id,
+        beforeId
+      });
+      if (
+        !page ||
+        !Array.isArray(page.rows) ||
+        page.rows.length > 25 ||
+        (page.nextBeforeId !== null &&
+          (page.rows.length !== 25 ||
+            positiveId(page.nextBeforeId) !==
+              positiveId(page.rows[page.rows.length - 1]?.id)))
+      ) {
+        denied();
+      }
+      const seen = new Set();
+      for (const row of page.rows) {
+        const id = positiveId(row?.id);
+        if (
+          seen.has(id) ||
+          (beforeId !== null && id >= beforeId) ||
+          (seen.size > 0 && id >= page.rows[seen.size - 1]?.id) ||
+          !['pending', 'accepted'].includes(row.status)
+        ) {
+          denied();
+        }
+        seen.add(id);
+      }
+      rows = page.rows.filter((row) => row.status === 'pending');
+      acceptedRows = page.rows.filter((row) => row.status === 'accepted');
+      nextBeforeId = page.nextBeforeId;
+    } else {
+      // Legacy bounded in-memory fixtures remain available only on page 1.
+      // The real service repository always exposes listReviewPage.
+      if (beforeId !== null || typeof repository.listPending !== 'function') {
+        denied();
+      }
+      rows = await repository.listPending({ actorId, novelId: novel.id });
+      acceptedRows =
+        typeof repository.listAccepted === 'function'
+          ? await repository.listAccepted({ actorId, novelId: novel.id })
+          : [];
+    }
     if (!Array.isArray(rows) || rows.length > 100) denied();
     function project(rowsToProject, expectedStatus) {
       if (!Array.isArray(rowsToProject) || rowsToProject.length > 100) denied();
@@ -321,24 +482,102 @@ export function createOwnerBibleReviewWorkflow({
       });
     }
     const candidates = project(rows, 'pending');
-    if (typeof repository.listAccepted !== 'function') {
-      // Offline repositories created before this feature stay compatible.
-      return { novelId: novel.id, candidates, aiGenerated: false };
-    }
-    const acceptedRows = await repository.listAccepted({
-      actorId,
-      novelId: novel.id
-    });
     const acceptedCandidates = project(acceptedRows, 'accepted');
     const known = new Set(candidates.map((item) => item.id));
     if (acceptedCandidates.some((item) => known.has(item.id))) denied();
+
+    // Verify a bounded set of distinct chapter hashes after owner auth. A
+    // stale candidate is retained as historical evidence but cannot receive
+    // accept/reject controls or be copied into the owner's current notes.
+    const all = [...candidates, ...acceptedCandidates];
+    const episodeIds = [...new Set(all.map((item) => item.episodeId))];
+    const sourceHashes = await currentSourceHashes(novel.id, episodeIds);
+    const staleCandidates = [];
+    const activeCandidates = [];
+    const activeAccepted = [];
+    for (const item of all) {
+      const hash = sourceHashes.get(item.episodeId);
+      const original = item.status === 'pending' ? rows : acceptedRows;
+      const originalRow = original.find((row) => Number(row.id) === item.id);
+      if (!originalRow || !SHA256.test(originalRow.sourceHash)) denied();
+      if (hash === null || hash !== originalRow.sourceHash) {
+        staleCandidates.push({
+          ...item,
+          staleReason: hash === null ? 'episode_missing' : 'source_changed'
+        });
+      } else if (item.status === 'pending') {
+        activeCandidates.push(item);
+      } else {
+        activeAccepted.push(item);
+      }
+    }
+    // Only earlier, different-source revisions qualify. In paginated
+    // storage, the related historical row may be on ANY other page, not just
+    // among the current page's stale rows. Never merge candidate decisions.
+    const active = [...activeCandidates, ...activeAccepted];
+    let olderIds;
+    if (paged) {
+      if (typeof repository.listPriorVersionIds !== 'function') denied();
+      const matched = await repository.listPriorVersionIds({
+        actorId,
+        novelId: novel.id,
+        candidates: active.map((item) => {
+          const original = item.status === 'pending' ? rows : acceptedRows;
+          const persisted = original.find((row) => Number(row.id) === item.id);
+          if (!persisted || !SHA256.test(persisted.sourceHash)) denied();
+          return {
+            id: item.id,
+            episodeId: item.episodeId,
+            factKind: item.kind,
+            factKey: item.key,
+            sourceHash: persisted.sourceHash
+          };
+        })
+      });
+      if (
+        !Array.isArray(matched) ||
+        matched.length > active.length ||
+        new Set(matched).size !== matched.length ||
+        matched.some(
+          (candidateId) =>
+            !Number.isSafeInteger(candidateId) ||
+            !active.some((item) => item.id === candidateId)
+        )
+      ) {
+        denied();
+      }
+      olderIds = new Set(matched);
+    } else {
+      // Offline legacy fixtures do not expose the cross-page repository API.
+      olderIds = new Set(
+        active
+          .filter((item) =>
+            staleCandidates.some(
+              (old) =>
+                old.id < item.id &&
+                old.episodeId === item.episodeId &&
+                old.kind === item.kind &&
+                old.key === item.key
+            )
+          )
+          .map((item) => item.id)
+      );
+    }
+    const withVersionLabel = (items) =>
+      items.map((item) =>
+        olderIds.has(item.id)
+          ? { ...item, replacesOutdatedVersion: true }
+          : item
+      );
     return {
       novelId: novel.id,
-      candidates,
-      acceptedCandidates,
+      candidates: withVersionLabel(activeCandidates),
+      acceptedCandidates: withVersionLabel(activeAccepted),
+      staleCandidates,
+      ...(paged ? { pagination: { nextBeforeId } } : {}),
       aiGenerated: false
     };
   }
 
-  return Object.freeze({ stage, decide, list });
+  return Object.freeze({ stage, decide, list, verifyTransfer });
 }
