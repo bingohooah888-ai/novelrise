@@ -295,6 +295,9 @@
     let lastReloadId = 0;
     let busy = false;
     let tab = 'history';
+    let selectedAuthorWorkId = null;
+    let authorEventFilter = 'all';
+    let authorEventPage = 0;
     let historyFilter = 'all';
     let historyPage = 0;
     const shell = el('section', 'rr-shell');
@@ -474,17 +477,21 @@
         : '現在は正式版の準備中です。Pointの交換・AI直接利用はまだできません。';
     }
     function selectTab(name) {
-      if (!['history', 'scout', 'guide', 'exchange', 'ai'].includes(name))
+      if (!['history', 'scout', 'guide', 'author', 'exchange', 'ai'].includes(name))
         return;
+      if (name === 'author' && !latest.authorGrowth) name = 'scout';
       tab = name;
       tabs.replaceChildren();
-      for (const [key, title] of [
+      const sections = [
         ['scout', '発掘・称号'],
         ['guide', '報酬ガイド'],
         ['history', '報酬・利用履歴'],
         ['exchange', 'デジタルギフト交換'],
         ['ai', 'AIに使う']
-      ]) {
+      ];
+      if (latest.authorGrowth)
+        sections.splice(1, 0, ['author', '自作品の成長']);
+      for (const [key, title] of sections) {
         const b = el('button', '', title);
         b.type = 'button';
         b.setAttribute('role', 'tab');
@@ -495,6 +502,7 @@
       contents.replaceChildren();
       if (tab === 'scout') drawScout();
       else if (tab === 'guide') drawGuide();
+      else if (tab === 'author') drawAuthorGrowth();
       else if (tab === 'history') drawHistory();
       else if (tab === 'exchange') drawExchange();
       else drawAi();
@@ -851,97 +859,225 @@
           );
         }
       }
-      if (latest.authorGrowth) {
-        contents.append(el('h3', '', '作者専用 / 自作品のRank・成長履歴'));
-        const workList = el('div', 'rr-history');
-        for (const work of latest.authorGrowth.works) {
-          if (!work || typeof work.title !== 'string' ||
-              !Number.isInteger(work.rank) || work.rank < 1 ||
-              work.rank > 6 || typeof work.rankName !== 'string')
-            continue;
-          const row = el('div', 'rr-history-row');
-          const info = el('div');
-          info.append(
-            el('strong', '', label(work.title)),
-            el('small', '',
-              'Rank ' + work.rank + ' ' + label(work.rankName) +
-              ' ・最高Rank ' + number(work.peakRank))
-          );
-          const received = work.receivedSeeds;
-          const counts =
-            received &&
-            ['total', 'gold', 'silver', 'bronze', 'legacy'].every(
-              (key) => Number.isSafeInteger(received[key]) && received[key] >= 0
-            ) &&
-            Number.isSafeInteger(
-              received.gold +
-                received.silver +
-                received.bronze +
-                received.legacy
-            ) &&
-            received.total ===
-              received.gold +
-                received.silver +
-                received.bronze +
-                received.legacy;
-          info.append(
-            el(
-              'small',
-              '',
-              counts
-                ? '受信 LIGHT SEED ' +
-                    number(received.total) +
-                    '個（GOLD ' +
-                    number(received.gold) +
-                    ' / SILVER ' +
-                    number(received.silver) +
-                    ' / BRONZE ' +
-                    number(received.bronze) +
-                    ' / 旧形式 ' +
-                    number(received.legacy) +
-                    '）'
-                : '受信 LIGHT SEED：履歴照合中'
-            )
-          );
-          row.append(info);
-          workList.append(row);
-        }
-        if (!workList.children.length)
-          workList.append(el('p', 'rr-muted', '自作品のRank履歴はありません。'));
-        contents.append(workList);
-        const eventList = el('div', 'rr-history');
-        const titleByWorkId = new Map(
-          latest.authorGrowth.works
-            .filter((work) => work && typeof work.id === 'string')
-            .map((work) => [work.id, work.title])
+    }
+    function drawAuthorGrowth() {
+      if (!latest.verified || !latest.formalEnabled || !latest.authorGrowth)
+        return;
+      contents.append(
+        el('h3', '', '作者専用 / 自作品のRank・成長履歴'),
+        el(
+          'p',
+          'rr-muted',
+          '本人の作品Rankと受信LIGHT SEEDを確認できます。対象は最大30作品・更新履歴は最大80件です。全期間の履歴ではありません。'
+        )
+      );
+      const validIds = new Set();
+      const works = latest.authorGrowth.works.filter((work) => {
+        if (
+          !work ||
+          typeof work.id !== 'string' ||
+          !work.id ||
+          validIds.has(work.id) ||
+          typeof work.title !== 'string' ||
+          !Number.isSafeInteger(work.rank) ||
+          work.rank < 1 ||
+          work.rank > 6 ||
+          !Number.isSafeInteger(work.peakRank) ||
+          work.peakRank < work.rank ||
+          work.peakRank > 6 ||
+          typeof work.rankName !== 'string'
+        )
+          return false;
+        validIds.add(work.id);
+        return true;
+      });
+      if (!works.length) {
+        contents.append(el('p', 'rr-muted', '自作品のRank履歴はありません。'));
+        return;
+      }
+      if (!validIds.has(selectedAuthorWorkId)) {
+        selectedAuthorWorkId = works[0].id;
+        authorEventFilter = 'all';
+        authorEventPage = 0;
+      }
+      const picker = el('div', 'rr-author-work-picker');
+      picker.setAttribute('aria-label', '成長履歴を確認する作品');
+      for (const work of works) {
+        const button = el('button', 'rr-author-work-select');
+        button.type = 'button';
+        button.setAttribute(
+          'aria-pressed',
+          String(work.id === selectedAuthorWorkId)
         );
-        for (const event of latest.authorGrowth.events) {
-          if (!event || !titleByWorkId.has(event.workId) ||
-              !Number.isInteger(event.toRank) ||
-              event.toRank < 1 || event.toRank > 6)
-            continue;
-          const type = {
-            initial: '初回', promotion: '昇格',
-            demotion: '降格', finalized: '確定'
-          }[event.type];
-          if (!type) continue;
-          const row = el('div', 'rr-history-row');
-          const info = el('div');
-          info.append(
-            el('strong', '', label(titleByWorkId.get(event.workId))),
-            el('small', '',
-              type + ' ・Rank ' + number(event.toRank) +
-              ' ・' + safeDate(event.occurredAt))
-          );
-          row.append(info);
-          eventList.append(row);
-        }
-        if (eventList.children.length) {
-          contents.append(
-            el('h3', '', '作品Rankの更新記録'),
-            eventList
-          );
-        }
+        button.append(
+          el('strong', '', label(work.title)),
+          el('small', '', 'Rank ' + number(work.rank) + ' ' + label(work.rankName))
+        );
+        button.addEventListener('click', () => {
+          if (selectedAuthorWorkId === work.id) return;
+          selectedAuthorWorkId = work.id;
+          authorEventFilter = 'all';
+          authorEventPage = 0;
+          selectTab('author');
+        });
+        picker.append(button);
+      }
+      contents.append(picker);
+      const work = works.find((entry) => entry.id === selectedAuthorWorkId);
+      const card = el('article', 'rr-author-work-detail');
+      card.append(
+        el('h3', '', label(work.title)),
+        el(
+          'p',
+          'rr-muted',
+          '現在Rank ' +
+            number(work.rank) +
+            ' ' +
+            label(work.rankName) +
+            ' ・最高Rank ' +
+            number(work.peakRank) +
+            ' ・最終変更 ' +
+            safeDate(work.lastChangedAt)
+        ),
+        el(
+          'p',
+          'rr-muted',
+          work.completed === true ? '完結作品' : '連載・公開状態の確認中'
+        )
+      );
+      const received = work.receivedSeeds;
+      const keys = ['total', 'gold', 'silver', 'bronze', 'legacy'];
+      const validCounts =
+        received &&
+        keys.every(
+          (key) => Number.isSafeInteger(received[key]) && received[key] >= 0
+        ) &&
+        Number.isSafeInteger(
+          received.gold +
+            received.silver +
+            received.bronze +
+            received.legacy
+        ) &&
+        received.total ===
+          received.gold +
+            received.silver +
+            received.bronze +
+            received.legacy;
+      card.append(
+        el(
+          'p',
+          'rr-author-seed-counts',
+          validCounts
+            ? '受信 LIGHT SEED ' +
+                number(received.total) +
+                '個（GOLD ' +
+                number(received.gold) +
+                ' / SILVER ' +
+                number(received.silver) +
+                ' / BRONZE ' +
+                number(received.bronze) +
+                ' / 旧形式 ' +
+                number(received.legacy) +
+                '）'
+            : '受信 LIGHT SEED：履歴照合中'
+        )
+      );
+      contents.append(card, el('h3', '', '作品Rankの更新記録'));
+      const eventNames = {
+        initial: '初回',
+        promotion: '昇格',
+        demotion: '降格',
+        finalized: '確定'
+      };
+      const events = latest.authorGrowth.events.filter(
+        (item) =>
+          item?.workId === work.id &&
+          Object.hasOwn(eventNames, item?.type) &&
+          Number.isSafeInteger(item.toRank) &&
+          item.toRank >= 1 &&
+          item.toRank <= 6
+      );
+      const filterBar = el('div', 'rr-author-event-filters');
+      filterBar.setAttribute('aria-label', '作品Rank更新の種類');
+      for (const [key, name] of [
+        ['all', 'すべて'],
+        ['promotion', '昇格'],
+        ['demotion', '降格'],
+        ['initial', '初回'],
+        ['finalized', '確定']
+      ]) {
+        const button = el('button', '', name);
+        button.type = 'button';
+        button.setAttribute('aria-pressed', String(authorEventFilter === key));
+        button.addEventListener('click', () => {
+          authorEventFilter = key;
+          authorEventPage = 0;
+          selectTab('author');
+        });
+        filterBar.append(button);
+      }
+      contents.append(filterBar);
+      const filtered = events.filter(
+        (item) => authorEventFilter === 'all' || item.type === authorEventFilter
+      );
+      const size = 10;
+      const pages = Math.max(1, Math.ceil(filtered.length / size));
+      authorEventPage = Math.min(authorEventPage, pages - 1);
+      const start = authorEventPage * size;
+      const items = filtered.slice(start, start + size);
+      contents.append(
+        el(
+          'p',
+          'rr-muted',
+          '取得範囲内の更新記録：' + number(filtered.length) + '件'
+        )
+      );
+      const timeline = el('div', 'rr-history');
+      if (!items.length)
+        timeline.append(
+          el('p', 'rr-muted', 'この作品に該当する更新記録はありません。')
+        );
+      for (const item of items) {
+        const row = el('div', 'rr-history-row');
+        const summary = el('div');
+        const from =
+          Number.isSafeInteger(item.fromRank) &&
+          item.fromRank >= 1 &&
+          item.fromRank <= 6
+            ? 'Rank ' + number(item.fromRank) + ' → '
+            : '';
+        summary.append(
+          el('strong', '', eventNames[item.type] + ' ・' + from + 'Rank ' + number(item.toRank)),
+          el('small', '', safeDate(item.occurredAt))
+        );
+        row.append(summary);
+        timeline.append(row);
+      }
+      contents.append(timeline);
+      if (pages > 1) {
+        const paging = el('div', 'rr-author-event-paging');
+        const prev = el('button', '', '前の10件');
+        prev.type = 'button';
+        prev.disabled = authorEventPage === 0;
+        prev.addEventListener('click', () => {
+          if (!authorEventPage) return;
+          authorEventPage--;
+          selectTab('author');
+        });
+        const next = el('button', '', '次の10件');
+        next.type = 'button';
+        next.disabled = authorEventPage + 1 >= pages;
+        next.addEventListener('click', () => {
+          if (next.disabled) return;
+          authorEventPage++;
+          selectTab('author');
+        });
+        paging.append(
+          prev,
+          el('span', '', number(authorEventPage + 1) + ' / ' + number(pages)),
+          next
+        );
+        contents.append(paging);
       }
     }
     function drawExchange() {
