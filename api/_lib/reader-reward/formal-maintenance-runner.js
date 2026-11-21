@@ -111,7 +111,14 @@ export function createUnregisteredFormalMaintenanceRunner({
         if (result?.status === 'reviewed') counts.reviewed++;
         else if (result?.status === 'already_reviewed')
           counts.alreadyReviewed++;
-        else if (result?.status === 'adjustment_policy_pending') counts.held++;
+        else if (
+          [
+            'adjustment_policy_pending',
+            'xp_pending_review',
+            'evidence_incomplete'
+          ].includes(result?.status)
+        )
+          counts.held++;
         else
           return Object.freeze({
             status: 'review_result_requires_attention',
