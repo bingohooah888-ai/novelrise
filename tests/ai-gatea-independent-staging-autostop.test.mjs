@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 
-const filename = '../.github/workflows/ai-gatea-staging-independent-stop-once.yml';
+const folder = '../.github/workflows/';
+const filename = folder + 'ai-gatea-staging-independent-stop-once.yml';
 const workflow = readFileSync(new URL(filename, import.meta.url), 'utf8');
 
 test('trusted Staging failure uses existing isolated STOP', () => {
