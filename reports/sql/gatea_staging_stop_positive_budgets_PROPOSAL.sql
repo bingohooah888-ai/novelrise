@@ -52,7 +52,7 @@ BEGIN
   END IF;
 
   SELECT pg_catalog.count(*) = 1
-     AND pg_catalog.coalesce(pg_catalog.bool_and(
+     AND coalesce(pg_catalog.bool_and(
        singleton = 1 AND enabled IS FALSE
        AND user_day_cap_micros = 0 AND user_month_cap_micros = 0
        AND global_day_cap_micros = 0 AND global_month_cap_micros = 0
