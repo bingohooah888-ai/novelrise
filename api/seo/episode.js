@@ -3,6 +3,7 @@ import { URL } from 'node:url';
 import { loadNovelOgData } from '../og/novel-data.js';
 import { ensureNovelSocialCard } from '../og/social-card-storage.js';
 import { renderEpisodeArticle } from './episode-article.js';
+import { prepareEpisodeReaderTemplate } from './episode-preview-isolation.js';
 import {
   canonicalUrl,
   compactText,
@@ -43,8 +44,24 @@ export default async function handler(req, res) {
 
   const id = queryValue(req.query?.id);
 
+  // Fail closed before any database or social-card access on Preview.
+  // Production receives the exact existing browser template.
+  let template;
+  let preview;
   try {
-    const template = await readTemplate(TEMPLATE_URL);
+    ({ html: template, preview } = prepareEpisodeReaderTemplate(
+      await readTemplate(TEMPLATE_URL),
+      process.env
+    ));
+  } catch {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('CDN-Cache-Control', 'no-store');
+    res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    return res.status(503).send('Episode preview environment unavailable');
+  }
+
+  try {
     if (!id) {
       return sendHtml(req, res, noindexPage(template, id), {
         indexable: false
@@ -100,7 +117,8 @@ export default async function handler(req, res) {
       : compactText(content) ||
         `${episode.title} — ${novel.title}のエピソードです。`;
     const canonical = canonicalUrl('episode', episode.id);
-    const ogData = await loadNovelOgData(novel.id);
+    // Preview must not fetch Production-hosted cover images during OG generation.
+    const ogData = preview ? null : await loadNovelOgData(novel.id);
     let socialCardImage = ogData?.imageUrl || '';
     if (ogData) {
       try {
@@ -150,16 +168,11 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Episode SEO render failed', {
       code: error?.code || null,
-      message: error?.message || null
+      message: preview ? null : error?.message || null
     });
 
-    try {
-      const template = await readTemplate(TEMPLATE_URL);
-      return sendHtml(req, res, noindexPage(template, id), {
-        indexable: false
-      });
-    } catch {
-      return res.status(503).send('Page temporarily unavailable');
-    }
+    return sendHtml(req, res, noindexPage(template, id), {
+      indexable: false
+    });
   }
 }
