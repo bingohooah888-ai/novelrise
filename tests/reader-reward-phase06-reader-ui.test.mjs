@@ -224,7 +224,7 @@ test('author-owned Rank history is visible only in verified formal view', async 
   });
   await panel.reload();
   byTag(root, 'button')
-    .find((button) => button.textContent === '発掘・称号')
+    .find((button) => button.textContent === '自作品の成長')
     .fire('click');
   assert.match(text(root), /作者専用/);
   assert.match(text(root), /作者本人の作品/);
@@ -239,9 +239,10 @@ test('author-owned Rank history is visible only in verified formal view', async 
     fetchSnapshot: async () => ({ ...eligible, formalEnabled: false })
   });
   await blocked.reload();
-  byTag(hidden, 'button')
-    .find((button) => button.textContent === '発掘・称号')
-    .fire('click');
+  const hiddenAuthorTab = byTag(hidden, 'button').find(
+    (button) => button.textContent === '自作品の成長'
+  );
+  assert.equal(hiddenAuthorTab, undefined);
   assert.doesNotMatch(text(hidden), /作者本人の作品/);
   const unverified = ui.normalizeSnapshot({
     ...eligible,
@@ -273,7 +274,7 @@ test('author-owned Rank history is visible only in verified formal view', async 
   });
   await invalidPanel.reload();
   byTag(invalidRoot, 'button')
-    .find((button) => button.textContent === '発掘・称号')
+    .find((button) => button.textContent === '自作品の成長')
     .fire('click');
   assert.match(text(invalidRoot), /受信 LIGHT SEED：履歴照合中/);
   assert.doesNotMatch(text(invalidRoot), /受信 LIGHT SEED 50個/);
@@ -762,4 +763,156 @@ test('invalid and maximum reader Levels have bounded guidance', async () => {
   assert.match(text(root), /現在の獲得見込は表示しません/);
   assert.doesNotMatch(text(root), /現在の読書報酬目安/);
   assert.equal(panel.getSnapshot().level, null);
+});
+
+test('author dashboard selects works and pages Rank events', async () => {
+  const first = {
+    id: '101',
+    title: 'はじまりの作品',
+    rank: 5,
+    rankName: 'STAR',
+    peakRank: 6,
+    lastChangedAt: '2026-11-15T00:00:00Z',
+    completed: false,
+    receivedSeeds: {
+      total: 12,
+      gold: 4,
+      silver: 3,
+      bronze: 5,
+      legacy: 0
+    }
+  };
+  const second = {
+    id: '202',
+    title: '終着点の作品',
+    rank: 3,
+    rankName: 'GLOW',
+    peakRank: 3,
+    lastChangedAt: '2026-10-12T00:00:00Z',
+    completed: true,
+    receivedSeeds: {
+      total: 2,
+      gold: 0,
+      silver: 1,
+      bronze: 1,
+      legacy: 0
+    }
+  };
+  const firstEvents = Array.from({ length: 13 }, (_, index) => ({
+    workId: first.id,
+    type: index % 2 === 0 ? 'promotion' : 'demotion',
+    fromRank: index % 2 === 0 ? 4 : 5,
+    toRank: index % 2 === 0 ? 5 : 4,
+    occurredAt: '2026-11-15T00:00:00Z'
+  }));
+  const sample = {
+    ...base,
+    formalEnabled: true,
+    authorGrowth: {
+      works: [first, second],
+      events: [
+        ...firstEvents,
+        {
+          workId: second.id,
+          type: 'finalized',
+          fromRank: 3,
+          toRank: 3,
+          occurredAt: '2026-10-12T00:00:00Z'
+        },
+        {
+          workId: 'unowned',
+          type: 'promotion',
+          toRank: 6,
+          occurredAt: '2026-11-10T00:00:00Z'
+        }
+      ]
+    }
+  };
+  const root = new FakeElement('main');
+  let reads = 0;
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => {
+      reads++;
+      return sample;
+    }
+  });
+  await panel.reload();
+  const initialReads = reads;
+  function click(label) {
+    const button = byTag(root, 'button').find((b) => b.textContent === label);
+    assert.ok(button);
+    button.fire('click');
+  }
+  click('自作品の成長');
+  assert.match(text(root), /はじまりの作品/);
+  assert.match(text(root), /受信 LIGHT SEED 12個/);
+  assert.match(text(root), /取得範囲内の更新記録：13件/);
+  assert.match(text(root), /最大30作品・更新履歴は最大80件/);
+  function cards() {
+    return byTag(root, 'button').filter((button) =>
+      button.className.includes('rr-author-work-select')
+    );
+  }
+  assert.equal(cards().length, 2);
+  assert.equal(cards()[0].attributes['aria-pressed'], 'true');
+  click('次の10件');
+  const remaining = flatten(root).filter(
+    (node) => node.className === 'rr-history-row'
+  );
+  assert.equal(remaining.length, 3);
+  click('昇格');
+  assert.match(text(root), /取得範囲内の更新記録：7件/);
+  const nextPageButton = byTag(root, 'button').find(
+    (button) => button.textContent === '次の10件'
+  );
+  assert.equal(nextPageButton, undefined);
+  cards()[1].fire('click');
+  assert.equal(cards()[1].attributes['aria-pressed'], 'true');
+  assert.match(text(root), /受信 LIGHT SEED 2個/);
+  assert.match(text(root), /取得範囲内の更新記録：1件/);
+  assert.match(text(root), /確定 ・Rank 3 → Rank 3/);
+  assert.doesNotMatch(text(root), /受信 LIGHT SEED 12個/);
+  assert.doesNotMatch(text(root), /Rank 6 → Rank 6/);
+  assert.equal(reads, initialReads);
+});
+
+test('author tab vanishes when verification is lost', async () => {
+  const first = {
+    id: '111',
+    title: '非公開の本人作品',
+    rank: 2,
+    rankName: 'SPARK',
+    peakRank: 2,
+    receivedSeeds: {
+      total: 0,
+      gold: 0,
+      silver: 0,
+      bronze: 0,
+      legacy: 0
+    }
+  };
+  let data = {
+    ...base,
+    formalEnabled: true,
+    authorGrowth: { works: [first], events: [] }
+  };
+  const root = new FakeElement('main');
+  const panel = ui.createRewardReaderPanel({
+    root,
+    fetchSnapshot: async () => data
+  });
+  await panel.reload();
+  byTag(root, 'button')
+    .find((b) => b.textContent === '自作品の成長')
+    .fire('click');
+  assert.match(text(root), /非公開の本人作品/);
+  data = { ...data, serverVerified: false };
+  await panel.reload();
+  assert.equal(panel.getSnapshot().authorGrowth, null);
+  const authorTab = byTag(root, 'button').find(
+    (button) => button.textContent === '自作品の成長'
+  );
+  assert.equal(authorTab, undefined);
+  assert.doesNotMatch(text(root), /非公開の本人作品/);
 });
