@@ -2,6 +2,10 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import {
+  OBSERVED_SCOUT_STAGING_MIGRATIONS,
+  verifyObservedScoutStagingMigrations
+} from './verify-observed-staging-scout-history.mjs';
 
 const PRODUCTION_SUPABASE_REF = 'fiepaguycecrredwrcwx';
 const SCOUT_STAGING_REF = 'wmlzjgvxgoyrovdhbqbg';
@@ -179,7 +183,8 @@ export function assertStagingOnlyParity(localVersions, stagingOnly, remoteRows) 
 export async function verifyStagingMigrationParity(env = process.env, {
   fetchImpl=globalThis.fetch,
   migrationDir='supabase/migrations',
-  stagingMigrationDir='supabase/staging-migrations'
+  stagingMigrationDir='supabase/staging-migrations',
+  observedMigrationDir='supabase/staging-migrations-observed'
 }={}) {
   const stagingUrl=env.STAGING_SUPABASE_URL || env.STAGING_EXPECTED_SUPABASE_URL || env.SUPABASE_URL;
   const projectRef=resolveStagingProjectRef(stagingUrl);
@@ -190,6 +195,19 @@ export async function verifyStagingMigrationParity(env = process.env, {
   const remoteRows=await readRemoteMigrationHistory({
     accessToken:env.SUPABASE_ACCESS_TOKEN,projectRef,fetchImpl
   });
+  // Observed but unapproved Staging-only SCOUT SQL is quarantined. Confirm
+  // its byte identity for diagnosis, then fail closed before Production handoff.
+  const observed = new Set(
+    OBSERVED_SCOUT_STAGING_MIGRATIONS.map((item) => item.version)
+  );
+  if (remoteRows.some((row) => observed.has(row.version))) {
+    await verifyObservedScoutStagingMigrations({
+      remoteRows,
+      observedDir: observedMigrationDir,
+      productionDir: migrationDir
+    });
+    fail('four observed Staging-only SCOUT migrations match archive but OWNER approval/provenance is unverified; Production migration handoff remains blocked.');
+  }
   assertStagingOnlyParity(localVersions,stagingOnly,remoteRows);
   console.log(`Verified strict Staging migration parity for ${projectRef}: ${localVersions.length} Production-track + four fixed Staging-only migrations.`);
   return {projectRef,versions:localVersions};
