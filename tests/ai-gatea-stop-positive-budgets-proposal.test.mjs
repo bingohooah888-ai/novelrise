@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 const basename = 'gatea_staging_stop_positive_budgets_PROPOSAL.sql';
 const sqlFile = new URL('../reports/sql/' + basename, import.meta.url);
