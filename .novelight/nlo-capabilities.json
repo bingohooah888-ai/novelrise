@@ -3,6 +3,32 @@
   "policyVersion": "1.0",
   "capabilities": [
     {
+      "id": "nlo.ai.020705.dpapi-synthetic-handoff",
+      "description": "Windows DPAPI user-bound synthetic-only temporary storage, decrypt, handoff and tamper-rejection probe for Gate B. No real PAT intake, provider access or live authorization.",
+      "intents": [
+        "ai phase2 gate b dpapi synthetic credential handoff",
+        "gate b secure storage offline unit verification"
+      ],
+      "aliases": [
+        "NLO Gate B DPAPI synthetic fixture",
+        "Gate B local fake credential handoff"
+      ],
+      "adapter": "scripts/nlo-ai-020705-dpapi-synthetic-handoff.mjs",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "repo_read",
+        "windows_local_synthetic_dpapi_only",
+        "no_real_credential_acceptance",
+        "separate_approval_before_any_live_pat"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-ai-020705-dpapi-synthetic-handoff.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "2026-11-06 OWNER synthetic-only NLO Gate B DPAPI code; existing NLO secrets, Cloudflare, Staging and Production untouched"
+    },
+    {
       "id": "nlo.capability.resolve",
       "description": "Resolve reusable NLO capabilities and convert unsupported requests into governed capability gaps.",
       "intents": [
