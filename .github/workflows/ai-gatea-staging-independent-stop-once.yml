@@ -1,12 +1,17 @@
 name: NOVELIGHT Gate A Staging Independent STOP (one-shot)
 
-# Cloudflare-independent, OWNER-triggered STOP only. It cannot arm AI or call providers.
+# Cloudflare-independent STOP: exact OWNER comment or failure of the
+# protected Staging-entry workflow. No AI arm, JWT revoke or provider call.
 # The staging Environment must receive a NEW dedicated, STOP-only DB role
 # secret named GATEA_STAGING_STOP_DATABASE_URL; never reuse STAGING_DATABASE_URL.
-# This is an independent STOP execution path, not yet automatic failure detection.
+# This monitors only the named GitHub workflow, NOT Cloudflare heartbeat death.
 on:
   issue_comment:
     types: [created]
+  workflow_run:
+    workflows:
+      - NOVELIGHT AI 02-07-05 Protected Staging Entry (admission only)
+    types: [completed]
 
 permissions:
   contents: read
@@ -19,16 +24,34 @@ jobs:
   stop:
     if: >-
       github.repository == 'bingohooah888-ai/novelrise' &&
-      github.event.issue.number == 294 &&
-      github.event.issue.pull_request == null &&
-      github.event.issue.state == 'open' &&
-      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
-      github.event.issue.user.login == 'bingohooah888-ai' &&
-      github.event.comment.user.login == 'bingohooah888-ai' &&
-      github.event.comment.author_association == 'OWNER' &&
-      github.actor == 'bingohooah888-ai' &&
-      github.triggering_actor == 'bingohooah888-ai' &&
-      github.event.comment.body == 'NOVELIGHT_GATEA_STAGING_STOP_ONCE 0b9b41ecef6a33eec2f7758d56ee6b02eb103e9d'
+      (
+        (
+          github.event_name == 'issue_comment' &&
+          github.event.issue.number == 294 &&
+          github.event.issue.pull_request == null &&
+          github.event.issue.state == 'open' &&
+          github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+          github.event.issue.user.login == 'bingohooah888-ai' &&
+          github.event.comment.user.login == 'bingohooah888-ai' &&
+          github.event.comment.author_association == 'OWNER' &&
+          github.actor == 'bingohooah888-ai' &&
+          github.triggering_actor == 'bingohooah888-ai' &&
+          github.event.comment.body == 'NOVELIGHT_GATEA_STAGING_STOP_ONCE 0b9b41ecef6a33eec2f7758d56ee6b02eb103e9d'
+        ) ||
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.name == 'NOVELIGHT AI 02-07-05 Protected Staging Entry (admission only)' &&
+          github.event.workflow_run.event == 'issue_comment' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == 'bingohooah888-ai/novelrise' &&
+          github.event.workflow_run.actor.login == 'bingohooah888-ai' &&
+          github.event.workflow_run.run_attempt == 1 &&
+          (
+            github.event.workflow_run.conclusion == 'failure' ||
+            github.event.workflow_run.conclusion == 'timed_out'
+          )
+        )
+      )
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 6
@@ -36,6 +59,7 @@ jobs:
       contents: read
       issues: read
       pull-requests: read
+      actions: read
     steps:
       - name: Checkout trusted default-branch event SHA
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -44,7 +68,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Verify exact OWNER event and pinned Draft PR
+      - name: Verify exact OWNER or trusted Staging run event and pinned Draft PR
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,17 +78,51 @@ jobs:
           test "$GITHUB_REF" = 'refs/heads/main'
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$GITHUB_SHA"
-          jq -e '
-            .repository.full_name == "bingohooah888-ai/novelrise" and
-            .issue.number == 294 and
-            .issue.pull_request == null and
-            .issue.state == "open" and
-            .issue.title == "[Staging Control] Supabase migration sync" and
-            .issue.user.login == "bingohooah888-ai" and
-            .comment.user.login == "bingohooah888-ai" and
-            .comment.author_association == "OWNER" and
-            .comment.body == "NOVELIGHT_GATEA_STAGING_STOP_ONCE 0b9b41ecef6a33eec2f7758d56ee6b02eb103e9d"
-          ' "$GITHUB_EVENT_PATH" >/dev/null
+          if [ "$GITHUB_EVENT_NAME" = 'issue_comment' ]; then
+            jq -e '
+              .repository.full_name == "bingohooah888-ai/novelrise" and
+              .issue.number == 294 and
+              .issue.pull_request == null and
+              .issue.state == "open" and
+              .issue.title == "[Staging Control] Supabase migration sync" and
+              .issue.user.login == "bingohooah888-ai" and
+              .comment.user.login == "bingohooah888-ai" and
+              .comment.author_association == "OWNER" and
+              .comment.body == "NOVELIGHT_GATEA_STAGING_STOP_ONCE 0b9b41ecef6a33eec2f7758d56ee6b02eb103e9d"
+            ' "$GITHUB_EVENT_PATH" >/dev/null
+          elif [ "$GITHUB_EVENT_NAME" = 'workflow_run' ]; then
+            # No PR branch checkout, artifacts, or executable untrusted data.
+            jq -e --arg sha "$GITHUB_SHA" '
+              .repository.full_name == "bingohooah888-ai/novelrise" and
+              .workflow_run.name == "NOVELIGHT AI 02-07-05 Protected Staging Entry (admission only)" and
+              .workflow_run.event == "issue_comment" and
+              .workflow_run.status == "completed" and
+              (.workflow_run.conclusion == "failure" or
+               .workflow_run.conclusion == "timed_out") and
+              .workflow_run.head_branch == "main" and
+              .workflow_run.head_sha == $sha and
+              .workflow_run.head_repository.full_name == "bingohooah888-ai/novelrise" and
+              .workflow_run.actor.login == "bingohooah888-ai" and
+              .workflow_run.run_attempt == 1 and
+              (.workflow_run.id | type == "number" and . > 0)
+            ' "$GITHUB_EVENT_PATH" >/dev/null
+            upstream_id="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ai-020705-staging-protected-entry.yml" --jq '.id')"
+            test "$upstream_id" != 'null'
+            run_id="$(jq -er '.workflow_run.id' "$GITHUB_EVENT_PATH")"
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" |
+              jq -e --argjson id "$upstream_id" --arg sha "$GITHUB_SHA" '
+                .workflow_id == $id and
+                .name == "NOVELIGHT AI 02-07-05 Protected Staging Entry (admission only)" and
+                .event == "issue_comment" and
+                .head_branch == "main" and .head_sha == $sha and
+                .head_repository.full_name == "bingohooah888-ai/novelrise" and
+                .actor.login == "bingohooah888-ai" and
+                .run_attempt == 1 and .status == "completed" and
+                (.conclusion == "failure" or .conclusion == "timed_out")
+              ' >/dev/null
+          else
+            exit 1
+          fi
           gh api "repos/$GITHUB_REPOSITORY/pulls/2895" |
             jq -e '
               .state == "open" and .draft == true and .merged == false and
@@ -115,6 +173,22 @@ jobs:
             THEN 'PASS' ELSE 'NO_GO' END
             FROM pg_roles WHERE rolname = current_user;")"
           test "$role_check" = 'PASS'
+          # Trusted GitHub failure with already-disabled Staging is a safe no-op.
+          # The previously proven manual OWNER path is not changed.
+          if [ "$GITHUB_EVENT_NAME" = 'workflow_run' ]; then
+            before="$(psql "$GATEA_STOP_DATABASE_URL" -XqAt -v ON_ERROR_STOP=1 -c "
+              SELECT enabled::text, user_day_cap_micros, user_month_cap_micros,
+                     global_day_cap_micros, global_month_cap_micros
+              FROM public.novelight_ai_runtime_settings WHERE singleton = 1;")"
+            if [ "$before" = 'false|0|0|0|0' ]; then
+              echo 'GATEA_STAGING_ALREADY_OFF_ZERO_PASS'
+              exit 0
+            fi
+            case "$before" in
+              true\|*) ;;
+              *) echo 'GATEA_STAGING_AUTOSTOP_PRECHECK_NO_GO'; exit 1 ;;
+            esac
+          fi
           psql "$GATEA_STOP_DATABASE_URL" -Xq -v ON_ERROR_STOP=1 --single-transaction --file - <<'SQL'
           SET LOCAL lock_timeout = '3s';
           SET LOCAL statement_timeout = '10s';
