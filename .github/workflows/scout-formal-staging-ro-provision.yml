@@ -1,12 +1,12 @@
 name: NOVELIGHT Formal Reader Staging Credential Provision (OWNER only)
 
-# Draft-only until a separately approved main merge; never runs on PR/push.
+# OWNER-dispatched only; main remains unchanged and Draft #2935 requires exact PR attestation.
 # This operation changes a Staging login and a single branch-only Vercel Secret.
 on:
   workflow_dispatch:
     inputs:
       main_sha:
-        description: Exact currently approved main SHA
+        description: Exact approved main SHA or Draft PR #2935 HEAD
         type: string
         required: true
       scope:
@@ -22,7 +22,7 @@ on:
         type: string
         required: true
       confirmation:
-        description: STAGING FORMAL RO APPROVED (main) or STAGING FORMAL TLS READONLY APPROVED (Draft)
+        description: STAGING FORMAL RO APPROVED (main/Draft) or STAGING FORMAL TLS READONLY APPROVED (Draft)
         type: string
         required: true
       tls_readonly_probe:
@@ -43,7 +43,8 @@ jobs:
     if: >-
       inputs.tls_readonly_probe != true &&
       github.repository == 'bingohooah888-ai/novelrise' &&
-      github.ref == 'refs/heads/main' &&
+      (github.ref == 'refs/heads/main' ||
+       github.ref == 'refs/heads/feature/scout-formal-qualified-earnings-offline-20261116') &&
       github.actor == 'bingohooah888-ai' &&
       github.triggering_actor == 'bingohooah888-ai' &&
       github.event.sender.id == 317436651 &&
@@ -55,6 +56,9 @@ jobs:
       inputs.confirmation == 'STAGING FORMAL RO APPROVED'
     runs-on: ubuntu-latest
     environment: staging
+    permissions:
+      contents: read
+      pull-requests: read
     timeout-minutes: 8
     steps:
       - name: Checkout only the exact trusted main, without persisted token
@@ -64,6 +68,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
       - name: Verify exact current main before loading Staging credentials
+        if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           EXPECTED_MAIN_SHA: ${{ inputs.main_sha }}
@@ -72,6 +77,30 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_MAIN_SHA"
           test "$GITHUB_SHA" = "$EXPECTED_MAIN_SHA"
           test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN_SHA"
+
+      - name: Attest exact OWNER Draft PR HEAD before loading Staging credentials
+        if: github.ref == 'refs/heads/feature/scout-formal-qualified-earnings-offline-20261116'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_DRAFT_SHA: ${{ inputs.main_sha }}
+          EXPECTED_BRANCH: feature/scout-formal-qualified-earnings-offline-20261116
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_DRAFT_SHA"
+          test "$GITHUB_SHA" = "$EXPECTED_DRAFT_SHA"
+          test "$GITHUB_REF" = "refs/heads/$EXPECTED_BRANCH"
+          test "$GITHUB_WORKFLOW_REF" = 'bingohooah888-ai/novelrise/.github/workflows/scout-formal-staging-ro-provision.yml@refs/heads/feature/scout-formal-qualified-earnings-offline-20261116'
+          gh api "repos/$GITHUB_REPOSITORY/pulls/2935" |
+            jq -e --arg sha "$EXPECTED_DRAFT_SHA" --arg branch "$EXPECTED_BRANCH" '
+              .number == 2935 and .state == "open" and .draft == true and
+              .merged == false and .user.login == "bingohooah888-ai" and
+              .head.repo.full_name == "bingohooah888-ai/novelrise" and
+              .head.ref == $branch and .head.sha == $sha and
+              .base.repo.full_name == "bingohooah888-ai/novelrise" and
+              .base.ref == "main"
+            ' >/dev/null
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$EXPECTED_BRANCH" --jq .object.sha)" = "$EXPECTED_DRAFT_SHA"
       - name: Set up pinned Node version
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
