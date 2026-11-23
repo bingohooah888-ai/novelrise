@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { URL } from 'node:url';
 import {
+  deriveFormalStagingAdminDirectDatabaseUrl,
   deriveFormalReaderDatabaseUrl,
   formatFormalRoProvisionFailure,
   makeScramVerifier,
@@ -96,6 +97,36 @@ test('reader URL is limited to the dedicated Staging database', () => {
     () => deriveFormalReaderDatabaseUrl(wrong.toString(), password),
     /DATABASE_ROUTE_INVALID/u
   );
+});
+
+test('Staging admin route uses the existing Secret only in memory', () => {
+  const source = new URL(ADMIN_DSN);
+  source.hostname = 'aws-0-ap-northeast-1.pooler.supabase.com';
+  source.username = 'postgres.' + REF;
+  const originalSecret = source.toString();
+  const direct = new URL(
+    deriveFormalStagingAdminDirectDatabaseUrl(originalSecret)
+  );
+  assert.equal(direct.hostname, 'db.' + REF + '.supabase.co');
+  assert.equal(direct.port, '5432');
+  assert.equal(direct.username, 'postgres');
+  assert.equal(direct.password, source.password);
+  assert.equal(direct.pathname, '/postgres');
+  assert.equal(source.toString(), originalSecret);
+  assert.equal(deriveFormalStagingAdminDirectDatabaseUrl(ADMIN_DSN), ADMIN_DSN);
+
+  for (const invalid of [
+    'postgresql://postgres:private-password@db.fiepaguycecrredwrcwx.supabase.co:5432/postgres',
+    'postgresql://postgres:private-password@evil.example:5432/postgres',
+    originalSecret.replace(':5432/', ':6543/')
+  ]) {
+    assert.throws(
+      () => deriveFormalStagingAdminDirectDatabaseUrl(invalid),
+      (error) =>
+        error.safeCode === 'STAGING_DATABASE_IDENTITY_UNVERIFIED' &&
+        !error.message.includes('private-password')
+    );
+  }
 });
 
 test('SCRAM verifier never contains its plaintext password', () => {

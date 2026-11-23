@@ -132,6 +132,37 @@ export function verifyFormalReaderProvisionContext(env) {
   return true;
 }
 
+// Derive an in-process direct route from the existing Staging Secret. Never
+// print, persist or replace that Secret; verify both routes before using it.
+export function deriveFormalStagingAdminDirectDatabaseUrl(sourceUrl) {
+  const target = {
+    STAGING_SUPABASE_URL: STAGING_URL,
+    STAGING_DATABASE_URL: sourceUrl,
+    PGSSLMODE: 'require'
+  };
+  try {
+    const source = verifyStagingMigrationTarget(target);
+    if (source.projectRef !== STAGING_REF) {
+      hold('STAGING_DATABASE_IDENTITY_UNVERIFIED');
+    }
+    const direct = new URL(sourceUrl);
+    direct.username = 'postgres';
+    direct.hostname = 'db.' + STAGING_REF + '.supabase.co';
+    direct.port = '5432';
+    const databaseUrl = direct.toString();
+    const verified = verifyStagingMigrationTarget({
+      ...target,
+      STAGING_DATABASE_URL: databaseUrl
+    });
+    if (verified.projectRef !== STAGING_REF || verified.connectionMode !== 'direct') {
+      hold('STAGING_DATABASE_IDENTITY_UNVERIFIED');
+    }
+    return databaseUrl;
+  } catch {
+    hold('STAGING_DATABASE_IDENTITY_UNVERIFIED');
+  }
+}
+
 export function deriveFormalReaderDatabaseUrl(privilegedUrl, password) {
   if (!/^[A-Za-z0-9_-]{64}$/u.test(password)) {
     hold('GENERATED_PASSWORD_INVALID');
@@ -371,8 +402,11 @@ export async function provisionFormalStagingReader({
     hold('VERCEL_EXISTING_SECRET_REFUSED');
   }
   onSafeStage('STAGING_ADMIN_CONNECT');
-  const adminHost = new URL(env.STAGING_DATABASE_URL).hostname;
-  const admin = new ClientImpl(connectionOptions(env.STAGING_DATABASE_URL, ca));
+  const adminDatabaseUrl = deriveFormalStagingAdminDirectDatabaseUrl(
+    env.STAGING_DATABASE_URL
+  );
+  const adminHost = new URL(adminDatabaseUrl).hostname;
+  const admin = new ClientImpl(connectionOptions(adminDatabaseUrl, ca));
   let loginActivated = false;
   try {
     onSafeStage('STAGING_ADMIN_CONNECT');
@@ -390,7 +424,7 @@ export async function provisionFormalStagingReader({
     const password = randomBytes(48).toString('base64url');
     const verifier = makeScramVerifier(password, randomBytes(16));
     const readerUrl = deriveFormalReaderDatabaseUrl(
-      env.STAGING_DATABASE_URL,
+      adminDatabaseUrl,
       password
     );
     // A password is set while the role remains NOLOGIN: a failed Vercel
