@@ -1,5 +1,5 @@
 // Staging-only formal reader credential provisioning. OFF until separately approved.
-// Run only inside the OWNER-dispatched trusted-main GitHub staging Environment.
+// Run only inside the OWNER-dispatched trusted main or attested Draft #2935 staging Environment.
 // Password, database URLs, bearer tokens and verifier values must never be logged.
 import { createHash, createHmac, pbkdf2Sync, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -24,6 +24,8 @@ const ENV_KEY = 'STAGING_FORMAL_RO_DATABASE_URL';
 const SCOPE = 'scout-formal-reader-credential-staging-v1';
 const WORKFLOW =
   REPO + '/.github/workflows/scout-formal-staging-ro-provision.yml@refs/heads/main';
+const DRAFT_WORKFLOW =
+  REPO + '/.github/workflows/scout-formal-staging-ro-provision.yml@refs/heads/' + BRANCH;
 const HEX40 = /^[a-f0-9]{40}$/u;
 const SOURCE_TABLES = Object.freeze([
   ['public', 'scout_xp_ledger', 'user_id'],
@@ -74,6 +76,7 @@ const SAFE_PROVISION_CODES = new Set([
   'POOLER_UPSTREAM_SSL_UNVERIFIED',
   'DATABASE_BACKEND_SSL_NOT_VERIFIED',
   'ROLE_NOT_DORMANT_OR_UNSAFE',
+  'ROLE_PASSWORD_ALREADY_SET',
   'STAGING_READER_ACL_DRIFT',
   'INVALID_RELATION',
   'VERCEL_INVENTORY_UNAVAILABLE',
@@ -99,12 +102,16 @@ export function formatFormalRoProvisionFailure(error, stage) {
 }
 
 export function verifyFormalReaderProvisionContext(env) {
+  const trustedMain =
+    env.GITHUB_REF === 'refs/heads/main' && env.GITHUB_WORKFLOW_REF === WORKFLOW;
+  const trustedDraft =
+    env.GITHUB_REF === 'refs/heads/' + BRANCH &&
+    env.GITHUB_WORKFLOW_REF === DRAFT_WORKFLOW;
   if (
     env.GITHUB_ACTIONS !== 'true' ||
     env.GITHUB_EVENT_NAME !== 'workflow_dispatch' ||
     env.GITHUB_REPOSITORY !== REPO ||
-    env.GITHUB_REF !== 'refs/heads/main' ||
-    env.GITHUB_WORKFLOW_REF !== WORKFLOW ||
+    (!trustedMain && !trustedDraft) ||
     env.GITHUB_ACTOR !== 'bingohooah888-ai' ||
     env.GITHUB_TRIGGERING_ACTOR !== 'bingohooah888-ai' ||
     env.GITHUB_RUN_ATTEMPT !== '1' ||
@@ -285,6 +292,17 @@ async function verifyDormantRole(client) {
     r.rolinherit !== false
   ) {
     hold('ROLE_NOT_DORMANT_OR_UNSAFE');
+  }
+  // Never overwrite an existing password; read only the absence boolean.
+  const credential = await client.query(
+    'select rolpassword is null as password_unset from pg_catalog.pg_authid where rolname=$1',
+    [ROLE]
+  );
+  if (
+    credential.rows.length !== 1 ||
+    credential.rows[0].password_unset !== true
+  ) {
+    hold('ROLE_PASSWORD_ALREADY_SET');
   }
   for (const [schema, table, subjectColumn] of SOURCE_TABLES) {
     const relation = schema + '.' + table;
