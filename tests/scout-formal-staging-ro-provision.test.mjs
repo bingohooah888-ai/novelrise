@@ -257,7 +257,7 @@ test('TLS probe verifies server and identity without writers', async () => {
   assert.equal(ended, true);
 });
 
-test('TLS probe fails closed on missing secret or backend SSL', async () {
+test('TLS probe fails closed on missing secret or backend SSL', async () => {
   let constructed = false;
   class InvalidBackendClient {
     constructor(options) {
