@@ -132,6 +132,7 @@ test('Staging admin route uses the existing Secret only in memory', () => {
   }
 });
 
+// prettier-ignore
 const probeContext = {
   ...stage,
   GITHUB_REF: 'refs/heads/' + BRANCH,
@@ -146,6 +147,7 @@ const probeContext = {
   VERCEL_API_TOKEN: ''
 };
 
+// prettier-ignore
 test('TLS probe rejects invalid approval and routes', () => {
   assert.equal(verifyFormalStagingTlsProbeContext(probeContext), true);
   for (const [name, value] of [
@@ -179,6 +181,7 @@ test('TLS probe rejects invalid approval and routes', () => {
   );
 });
 
+// prettier-ignore
 test('Draft TLS probe is isolated from credential provisioning', () => {
   const workflow = readFileSync(
     new URL(
@@ -198,6 +201,7 @@ test('Draft TLS probe is isolated from credential provisioning', () => {
   assert.doesNotMatch(workflow, /^\s+(push|pull_request|schedule):/mu);
 });
 
+// prettier-ignore
 test('TLS probe verifies server and identity without writers', async () => {
   const source = new URL(ADMIN_DSN);
   source.hostname = 'aws-0-ap-northeast-1.pooler.supabase.com';
@@ -257,6 +261,7 @@ test('TLS probe verifies server and identity without writers', async () => {
   assert.equal(ended, true);
 });
 
+// prettier-ignore
 test('TLS probe fails closed on missing secret or backend SSL', async () => {
   let constructed = false;
   class InvalidBackendClient {
