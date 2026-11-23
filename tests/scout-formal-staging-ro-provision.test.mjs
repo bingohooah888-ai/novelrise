@@ -6,10 +6,13 @@ import {
   deriveFormalStagingAdminDirectDatabaseUrl,
   deriveFormalReaderDatabaseUrl,
   formatFormalRoProvisionFailure,
+  formatFormalStagingTlsProbeFailure,
+  probeFormalStagingReadOnlyTls,
   makeScramVerifier,
   provisionFormalStagingReader,
   verifyFormalReaderProvisionContext,
-  verifyFormalReaderTls
+  verifyFormalReaderTls,
+  verifyFormalStagingTlsProbeContext
 } from '../scripts/scout-formal-staging-ro-provision.mjs';
 
 const REF = 'wmlzjgvxgoyrovdhbqbg';
@@ -127,6 +130,180 @@ test('Staging admin route uses the existing Secret only in memory', () => {
         !error.message.includes('private-password')
     );
   }
+});
+
+const probeContext = {
+  ...stage,
+  GITHUB_REF: 'refs/heads/' + BRANCH,
+  GITHUB_WORKFLOW_REF:
+    'bingohooah888-ai/novelrise/.github/workflows/' +
+    'scout-formal-staging-ro-provision.yml@refs/heads/' + BRANCH,
+  GITHUB_SHA: 'c'.repeat(40),
+  EXPECTED_PROBE_SHA: 'c'.repeat(40),
+  FORMAL_STAGING_PR_NUMBER: '2935',
+  FORMAL_STAGING_SCOPE: 'scout-formal-reader-tls-staging-v1',
+  FORMAL_STAGING_CONFIRMATION: 'STAGING FORMAL TLS READONLY APPROVED',
+  VERCEL_API_TOKEN: ''
+};
+
+test('TLS probe rejects non-OWNER, stale SHA, wrong PR and non-Staging routes', () => {
+  assert.equal(verifyFormalStagingTlsProbeContext(probeContext), true);
+  for (const [name, value] of [
+    ['GITHUB_REF', 'refs/heads/main'],
+    ['GITHUB_WORKFLOW_REF', stage.GITHUB_WORKFLOW_REF],
+    ['GITHUB_ACTOR', 'untrusted-user'],
+    ['GITHUB_TRIGGERING_ACTOR', 'untrusted-user'],
+    ['GITHUB_EVENT_NAME', 'pull_request'],
+    ['GITHUB_RUN_ATTEMPT', '2'],
+    ['EXPECTED_PROBE_SHA', 'd'.repeat(40)],
+    ['FORMAL_STAGING_PR_NUMBER', '2936'],
+    ['FORMAL_STAGING_SCOPE', 'scout-formal-reader-credential-staging-v1'],
+    ['FORMAL_STAGING_CONFIRMATION', 'STAGING FORMAL RO APPROVED'],
+    ['FORMAL_STAGING_REF', 'fiepaguycecrredwrcwx'],
+    ['FORMAL_STAGING_PREVIEW_BRANCH', 'main'],
+    ['STAGING_SUPABASE_URL', 'https://fiepaguycecrredwrcwx.supabase.co']
+  ]) {
+    assert.throws(
+      () => verifyFormalStagingTlsProbeContext({ ...probeContext, [name]: value }),
+      /UNTRUSTED_APPROVAL_CONTEXT/u
+    );
+  }
+  assert.throws(
+    () => verifyFormalStagingTlsProbeContext({
+      ...probeContext,
+      STAGING_DATABASE_URL:
+        'postgresql://postgres:private@db.fiepaguycecrredwrcwx.supabase.co:5432/postgres'
+    }),
+    /STAGING_DATABASE_IDENTITY_UNVERIFIED/u
+  );
+});
+
+test('Draft TLS probe workflow never reuses credential-provisioning job', () => {
+  const workflow = readFileSync(
+    new URL(
+      '../.github/workflows/scout-formal-staging-ro-provision.yml',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(workflow, /tls_readonly_probe:/u);
+  assert.match(workflow, /staging-tls-readonly-pr-identity:/u);
+  assert.match(workflow, /needs: staging-tls-readonly-pr-identity/u);
+  assert.match(workflow, /environment: staging/u);
+  assert.match(workflow, /inputs\.tls_readonly_probe != true/u);
+  assert.match(workflow, /inputs\.main_sha == github\.sha/u);
+  assert.match(workflow, /pulls\/2935/u);
+  assert.match(workflow, /--tls-readonly-probe/u);
+  assert.doesNotMatch(workflow, /^\s+(push|pull_request|schedule):/mu);
+});
+
+test('read-only TLS probe checks server TLS and identity without writers', async () => {
+  const source = new URL(ADMIN_DSN);
+  source.hostname = 'aws-0-ap-northeast-1.pooler.supabase.com';
+  source.username = 'postgres.' + REF;
+  const queries = [];
+  const settings = [];
+  let ended = false;
+  class SyntheticReadOnlyClient {
+    constructor(options) {
+      settings.push(options);
+      this.connection = {
+        stream: {
+          encrypted: true,
+          authorized: true,
+          servername: options.host,
+          getProtocol: () => 'TLSv1.3',
+          getPeerCertificate: () => ({ subject: { CN: 'synthetic' } })
+        }
+      };
+    }
+    async connect() {}
+    async query(sql) {
+      queries.push(sql);
+      if (sql === "select current_setting('transaction_read_only') as read_only") {
+        return { rows: [{ read_only: 'on' }] };
+      }
+      if (sql.includes('pg_catalog.pg_stat_ssl')) {
+        return { rows: [{ ssl: true }] };
+      }
+      if (sql.includes('current_user as role')) {
+        return { rows: [{ role: 'postgres', database: 'postgres' }] };
+      }
+      return { rows: [] };
+    }
+    async end() {
+      ended = true;
+    }
+  }
+  const result = await probeFormalStagingReadOnlyTls({
+    env: { ...probeContext, STAGING_DATABASE_URL: source.toString() },
+    ClientImpl: SyntheticReadOnlyClient
+  });
+  assert.equal(result.status, 'staging_tls_readonly_verified');
+  assert.equal(settings.length, 1);
+  assert.equal(settings[0].host, 'db.' + REF + '.supabase.co');
+  assert.equal(settings[0].user, 'postgres');
+  assert.equal(settings[0].password, 'synthetic');
+  assert.equal(settings[0].options, '-c default_transaction_read_only=on');
+  assert.equal(settings[0].ssl.rejectUnauthorized, true);
+  assert.equal(queries[0], 'BEGIN READ ONLY');
+  assert.equal(queries.at(-1), 'ROLLBACK');
+  assert.ok(queries.every((q) => /^(?:select|BEGIN READ ONLY|ROLLBACK)/iu.test(q)));
+  assert.equal(ended, true);
+});
+
+test('TLS probe fails closed on unverified backend SSL or missing secret', async () => {
+  let constructed = false;
+  class InvalidBackendClient {
+    constructor(options) {
+      constructed = true;
+      this.connection = {
+        stream: {
+          encrypted: true,
+          authorized: true,
+          servername: options.host,
+          getProtocol: () => 'TLSv1.3',
+          getPeerCertificate: () => ({ subject: { CN: 'synthetic' } })
+        }
+      };
+    }
+    async connect() {}
+    async query(sql) {
+      if (sql.includes('transaction_read_only')) {
+        return { rows: [{ read_only: 'on' }] };
+      }
+      if (sql.includes('pg_catalog.pg_stat_ssl')) {
+        return { rows: [{ ssl: false }] };
+      }
+      return { rows: [] };
+    }
+    async end() {}
+  }
+  await assert.rejects(
+    probeFormalStagingReadOnlyTls({
+      env: probeContext,
+      ClientImpl: InvalidBackendClient
+    }),
+    /DATABASE_BACKEND_SSL_NOT_VERIFIED/u
+  );
+  assert.equal(constructed, true);
+  constructed = false;
+  await assert.rejects(
+    probeFormalStagingReadOnlyTls({
+      env: { ...probeContext, STAGING_DATABASE_URL: '' },
+      ClientImpl: InvalidBackendClient
+    }),
+    /EXISTING_STAGING_SECRETS_REQUIRED/u
+  );
+  assert.equal(constructed, false);
+  const diagnostic = formatFormalStagingTlsProbeFailure(
+    { safeCode: 'DATABASE_BACKEND_SSL_NOT_VERIFIED' },
+    'VERIFY_STAGING_ADMIN_TLS'
+  );
+  assert.equal(
+    diagnostic,
+    'FORMAL_RO_STAGING_TLS_PROBE_STOPPED:VERIFY_STAGING_ADMIN_TLS:DATABASE_BACKEND_SSL_NOT_VERIFIED'
+  );
 });
 
 test('SCRAM verifier never contains its plaintext password', () => {

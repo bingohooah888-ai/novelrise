@@ -22,9 +22,14 @@ on:
         type: string
         required: true
       confirmation:
-        description: STAGING FORMAL RO APPROVED
+        description: STAGING FORMAL RO APPROVED (main) or STAGING FORMAL TLS READONLY APPROVED (Draft)
         type: string
         required: true
+      tls_readonly_probe:
+        description: Draft PR #2935 read-only TLS identity probe only (does not provision credentials)
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -36,6 +41,7 @@ concurrency:
 jobs:
   provision-staging-reader-credential:
     if: >-
+      inputs.tls_readonly_probe != true &&
       github.repository == 'bingohooah888-ai/novelrise' &&
       github.ref == 'refs/heads/main' &&
       github.actor == 'bingohooah888-ai' &&
@@ -83,3 +89,109 @@ jobs:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
         run: node scripts/scout-formal-staging-ro-provision.mjs
+
+  staging-tls-readonly-pr-identity:
+    # This gate has no staging Environment and cannot access Staging secrets.
+    if: >-
+      inputs.tls_readonly_probe == true &&
+      github.repository == 'bingohooah888-ai/novelrise' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/feature/scout-formal-qualified-earnings-offline-20261116' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      github.event.sender.id == 317436651 &&
+      github.run_attempt == 1 &&
+      inputs.main_sha == github.sha &&
+      inputs.scope == 'scout-formal-reader-tls-staging-v1' &&
+      inputs.staging_ref == 'wmlzjgvxgoyrovdhbqbg' &&
+      inputs.preview_branch == 'feature/scout-formal-qualified-earnings-offline-20261116' &&
+      inputs.confirmation == 'STAGING FORMAL TLS READONLY APPROVED'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Attest exact OWNER Draft PR HEAD without secrets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.main_sha }}
+          EXPECTED_BRANCH: feature/scout-formal-qualified-earnings-offline-20261116
+        run: |
+          set -euo pipefail
+              test "$GITHUB_WORKFLOW_REF" = 'bingohooah888-ai/novelrise/.github/workflows/scout-formal-staging-ro-provision.yml@refs/heads/feature/scout-formal-qualified-earnings-offline-20261116'
+              test "$GITHUB_REF" = "refs/heads/$EXPECTED_BRANCH"
+              test "$GITHUB_SHA" = "$EXPECTED_SHA"
+              gh api "repos/$GITHUB_REPOSITORY/pulls/2935" |
+                jq -e --arg sha "$EXPECTED_SHA" --arg branch "$EXPECTED_BRANCH" '
+                  .number == 2935 and .state == "open" and
+                  .draft == true and .merged == false and
+                  .user.login == "bingohooah888-ai" and
+                  .head.repo.full_name == "bingohooah888-ai/novelrise" and
+                  .head.ref == $branch and .head.sha == $sha and
+                  .base.repo.full_name == "bingohooah888-ai/novelrise" and
+                  .base.ref == "main"
+                ' >/dev/null
+              test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$EXPECTED_BRANCH" --jq .object.sha)" = "$EXPECTED_SHA"
+
+  staging-tls-readonly-probe:
+    needs: staging-tls-readonly-pr-identity
+    if: >-
+      inputs.tls_readonly_probe == true &&
+      needs.staging-tls-readonly-pr-identity.result == 'success' &&
+      github.ref == 'refs/heads/feature/scout-formal-qualified-earnings-offline-20261116' &&
+      inputs.main_sha == github.sha
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 7
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout exact attested Draft commit without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.main_sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Reattest unchanged PR HEAD before referencing Staging Secret
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.main_sha }}
+          EXPECTED_BRANCH: feature/scout-formal-qualified-earnings-offline-20261116
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+              test "$GITHUB_WORKFLOW_REF" = 'bingohooah888-ai/novelrise/.github/workflows/scout-formal-staging-ro-provision.yml@refs/heads/feature/scout-formal-qualified-earnings-offline-20261116'
+              test "$GITHUB_REF" = "refs/heads/$EXPECTED_BRANCH"
+              test "$GITHUB_SHA" = "$EXPECTED_SHA"
+              gh api "repos/$GITHUB_REPOSITORY/pulls/2935" |
+                jq -e --arg sha "$EXPECTED_SHA" --arg branch "$EXPECTED_BRANCH" '
+                  .number == 2935 and .state == "open" and
+                  .draft == true and .merged == false and
+                  .user.login == "bingohooah888-ai" and
+                  .head.repo.full_name == "bingohooah888-ai/novelrise" and
+                  .head.ref == $branch and .head.sha == $sha and
+                  .base.repo.full_name == "bingohooah888-ai/novelrise" and
+                  .base.ref == "main"
+                ' >/dev/null
+              test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$EXPECTED_BRANCH" --jq .object.sha)" = "$EXPECTED_SHA"
+      - name: Set up pinned Node version
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Install locked dependencies with lifecycle scripts disabled
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Prove only Staging direct TLS in a READ ONLY transaction
+        env:
+          EXPECTED_PROBE_SHA: ${{ inputs.main_sha }}
+          FORMAL_STAGING_PR_NUMBER: '2935'
+          FORMAL_STAGING_SCOPE: ${{ inputs.scope }}
+          FORMAL_STAGING_CONFIRMATION: ${{ inputs.confirmation }}
+          FORMAL_STAGING_REF: ${{ inputs.staging_ref }}
+          FORMAL_STAGING_PREVIEW_BRANCH: ${{ inputs.preview_branch }}
+          STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: node scripts/scout-formal-staging-ro-provision.mjs --tls-readonly-probe
