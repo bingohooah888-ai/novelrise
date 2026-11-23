@@ -146,7 +146,7 @@ const probeContext = {
   VERCEL_API_TOKEN: ''
 };
 
-test('TLS probe rejects non-OWNER, stale SHA, wrong PR and non-Staging routes', () => {
+test('TLS probe rejects invalid approval and routes', () => {
   assert.equal(verifyFormalStagingTlsProbeContext(probeContext), true);
   for (const [name, value] of [
     ['GITHUB_REF', 'refs/heads/main'],
@@ -164,7 +164,8 @@ test('TLS probe rejects non-OWNER, stale SHA, wrong PR and non-Staging routes', 
     ['STAGING_SUPABASE_URL', 'https://fiepaguycecrredwrcwx.supabase.co']
   ]) {
     assert.throws(
-      () => verifyFormalStagingTlsProbeContext({ ...probeContext, [name]: value }),
+      () =>
+        verifyFormalStagingTlsProbeContext({ ...probeContext, [name]: value }),
       /UNTRUSTED_APPROVAL_CONTEXT/u
     );
   }
@@ -178,7 +179,7 @@ test('TLS probe rejects non-OWNER, stale SHA, wrong PR and non-Staging routes', 
   );
 });
 
-test('Draft TLS probe workflow never reuses credential-provisioning job', () => {
+test('Draft TLS probe is isolated from credential provisioning', () => {
   const workflow = readFileSync(
     new URL(
       '../.github/workflows/scout-formal-staging-ro-provision.yml',
@@ -197,7 +198,7 @@ test('Draft TLS probe workflow never reuses credential-provisioning job', () => 
   assert.doesNotMatch(workflow, /^\s+(push|pull_request|schedule):/mu);
 });
 
-test('read-only TLS probe checks server TLS and identity without writers', async () => {
+test('TLS probe verifies server and identity without writers', async () => {
   const source = new URL(ADMIN_DSN);
   source.hostname = 'aws-0-ap-northeast-1.pooler.supabase.com';
   source.username = 'postgres.' + REF;
@@ -220,7 +221,9 @@ test('read-only TLS probe checks server TLS and identity without writers', async
     async connect() {}
     async query(sql) {
       queries.push(sql);
-      if (sql === "select current_setting('transaction_read_only') as read_only") {
+      if (
+        sql === "select current_setting('transaction_read_only') as read_only"
+      ) {
         return { rows: [{ read_only: 'on' }] };
       }
       if (sql.includes('pg_catalog.pg_stat_ssl')) {
@@ -248,11 +251,13 @@ test('read-only TLS probe checks server TLS and identity without writers', async
   assert.equal(settings[0].ssl.rejectUnauthorized, true);
   assert.equal(queries[0], 'BEGIN READ ONLY');
   assert.equal(queries.at(-1), 'ROLLBACK');
-  assert.ok(queries.every((q) => /^(?:select|BEGIN READ ONLY|ROLLBACK)/iu.test(q)));
+  assert.ok(
+    queries.every((q) => /^(?:select|BEGIN READ ONLY|ROLLBACK)/iu.test(q))
+  );
   assert.equal(ended, true);
 });
 
-test('TLS probe fails closed on unverified backend SSL or missing secret', async () => {
+test('TLS probe fails closed on missing secret or backend SSL', async () {
   let constructed = false;
   class InvalidBackendClient {
     constructor(options) {
