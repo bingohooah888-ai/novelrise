@@ -253,7 +253,7 @@
         "node --test tests/nlo-scout-ro-staging-dispatch.test.mjs"
       ],
       "version": "0.1.0",
-      "status": "testing",
+      "status": "enabled",
       "provenance": "2026-11-16 OWNER-requested code-only NLO automation; requires separately approved main merge, promotion and local NLO rollout; no live dispatch authorized"
     }
   ]
