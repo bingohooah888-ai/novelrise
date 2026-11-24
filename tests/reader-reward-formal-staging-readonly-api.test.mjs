@@ -243,7 +243,7 @@ test('verified Auth reader inspects only their canonical Point/XP and Level/Wall
     queries.some((q) => q.sql.includes('auth.users')),
     false
   );
-  assert.equal(application.getNewReaderSummary, undefined);
+  assert.equal(typeof application.getNewReaderSummary, 'function');
   const earnings = await application.drainDueEarnings();
   assert.equal(earnings.status, 'formal_worker_disabled');
   const write = response();
@@ -258,9 +258,23 @@ test('verified Auth reader inspects only their canonical Point/XP and Level/Wall
   });
   const summary = response();
   await admin(request('new_readers'), summary);
-  assert.equal(summary.code, 503);
-  assert.equal(summary.body.error, 'FORMAL_NEW_READER_UNAVAILABLE');
-  assert.equal(queries.length, 1);
+  assert.equal(summary.code, 200);
+  assert.equal(summary.body.status, 'staging_verified_admin_reader_only');
+  assert.equal(summary.body.scope, 'verified_admin_self_only');
+  assert.equal(summary.body.readerStatus, 'new_reader_ready_for_initialization');
+  assert.deepEqual(summary.body.counts, {
+    pointRows: 0,
+    xpRows: 0,
+    levelRows: 0,
+    walletRows: 0
+  });
+  assert.equal(summary.body.totalRegistered, null);
+  assert.equal(summary.body.initialized, null);
+  assert.equal(summary.body.partial, null);
+  assert.equal(summary.body.readyForPublicRelease, false);
+  assert.equal(queries.length, 2);
+  assert.deepEqual(queries.map((q) => q.args), [[USER], [USER]]);
+  assert.equal(queries.some((q) => q.sql.includes('auth.users')), false);
 });
 
 test('missing Auth created_at fails closed without any DB read', async () => {
@@ -529,6 +543,6 @@ test('Staging RLS read scope uses transaction-local verified reader and post-ref
     activeRoleReviewSql,
     /\bFOR (?:INSERT|UPDATE|DELETE|ALL)\b/i
   );
-  assert.match(stagingRoleReviewSql, /admin GET \?view=new_readers: DISABLED/);
+  assert.match(stagingRoleReviewSql, /admin GET \?view=new_readers: VERIFIED ADMIN SELF ONLY/);
   assert.match(stagingRoleReviewSql, /Custom GUC values are/);
 });

@@ -68,6 +68,30 @@ export function createUnregisteredFormalApplication({
     releaseConfiguration,
     trustedServerAuthorization
   });
+
+  // The Staging RO role is RLS-scoped to one verified Auth identity. A global
+  // registration cohort is not observable through this role and must never
+  // be inferred from a single account. This report is admin-only, self-only.
+  const stagingAdminSummary =
+    stagingTestReferenceAt === undefined
+      ? newReader.getAdminSummary
+      : async (verifiedAdmin) => {
+          const report = await newReader.inspectVerifiedOne(verifiedAdmin);
+          return Object.freeze({
+            status: 'staging_verified_admin_reader_only',
+            scope: 'verified_admin_self_only',
+            readerStatus: report.status,
+            counts: report.counts ?? null,
+            totalRegistered: null,
+            initialized: null,
+            partial: null,
+            referenceAt: stagingTestReferenceAt,
+            referenceMode: 'staging_synthetic_one_reader_proof',
+            readyForPublicRelease: false,
+            legacyPointMigrationUnaffected: true
+          });
+        };
+
   const earningSourceReader = createFormalCanonicalSourceReader({
     postgresClient: pool
   });
@@ -145,10 +169,7 @@ export function createUnregisteredFormalApplication({
     getAdminSettlementRecovery: settlementRecovery.inspect,
     getAdminMaintenanceReadiness: maintenance.inspectConnectionReadiness,
     // A single verified Auth user cannot prove cohort totals.
-    getNewReaderSummary:
-      stagingTestReferenceAt === undefined
-        ? newReader.getAdminSummary
-        : undefined,
+    getNewReaderSummary: stagingAdminSummary,
     pool,
     supabase,
     unitVerification,
@@ -204,10 +225,7 @@ export function createUnregisteredFormalApplication({
       stagingTestReferenceAt !== undefined
         ? newReader.inspectVerifiedOne
         : newReader.inspectOne,
-    getNewReaderSummary:
-      stagingTestReferenceAt === undefined
-        ? newReader.getAdminSummary
-        : undefined,
+    getNewReaderSummary: stagingAdminSummary,
     initializeNewReader: newReader.initializeOne,
     inspectNewReader:
       stagingTestReferenceAt !== undefined

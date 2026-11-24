@@ -299,7 +299,7 @@ export function createFormalUsageHttpHandlers({
             return stop(res, 503, 'FORMAL_NEW_READER_UNAVAILABLE');
           return res.status(200).json({
             ok: true,
-            ...(await getNewReaderSummary())
+            ...(await getNewReaderSummary(reviewer))
           });
         }
         return req.query?.view === 'refunds'
