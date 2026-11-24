@@ -558,3 +558,81 @@ test('Staging RLS read scope uses transaction-local verified reader and post-ref
   );
   assert.match(stagingRoleReviewSql, /Custom GUC values are/);
 });
+
+test('Staging reader GET diagnostic maps safe fixed categories only', () => {
+  const cases = [
+    [{ code: 'CERT_HAS_EXPIRED' }, 'P1_TLS'],
+    [{ code: 'ERR_TLS_CERT_ALTNAME_INVALID' }, 'P1_TLS'],
+    [{ code: 'ETIMEDOUT' }, 'P1_TIMEOUT'],
+    [{ message: 'connection timeout' }, 'P1_TIMEOUT'],
+    [{ code: 'ECONNREFUSED' }, 'P1_CONNECT'],
+    [{ code: '28P01' }, 'P1_CONNECT'],
+    [{ code: '08006' }, 'P1_CONNECT'],
+    [{ code: '42501' }, 'P1_SQL'],
+    [{ code: '42P01' }, 'P1_SQL'],
+    [{ message: 'opaque exception with a secret' }, 'P1_OTHER']
+  ];
+  for (const [error, expected] of cases) {
+    assert.equal(classifyStagingReaderReadFailure(error), expected);
+  }
+});
+
+test('only scoped Staging reader GET adds fixed failure header', async () => {
+  const failure = Object.assign(
+    new Error('private URL, password and bearer must not be returned'),
+    { code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' }
+  );
+  const service = Object.fromEntries(
+    [
+      'getReaderSnapshot',
+      'requestExchange',
+      'requestAiUse',
+      'listPendingExchanges',
+      'listRefundCandidates',
+      'resolveExchange',
+      'refundCommitted'
+    ].map((name) => [name, () => null])
+  );
+  const supabase = {
+    auth: { getUser: async () => ({ data: { user: { id: USER } } }) }
+  };
+  const args = {
+    supabase,
+    service,
+    inspectNewReader: async () => {
+      throw failure;
+    }
+  };
+  const staging = createFormalUsageHttpHandlers({ ...args, env: ACTIVE });
+  const stagingResult = response();
+  await staging.reader(request('new_reader'), stagingResult);
+  assert.equal(stagingResult.code, 503);
+  assert.deepEqual(stagingResult.body, {
+    ok: false,
+    error: 'FORMAL_REWARD_UNAVAILABLE'
+  });
+  assert.equal(stagingResult.headers['X-NOVELIGHT-P1-Read-Failure'], 'P1_TLS');
+  assert.doesNotMatch(
+    JSON.stringify(stagingResult),
+    /private URL|password|bearer/
+  );
+
+  const production = createFormalUsageHttpHandlers({
+    ...args,
+    env: { ...ACTIVE, VERCEL_ENV: 'production' }
+  });
+  const productionResult = response();
+  await production.reader(request('new_reader'), productionResult);
+  assert.equal(productionResult.code, 503);
+  assert.equal(
+    productionResult.headers['X-NOVELIGHT-P1-Read-Failure'],
+    undefined
+  );
+
+  const unauthorized = request('new_reader');
+  unauthorized.headers = { ...headers, authorization: '' };
+  const denied = response();
+  await staging.reader(unauthorized, denied);
+  assert.equal(denied.code, 401);
+  assert.equal(denied.headers['X-NOVELIGHT-P1-Read-Failure'], undefined);
+});

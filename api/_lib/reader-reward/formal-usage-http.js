@@ -19,6 +19,59 @@ const bearer = (value) =>
     ? (value.match(/^Bearer\s+(\S+)$/i)?.[1] ?? null)
     : null;
 
+const P1_TLS_CODES = new Set([
+  'CERT_HAS_EXPIRED',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'UNABLE_TO_GET_ISSUER_CERT',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY'
+]);
+const P1_CONNECT_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'EPIPE',
+  '28P01',
+  '28000',
+  '53300',
+  '57P01',
+  '57P03'
+]);
+
+export function classifyStagingReaderReadFailure(error) {
+  const code = typeof error?.code === 'string' ? error.code : '';
+  const detail = typeof error?.message === 'string' ? error.message : '';
+  if (
+    code === 'ETIMEDOUT' ||
+    code === 'ETIME' ||
+    code === '57014' ||
+    /\b(?:timeout|timed?\s*out|deadline exceeded)\b/i.test(detail)
+  ) {
+    return 'P1_TIMEOUT';
+  }
+  if (
+    P1_TLS_CODES.has(code) ||
+    code.startsWith('ERR_TLS_') ||
+    code.startsWith('ERR_SSL_') ||
+    /\b(?:certificate|self[- ]signed|tls|ssl)\b/i.test(detail)
+  ) {
+    return 'P1_TLS';
+  }
+  if (
+    P1_CONNECT_CODES.has(code) ||
+    /^08[0-9A-Z]{3}$/.test(code) ||
+    /\b(?:connection terminated|connection refused|getaddrinfo)\b/i.test(detail)
+  ) {
+    return 'P1_CONNECT';
+  }
+  if (/^[0-9A-Z]{5}$/.test(code)) return 'P1_SQL';
+  return 'P1_OTHER';
+}
+
 function stop(res, code, error) {
   return res.status(code).json({ ok: false, error });
 }
@@ -187,7 +240,22 @@ export function createFormalUsageHttpHandlers({
         );
       }
       return stop(res, 400, 'INVALID_REWARD_REQUEST');
-    } catch {
+    } catch (error) {
+      // Staging reader GET only. Never return raw error text or credentials.
+      if (
+        req.method === 'GET' &&
+        req.query?.view === 'new_reader' &&
+        env.VERCEL_ENV === 'preview' &&
+        env.NOVELIGHT_SCOUT_FORMAL_STAGING_PROBE === 'read-only' &&
+        env.STAGING_PROJECT_REF === 'wmlzjgvxgoyrovdhbqbg' &&
+        (env.STAGING_SUPABASE_URL ?? env.NOVELIGHT_STAGING_SUPABASE_URL) ===
+          'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+      ) {
+        res.setHeader(
+          'X-NOVELIGHT-P1-Read-Failure',
+          classifyStagingReaderReadFailure(error)
+        );
+      }
       return stop(res, 503, 'FORMAL_REWARD_UNAVAILABLE');
     }
   }
