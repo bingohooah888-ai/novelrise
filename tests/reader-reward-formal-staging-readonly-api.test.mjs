@@ -10,6 +10,10 @@ import {
   stagingReadOnlyGate
 } from '../api/_lib/reader-reward/formal-staging-readonly-runtime.js';
 import { createUnregisteredFormalApplication } from '../api/_lib/reader-reward/formal-application-host.js';
+import {
+  classifyStagingReaderReadFailure,
+  createFormalUsageHttpHandlers
+} from '../api/_lib/reader-reward/formal-usage-http.js';
 import readerEntry from '../api/scout-formal-reader.js';
 import adminEntry from '../api/scout-formal-admin.js';
 
