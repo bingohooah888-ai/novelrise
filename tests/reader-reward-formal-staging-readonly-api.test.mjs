@@ -276,8 +276,14 @@ test('verified Auth reader inspects only their canonical Point/XP and Level/Wall
   assert.equal(summary.body.partial, null);
   assert.equal(summary.body.readyForPublicRelease, false);
   assert.equal(queries.length, 2);
-  assert.deepEqual(queries.map((q) => q.args), [[USER], [USER]]);
-  assert.equal(queries.some((q) => q.sql.includes('auth.users')), false);
+  assert.deepEqual(
+    queries.map((q) => q.args),
+    [[USER], [USER]]
+  );
+  assert.equal(
+    queries.some((q) => q.sql.includes('auth.users')),
+    false
+  );
 });
 
 test('missing Auth created_at fails closed without any DB read', async () => {
