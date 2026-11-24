@@ -1483,6 +1483,60 @@ test('review-state IDs survive reordering, but altered checks cannot inherit pri
   assert.deepEqual(parsed.reviewedIds, []);
 });
 
+test('changed AI fact evidence reopens a reviewed warning without resetting on reorder', () => {
+  const payload = fixture();
+  payload.novelId = 17;
+  const group = payload.facts.find((item) => item.kind === 'event');
+  group.suggestions.push(
+    {
+      id: 11,
+      revision: 1,
+      sourceEpisodeId: 3,
+      payload: { summary: '追加候補A', evidence: '証拠A' }
+    },
+    {
+      id: 12,
+      revision: 1,
+      sourceEpisodeId: 4,
+      payload: { summary: '追加候補B', evidence: '証拠B' }
+    }
+  );
+  const check = () =>
+    localReviewSummary(payload).checks.find(
+      (item) => item.title === '確定設定との重複候補'
+    );
+  const first = check();
+  assert.ok(first);
+  assert.equal(Object.hasOwn(first, 'context'), false);
+  const saved = {
+    version: 1,
+    novelId: 17,
+    revision: 2,
+    reviewedIds: [first.id]
+  };
+  assert.deepEqual(
+    globalThis.NovelightAiBibleAuthorWorkspace.parseReviewSnapshot(
+      saved,
+      17,
+      localReviewSummary(payload).checks
+    ).reviewedIds,
+    [first.id]
+  );
+
+  group.suggestions.reverse();
+  assert.equal(check().id, first.id);
+  group.suggestions[0].payload.evidence = '本文改稿後の新しい根拠';
+  assert.notEqual(check().id, first.id);
+  assert.deepEqual(
+    globalThis.NovelightAiBibleAuthorWorkspace.parseReviewSnapshot(
+      saved,
+      17,
+      localReviewSummary(payload).checks
+    ).reviewedIds,
+    []
+  );
+});
+
 test('wrong-work and malformed review-state snapshots clear private content', () => {
   const payload = fixture();
   payload.novelId = 17;
