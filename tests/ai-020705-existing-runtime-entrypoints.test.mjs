@@ -127,7 +127,6 @@ test('metadata-only Watchdog cannot start cleanup or retry', async () => {
   assert.equal(calls, 1);
 });
 
-
 test(
   'PR #2895 protected Stage entry binds only exact trusted main scope',
   () => {
