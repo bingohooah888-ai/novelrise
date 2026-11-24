@@ -78,6 +78,7 @@ export function create020705ComprehensiveStagingSequence({
   installReviewState,
   installChunkClaim,
   preparePreview,
+  beforeSynthetic = async () => true,
   runSyntheticJwtProof,
   getProtectedPaidConfig,
   stopAndCleanup,
@@ -91,6 +92,7 @@ export function create020705ComprehensiveStagingSequence({
         installReviewState,
         installChunkClaim,
         preparePreview,
+        beforeSynthetic,
         runSyntheticJwtProof,
         getProtectedPaidConfig,
         stopAndCleanup,
@@ -123,6 +125,8 @@ export function create020705ComprehensiveStagingSequence({
         if (await verifyOwnerAndRefs(scope) !== true) deny();
         const preview = await preparePreview(scope);
         if (!exactPreview(preview, scope)) deny();
+        // The live binding requires a signed ARM and OWNER claim here.
+        if (await beforeSynthetic(scope) !== true) deny();
 
         // The trusted probe owns synthetic fixture lifecycle and MUST
         // report its creation before attempting any JWT-bound operation.

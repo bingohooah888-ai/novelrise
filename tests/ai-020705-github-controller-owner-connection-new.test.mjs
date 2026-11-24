@@ -48,6 +48,14 @@ function fixture(tamper = {}) {
         previewDeploymentId: 'dpl_fixture123', runId: 1001
       })}
   ];
+  if (tamper.unclaimed) comments.pop();
+  if (tamper.consumed) comments.push({
+    id: 702, created_at: date, updated_at: date,
+    user: {login: 'github-actions[bot]', id: 41898282, type: 'Bot'},
+    body: prefix + 'CONSUMED ' + JSON.stringify({
+      approvalCommentId: 700, runId: 1001, result: 'failure'
+    })
+  });
   let calls = 0;
   const fetchImpl = async (url, options) => {
     calls++;
@@ -58,7 +66,7 @@ function fixture(tamper = {}) {
     if (url.endsWith('/issues/294'))
       return {status: 200, json: async () => ({
         number: 294, title: '[Staging Control] Supabase migration sync',
-        state: 'open', comments: 2
+        state: 'open', comments: comments.length
       })};
     if (url.includes('/issues/294/comments?per_page=100&page=1'))
       return {status: 200, json: async () => comments};
@@ -85,12 +93,22 @@ test('GitHub OWNER approval yields separately scoped recovery and ARM proofs', a
   assert.equal(await port.verifyOwnerApprovalAttestation(recovery,
     {...QUERY, arm: true}), false);
   assert.equal(await port.verifyOwnerApprovalAttestation({...recovery}, QUERY), false);
-  const arm = await port.readOwnerApprovedScope({...QUERY, arm: true});
+  await assert.rejects(port.readOwnerApprovedScope({...QUERY, arm: true}),
+    /CONTROLLER_OWNER_SOURCE_NO_GO/u);
+  const unclaimed = source(fixture({unclaimed: true}).fetchImpl);
+  const arm = await unclaimed.readOwnerApprovedScope({...QUERY, arm: true});
   assert.equal(arm.scope.candidateSha, 'b'.repeat(40));
   assert.equal(arm.scope.capMicros, 1000000);
-  assert.equal(await port.verifyOwnerApprovalAttestation(arm,
+  assert.equal(await unclaimed.verifyOwnerApprovalAttestation(arm,
     {...QUERY, arm: true}), true);
+  await assert.rejects(unclaimed.readOwnerApprovedScope(QUERY),
+    /CONTROLLER_OWNER_SOURCE_NO_GO/u);
   assert.equal(getCalls(), 10);
+  const consumed = source(fixture({consumed: true}).fetchImpl);
+  await assert.rejects(consumed.readOwnerApprovedScope({...QUERY, arm: true}),
+    /CONTROLLER_OWNER_SOURCE_NO_GO/u);
+  await assert.rejects(consumed.readOwnerApprovedScope(QUERY),
+    /CONTROLLER_OWNER_SOURCE_NO_GO/u);
 });
 // prettier-ignore
 test('unverified identity, forged SHA and forged bot are rejected', async () => {
@@ -132,7 +150,7 @@ test('expired approval remains readable for recovery, never for new ARM', async 
 
 // prettier-ignore
 test('bound ARM entry uses verified OWNER scope before capability or signing', async () => {
-  const {fetchImpl, getCalls} = fixture();
+  const {fetchImpl, getCalls} = fixture({unclaimed: true});
   let identityChecks = 0;
   let capabilityChecks = 0;
   let signing = 0;

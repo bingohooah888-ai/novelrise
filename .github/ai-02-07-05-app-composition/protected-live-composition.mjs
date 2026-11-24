@@ -351,6 +351,7 @@ export function create020705ProtectedLiveComposition({
         },
         readComments: ledger.readComments,
         writeComment: ledger.writeComment,
+        ownerLedgerAlreadyClaimed: ledger.ownerLedgerAlreadyClaimed === true,
         disableTrialEnvironment: controller.disableTrialEnvironment,
         revokeSyntheticSessions: controller.revokeSyntheticSessions,
         independentCensus: controller.independentCensus,

@@ -185,3 +185,29 @@ test('zero-census failure remains fatal even after one successful model call', a
   assert.equal(calls(), 1);
   assert.equal(actions.at(-1), 'github-consumed');
 });
+
+// prettier-ignore
+test('preclaimed path verifies the existing ledger without claiming or consuming again', async () => {
+  const { inputs, actions, calls } = setup();
+  await inputs.writeComment('NOVELIGHT_STAGING_AI_020705_PAID_CLAIMED ' +
+    JSON.stringify({approvalCommentId: COMMENT_ID, mainSha: SHA,
+      previewDeploymentId: PREVIEW, runId: inputs.runId}));
+  const result = await coordinate020705ProtectedStagingTrial({
+    ...inputs, ownerLedgerAlreadyClaimed: true
+  });
+  assert.equal(result.outcome, 'one_call_succeeded_and_cleanup_verified');
+  assert.deepEqual(actions, [
+    'github-claim', 'db-claim', 'provider', 'stop', 'cleanup', 'census'
+  ]);
+  assert.equal(calls(), 1);
+});
+
+// prettier-ignore
+test('preclaimed flag without a matching ledger does not admit paid work', async () => {
+  const { inputs, actions, calls } = setup();
+  await assert.rejects(coordinate020705ProtectedStagingTrial({
+    ...inputs, ownerLedgerAlreadyClaimed: true
+  }), /OWNER_LEDGER_DENIED/u);
+  assert.deepEqual(actions, []);
+  assert.equal(calls(), 0);
+});

@@ -50,6 +50,7 @@ export function create020705ProtectedStageExecutor({
   trustedControllerKeyId,
   expectedChallengeNonce,
   consumeWatchdogChallengeOnce,
+  ownerLedgerAlreadyClaimed = false,
   proofs,
   now = Date.now
 } = {}) {
@@ -121,6 +122,7 @@ export function create020705ProtectedStageExecutor({
     typeof trustedControllerKeyId !== 'string' ||
     typeof expectedChallengeNonce !== 'string' ||
     typeof consumeWatchdogChallengeOnce !== 'function' ||
+    typeof ownerLedgerAlreadyClaimed !== 'boolean' ||
     !proofs ||
     READ_ONLY_PROOFS.some((name) => typeof proofs[name] !== 'function')
   ) {
@@ -174,9 +176,11 @@ export function create020705ProtectedStageExecutor({
         }
         if (verified !== true) deny();
       }
-      // Require a signed and atomically spent external-controller arm BEFORE
-      // OWNER CLAIM or DB/model access. The injected trust key, challenge and
-      // durable consumer are NOT authenticated by this dormant module.
+      // Require a fresh signed and atomically spent external-controller ARM
+      // before paid admission. The encompassing Runner may have already
+      // CLAIMED after signed ARM inspection, before synthetic fixture creation.
+      // The injected trust key, challenge and durable consumer are NOT
+      // authenticated by this dormant module.
       // Real independent watchdog/kill/cleanup need separate OWNER approvals.
       let envelope;
       try {
@@ -210,6 +214,7 @@ export function create020705ProtectedStageExecutor({
           : expected,
         runId: context.runId,
         now,
+        ownerLedgerAlreadyClaimed,
         guardedProvider,
         request,
         invokeModel,

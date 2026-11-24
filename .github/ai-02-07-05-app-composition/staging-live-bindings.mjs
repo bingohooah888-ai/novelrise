@@ -8,7 +8,8 @@ import { create020705StagingMigrationAdapter } from './staging-live-migrations.m
 import { create020705StagingPreviewAdapter } from './staging-live-preview.mjs';
 import { create020705StagingJwtAdapter } from './staging-live-jwt.mjs';
 import { create020705ProtectedComprehensiveStagingSequence } from './protected-live-composition.mjs';
-import { inspect020705OwnerLedger, inspect020705PostRunOwnerApproval } from '../staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
+import { inspect020705OwnerLedger, inspect020705PostRunOwnerApproval, verify020705ClaimedOwnerApproval, claim020705OwnerApproval, consume020705OwnerApproval } from '../staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
+import { create020705AuthenticatedArmReaderCandidate, project020705ArmScope } from '../staging-ai-02-07-05/gatea-controller-arm-reader-candidate.mjs';
 import { verify020705SignedWatchdogArm } from '../staging-ai-02-07-05/signed-watchdog-arm.mjs';
 import { verify020705SignedRunnerDeath } from '../staging-ai-02-07-05/signed-runner-death-offline.mjs';
 import { createOwnerNovelBibleConsentPermissionCheck } from '../../api/_lib/ai/owner-novel-bible-consent.js';
@@ -24,9 +25,9 @@ function deny() {
 
 /**
  * Read-only, cryptographically authenticated independent Gate A observation.
- * Existing Cloudflare A1/S2 candidates do NOT currently issue this active
- * pre-paid receipt. Until an independently deployed, genuinely stopping
- * controller signs a matching receipt, all Staging mutation stays NO-GO.
+ * Until an independently deployed, genuinely stopping controller signs a
+ * matching receipt, all Staging mutation stays NO-GO. The existing reader
+ * caches that exact short-lived receipt; the paid boundary consumes it.
  * A metadata boolean, runner heartbeat or self-signed fixture is not proof.
  */
 export async function inspect020705IndependentGateABeforeMutation({
@@ -41,18 +42,19 @@ export async function inspect020705IndependentGateABeforeMutation({
       !SHA.test(scope?.candidateSha ?? '') ||
       scope?.capMicros > 1000000 ||
       typeof controller?.verifyIndependentController !== 'function' ||
-      typeof controller?.readIndependentWatchdogArm !== 'function' ||
+      typeof controller?.inspectIndependentWatchdogArm !== 'function' ||
       !controller?.trustedControllerPublicKey ||
       typeof controller?.trustedControllerKeyId !== 'string' ||
       typeof controller?.expectedChallengeNonce !== 'string' ||
       typeof now !== 'function') return false;
   try {
-    if (await controller.verifyIndependentController(scope) !== true) {
+    const armScope = project020705ArmScope(scope);
+    if (await controller.verifyIndependentController(armScope) !== true) {
       return false;
     }
-    const envelope = await controller.readIndependentWatchdogArm(scope);
+    const envelope = await controller.inspectIndependentWatchdogArm(armScope);
     return verify020705SignedWatchdogArm({
-      scope,
+      scope: armScope,
       envelope,
       trustedControllerPublicKey: controller.trustedControllerPublicKey,
       trustedControllerKeyId: controller.trustedControllerKeyId,
@@ -220,6 +222,8 @@ export function create020705StagingLiveBindings({
       scope.existingPreviewOnly !== true ||
       typeof scope.previewDeploymentId !== 'string' ||
       !/^dpl_[A-Za-z0-9]+$/u.test(scope.previewDeploymentId) ||
+      typeof scope.expiresAt !== 'string' ||
+      !Number.isFinite(Date.parse(scope.expiresAt)) ||
       typeof scope.consentRevision !== 'string' ||
       !/^[a-z0-9][a-z0-9._-]{3,119}$/iu.test(scope.consentRevision) ||
       typeof scope.actorId !== 'string' ||
@@ -239,8 +243,8 @@ export function create020705StagingLiveBindings({
       !controller ||
       !evidence ||
       !pricing ||
-      !['verifyIndependentController','readIndependentWatchdogArm',
-        'consumeWatchdogChallengeOnce','disableTrialEnvironment',
+      !['readControllerIdentity','verifyControllerIdentityAttestation',
+        'readAuthenticatedArm','claimArmReceiptOnce','disableTrialEnvironment',
         'revokeSyntheticSessions','independentCensus'].every(
           (name) => typeof controller[name] === 'function'
         ) ||
@@ -264,6 +268,24 @@ export function create020705StagingLiveBindings({
       !Number.isSafeInteger(pricing.inputMicrosPerMillion) ||
       !Number.isSafeInteger(pricing.outputMicrosPerMillion) ||
       !Number.isSafeInteger(pricing.maxOutputTokens)) deny();
+
+  // Compose the existing Reader with authenticated off-Runner ports only.
+  // No raw HMAC/key signing, public transport or fallback is supplied here.
+  scope = Object.freeze({ ...scope });
+  const armScope = project020705ArmScope(scope);
+  const armReader = create020705AuthenticatedArmReaderCandidate(controller);
+  controller = Object.freeze({ ...controller, ...armReader });
+  let ownerClaimed = false;
+  let attempted = false;
+  const ownerExpected = Object.freeze({
+    actorId: scope.actorId, novelId: scope.novelId, episodeId: scope.episodeId,
+    mainSha: scope.mainSha, candidateSha: scope.candidateSha,
+    stagingBranch: scope.stagingBranch, repository: REPO, runId: scope.runId,
+    approvalIssueNumber: 294, previewDeploymentId: scope.previewDeploymentId,
+    capMicros: scope.capMicros, consentRevision: scope.consentRevision,
+    expiresAt: scope.expiresAt, provider: 'openai', model: 'gpt-6.1-sol',
+    stagingProjectRef: STAGING
+  });
 
   const admin = createClient(URL, credentials.supabaseSecretKey, {
     auth: { autoRefreshToken: false, persistSession: false }
@@ -336,29 +358,18 @@ export function create020705StagingLiveBindings({
         mainSha: scope.mainSha,
         candidateSha: scope.candidateSha,
         stagingBranch: scope.stagingBranch,
+        expectClaimed: ownerClaimed,
         now: Date.now()
       });
       if (afterRun.approvalCommentId !== scope.approvalCommentId ||
           afterRun.previewDeploymentId !== scope.previewDeploymentId ||
           afterRun.capMicros !== scope.capMicros ||
           afterRun.authorizesPaidCall !== false) return false;
-      inspect020705OwnerLedger({
+      const inspect = ownerClaimed
+        ? verify020705ClaimedOwnerApproval : inspect020705OwnerLedger;
+      inspect({
         comments, approvalCommentId: scope.approvalCommentId,
-        expected: {
-          actorId: scope.actorId,
-          novelId: scope.novelId,
-          episodeId: scope.episodeId,
-          mainSha: scope.mainSha,
-          candidateSha: scope.candidateSha,
-          stagingBranch: scope.stagingBranch,
-          repository: REPO,
-          runId: scope.runId,
-          approvalIssueNumber: 294,
-          previewDeploymentId: scope.previewDeploymentId,
-          capMicros: scope.capMicros,
-          consentRevision: scope.consentRevision
-        },
-        now: Date.now()
+        expected: ownerExpected, runId: scope.runId, now: Date.now()
       });
       return true;
     } catch {
@@ -390,12 +401,12 @@ export function create020705StagingLiveBindings({
   let verifiedPreview = null;
   return Object.freeze({
     async run() {
-      // Never mutate even one Staging row until the independently
-      // authenticated CONTROLLER is verified. A missing external Gate A
-      // is a real NO-GO, not a flag that a GitHub runner can self-assert.
-      if ((await inspect020705IndependentGateABeforeMutation({
-        scope, controller
-      })) !== true ||
+      if (attempted) deny();
+      attempted = true;
+      // Before read-only inspection, verify protected Runner and billing.
+      // Issue ARM as close as possible to fixture creation, without extending
+      // its existing TTL. Missing independent evidence remains NO-GO.
+      if (await evidence.readRunnerProtection(scope) !== true ||
           await evidence.readProviderRateProof(scope) !== true ||
           await evidence.readBillingProtection(scope) !== true) deny();
       const sequence = create020705ProtectedComprehensiveStagingSequence({
@@ -403,7 +414,7 @@ export function create020705StagingLiveBindings({
         verifyOwnerAndRefs,
         verifyStagingIsolation: async () => {
           return scope.supabaseUrl === URL &&
-            await controller.verifyIndependentController(scope) === true;
+            await controller.verifyIndependentController(armScope) === true;
         },
         // A paid-one-shot approval is not a migration installation approval.
         // Inspect the already approved pair; never apply DDL in this job.
@@ -412,6 +423,24 @@ export function create020705StagingLiveBindings({
         preparePreview: async () => {
           verifiedPreview = await preview.preparePreview();
           return verifiedPreview;
+        },
+        beforeSynthetic: async () => {
+          if (await verifyOwnerAndRefs() !== true ||
+              (await inspect020705IndependentGateABeforeMutation({
+                scope, controller
+              })) !== true) return false;
+          // ARM issuance requires the unclaimed OWNER ledger. Claim only
+          // after verifying the signed ARM and before synthetic mutation.
+          // The claim is retained if the Runner dies or cleanup fails.
+          await claim020705OwnerApproval({
+            readComments, writeComment, approvalCommentId: scope.approvalCommentId,
+            expected: ownerExpected, runId: scope.runId, now: Date.now
+          });
+          ownerClaimed = true;
+          // Read-only revalidation does not issue or spend another ARM.
+          return (await inspect020705IndependentGateABeforeMutation({
+            scope, controller
+          })) === true;
         },
         runSyntheticJwtProof: async () => {
           proof = await jwt.runSyntheticJwtProof();
@@ -482,7 +511,7 @@ export function create020705StagingLiveBindings({
               };
             },
             verifyCurrentConsent: consent,
-            ledger: { readComments, writeComment },
+            ledger: { readComments, writeComment, ownerLedgerAlreadyClaimed: true },
             controller: {
               ...controller,
               independentCensus: controller.independentCensus
@@ -510,7 +539,15 @@ export function create020705StagingLiveBindings({
           (await jwt.finalCensus()) === true
       });
       try {
-        return await sequence.run();
+        const outcome = await sequence.run();
+        if (!ownerClaimed || outcome?.outcome !== 'STAGING_SEQUENCE_PASS') deny();
+        // Only the outer Runner finalizes the early claim. If anything fails,
+        // retain CLAIMED for independent recovery; it cannot admit a retry.
+        await consume020705OwnerApproval({
+          writeComment, approvalCommentId: scope.approvalCommentId,
+          runId: scope.runId, result: 'success'
+        });
+        return outcome;
       } finally {
         await jwt.close();
       }

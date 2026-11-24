@@ -103,8 +103,14 @@ export function create020705GithubControllerOwnerPortCandidate({
       const ledger = await read020705OwnerLedgerFromGithub({
         token, scope: s, fetchImpl, now
       });
-      if (ledger?.status !== 'CLAIMED' || ledger.claimed !== true ||
-          ledger.authorizesPaidCall !== false) deny();
+      // ARM precedes the OWNER CLAIM; recovery remains separate.
+      // An already claimed or consumed approval cannot issue a new ARM.
+      if (ledger?.authorizesPaidCall !== false ||
+          (query.arm === true
+            ? !candidate || ledger.status !== 'UNCLAIMED' ||
+              ledger.claimed !== false || ledger.consumed !== false
+            : ledger.status !== 'CLAIMED' || ledger.claimed !== true ||
+              ledger.consumed !== false)) deny();
       // This must be a pinned, off-Runner identity attestation in production.
       // A callback returning true is only a mock, never a live proof.
       if ((await verifyIndependentControllerIdentity({

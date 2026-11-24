@@ -34,6 +34,16 @@ function validScope(scope) {
     positive(scope.capMicros) && scope.capMicros <= 10000000);
 }
 
+// Project trusted Runner configuration to the exact signed ARM scope.
+export function project020705ArmScope(scope) {
+  const projected = Object.freeze(Object.fromEntries(
+    [...FIELDS, ...EXTRA.filter((key) => Object.hasOwn(scope ?? {}, key))]
+      .map((key) => [key, scope?.[key]])
+  ));
+  if (!validScope(projected)) deny();
+  return projected;
+}
+
 function sameScope(a, b) {
   return validScope(a) && validScope(b) &&
     Object.keys(a).length === Object.keys(b).length &&
@@ -58,13 +68,30 @@ export function create020705AuthenticatedArmReaderCandidate({
     !KEY_ID.test(trustedControllerKeyId ?? '') ||
     !NONCE.test(expectedChallengeNonce ?? '')) deny();
   let verifiedScope = null;
+  let controllerRunId = null;
+  let identityFailed = false;
+  let verifying = false;
   let attempted = false;
+  let prepared = null;
+  let delivered = false;
+  let spent = false;
+
+  function verifyEnvelope(scope, envelope) {
+    return envelope?.receipt?.controllerRunId === controllerRunId &&
+      verify020705SignedWatchdogArm({
+        scope, envelope, trustedControllerPublicKey, trustedControllerKeyId,
+        expectedChallengeNonce, now
+      });
+  }
+
   return Object.freeze({
     trustedControllerPublicKey,
     trustedControllerKeyId,
     expectedChallengeNonce,
     async verifyIndependentController(scope) {
-      if (verifiedScope || attempted || !validScope(scope)) return false;
+      if (identityFailed || verifying || spent || !validScope(scope) ||
+          (verifiedScope && !sameScope(verifiedScope, scope))) return false;
+      verifying = true;
       try {
         const identity = await readControllerIdentity(scope);
         if (identity?.protectedEnvironment !== 'staging' ||
@@ -72,34 +99,72 @@ export function create020705AuthenticatedArmReaderCandidate({
             identity?.separateFromRunner !== true ||
             !positive(identity.controllerRunId) ||
             identity.controllerRunId === scope.runId ||
+            (controllerRunId !== null &&
+              controllerRunId !== identity.controllerRunId) ||
             !sameScope(identity.scope, scope) ||
             (await verifyControllerIdentityAttestation(identity, scope)) !== true)
-          return false;
+          deny();
         verifiedScope = Object.freeze({ ...scope });
+        controllerRunId = identity.controllerRunId;
         return true;
-      } catch { return false; }
+      } catch {
+        identityFailed = true;
+        return false;
+      } finally {
+        verifying = false;
+      }
+    },
+    async inspectIndependentWatchdogArm(scope) {
+      if (identityFailed || spent || !verifiedScope ||
+          !sameScope(verifiedScope, scope)) deny();
+      // The independent issuer atomically claims ARM before signing.
+      // Inspect the same receipt without issuing a second ARM or consuming
+      // ARM_RECEIPT here. The protected paid executor consumes it once.
+      if (!attempted) {
+        attempted = true;
+        let envelope;
+        try {
+          envelope = await readAuthenticatedArm(verifiedScope, Object.freeze({
+            scope: verifiedScope, nonce: expectedChallengeNonce,
+            keyId: trustedControllerKeyId, controllerRunId
+          }));
+        } catch { deny(); }
+        if (!verifyEnvelope(verifiedScope, envelope)) deny();
+        prepared = Object.freeze({
+          ...envelope, receipt: Object.freeze({ ...envelope.receipt })
+        });
+      }
+      if (!prepared || !verifyEnvelope(verifiedScope, prepared)) deny();
+      return prepared;
     },
     async readIndependentWatchdogArm(scope) {
-      if (attempted || !verifiedScope || !sameScope(verifiedScope, scope)) deny();
-      attempted = true;
-      let envelope;
-      try { envelope = await readAuthenticatedArm(scope); }
-      catch { deny(); }
-      if (!verify020705SignedWatchdogArm({
-        scope, envelope, trustedControllerPublicKey, trustedControllerKeyId,
-        expectedChallengeNonce, now
-      })) deny();
-      let claimed = false;
+      if (delivered || spent || identityFailed || !prepared ||
+          !sameScope(verifiedScope, scope) ||
+          !verifyEnvelope(verifiedScope, prepared)) deny();
+      delivered = true;
+      return prepared;
+    },
+    async consumeWatchdogChallengeOnce(challenge) {
+      if (!delivered || spent || identityFailed) return false;
+      spent = true;
       try {
-        claimed = (await claimArmReceiptOnce(Object.freeze({
+        const { contract, controllerKeyId, nonce, ...scope } = challenge;
+        if (contract !== 'NOVELIGHT_AI_020705_WATCHDOG_ONE_USE_V1' ||
+            controllerKeyId !== trustedControllerKeyId ||
+            nonce !== expectedChallengeNonce ||
+            !sameScope(verifiedScope, scope) ||
+            !verifyEnvelope(verifiedScope, prepared)) return false;
+        // The existing private DO stores nine immutable run fields.
+        // Candidate SHA/branch/cap were checked in the full signed receipt.
+        const doScope = Object.freeze(Object.fromEntries(
+          FIELDS.map((key) => [key, verifiedScope[key]])
+        ));
+        const claimed = await claimArmReceiptOnce(Object.freeze({
           contract: 'NOVELIGHT_AI_020705_ARM_RECEIPT_ONE_USE_V1',
-          ...verifiedScope,
-          controllerKeyId: trustedControllerKeyId,
-          nonce: expectedChallengeNonce
-        }))) === true;
-      } catch { deny(); }
-      if (!claimed) deny();
-      return envelope;
+          scope: doScope, controllerRunId, controllerKeyId, nonce
+        }));
+        return claimed === true && verifyEnvelope(verifiedScope, prepared);
+      } catch { return false; }
     }
   });
 }

@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 // prettier-ignore
 import test from 'node:test';
+import { generateKeyPairSync, sign } from 'node:crypto';
 // prettier-ignore
 import { create020705AuthenticatedArmReaderCandidate } from '../.github/staging-ai-02-07-05/gatea-controller-arm-reader-candidate.mjs';
 // prettier-ignore
@@ -112,4 +113,73 @@ test('atomic claim cannot succeed on missing storage or ambiguous SQL result', (
 test('trusted Controller bootstrap rejects missing independently attested ports', () => {
   assert.throws(() => create020705TrustedControllerBootstrapCandidate({}),
     /AI_020705_CONTROLLER_BOOTSTRAP_NO_GO/u);
+});
+
+// prettier-ignore
+test('one exact signed ARM is inspected, delivered and durably consumed once', async () => {
+  const keys = generateKeyPairSync('ed25519');
+  const candidate = Object.freeze({...scope, candidateSha: 'b'.repeat(40),
+    stagingBranch: 'staging/ai-02-07-05-offline', capMicros: 1000000});
+  const keyId = 'independent-gatea-01';
+  const domain = 'NOVELIGHT_AI_020705_WATCHDOG_ARM_V1';
+  let now = 1700000000000;
+  let reads = 0;
+  let claims = 0;
+  const reader = create020705AuthenticatedArmReaderCandidate({
+    readControllerIdentity: async (input) => ({
+      protectedEnvironment: 'staging',
+      controllerKind: 'external-independent-supervisor',
+      separateFromRunner: true, controllerRunId: 701, scope: input
+    }),
+    verifyControllerIdentityAttestation: async () => true,
+    async readAuthenticatedArm(input, args) {
+      reads++;
+      assert.equal(args.controllerRunId, 701);
+      assert.equal(args.scope.candidateSha, candidate.candidateSha);
+      assert.equal(args.nonce, NONCE);
+      const receipt = {...input, kind: 'independent-controller-armed',
+        protectedEnvironment: 'staging',
+        controllerKind: 'external-independent-supervisor',
+        controllerRunId: 701, controllerIsRunner: false,
+        killAuthorityVerified: true, stagingDisableVerified: true,
+        sessionRevocationVerified: true, syntheticCleanupVerified: true,
+        zeroCensusVerified: true, noPaidRetry: true,
+        observedAtMs: now, heartbeatAtMs: now, expiresAtMs: now + 15000};
+      return {domain, keyId, challengeNonce: NONCE, receipt,
+        signature: sign(null, Buffer.from(JSON.stringify([
+          domain, keyId, NONCE, receipt
+        ])), keys.privateKey).toString('base64url')};
+    },
+    async claimArmReceiptOnce(claim) {
+      claims++;
+      assert.deepEqual(claim.scope, scope);
+      assert.equal(claim.contract, 'NOVELIGHT_AI_020705_ARM_RECEIPT_ONE_USE_V1');
+      assert.equal(claim.controllerRunId, 701);
+      return true;
+    },
+    trustedControllerPublicKey: keys.publicKey,
+    trustedControllerKeyId: keyId, expectedChallengeNonce: NONCE,
+    now: () => now
+  });
+  assert.equal(await reader.verifyIndependentController(candidate), true);
+  const prepared = await reader.inspectIndependentWatchdogArm(candidate);
+  assert.equal(await reader.verifyIndependentController(candidate), true);
+  assert.equal(await reader.inspectIndependentWatchdogArm(candidate), prepared);
+  assert.equal(reads, 1);
+  assert.equal(claims, 0);
+  await assert.rejects(reader.readIndependentWatchdogArm({
+    ...candidate, capMicros: 999999
+  }), /ARM_READER_NO_GO/u);
+  assert.equal(await reader.readIndependentWatchdogArm(candidate), prepared);
+  await assert.rejects(reader.readIndependentWatchdogArm(candidate),
+    /ARM_READER_NO_GO/u);
+  const challenge = {...candidate,
+    contract: 'NOVELIGHT_AI_020705_WATCHDOG_ONE_USE_V1',
+    controllerKeyId: keyId, nonce: NONCE};
+  assert.equal(await reader.consumeWatchdogChallengeOnce(challenge), true);
+  assert.equal(await reader.consumeWatchdogChallengeOnce(challenge), false);
+  assert.equal(claims, 1);
+  now += 15001;
+  await assert.rejects(reader.inspectIndependentWatchdogArm(candidate),
+    /ARM_READER_NO_GO/u);
 });

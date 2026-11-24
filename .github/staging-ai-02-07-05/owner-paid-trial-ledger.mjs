@@ -273,9 +273,10 @@ export function inspect020705PostRunOwnerApproval({
   mainSha,
   candidateSha,
   stagingBranch,
+  expectClaimed = false,
   now = Date.now()
 } = {}) {
-  if (!Array.isArray(comments) ||
+  if (typeof expectClaimed !== 'boolean' || !Array.isArray(comments) ||
       !Number.isSafeInteger(intentCommentId) || intentCommentId < 1 ||
       !Number.isSafeInteger(runId) || runId < 1 ||
       !SHA.test(mainSha ?? '') || !SHA.test(candidateSha ?? '') ||
@@ -331,9 +332,12 @@ export function inspect020705PostRunOwnerApproval({
       approved?.stagingBranch !== stagingBranch ||
       approved?.capMicros > 1000000) deny();
 
-  const checked = inspect020705OwnerLedger({
+  const inspect = expectClaimed
+    ? verify020705ClaimedOwnerApproval : inspect020705OwnerLedger;
+  const checked = inspect({
     comments,
     approvalCommentId: approval.id,
+    runId,
     expected: {
       mainSha,
       candidateSha,
