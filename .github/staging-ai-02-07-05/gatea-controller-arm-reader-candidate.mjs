@@ -51,6 +51,35 @@ function sameScope(a, b) {
 }
 
 /**
+ * Bind the existing Reader to a separately authenticated private Controller
+ * channel. The trusted main Runner must supply that channel; never create a
+ * local Controller, accept a public URL, or send signing/HMAC secrets.
+ */
+export function create020705RunnerArmChannelPorts({ scope, armChannel } = {}) {
+  const expected = project020705ArmScope(scope);
+  if (typeof armChannel?.issueArmReceipt !== 'function' ||
+      typeof armChannel?.consumeArmReceipt !== 'function') deny();
+  return Object.freeze({
+    async readAuthenticatedArm(input, args) {
+      if (!sameScope(expected, input) || !sameScope(expected, args?.scope))
+        deny();
+      return armChannel.issueArmReceipt(args);
+    },
+    async claimArmReceiptOnce(claim, envelope) {
+      if (claim?.contract !== 'NOVELIGHT_AI_020705_ARM_RECEIPT_ONE_USE_V1' ||
+          !claim.scope || Object.keys(claim.scope).length !== FIELDS.length ||
+          !FIELDS.every((key) => claim.scope[key] === expected[key]) ||
+          claim.controllerRunId !== envelope?.receipt?.controllerRunId ||
+          claim.controllerKeyId !== envelope?.keyId ||
+          claim.nonce !== envelope?.challengeNonce) return false;
+      return (await armChannel.consumeArmReceipt(Object.freeze({
+        scope: expected, envelope
+      }))) === true;
+    }
+  });
+}
+
+/**
  * Every injected callback MUST come from a separately authenticated source.
  * verifyControllerIdentityAttestation MUST use pinned independent trust,
  * not a metadata boolean. claimArmReceiptOnce MUST use a durable, shared,
@@ -162,7 +191,7 @@ export function create020705AuthenticatedArmReaderCandidate({
         const claimed = await claimArmReceiptOnce(Object.freeze({
           contract: 'NOVELIGHT_AI_020705_ARM_RECEIPT_ONE_USE_V1',
           scope: doScope, controllerRunId, controllerKeyId, nonce
-        }));
+        }), prepared);
         return claimed === true && verifyEnvelope(verifiedScope, prepared);
       } catch { return false; }
     }

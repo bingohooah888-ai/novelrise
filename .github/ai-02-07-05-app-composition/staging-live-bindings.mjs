@@ -9,7 +9,7 @@ import { create020705StagingPreviewAdapter } from './staging-live-preview.mjs';
 import { create020705StagingJwtAdapter } from './staging-live-jwt.mjs';
 import { create020705ProtectedComprehensiveStagingSequence } from './protected-live-composition.mjs';
 import { inspect020705OwnerLedger, inspect020705PostRunOwnerApproval, verify020705ClaimedOwnerApproval, claim020705OwnerApproval, consume020705OwnerApproval } from '../staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
-import { create020705AuthenticatedArmReaderCandidate, project020705ArmScope } from '../staging-ai-02-07-05/gatea-controller-arm-reader-candidate.mjs';
+import { create020705AuthenticatedArmReaderCandidate, project020705ArmScope, create020705RunnerArmChannelPorts } from '../staging-ai-02-07-05/gatea-controller-arm-reader-candidate.mjs';
 import { verify020705SignedWatchdogArm } from '../staging-ai-02-07-05/signed-watchdog-arm.mjs';
 import { verify020705SignedRunnerDeath } from '../staging-ai-02-07-05/signed-runner-death-offline.mjs';
 import { createOwnerNovelBibleConsentPermissionCheck } from '../../api/_lib/ai/owner-novel-bible-consent.js';
@@ -244,7 +244,7 @@ export function create020705StagingLiveBindings({
       !evidence ||
       !pricing ||
       !['readControllerIdentity','verifyControllerIdentityAttestation',
-        'readAuthenticatedArm','claimArmReceiptOnce','disableTrialEnvironment',
+        'disableTrialEnvironment',
         'revokeSyntheticSessions','independentCensus'].every(
           (name) => typeof controller[name] === 'function'
         ) ||
@@ -273,7 +273,12 @@ export function create020705StagingLiveBindings({
   // No raw HMAC/key signing, public transport or fallback is supplied here.
   scope = Object.freeze({ ...scope });
   const armScope = project020705ArmScope(scope);
-  const armReader = create020705AuthenticatedArmReaderCandidate(controller);
+  const armReader = create020705AuthenticatedArmReaderCandidate({
+    ...controller,
+    ...create020705RunnerArmChannelPorts({
+      scope: armScope, armChannel: controller.armChannel
+    })
+  });
   controller = Object.freeze({ ...controller, ...armReader });
   let ownerClaimed = false;
   let attempted = false;

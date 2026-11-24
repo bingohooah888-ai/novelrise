@@ -33,12 +33,14 @@ export function create020705GithubControllerOwnerPortCandidate({
     try {
       const names = Object.keys(query ?? {}).sort().join(',');
       if (names !== 'approvalCommentId,repository,runId,stagingProjectRef' &&
-          names !== 'approvalCommentId,arm,repository,runId,stagingProjectRef')
+          names !== 'approvalCommentId,arm,repository,runId,stagingProjectRef' &&
+          names !== 'approvalCommentId,armReceipt,repository,runId,stagingProjectRef')
         deny();
       if (query.repository !== REPO || query.stagingProjectRef !== PROJECT ||
           !positive(query.runId) || !positive(query.approvalCommentId) ||
           query.runId === controllerRunId ||
-          (Object.hasOwn(query, 'arm') && query.arm !== true)) deny();
+          (Object.hasOwn(query, 'arm') && query.arm !== true) ||
+          (Object.hasOwn(query, 'armReceipt') && query.armReceipt !== true)) deny();
       const response = await fetchImpl(URL + query.approvalCommentId, {
         method: 'GET', redirect: 'error',
         headers: {
@@ -75,7 +77,7 @@ export function create020705GithubControllerOwnerPortCandidate({
           !UUID.test(approved.actorId ?? '') ||
           !positive(approved.novelId) || !positive(approved.episodeId) ||
           !positive(approved.capMicros) || approved.capMicros > 10000000 ||
-          (query.arm === true && (
+          ((query.arm === true || query.armReceipt === true) && (
             !Number.isFinite(Date.parse(approved.expiresAt)) ||
             Date.parse(approved.expiresAt) <= now()
           )) ||
@@ -106,6 +108,7 @@ export function create020705GithubControllerOwnerPortCandidate({
       // ARM precedes the OWNER CLAIM; recovery remains separate.
       // An already claimed or consumed approval cannot issue a new ARM.
       if (ledger?.authorizesPaidCall !== false ||
+          (query.armReceipt === true && !candidate) ||
           (query.arm === true
             ? !candidate || ledger.status !== 'UNCLAIMED' ||
               ledger.claimed !== false || ledger.consumed !== false
@@ -120,7 +123,7 @@ export function create020705GithubControllerOwnerPortCandidate({
       })) !== true) deny();
       const scope = Object.freeze({
         ...Object.fromEntries(KEYS.map((key) => [key, s[key]])),
-        ...(query.arm === true && candidate ? {
+        ...((query.arm === true || query.armReceipt === true) && candidate ? {
           candidateSha: approved.candidateSha,
           stagingBranch: approved.stagingBranch, capMicros: approved.capMicros
         } : {})
@@ -130,7 +133,9 @@ export function create020705GithubControllerOwnerPortCandidate({
         approvalCommentId: query.approvalCommentId, controllerRunId,
         sourceVerified: true, ownerApproved: true, scope
       });
-      verified.set(proof, Object.freeze({arm: query.arm === true}));
+      verified.set(proof, Object.freeze({
+        arm: query.arm === true, armReceipt: query.armReceipt === true
+      }));
       return proof;
     } catch { deny(); }
   }
@@ -139,6 +144,7 @@ export function create020705GithubControllerOwnerPortCandidate({
     verifyOwnerApprovalAttestation: async (proof, query) =>
       !!proof &&
       verified.get(proof)?.arm === (query?.arm === true) &&
+      verified.get(proof)?.armReceipt === (query?.armReceipt === true) &&
       proof.repository === REPO && proof.stagingProjectRef === PROJECT &&
       proof.runId === query?.runId &&
       proof.approvalCommentId === query?.approvalCommentId

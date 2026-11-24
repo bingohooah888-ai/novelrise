@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { generateKeyPairSync, sign } from 'node:crypto';
 // prettier-ignore
-import { create020705AuthenticatedArmReaderCandidate } from '../.github/staging-ai-02-07-05/gatea-controller-arm-reader-candidate.mjs';
+import { create020705AuthenticatedArmReaderCandidate, create020705RunnerArmChannelPorts } from '../.github/staging-ai-02-07-05/gatea-controller-arm-reader-candidate.mjs';
 // prettier-ignore
 import { create020705DurableAtomicClaimsCandidate } from '../.github/staging-ai-02-07-05/gatea-controller-atomic-claims-candidate.mjs';
 
@@ -181,5 +181,33 @@ test('one exact signed ARM is inspected, delivered and durably consumed once', a
   assert.equal(claims, 1);
   now += 15001;
   await assert.rejects(reader.inspectIndependentWatchdogArm(candidate),
+    /ARM_READER_NO_GO/u);
+});
+
+// prettier-ignore
+test('Runner private channel receives full signed scope and never the DO secret', async () => {
+  const candidate = {...scope, candidateSha: 'b'.repeat(40),
+    stagingBranch: 'staging/ai-02-07-05-offline', capMicros: 1000000};
+  const envelope = {receipt: {controllerRunId: 701},
+    keyId: 'independent-gatea-01', challengeNonce: NONCE};
+  const history = [];
+  const ports = create020705RunnerArmChannelPorts({
+    scope: {...candidate, ignoredMetadata: 'not transmitted'},
+    armChannel: {
+      async issueArmReceipt(args) {history.push(args); return envelope;},
+      async consumeArmReceipt(args) {history.push(args); return true;}
+    }
+  });
+  const args = {scope: candidate, nonce: NONCE,
+    keyId: envelope.keyId, controllerRunId: 701};
+  assert.equal(await ports.readAuthenticatedArm(candidate, args), envelope);
+  const claim = {scope, contract: 'NOVELIGHT_AI_020705_ARM_RECEIPT_ONE_USE_V1',
+    nonce: NONCE, controllerKeyId: envelope.keyId, controllerRunId: 701};
+  assert.equal(await ports.claimArmReceiptOnce(claim, envelope), true);
+  assert.deepEqual(history[1], {scope: candidate, envelope});
+  assert.equal(await ports.claimArmReceiptOnce({...claim, nonce: 'M'.repeat(44)},
+    envelope), false);
+  assert.equal(history.length, 2);
+  assert.throws(() => create020705RunnerArmChannelPorts({scope: candidate}),
     /ARM_READER_NO_GO/u);
 });

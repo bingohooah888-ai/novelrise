@@ -104,10 +104,19 @@ test('GitHub OWNER approval yields separately scoped recovery and ARM proofs', a
   await assert.rejects(unclaimed.readOwnerApprovedScope(QUERY),
     /CONTROLLER_OWNER_SOURCE_NO_GO/u);
   assert.equal(getCalls(), 10);
+  const claimedReceipt = await port.readOwnerApprovedScope({...QUERY, armReceipt: true});
+  assert.equal(claimedReceipt.scope.candidateSha, 'b'.repeat(40));
+  assert.equal(await port.verifyOwnerApprovalAttestation(claimedReceipt,
+    {...QUERY, armReceipt: true}), true);
+  assert.equal(await port.verifyOwnerApprovalAttestation(claimedReceipt, QUERY), false);
+  await assert.rejects(unclaimed.readOwnerApprovedScope({...QUERY, armReceipt: true}),
+    /CONTROLLER_OWNER_SOURCE_NO_GO/u);
   const consumed = source(fixture({consumed: true}).fetchImpl);
   await assert.rejects(consumed.readOwnerApprovedScope({...QUERY, arm: true}),
     /CONTROLLER_OWNER_SOURCE_NO_GO/u);
   await assert.rejects(consumed.readOwnerApprovedScope(QUERY),
+    /CONTROLLER_OWNER_SOURCE_NO_GO/u);
+  await assert.rejects(consumed.readOwnerApprovedScope({...QUERY, armReceipt: true}),
     /CONTROLLER_OWNER_SOURCE_NO_GO/u);
 });
 // prettier-ignore

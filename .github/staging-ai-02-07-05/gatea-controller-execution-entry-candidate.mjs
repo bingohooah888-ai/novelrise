@@ -44,6 +44,14 @@ export function create020705ControllerExecutionEntryCandidate(ports = {}) {
           typeof env?.GATEA_CLAIM_HMAC_KEY !== 'string' ||
           typeof env?.GATEA_CLAIM_LEDGER?.idFromName !== 'function') deny();
       return runtime.issueArmReceipt(args, env);
+    },
+    async consumeArmReceipt(args, env) {
+      if (env?.GATEA_CONTROLLER_LIVE_ENABLED !== 'true' ||
+          env?.GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED !== 'true' ||
+          typeof env?.GATEA_CLAIM_HMAC_KEY !== 'string' ||
+          typeof env?.GATEA_CLAIM_LEDGER?.idFromName !== 'function') deny();
+      try { return await runtime.consumeArmReceipt(args, env); }
+      catch { deny(); }
     }
   });
 }
@@ -82,6 +90,10 @@ export function create020705GithubBoundControllerEntryCandidate(ports = {}) {
       // Internal invocation only: never expose a new public ARM route.
       // Use the same authenticated OWNER port as recovery, not caller proof.
       try { return await entryFor(env).issueArmReceipt(args, env); }
+      catch { deny(); }
+    },
+    async consumeArmReceipt(args, env) {
+      try { return await entryFor(env).consumeArmReceipt(args, env); }
       catch { deny(); }
     }
   });
@@ -135,6 +147,10 @@ export function create020705SignedObserverBoundControllerEntryCandidate(ports = 
       // The signed observer is mandatory on the ARM path as on recovery.
       // Keep the default Worker and all public HTTP routes unchanged.
       try { return await entryFor(env).issueArmReceipt(args, env); }
+      catch { deny(); }
+    },
+    async consumeArmReceipt(args, env) {
+      try { return await entryFor(env).consumeArmReceipt(args, env); }
       catch { deny(); }
     }
   });

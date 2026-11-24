@@ -4,6 +4,7 @@
 import { create020705ControllerCandidate } from './cloudflare-gatea-controller-candidate.mjs';
 import { create020705ControllerArmIssuer } from './gatea-controller-arm-issuer-candidate.mjs';
 import { create020705PrivateDoClaimPort } from './gatea-controller-do-claim-port-candidate.mjs';
+import { verify020705SignedWatchdogArm } from './signed-watchdog-arm.mjs';
 
 const REPO = 'bingohooah888-ai/novelrise';
 const STAGING = 'wmlzjgvxgoyrovdhbqbg';
@@ -58,6 +59,7 @@ export function create020705TrustedControllerBootstrapCandidate({
   readIndependentCapabilities, verifyCapabilityAttestation,
   makeStagingStopPorts, verifyStagingPortAttestation,
   inspectIndependentArm, signWithControllerKey,
+  trustedControllerPublicKey, trustedControllerKeyId, expectedChallengeNonce,
   now = Date.now
 } = {}) {
   if (![readOwnerApprovedScope, verifyOwnerApprovalAttestation,
@@ -160,6 +162,48 @@ export function create020705TrustedControllerBootstrapCandidate({
         signWithControllerKey, now
       });
       return issuer.issue(args);
+    },
+    async consumeArmReceipt({ scope, envelope } = {}, env) {
+      // Private, authenticated Controller invocation only. Trust comes from
+      // the independently provisioned per-run configuration, never input.
+      if (env?.GATEA_CONTROLLER_LIVE_ENABLED !== 'true' ||
+          env?.GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED !== 'true' ||
+          !OPTIONAL_SCOPE_KEYS.every((key) => Object.hasOwn(scope ?? {}, key)) ||
+          !verify020705SignedWatchdogArm({
+            scope, envelope, trustedControllerPublicKey, trustedControllerKeyId,
+            expectedChallengeNonce, now
+          })) deny();
+      const query = Object.freeze({
+        repository: REPO, stagingProjectRef: STAGING,
+        runId: scope.runId, approvalCommentId: scope.approvalCommentId,
+        armReceipt: true
+      });
+      const approval = await readOwnerApprovedScope(query);
+      if (!independentlyApproved(approval, query) ||
+          !matchingScope(approval.scope, scope) ||
+          envelope.receipt.controllerRunId !== approval.controllerRunId ||
+          (await verifyOwnerApprovalAttestation(approval, query)) !== true ||
+          !verify020705SignedWatchdogArm({
+            scope, envelope, trustedControllerPublicKey, trustedControllerKeyId,
+            expectedChallengeNonce, now
+          })) deny();
+      const doScope = Object.freeze(Object.fromEntries(
+        SCOPE_KEYS.map((key) => [key, approval.scope[key]])
+      ));
+      const claims = create020705PrivateDoClaimPort({
+        namespace: env.GATEA_CLAIM_LEDGER,
+        hmacSecret: env.GATEA_CLAIM_HMAC_KEY,
+        scope: doScope, controllerRunId: approval.controllerRunId
+      });
+      const claimed = await claims.claimArmReceiptOnce({
+        contract: 'NOVELIGHT_AI_020705_ARM_RECEIPT_ONE_USE_V1',
+        scope: doScope, controllerRunId: approval.controllerRunId,
+        controllerKeyId: trustedControllerKeyId, nonce: expectedChallengeNonce
+      });
+      return claimed === true && verify020705SignedWatchdogArm({
+        scope, envelope, trustedControllerPublicKey, trustedControllerKeyId,
+        expectedChallengeNonce, now
+      });
     }
   });
 }

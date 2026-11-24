@@ -85,7 +85,11 @@ function independentController(envelope) {
     trustedControllerKeyId: KEYID,
     expectedChallengeNonce: NONCE,
     verifyIndependentController: async () => true,
-    readIndependentWatchdogArm: async () => envelope
+    inspectIndependentWatchdogArm: async (input) => {
+      assert.equal(input.supabaseUrl, undefined);
+      assert.equal(input.candidateSha, HEAD);
+      return envelope;
+    }
   };
 }
 
