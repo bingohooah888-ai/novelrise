@@ -56,22 +56,33 @@ export function create020705ControllerExecutionEntryCandidate(ports = {}) {
 export function create020705GithubBoundControllerEntryCandidate(ports = {}) {
   if (typeof ports.verifyIndependentControllerIdentity !== 'function')
     deny();
+
+  function entryFor(env) {
+    if (env?.GATEA_CONTROLLER_LIVE_ENABLED !== 'true' ||
+        env?.GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED !== 'true') deny();
+    const owner = create020705GithubControllerOwnerPortCandidate({
+      token: env.GATEA_GITHUB_ISSUES_READ_TOKEN,
+      controllerRunId: Number(env.GATEA_CONTROLLER_RUN_ID),
+      verifyIndependentControllerIdentity:
+        ports.verifyIndependentControllerIdentity,
+      fetchImpl: ports.fetchImpl,
+      now: ports.now
+    });
+    return create020705ControllerExecutionEntryCandidate({
+      ...ports, ...owner
+    });
+  }
+
   return Object.freeze({
     async fetch(request, env) {
-      if (env?.GATEA_CONTROLLER_LIVE_ENABLED !== 'true' ||
-          env?.GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED !== 'true')
-        return blocked();
-      try {
-        const owner = create020705GithubControllerOwnerPortCandidate({
-          token: env.GATEA_GITHUB_ISSUES_READ_TOKEN,
-          controllerRunId: Number(env.GATEA_CONTROLLER_RUN_ID),
-          verifyIndependentControllerIdentity:
-            ports.verifyIndependentControllerIdentity
-        });
-        return await create020705ControllerExecutionEntryCandidate({
-          ...ports, ...owner
-        }).fetch(request, env);
-      } catch { return blocked(); }
+      try { return await entryFor(env).fetch(request, env); }
+      catch { return blocked(); }
+    },
+    async issueArmReceipt(args, env) {
+      // Internal invocation only: never expose a new public ARM route.
+      // Use the same authenticated OWNER port as recovery, not caller proof.
+      try { return await entryFor(env).issueArmReceipt(args, env); }
+      catch { deny(); }
     }
   });
 }
@@ -87,36 +98,44 @@ export function create020705SignedObserverBoundControllerEntryCandidate(ports = 
       typeof ports.verifyStagingPortAttestation !== 'function' ||
       typeof ports.inspectIndependentArm !== 'function' ||
       typeof ports.signWithControllerKey !== 'function') deny();
+
+  function entryFor(env) {
+    if (env?.GATEA_CONTROLLER_LIVE_ENABLED !== 'true' ||
+        env?.GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED !== 'true') deny();
+    const observer = create020705IndependentObserverPortsCandidate({
+      identityService: env.GATEA_IDENTITY_OBSERVER,
+      censusService: env.GATEA_CENSUS_OBSERVER,
+      identityPublicKey: env.GATEA_IDENTITY_PUB_SPKI,
+      censusPublicKey: env.GATEA_CENSUS_PUB_SPKI,
+      identityKeyId: env.GATEA_IDENTITY_KEY_ID,
+      censusKeyId: env.GATEA_CENSUS_KEY_ID,
+      expectedWatchdogVersionId: env.GATEA_WATCHDOG_PINNED_VERSION_ID,
+      expectedWatchdogArtifactSha256:
+        env.GATEA_WATCHDOG_PINNED_ARTIFACT_SHA256
+    });
+    return create020705GithubBoundControllerEntryCandidate({
+      ...ports,
+      ...observer,
+      makeStagingStopPorts: async (trusted) => {
+        const supplied = await ports.makeStagingStopPorts(trusted);
+        if (!supplied || typeof supplied !== 'object') deny();
+        return Object.freeze({
+          ...supplied, independentCensus: observer.independentCensus
+        });
+      }
+    });
+  }
+
   return Object.freeze({
     async fetch(request, env) {
-      if (env?.GATEA_CONTROLLER_LIVE_ENABLED !== 'true' ||
-          env?.GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED !== 'true')
-        return blocked();
-      try {
-        const observer = create020705IndependentObserverPortsCandidate({
-          identityService: env.GATEA_IDENTITY_OBSERVER,
-          censusService: env.GATEA_CENSUS_OBSERVER,
-          identityPublicKey: env.GATEA_IDENTITY_PUB_SPKI,
-          censusPublicKey: env.GATEA_CENSUS_PUB_SPKI,
-          identityKeyId: env.GATEA_IDENTITY_KEY_ID,
-          censusKeyId: env.GATEA_CENSUS_KEY_ID,
-          expectedWatchdogVersionId: env.GATEA_WATCHDOG_PINNED_VERSION_ID,
-          expectedWatchdogArtifactSha256:
-            env.GATEA_WATCHDOG_PINNED_ARTIFACT_SHA256
-        });
-        const entry = create020705GithubBoundControllerEntryCandidate({
-          ...ports,
-          ...observer,
-          makeStagingStopPorts: async (trusted) => {
-            const supplied = await ports.makeStagingStopPorts(trusted);
-            if (!supplied || typeof supplied !== 'object') deny();
-            return Object.freeze({
-              ...supplied, independentCensus: observer.independentCensus
-            });
-          }
-        });
-        return await entry.fetch(request, env);
-      } catch { return blocked(); }
+      try { return await entryFor(env).fetch(request, env); }
+      catch { return blocked(); }
+    },
+    async issueArmReceipt(args, env) {
+      // The signed observer is mandatory on the ARM path as on recovery.
+      // Keep the default Worker and all public HTTP routes unchanged.
+      try { return await entryFor(env).issueArmReceipt(args, env); }
+      catch { deny(); }
     }
   });
 }

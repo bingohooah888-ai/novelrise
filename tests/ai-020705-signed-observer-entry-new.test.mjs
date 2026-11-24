@@ -23,6 +23,11 @@ test('missing signed observer bindings fail closed before Staging stop', async (
   assert.equal((await entry.fetch(request, env)).status, 404);
   assert.equal(touched, false);
   assert.equal((await entry.fetch(request, {})).status, 404);
+  await assert.rejects(entry.issueArmReceipt({}, env),
+    /CONTROLLER_ENTRY_NO_GO/u);
+  await assert.rejects(entry.issueArmReceipt({}, {}),
+    /CONTROLLER_ENTRY_NO_GO/u);
+  assert.equal(touched, false);
 });
 // prettier-ignore
 test('portless opt-in Controller cannot be created', () => {

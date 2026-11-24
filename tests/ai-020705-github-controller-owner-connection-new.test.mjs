@@ -129,3 +129,52 @@ test('expired approval remains readable for recovery, never for new ARM', async 
   await assert.rejects(port.readOwnerApprovedScope({...QUERY, arm:true}),
     /CONTROLLER_OWNER_SOURCE_NO_GO/u);
 });
+
+// prettier-ignore
+test('bound ARM entry uses verified OWNER scope before capability or signing', async () => {
+  const {fetchImpl, getCalls} = fixture();
+  let identityChecks = 0;
+  let capabilityChecks = 0;
+  let signing = 0;
+  const entry = create020705GithubBoundControllerEntryCandidate({
+    fetchImpl, now: () => NOW,
+    verifyIndependentControllerIdentity: async () => {
+      identityChecks++;
+      return true;
+    },
+    readIndependentCapabilities: async (trusted) => {
+      capabilityChecks++;
+      assert.equal(trusted.scope.candidateSha, 'b'.repeat(40));
+      assert.equal(trusted.controllerRunId, 2002);
+      return {};
+    },
+    verifyCapabilityAttestation: async () => false,
+    makeStagingStopPorts: async () => { throw new Error('NO_STAGING'); },
+    verifyStagingPortAttestation: async () => false,
+    inspectIndependentArm: async () => { throw new Error('NO_ARM'); },
+    signWithControllerKey: async () => { signing++; throw new Error('NO_SIGN'); }
+  });
+  const scope = {...QUERY, mainSha: SHA,
+    previewDeploymentId: 'dpl_fixture123',
+    actorId: '11111111-1111-4111-8111-111111111111',
+    novelId: 41, episodeId: 11, candidateSha: 'b'.repeat(40),
+    stagingBranch: 'staging/ai-02-07-05-batch', capMicros: 1000000};
+  const args = {scope, controllerRunId: 2002,
+    nonce: 'N'.repeat(44), keyId: 'controller-key-fake01'};
+  const env = {
+    GATEA_CONTROLLER_LIVE_ENABLED: 'true',
+    GATEA_CONTROLLER_RECOVERY_ADMISSION_ENABLED: 'true',
+    GATEA_GITHUB_ISSUES_READ_TOKEN: 'read-only-fixture-token',
+    GATEA_CONTROLLER_RUN_ID: '2002',
+    GATEA_CLAIM_HMAC_KEY: 'fixture-only',
+    GATEA_CLAIM_LEDGER: {idFromName() {throw new Error('NO_DO');}}
+  };
+  await assert.rejects(entry.issueArmReceipt(args, {}),
+    /CONTROLLER_ENTRY_NO_GO/u);
+  assert.equal(getCalls(), 0);
+  await assert.rejects(entry.issueArmReceipt(args, env),
+    /CONTROLLER_ENTRY_NO_GO/u);
+  assert.equal(identityChecks, 1);
+  assert.equal(capabilityChecks, 1);
+  assert.equal(signing, 0);
+});
