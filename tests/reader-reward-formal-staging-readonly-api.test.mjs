@@ -261,7 +261,10 @@ test('verified Auth reader inspects only their canonical Point/XP and Level/Wall
   assert.equal(summary.code, 200);
   assert.equal(summary.body.status, 'staging_verified_admin_reader_only');
   assert.equal(summary.body.scope, 'verified_admin_self_only');
-  assert.equal(summary.body.readerStatus, 'new_reader_ready_for_initialization');
+  assert.equal(
+    summary.body.readerStatus,
+    'new_reader_ready_for_initialization'
+  );
   assert.deepEqual(summary.body.counts, {
     pointRows: 0,
     xpRows: 0,
