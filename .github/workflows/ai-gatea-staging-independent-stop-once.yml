@@ -28,7 +28,7 @@ jobs:
       github.event.comment.author_association == 'OWNER' &&
       github.actor == 'bingohooah888-ai' &&
       github.triggering_actor == 'bingohooah888-ai' &&
-      github.event.comment.body == 'NOVELIGHT_GATEA_STAGING_STOP_ONCE 0b9b41ecef6a33eec2f7758d56ee6b02eb103e9d'
+      startsWith(github.event.comment.body, 'NOVELIGHT_GATEA_STAGING_STOP_ONCE ')
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 6
@@ -54,7 +54,8 @@ jobs:
           test "$GITHUB_REF" = 'refs/heads/main'
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')" = "$GITHUB_SHA"
-          jq -e '
+          approved_sha="$(jq -er '.comment.body | capture("^NOVELIGHT_GATEA_STAGING_STOP_ONCE (?<sha>[0-9a-f]{40})$").sha' "$GITHUB_EVENT_PATH")"
+          jq -e --arg approved_sha "$approved_sha" '
             .repository.full_name == "bingohooah888-ai/novelrise" and
             .issue.number == 294 and
             .issue.pull_request == null and
@@ -63,12 +64,12 @@ jobs:
             .issue.user.login == "bingohooah888-ai" and
             .comment.user.login == "bingohooah888-ai" and
             .comment.author_association == "OWNER" and
-            .comment.body == "NOVELIGHT_GATEA_STAGING_STOP_ONCE 0b9b41ecef6a33eec2f7758d56ee6b02eb103e9d"
+            .comment.body == ("NOVELIGHT_GATEA_STAGING_STOP_ONCE " + $approved_sha)
           ' "$GITHUB_EVENT_PATH" >/dev/null
           gh api "repos/$GITHUB_REPOSITORY/pulls/2895" |
-            jq -e '
+            jq -e --arg approved_sha "$approved_sha" '
               .state == "open" and .draft == true and .merged == false and
-              .head.sha == "0b9b41ecef6a33eec2f7758d56ee6b02eb103e9d"
+              .head.sha == $approved_sha
             ' >/dev/null
 
       - name: STOP Staging once and independently read back
