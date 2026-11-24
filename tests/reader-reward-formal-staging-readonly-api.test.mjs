@@ -552,6 +552,9 @@ test('Staging RLS read scope uses transaction-local verified reader and post-ref
     activeRoleReviewSql,
     /\bFOR (?:INSERT|UPDATE|DELETE|ALL)\b/i
   );
-  assert.match(stagingRoleReviewSql, /admin GET \?view=new_readers: VERIFIED ADMIN SELF ONLY/);
+  assert.match(
+    stagingRoleReviewSql,
+    /admin GET \?view=new_readers: VERIFIED ADMIN SELF ONLY/
+  );
   assert.match(stagingRoleReviewSql, /Custom GUC values are/);
 });
