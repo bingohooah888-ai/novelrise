@@ -395,7 +395,7 @@
           suggestions.some((record) => !(record.payload.evidence ?? '').trim())
         ) {
           checks.push({
-          context,
+            context,
             title: 'AI候補の根拠未登録',
             detail: '「' + group.key + '」の未確定候補に引用根拠がありません。'
           });
@@ -409,7 +409,7 @@
         }
         if ([...bySource.values()].some((summaries) => summaries.size > 1)) {
           checks.push({
-          context,
+            context,
             title: '同一出典の異なる確定記述',
             detail:
               '「' + group.key + '」は同じ出典IDに複数の異なる記述があります。'
