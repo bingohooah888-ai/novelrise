@@ -2,6 +2,7 @@
 // No CLI, workflow dispatch, environment access, or I/O at import time.
 // Admission is an observation from the PROTECTED main job, never a PR claim.
 import { create020705ProtectedLiveComposition } from './protected-live-composition.mjs';
+import { create020705StagingLiveBindings } from './staging-live-bindings.mjs';
 
 const REPOSITORY = 'bingohooah888-ai/novelrise';
 const OWNER = 'bingohooah888-ai';
@@ -76,6 +77,93 @@ export function create020705OwnerStagingLiveEntrypoint({
       // independent evidence, stop, billing, cleanup and one-POST controls.
       return create020705ProtectedLiveComposition({
         ...live, context, expected
+      }).run();
+    }
+  });
+}
+
+
+/**
+ * Scoped code-only handoff for PR #2895. The existing Workflow only admits
+ * OWNER intent read-only; the trusted, separately approved main runner must
+ * supply independently observed protected-run admission and real adapters.
+ * The candidate Cloudflare Controller is NOT an authority merely because
+ * its code or flags exist. StagingLiveBindings independently requires a
+ * signed Gate A arm, real STOP, JWT proofs and separate final census.
+ * No import-time I/O, automatic workflow invocation, credentials or retry.
+ */
+export function create020705OwnerProtectedStagingEntrypoint({
+  scope, context, readProtectedRunAdmission,
+  credentials, controller, evidence, pricing, fetchImpl
+} = {}) {
+  const branch = /^staging\/ai-02-07-05-[a-z0-9-]+$/u;
+  if (scope?.repository !== REPOSITORY ||
+      scope?.prNumber !== 2895 ||
+      scope?.stagingProjectRef !== STAGING ||
+      scope?.supabaseUrl !== URL ||
+      !SHA.test(scope?.mainSha ?? '') ||
+      !SHA.test(scope?.candidateSha ?? '') ||
+      scope.mainSha === scope.candidateSha ||
+      !branch.test(scope?.stagingBranch ?? '') ||
+      !/^dpl_[A-Za-z0-9]+$/u.test(scope?.previewDeploymentId ?? '') ||
+      scope?.existingMigrationsOnly !== true ||
+      scope?.existingPreviewOnly !== true ||
+      scope?.maxPaidCalls !== 1 ||
+      !positive(scope?.runId) ||
+      !positive(scope?.approvalCommentId) ||
+      context?.repository !== REPOSITORY ||
+      context?.githubActor !== OWNER ||
+      context?.triggeringActor !== OWNER ||
+      context?.trustedRef !== 'refs/heads/main' ||
+      context?.trustedSha !== scope.mainSha ||
+      context?.mainSha !== scope.mainSha ||
+      context?.candidateSha !== scope.candidateSha ||
+      context?.candidateCheckoutSha !== scope.candidateSha ||
+      context?.stagingBranch !== scope.stagingBranch ||
+      context?.previewDeploymentId !== scope.previewDeploymentId ||
+      context?.runId !== scope.runId ||
+      context?.approvalCommentId !== scope.approvalCommentId ||
+      context?.protectedEnvironment !== 'staging' ||
+      context?.projectRef !== STAGING ||
+      context?.supabaseUrl !== URL ||
+      context?.vercelTarget !== 'preview' ||
+      typeof readProtectedRunAdmission !== 'function') deny();
+
+  const query = Object.freeze({
+    repository: REPOSITORY,
+    runId: scope.runId,
+    mainSha: scope.mainSha,
+    candidateSha: scope.candidateSha,
+    stagingBranch: scope.stagingBranch,
+    previewDeploymentId: scope.previewDeploymentId
+  });
+  let attempted = false;
+  return Object.freeze({
+    async runOnce() {
+      if (attempted) deny();
+      attempted = true;
+      let proof;
+      try {
+        proof = await readProtectedRunAdmission(query);
+      } catch { deny(); }
+      if (proof?.verifiedReadOnly !== true ||
+          proof?.repository !== REPOSITORY ||
+          proof?.runId !== scope.runId ||
+          proof?.ref !== 'refs/heads/main' ||
+          proof?.sha !== scope.mainSha ||
+          proof?.actor !== OWNER ||
+          proof?.triggeringActor !== OWNER ||
+          proof?.environment !== 'staging' ||
+          proof?.environmentReviewerApproved !== true ||
+          proof?.candidateCheckoutSha !== scope.candidateSha ||
+          proof?.stagingBranch !== scope.stagingBranch ||
+          proof?.previewDeploymentId !== scope.previewDeploymentId) deny();
+
+      // No local or candidate-controller self-attestation is accepted.
+      // The existing binding keeps the real signed independent Gate A,
+      // one-use paid claim, STOP, synthetic JWT and census checks intact.
+      return create020705StagingLiveBindings({
+        scope, credentials, controller, evidence, pricing, fetchImpl
       }).run();
     }
   });
