@@ -202,3 +202,95 @@ export function create020705ComprehensiveStagingSequence({
     }
   });
 }
+
+// Offline composition contract for A/B/C only. This is not a trusted
+// entrypoint: the reviewed main caller must supply the genuine independent
+// Gate A result, OWNER one-use admission, and reviewed proof-only adapters.
+// A signed ARM alone is not the completed Gate A result. Never pass a
+// paid OWNER approval or the paid binding here to simulate zero cost.
+// prettier-ignore
+export function create020705UnpaidGateABCSequence({
+  scope, verifyOwnerAndRefs, verifyIndependentGateA,
+  verifyStagingIsolation, inspectInstalled, preparePreview,
+  beforeSynthetic, runSyntheticJwtProof, stopAndCleanup,
+  independentFinalCensus
+} = {}) {
+  if (scope?.repository !== REPO ||
+      scope?.stagingProjectRef !== STAGING || scope?.supabaseUrl !== URL ||
+      scope?.protectedEnvironment !== 'staging' ||
+      scope?.trustedRef !== 'refs/heads/main' || scope?.prNumber !== 2895 ||
+      !SHA.test(scope?.mainSha ?? '') || !SHA.test(scope?.candidateSha ?? '') ||
+      scope.mainSha === scope.candidateSha ||
+      !BRANCH.test(scope?.stagingBranch ?? '') ||
+      !DEPLOYMENT.test(scope?.previewDeploymentId ?? '') ||
+      !Number.isSafeInteger(scope?.approvalCommentId) || scope.approvalCommentId <= 0 ||
+      !Number.isSafeInteger(scope?.runId) || scope.runId <= 0 ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(scope?.actorId ?? '') ||
+      !Number.isSafeInteger(scope?.novelId) || scope.novelId <= 0 ||
+      !Number.isSafeInteger(scope?.episodeId) || scope.episodeId <= 0 ||
+      scope.maxMigrations !== 0 || scope.maxPreviews !== 0 ||
+      scope.existingMigrationsOnly !== true || scope.existingPreviewOnly !== true ||
+      scope.maxPaidCalls !== 0 || scope.capMicros !== 0 ||
+      [verifyOwnerAndRefs, verifyIndependentGateA, verifyStagingIsolation,
+        inspectInstalled, preparePreview, beforeSynthetic, runSyntheticJwtProof,
+        stopAndCleanup, independentFinalCensus].some((fn) => typeof fn !== 'function'))
+    deny();
+  scope = Object.freeze({ ...scope });
+  let attempted = false;
+
+  return Object.freeze({
+    async run() {
+      if (attempted) deny();
+      attempted = true;
+      let syntheticStarted = false;
+      let proofPassed = false;
+      let cleanupOk = false;
+      let censusOk = false;
+      try {
+        if (await verifyOwnerAndRefs(scope) !== true ||
+            await verifyIndependentGateA(scope) !== true ||
+            await verifyStagingIsolation(scope) !== true ||
+            await inspectInstalled(scope) !== true) deny();
+        const preview = await preparePreview(scope);
+        if (!exactPreview(preview, scope) ||
+            preview.id !== scope.previewDeploymentId) deny();
+        // Revalidate at the write boundary. Admission must consume a
+        // separately approved non-paid scope, not the paid OWNER ledger.
+        if (await verifyOwnerAndRefs(scope) !== true ||
+            await verifyIndependentGateA(scope) !== true ||
+            await beforeSynthetic(scope) !== true) deny();
+        syntheticStarted = true;
+        const proof = await runSyntheticJwtProof(scope);
+        if (!exactSynthetic(proof, scope) ||
+            proof.actorId !== scope.actorId || proof.novelId !== scope.novelId ||
+            proof.episodeId !== scope.episodeId ||
+            await verifyOwnerAndRefs(scope) !== true) deny();
+        proofPassed = true;
+      } catch {
+        // Redact all adapter errors; never retry an attempted proof.
+      } finally {
+        if (syntheticStarted) {
+          try {
+            cleanupOk = (await stopAndCleanup(scope, { paidStarted: false })) === true;
+          } catch { /* retain failure */ }
+          try {
+            censusOk = (await independentFinalCensus(scope)) === true;
+          } catch { /* retain failure */ }
+        }
+      }
+      if (!proofPassed || !cleanupOk || !censusOk) deny();
+      // These are orchestration results, not independently authenticated
+      // live Gate A/B/C evidence or a grant of any execution authority.
+      return Object.freeze({
+        outcome: 'UNPAID_ABC_SEQUENCE_CONTRACT_VERIFIED',
+        projectRef: STAGING,
+        candidateSha: scope.candidateSha,
+        previewDeploymentId: scope.previewDeploymentId,
+        paidAttempts: 0,
+        authorizesPaidCall: false,
+        authorizesStagingWrite: false,
+        authorizesPreviewCreation: false
+      });
+    }
+  });
+}
