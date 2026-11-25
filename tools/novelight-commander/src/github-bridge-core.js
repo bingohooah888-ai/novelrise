@@ -740,6 +740,15 @@ async function actionNloHealth(request, config) {
   ].join('\n');
 }
 
+async function actionNloWorkspaceMetadata(request, config) {
+  ensureNoArgs(request.args);
+  const { inspectNloGitWorkspaces } = await import(
+    './git-workspace-metadata-readonly.js'
+  );
+  const data = await inspectNloGitWorkspaces({ repoRoot: config.repoRoot });
+  return JSON.stringify(data, null, 2);
+}
+
 async function actionRepoSnapshot(request, config) {
   ensureNoArgs(request.args);
   await run('git', ['fetch', 'origin', 'main', '--prune'], {
@@ -1907,6 +1916,7 @@ async function actionCloudflareNloReadOnly(request) {
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
   ['nlo_health', actionNloHealth],
+  ['nlo_workspace_metadata', actionNloWorkspaceMetadata],
   ['supabase_staging_actions', actionSupabaseStagingNloReadOnly],
   ['supabase_staging_action_logs', actionSupabaseStagingNloReadOnly],
   ['nlo_staging_dual_session_overlap', actionNloStagingDualSessionOverlap],
