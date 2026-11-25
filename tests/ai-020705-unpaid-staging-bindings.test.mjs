@@ -11,7 +11,8 @@ import { create020705UnpaidStagingBindings } from '../.github/ai-02-07-05-app-co
 
 const ref = 'wmlzjgvxgoyrovdhbqbg';
 const url = 'https://' + ref + '.supabase.co';
-const db = 'postgresql://postgres:fixture@db.' + ref + '.supabase.co:5432/postgres';
+const db =
+  'postgresql://postgres:fixture@db.' + ref + '.supabase.co:5432/postgres';
 // prettier-ignore
 const scope = {
   repository: 'bingohooah888-ai/novelrise', prNumber: 2895,
