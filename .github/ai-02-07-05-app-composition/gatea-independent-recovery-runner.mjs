@@ -4,7 +4,9 @@
 import { create020705AccessRecoveryClient } from '../staging-ai-02-07-05/gatea-access-recovery-client.mjs';
 import { create020705TrustedIndependentRecovery } from './trusted-main-live-runtime.mjs';
 import { verify020705IndependentStagingCensus } from './staging-live-bindings.mjs';
-import { create020705IndependentCensusReader, validate020705CensusToken } from './gatea-independent-census.mjs';
+import { create020705IndependentObserverPortsCandidate } from '../staging-ai-02-07-05/gatea-controller-independent-observers-candidate.mjs';
+import { create020705GithubControllerOwnerPortCandidate } from '../staging-ai-02-07-05/gatea-controller-github-owner-port-candidate.mjs';
+import { create020705IndependentStopRpc, create020705IndependentSessionRevoker } from './gatea-independent-stop-ports.mjs';
 
 function deny() { throw new Error('AI_020705_INDEPENDENT_RUNNER_NO_GO'); }
 
@@ -24,8 +26,7 @@ export function validate020705RecoveryEnvironment(env = {}) {
         !env.GATEA_ACCESS_CLIENT_SECRET ||
         env.OPENAI_API_KEY || env.STAGING_DATABASE_URL ||
         env.GATEA_CENSUS_DATABASE_URL || env.SUPABASE_ACCESS_TOKEN ||
-        env.SUPABASE_DB_PASSWORD) deny();
-    validate020705CensusToken(env.GATEA_CENSUS_READ_TOKEN);
+        env.SUPABASE_DB_PASSWORD || env.GATEA_CENSUS_READ_TOKEN) deny();
     return true;
   } catch { deny(); }
 }
@@ -33,35 +34,62 @@ export function validate020705RecoveryEnvironment(env = {}) {
 export function create020705IndependentRecoveryRunner({
   env, approvedOrigin, scope, controllerRunId, ownerSignature,
   pinnedControllerPublicKey, pinnedControllerKeyId, expectedChallengeNonce,
-  readControllerCapabilities, stopOptions
+  observerOptions, ownerToken, stopOptions, stopConnectionString, syntheticJwt, syntheticSessionId
 } = {}) {
   validate020705RecoveryEnvironment(env);
   if (approvedOrigin !== env.GATEA_ACCESS_ORIGIN ||
       controllerRunId !== Number(env.GITHUB_RUN_ID) ||
       !Number.isSafeInteger(controllerRunId) || controllerRunId === scope?.runId ||
-      typeof readControllerCapabilities !== 'function' ||
-      !stopOptions || ['stopModelTransport', 'disableTrialEnvironment',
-        'revokeSyntheticSessions'].some((k) => typeof stopOptions[k] !== 'function')) deny();
+      !stopOptions || ['stopModelTransport', 'disableTrialEnvironment']
+        .some((k) => typeof stopOptions[k] !== 'function')) deny();
   const accessClient = create020705AccessRecoveryClient({
     origin: approvedOrigin, clientId: env.GATEA_ACCESS_CLIENT_ID,
     clientSecret: env.GATEA_ACCESS_CLIENT_SECRET, ownerSignature, scope,
     controllerRunId, trustedControllerPublicKey: pinnedControllerPublicKey,
     trustedControllerKeyId: pinnedControllerKeyId, expectedChallengeNonce
   });
-  const reader = create020705IndependentCensusReader({
-    token: env.GATEA_CENSUS_READ_TOKEN, scope
+  // Reuse the existing signed independent observer and OWNER ledger adapters.
+  // No PAT, mock boolean, or generic DB login can certify census.
+  const observer = create020705IndependentObserverPortsCandidate(observerOptions);
+  const owner = create020705GithubControllerOwnerPortCandidate({
+    token: ownerToken, controllerRunId,
+    verifyIndependentControllerIdentity: observer.verifyIndependentControllerIdentity
+  });
+  const stopRuntime = create020705IndependentStopRpc({
+    connectionString: stopConnectionString, scope
+  });
+  const revokeSyntheticSessions = create020705IndependentSessionRevoker({
+    scope, serviceClient: stopOptions.serviceClient, authAdmin: stopOptions.authAdmin,
+    jwt: syntheticJwt, sessionId: syntheticSessionId
   });
   const independentCensus = async (target) => {
-    const report = await reader(target);
+    const report = await observer.independentCensus(target);
     if (!await verify020705IndependentStagingCensus({
       scope, independentCensus: async () => report
     })) deny();
     return report;
   };
-  const detached = create020705TrustedIndependentRecovery({
-    scope, controllerRunId, pinnedControllerPublicKey, pinnedControllerKeyId,
-    expectedChallengeNonce, readControllerCapabilities, accessClient,
-    stopOptions: { ...stopOptions, independentCensus }
-  });
-  return Object.freeze({ recoverOnce: () => detached.recover() });
+  let attempted = false;
+  return Object.freeze({ async recoverOnce() {
+    if (attempted) deny();
+    attempted = true;
+    const query = Object.freeze({ repository: scope.repository,
+      stagingProjectRef: scope.stagingProjectRef, runId: scope.runId,
+      approvalCommentId: scope.approvalCommentId });
+    const trusted = await owner.readOwnerApprovedScope(query);
+    if (!await owner.verifyOwnerApprovalAttestation(trusted, query) ||
+        Object.keys(trusted.scope ?? {}).length !== Object.keys(scope).length ||
+        !Object.keys(scope).every((key) => trusted.scope[key] === scope[key])) deny();
+    const detached = create020705TrustedIndependentRecovery({
+      scope, controllerRunId, pinnedControllerPublicKey, pinnedControllerKeyId,
+      expectedChallengeNonce, accessClient,
+      readControllerCapabilities: async () => {
+        const proof = await observer.readIndependentCapabilities(trusted);
+        if (!await observer.verifyCapabilityAttestation(proof, trusted)) deny();
+        return proof;
+      },
+      stopOptions: { ...stopOptions, stopRuntime, revokeSyntheticSessions, independentCensus }
+    });
+    return detached.recover();
+  } });
 }

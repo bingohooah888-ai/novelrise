@@ -10,6 +10,11 @@ import {
   validate020705RecoveryEnvironment
 } from '../.github/ai-02-07-05-app-composition/gatea-independent-recovery-runner.mjs';
 
+import {
+  create020705IndependentSessionRevoker,
+  validate020705StopUrl
+} from '../.github/ai-02-07-05-app-composition/gatea-independent-stop-ports.mjs';
+
 const token = 'sbp_fc_fixture_only_not_a_real_token';
 const env = {
   GITHUB_REPOSITORY: 'bingohooah888-ai/novelrise',
@@ -21,8 +26,7 @@ const env = {
   GATEA_ACCESS_ORIGIN:
     'https://novelight-ai-gatea-controller.bingo-hooah-888.workers.dev',
   GATEA_ACCESS_CLIENT_ID: 'fixture.access',
-  GATEA_ACCESS_CLIENT_SECRET: 'fixture-only',
-  GATEA_CENSUS_READ_TOKEN: token
+  GATEA_ACCESS_CLIENT_SECRET: 'fixture-only'
 };
 
 test('recovery credentials are scoped to trusted main and fail closed', () => {
@@ -31,7 +35,7 @@ test('recovery credentials are scoped to trusted main and fail closed', () => {
     { GATEA_ACCESS_CLIENT_SECRET: '' },
     { GATEA_ACCESS_CLIENT_ID: '' },
     { GATEA_ACCESS_ORIGIN: 'https://other.example' },
-    { GATEA_CENSUS_READ_TOKEN: '' },
+    { GATEA_CENSUS_READ_TOKEN: token },
     { GATEA_CENSUS_DATABASE_URL: 'fixture-only' },
     { SUPABASE_ACCESS_TOKEN: 'fixture-only' },
     { GITHUB_REF: 'refs/heads/other' },
@@ -128,6 +132,7 @@ test('fixed census endpoint and parameters, no raw records or auth in report', a
       ]);
       assert.match(body.query, /transaction_read_only/u);
       assert.match(body.query, /row_security_active/u);
+      assert.match(body.query, /decrypted_secrets/u);
       return json([row]);
     }
   });
@@ -162,4 +167,76 @@ test('census rejects errors, filtered or writable reads and malformed results', 
     }),
     true
   );
+});
+
+test('STOP credentials are pinned to Staging and the dedicated role', () => {
+  const url =
+    'postgresql://novelight_gatea_stop:fixture@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres';
+  assert.equal(validate020705StopUrl(url), true);
+  for (const value of [
+    url.replace('gatea_stop', 'postgres'),
+    url.replace('wmlzjgvxgoyrovdhbqbg', 'other'),
+    url + '?sslmode=disable'
+  ]) {
+    assert.throws(() => validate020705StopUrl(value), /STOP_PORT_NO_GO/u);
+  }
+});
+
+test('session revoker checks synthetic identity and session readback before success', async () => {
+  const sessionId = '22222222-2222-4222-8222-222222222222';
+  const jwt = 'fixture'.repeat(10);
+  const calls = [];
+  const authAdmin = {
+    async getUserById() {
+      return {
+        data: {
+          user: {
+            id: scope.actorId,
+            email: 'novelight-ai-020705-fixture@example.invalid',
+            app_metadata: { internal_e2e: true }
+          }
+        }
+      };
+    },
+    async signOut(value, mode) {
+      assert.equal(value, jwt);
+      assert.equal(mode, 'global');
+      calls.push('logout');
+      return {};
+    }
+  };
+  const serviceClient = {
+    supabaseUrl: 'https://wmlzjgvxgoyrovdhbqbg.supabase.co',
+    auth: {
+      admin: authAdmin,
+      async getClaims() {
+        return {
+          data: {
+            claims: {
+              sub: scope.actorId,
+              session_id: sessionId,
+              iss: serviceClient.supabaseUrl + '/auth/v1'
+            }
+          }
+        };
+      }
+    },
+    async rpc(name, args) {
+      assert.equal(name, 'novelight_ai_owner_session_exists_v1');
+      assert.equal(args.p_actor_id, scope.actorId);
+      assert.equal(args.p_session_id, sessionId);
+      calls.push('session');
+      return { data: !calls.includes('logout') };
+    }
+  };
+  const revoke = create020705IndependentSessionRevoker({
+    scope,
+    serviceClient,
+    authAdmin,
+    jwt,
+    sessionId
+  });
+  assert.equal(await revoke(scope.actorId), true);
+  assert.deepEqual(calls, ['session', 'logout', 'session']);
+  await assert.rejects(revoke(scope.actorId), /STOP_PORT_NO_GO/u);
 });

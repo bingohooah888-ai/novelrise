@@ -1,4 +1,6 @@
-// Fixed Staging Management API read-only transport. No DB login or writes.
+// OFFLINE CANDIDATE ONLY: the live role can read Vault/auth secrets.
+// Never provision or use a real PAT for this transport until independently
+// reviewed isolation is available. Retained for fixed-query regression tests.
 // Token scope must be independently verified at issuance; the prefix alone
 // is not evidence of project or permission scope. No I/O on import.
 const PROJECT = 'wmlzjgvxgoyrovdhbqbg';
@@ -22,6 +24,14 @@ export function validate020705CensusToken(value) {
 // read or writable transaction never yields an accepted report.
 const GUARD = `current_user = 'supabase_read_only_user'
   and pg_catalog.current_setting('transaction_read_only') = 'on'
+  and not exists (
+    select 1 from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    where ((n.nspname='vault' and c.relname in ('secrets','decrypted_secrets'))
+      or (n.nspname='auth' and c.relname='refresh_tokens'))
+      and pg_catalog.has_schema_privilege(current_user,n.oid,'USAGE')
+      and pg_catalog.has_any_column_privilege(current_user,c.oid,'SELECT')
+  )
   and not exists (
     select 1 from pg_catalog.unnest(array[
       'auth.users'::regclass,

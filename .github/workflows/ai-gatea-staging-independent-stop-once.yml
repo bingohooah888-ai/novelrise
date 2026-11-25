@@ -185,13 +185,12 @@ jobs:
       - name: Install locked dependencies without recovery credentials
         shell: bash
         run: npm ci --ignore-scripts --no-audit --no-fund --quiet
-      - name: Verify isolated references and read-only census transport
+      - name: Validate isolated references without privileged I/O
         shell: bash
         env:
           GATEA_ACCESS_CLIENT_ID: ${{ secrets.GATEA_ACCESS_CLIENT_ID }}
           GATEA_ACCESS_CLIENT_SECRET: ${{ secrets.GATEA_ACCESS_CLIENT_SECRET }}
           GATEA_ACCESS_ORIGIN: ${{ vars.GATEA_ACCESS_ORIGIN }}
-          GATEA_CENSUS_READ_TOKEN: ${{ secrets.GATEA_CENSUS_READ_TOKEN }}
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = '1'
@@ -199,10 +198,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           node --input-type=module <<'NODE'
           import { validate020705RecoveryEnvironment } from './.github/ai-02-07-05-app-composition/gatea-independent-recovery-runner.mjs';
-          import { probe020705CensusAccess } from './.github/ai-02-07-05-app-composition/gatea-independent-census.mjs';
           validate020705RecoveryEnvironment(process.env);
-          await probe020705CensusAccess({ token: process.env.GATEA_CENSUS_READ_TOKEN });
-          console.log('GATEA_CENSUS_READ_ONLY_TRANSPORT_PASS');
           NODE
-          echo 'GATEA_RECOVERY_LIVE_NO_GO: trusted bootstrap and real independent ports not activated'
+          echo 'GATEA_RECOVERY_LIVE_NO_GO: approved isolated observer and STOP/revoke/Preview ports not activated; PAT rejected'
           exit 1

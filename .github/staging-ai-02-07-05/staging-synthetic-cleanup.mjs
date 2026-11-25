@@ -20,6 +20,7 @@ export function create020705StagingCleanup({
   authAdmin,
   synthetic,
   disableTrialEnvironment,
+  stopRuntime,
   revokeSyntheticSessions,
   independentCensus
 } = {}) {
@@ -38,6 +39,7 @@ export function create020705StagingCleanup({
     typeof authAdmin?.getUserById !== 'function' ||
     typeof authAdmin?.deleteUser !== 'function' ||
     typeof disableTrialEnvironment !== 'function' ||
+    (stopRuntime !== undefined && typeof stopRuntime !== 'function') ||
     typeof revokeSyntheticSessions !== 'function' ||
     typeof independentCensus !== 'function'
   ) {
@@ -58,7 +60,9 @@ export function create020705StagingCleanup({
       // rollback must be independently authorized before this is wired.
       let safe = true;
       try {
-        const result = await serviceClient
+        // Independent recovery supplies the dedicated STOP RPC port;
+        // never fall back to the broader service-client UPDATE on failure.
+        const result = stopRuntime ? await stopRuntime() : await serviceClient
           .from('novelight_ai_runtime_settings')
           .update({
             enabled: false,

@@ -27,6 +27,7 @@ export function create020705DetachedStopConnector({
   claimRecoveryOnce,
   stopModelTransport,
   disableTrialEnvironment,
+  stopRuntime,
   revokeSyntheticSessions,
   independentCensus,
   now = Date.now
@@ -64,6 +65,7 @@ export function create020705DetachedStopConnector({
     authAdmin,
     synthetic,
     disableTrialEnvironment,
+    stopRuntime,
     revokeSyntheticSessions,
     independentCensus
   });
