@@ -55,7 +55,7 @@ export function unwrap020705StagingProposal(source) {
   return source.slice(start + 6, end);
 }
 
-export function create020705StagingMigrationAdapter({
+function createMigrationAdapter({
   scope,
   connectionString,
   githubToken,
@@ -66,7 +66,7 @@ export function create020705StagingMigrationAdapter({
   }),
   fetchImpl = globalThis.fetch,
   mainMigrationFiles = () => readdirSync('supabase/migrations')
-} = {}) {
+} = {}, proofOnly = false) {
   if (scope?.repository !== REPO ||
       scope?.stagingProjectRef !== STAGING ||
       scope?.supabaseUrl !== URL ||
@@ -74,7 +74,10 @@ export function create020705StagingMigrationAdapter({
       !SHA.test(scope?.mainSha ?? '') ||
       !SHA.test(scope?.candidateSha ?? '') ||
       scope.mainSha === scope.candidateSha ||
-      scope?.maxMigrations !== 2 ||
+      (proofOnly
+        ? scope?.maxMigrations !== 0 || scope.existingMigrationsOnly !== true ||
+          scope.maxPaidCalls !== 0 || scope.capMicros !== 0
+        : scope?.maxMigrations !== 2) ||
       typeof connectionString !== 'string' ||
       typeof githubToken !== 'string' || githubToken.length < 10 ||
       typeof fetchImpl !== 'function' ||
@@ -222,9 +225,19 @@ export function create020705StagingMigrationAdapter({
     }
   }
 
+  if (proofOnly) return Object.freeze({ inspectInstalled });
   return Object.freeze({
     installReviewState: () => apply(0),
     installChunkClaim: () => apply(1),
     inspectInstalled
   });
+}
+
+export function create020705StagingMigrationAdapter(options) {
+  return createMigrationAdapter(options);
+}
+
+// No DDL methods are exposed to the unpaid composition.
+export function create020705UnpaidMigrationInspector(options) {
+  return createMigrationAdapter(options, true);
 }

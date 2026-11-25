@@ -22,7 +22,7 @@ function deny() {
   throw new Error('AI_020705_STAGING_PREVIEW_DENIED');
 }
 
-export function create020705StagingPreviewAdapter({
+function createPreviewAdapter({
   scope,
   token,
   projectId,
@@ -31,11 +31,16 @@ export function create020705StagingPreviewAdapter({
   existingDeploymentId = null,
   fetchImpl = globalThis.fetch,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-} = {}) {
+} = {}, proofOnly = false) {
   if (scope?.repository !== REPO ||
       scope?.stagingProjectRef !== STAGING ||
       scope?.supabaseUrl !== SUPABASE ||
-      scope?.maxPreviews !== 1 ||
+      (proofOnly
+        ? scope?.maxPreviews !== 0 || scope.existingPreviewOnly !== true ||
+          scope.maxPaidCalls !== 0 || scope.capMicros !== 0 ||
+          !DEPLOYMENT.test(scope.previewDeploymentId ?? '') ||
+          existingDeploymentId !== scope.previewDeploymentId
+        : scope?.maxPreviews !== 1) ||
       !SHA.test(scope?.candidateSha ?? '') ||
       !/^staging\/ai-02-07-05-[a-z0-9-]+$/u.test(scope?.stagingBranch ?? '') ||
       typeof token !== 'string' || token.length < 16 ||
@@ -114,13 +119,15 @@ export function create020705StagingPreviewAdapter({
         !Number.isSafeInteger(project.link.repoId) ||
         ![REPO, 'novelrise'].includes(project.link.repo)) deny();
     const env = await request(
-      base + '/v9/projects/' + projectId + '/env' + suffix
+      base + '/v9/projects/' + projectId + '/env' + suffix +
+        (proofOnly ? (suffix ? '&' : '?') + 'decrypt=false' : '')
     );
     if (!Array.isArray(env?.envs)) deny();
     const scoped = new Set(env.envs.filter((item) =>
       item?.gitBranch === scope.stagingBranch &&
       Array.isArray(item.target) &&
-      item.target.includes('preview')
+      item.target.includes('preview') &&
+      (!proofOnly || item.target.length === 1)
     ).map((item) => item.key));
     if (REQUIRED_BRANCH_KEYS.some((name) => !scoped.has(name))) deny();
     // Existing, separately approved Preview is a read-only operation.
@@ -128,6 +135,7 @@ export function create020705StagingPreviewAdapter({
     // can be created; never silently create a different deployment instead.
     let id = existingDeploymentId;
     if (id === null) {
+      if (proofOnly) deny();
       const creation = await request(
         base + '/v13/deployments' + suffix,
         {
@@ -177,4 +185,13 @@ export function create020705StagingPreviewAdapter({
     });
   }
   return Object.freeze({ preparePreview: run });
+}
+
+export function create020705StagingPreviewAdapter(options) {
+  return createPreviewAdapter(options);
+}
+
+// Inspection only, exact previously approved deployment ID required.
+export function create020705UnpaidPreviewInspector(options) {
+  return createPreviewAdapter(options, true);
 }

@@ -30,7 +30,7 @@ function serviceReady(client) {
     typeof client.rpc === 'function' && typeof client.from === 'function';
 }
 
-export function create020705StagingJwtAdapter({
+function createJwtAdapter({
   scope,
   connectionString,
   secretKey,
@@ -48,11 +48,14 @@ export function create020705StagingJwtAdapter({
     connectionString, ssl: { rejectUnauthorized: true },
     application_name: 'novelight_ai_020705_jwt_proof'
   })
-} = {}) {
+} = {}, proofOnly = false) {
   if (scope?.stagingProjectRef !== REF ||
       scope?.supabaseUrl !== URL ||
       scope?.prNumber !== 2895 ||
-      scope?.maxPaidCalls !== 1 ||
+      (proofOnly
+        ? scope?.maxPaidCalls !== 0 || scope.capMicros !== 0 ||
+          scope.existingMigrationsOnly !== true || scope.existingPreviewOnly !== true
+        : scope?.maxPaidCalls !== 1) ||
       !UUID.test(scope?.actorId ?? '') ||
       scope?.novelId !== NOVEL ||
       scope?.episodeId !== EPISODE ||
@@ -85,6 +88,7 @@ export function create020705StagingJwtAdapter({
   let createdNovel = false;
   let createdClaimNovel = false;
   let paidApproved = false;
+  let proofCompleted = false;
   let client = null;
 
   async function database(statement, args = []) {
@@ -353,7 +357,8 @@ export function create020705StagingJwtAdapter({
       await cleanUser(outsiderId, outsiderEmail);
       outsiderId = null;
       await assertSynthetic(ownerId, ownerEmail);
-      paidApproved = true;
+      paidApproved = !proofOnly;
+      proofCompleted = true;
       validated = true;
       return Object.freeze({
         verifiedSynthetic: true,
@@ -377,7 +382,7 @@ export function create020705StagingJwtAdapter({
   // Called only after the future protected paid runner confirms it has
   // separately killed the model route and completed its own scoped cleanup.
   async function finalCensus() {
-    if (!paidApproved || !client) deny();
+    if (!(proofOnly ? proofCompleted : paidApproved) || !client) deny();
     const result = await database(
       'select (select count(*)::integer from auth.users where id=$1) as users, ' +
       '(select count(*)::integer from public.novels where id in ($2,$5)) as novels, ' +
@@ -391,7 +396,7 @@ export function create020705StagingJwtAdapter({
     const row = result.rows?.[0];
     if (!row || row.users !== 0 || row.novels !== 0 ||
         row.episodes !== 0 || row.proof_claims !== 1 ||
-        ![0,1].includes(row.paid_claims)) deny();
+        (proofOnly ? row.paid_claims !== 0 : ![0,1].includes(row.paid_claims))) deny();
     return true;
   }
 
@@ -405,6 +410,9 @@ export function create020705StagingJwtAdapter({
   async function close() {
     if (client) { await client.end(); client = null; }
   }
+  if (proofOnly) return Object.freeze({
+    runSyntheticJwtProof, emergencyCleanup, finalCensus, close
+  });
   return Object.freeze({
     runSyntheticJwtProof,
     emergencyCleanup,
@@ -422,4 +430,13 @@ export function create020705StagingJwtAdapter({
       });
     }
   });
+}
+
+export function create020705StagingJwtAdapter(options) {
+  return createJwtAdapter(options);
+}
+
+// No paid synthetic getter is exposed by the proof-only adapter.
+export function create020705UnpaidJwtAdapter(options) {
+  return createJwtAdapter(options, true);
 }
