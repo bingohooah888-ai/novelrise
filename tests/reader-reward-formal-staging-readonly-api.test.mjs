@@ -6,7 +6,9 @@ import { URL } from 'node:url';
 import {
   createFormalStagingReadOnlyHandler,
   createStagingReadOnlyFormalApplication,
+  createStagingFormalTlsOptions,
   deriveStagingReadOnlySessionPoolerUrl,
+  verifyStagingFormalRootCa,
   withStagingVerifiedReaderQuery,
   stagingReadOnlyGate
 } from '../api/_lib/reader-reward/formal-staging-readonly-runtime.js';
@@ -167,6 +169,43 @@ test('read-only gate rejects every write and unrelated reward view before DB acc
   await admin(request('earning_source', 'POST'), reviewPost);
   assert.equal(reviewPost.code, 405);
   assert.equal(created, 0);
+});
+
+test('Staging Session Pooler TLS verifies the pinned Supabase CA and host', () => {
+  const original =
+    'postgresql://novelight_formal_reader_ro:unit-test-only@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres';
+  const env = {
+    ...ACTIVE,
+    PGSSLMODE: 'require',
+    STAGING_FORMAL_RO_DATABASE_URL: original
+  };
+  const tls = createStagingFormalTlsOptions(env);
+  assert.equal(tls.servername, 'aws-0-ap-northeast-1.pooler.supabase.com');
+  assert.equal(tls.rejectUnauthorized, true);
+  assert.equal(verifyStagingFormalRootCa(tls.ca), true);
+  assert.equal(env.STAGING_FORMAL_RO_DATABASE_URL, original);
+  assert.throws(
+    () => verifyStagingFormalRootCa(tls.ca + 'TAMPER'),
+    /FORMAL_STAGING_TLS_CA_UNVERIFIED/
+  );
+  assert.throws(
+    () => createStagingFormalTlsOptions({ ...env, VERCEL_ENV: 'production' }),
+    /FORMAL_STAGING_ROUTE_DISABLED/
+  );
+});
+
+test('Vercel includes the pinned CA only in both Staging formal API functions', () => {
+  const root = JSON.parse(
+    readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')
+  );
+  assert.equal(
+    root.functions['api/scout-formal-reader.js'].includeFiles,
+    'certificates/supabase-root-2021.crt'
+  );
+  assert.equal(
+    root.functions['api/scout-formal-admin.js'].includeFiles,
+    'certificates/supabase-root-2021.crt'
+  );
 });
 
 test('Staging read-only DIRECT route becomes official Session Pooler only in memory', () => {
