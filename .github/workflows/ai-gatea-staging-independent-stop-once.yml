@@ -130,3 +130,56 @@ jobs:
             exit 1
           fi
           echo 'GATEA_STAGING_INDEPENDENT_STOP_READBACK_PASS'
+
+  recovery-preflight:
+    # Separate OWNER trigger; never runs on PR CI or the existing STOP event.
+    # This is deliberately not live recovery until the trusted bootstrap and
+    # real STOP/revoke/census privileges are separately reviewed and connected.
+    if: >-
+      github.repository == 'bingohooah888-ai/novelrise' &&
+      github.ref == 'refs/heads/main' &&
+      github.event.issue.number == 294 &&
+      github.event.issue.pull_request == null &&
+      github.event.issue.state == 'open' &&
+      github.event.issue.title == '[Staging Control] Supabase migration sync' &&
+      github.event.issue.user.login == 'bingohooah888-ai' &&
+      github.event.comment.user.login == 'bingohooah888-ai' &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.actor == 'bingohooah888-ai' &&
+      github.triggering_actor == 'bingohooah888-ai' &&
+      github.event.comment.body == 'NOVELIGHT_GATEA_INDEPENDENT_RECOVERY_PREFLIGHT'
+    runs-on: ubuntu-latest
+    environment: gatea-independent-recovery
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout trusted default-branch event SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Configure locked Node runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+      - name: Validate isolated credential references without I/O
+        shell: bash
+        env:
+          GATEA_ACCESS_CLIENT_ID: ${{ secrets.GATEA_ACCESS_CLIENT_ID }}
+          GATEA_ACCESS_CLIENT_SECRET: ${{ secrets.GATEA_ACCESS_CLIENT_SECRET }}
+          GATEA_ACCESS_ORIGIN: ${{ vars.GATEA_ACCESS_ORIGIN }}
+          GATEA_CENSUS_DATABASE_URL: ${{ secrets.GATEA_CENSUS_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          npm ci --ignore-scripts --no-audit --no-fund --quiet
+          node --input-type=module <<'NODE'
+          import { validate020705RecoveryEnvironment } from './.github/ai-02-07-05-app-composition/gatea-independent-recovery-runner.mjs';
+          validate020705RecoveryEnvironment(process.env);
+          NODE
+          echo 'GATEA_RECOVERY_LIVE_NO_GO: trusted bootstrap and real independent ports not activated'
+          exit 1

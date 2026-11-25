@@ -22,6 +22,33 @@ export function create020705TrustedMainRuntime({ runner, recovery } = {}) {
       !recovery.pinnedControllerPublicKey ||
       !recovery.pinnedControllerKeyId ||
       !recovery.expectedChallengeNonce) deny();
+  const detached = create020705TrustedIndependentRecovery(recovery);
+  let started = false;
+  return Object.freeze({
+    async runOnce() {
+      if (started) deny();
+      started = true;
+      return owner.run();
+    },
+    async recoverOnce() {
+      return detached.recover();
+    }
+  });
+}
+
+// Recovery-only entry; no paid Runner composition or provider credential.
+export function create020705TrustedIndependentRecovery(recovery) {
+  if (!recovery || typeof recovery !== 'object' ||
+      recovery.scope?.stagingProjectRef !== STAGING ||
+      recovery.scope?.repository !== 'bingohooah888-ai/novelrise' ||
+      typeof recovery.readControllerCapabilities !== 'function' ||
+      !recovery.pinnedControllerPublicKey ||
+      !recovery.pinnedControllerKeyId ||
+      !recovery.expectedChallengeNonce ||
+      (recovery.accessClient
+        ? typeof recovery.accessClient.readIndependentDeathProof !== 'function' ||
+          typeof recovery.accessClient.claimRecoveryOnce !== 'function'
+        : typeof recovery.readAuthenticatedReceipt !== 'function')) deny();
   const readControllerCapabilities = async (query) => {
     const result = await recovery.readControllerCapabilities(query);
     if (result?.workerName !== WORKER ||
@@ -40,7 +67,13 @@ export function create020705TrustedMainRuntime({ runner, recovery } = {}) {
     trustedControllerPublicKey: recovery.pinnedControllerPublicKey,
     trustedControllerKeyId: recovery.pinnedControllerKeyId,
     expectedChallengeNonce: recovery.expectedChallengeNonce,
+    ...(recovery.accessClient ? {
+      claimRecoveryOnce: recovery.accessClient.claimRecoveryOnce
+    } : {}),
     readIndependentDeathProof: async (scope) => {
+      if (recovery.accessClient) {
+        return recovery.accessClient.readIndependentDeathProof(scope);
+      }
       // Only separate, authenticated Cloudflare transport can return a
       // signed, fresh, scoped proof. The existing connector verifies Ed25519.
       const receipt = await recovery.readAuthenticatedReceipt(scope);
@@ -58,15 +91,5 @@ export function create020705TrustedMainRuntime({ runner, recovery } = {}) {
     readControllerCapabilities,
     stopOptions
   });
-  let started = false;
-  return Object.freeze({
-    async runOnce() {
-      if (started) deny();
-      started = true;
-      return owner.run();
-    },
-    async recoverOnce() {
-      return detached.recover();
-    }
-  });
+  return detached;
 }
