@@ -326,10 +326,23 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
       });
       return;
     }
+    // Heartbeat age is historical after a terminal GitHub exit. Only the
+    // independent observation and signed receipt must remain fresh.
+    const observedAt = Date.now();
+    // A heartbeat can update the row while the GitHub GETs are in flight.
+    // Never claim against a superseded heartbeat or deadline.
+    const latest = this.row();
+    if (!latest || latest.state !== 'WATCHING' ||
+        latest.scope !== current.scope || latest.nonce !== current.nonce ||
+        latest.controller_run_id !== current.controller_run_id ||
+        latest.heartbeat_ms !== current.heartbeat_ms ||
+        latest.deadline_ms !== current.deadline_ms) return;
     if (exit.independentGithubExitVerified !== true ||
-        current.heartbeat_ms === 0 ||
-        now - current.heartbeat_ms < 250 ||
-        now - current.heartbeat_ms > 15000) {
+        !positive(current.heartbeat_ms) ||
+        !positive(observedAt) || observedAt < now ||
+        observedAt - now > 15000 ||
+        current.heartbeat_ms > now ||
+        now - current.heartbeat_ms < 250) {
       this.ctx.storage.transactionSync(() => {
         this.ctx.storage.sql.exec(
           "UPDATE gatea_live_once SET state='FAILED_CLOSED' WHERE id=1 AND state='WATCHING'"
@@ -350,9 +363,9 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
       runnerConfirmedDead: true,
       controllerIsRunner: false,
       controllerRunId: current.controller_run_id,
-      observedAtMs: now,
+      observedAtMs: observedAt,
       runnerHeartbeatAtMs: current.heartbeat_ms,
-      expiresAtMs: now + 10000
+      expiresAtMs: observedAt + 10000
     };
     // Never persist key, raw GitHub response, JWT or story content.
     const envelope = await sign020705Death({

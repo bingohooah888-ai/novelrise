@@ -125,3 +125,97 @@ test('trusted main and detached recovery reject missing capabilities', () => {
     /TRUSTED_RUNTIME_WIRING_DENIED/
   );
 });
+
+test('expired heartbeat can yield a fresh signed death after GitHub exit', async (t) => {
+  const heartbeat = 1800000000000;
+  let clock = heartbeat + 16000;
+  t.mock.method(Date, 'now', () => clock);
+  const { privateKey } = generateKeyPairSync('ed25519');
+  const fields = Object.keys(scope);
+  const row = {
+    scope: JSON.stringify(fields.map((key) => scope[key])),
+    nonce: 'x'.repeat(40),
+    controller_run_id: 9,
+    heartbeat_ms: heartbeat,
+    deadline_ms: heartbeat + 15000,
+    state: 'WATCHING'
+  };
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    clock += 200;
+    return {
+      ok: true,
+      status: 200,
+      json: async () =>
+        url.includes('/jobs?')
+          ? { total_count: 1, jobs: [{ run_id: 3, status: 'completed' }] }
+          : {
+              id: 3,
+              head_sha: sha,
+              head_branch: 'main',
+              path: '.github/workflows/ai-020705-owner-staging-paid-trial.yml',
+              repository: { full_name: scope.repository },
+              actor: { login: 'bingohooah888-ai' },
+              triggering_actor: { login: 'bingohooah888-ai' },
+              event: 'workflow_dispatch',
+              run_attempt: 1,
+              status: 'completed',
+              conclusion: 'cancelled'
+            }
+    };
+  });
+  let dispatched;
+  const storage = {
+    transactionSync: (fn) => fn(),
+    setAlarm: async () => assert.fail('unexpected alarm'),
+    sql: {
+      exec(sql, ...args) {
+        if (sql.includes('sqlite_master'))
+          return { toArray: () => [{ name: 'gatea_live_once' }] };
+        if (sql.startsWith('SELECT scope'))
+          return { toArray: () => [{ ...row }] };
+        if (sql.includes("SET state='CLAIMED'")) row.state = 'CLAIMED';
+        else if (sql.includes('SET receipt=')) row.receipt = args[0];
+        else assert.fail('unexpected SQL: ' + sql);
+        return {};
+      }
+    }
+  };
+  const runtime = new GateAWatchdogDurableObject(
+    { storage },
+    {
+      GATEA_LIVE_ENABLED: 'true',
+      GATEA_RECOVERY_DISPATCH_ENABLED: 'true',
+      GATEA_OWNER_PUB_SPKI: 'unused',
+      GATEA_RUNNER_PUB_SPKI: 'unused',
+      GATEA_CONTROLLER_PRIVATE_PKCS8: privateKey
+        .export({ format: 'der', type: 'pkcs8' })
+        .toString('base64'),
+      GATEA_CONTROLLER_KEY_ID: 'external-controller-02',
+      GATEA_GITHUB_ACTIONS_READ_TOKEN: 'a'.repeat(32),
+      GATEA_RECOVERY_CONTROLLER: {
+        async fetch(request) {
+          dispatched = await request.json();
+          return new Response(
+            JSON.stringify({
+              status: 'INDEPENDENT_STAGING_STOP_AND_CLEANUP_VERIFIED',
+              noPaidRetry: true,
+              runId: 3,
+              approvalCommentId: 4,
+              controllerRunId: 9
+            }),
+            { headers: { 'content-type': 'application/json' } }
+          );
+        }
+      }
+    }
+  );
+  const result = await runtime.alarmLive();
+  assert.equal(result.state, 'CLAIMED');
+  assert.equal(dispatched.envelope.proof.runnerHeartbeatAtMs, heartbeat);
+  assert.equal(dispatched.envelope.proof.observedAtMs, heartbeat + 16400);
+  assert.equal(dispatched.envelope.proof.expiresAtMs, heartbeat + 26400);
+  assert.equal(
+    JSON.parse(row.receipt).signature,
+    dispatched.envelope.signature
+  );
+});

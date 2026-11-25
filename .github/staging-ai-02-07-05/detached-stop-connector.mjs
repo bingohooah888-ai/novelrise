@@ -113,10 +113,10 @@ export function create020705DetachedStopConnector({
         proof.observedAtMs > time ||
         time - proof.observedAtMs > 15000 ||
         proof.runnerHeartbeatAtMs > proof.observedAtMs ||
-        time - proof.runnerHeartbeatAtMs < 250 ||
-        time - proof.runnerHeartbeatAtMs > 15000 ||
+        proof.runnerHeartbeatAtMs <= 0 ||
+        proof.observedAtMs - proof.runnerHeartbeatAtMs < 250 ||
         proof.expiresAtMs <= time ||
-        proof.expiresAtMs - time > 30000
+        proof.expiresAtMs - proof.observedAtMs > 10000
       )
         deny();
       // This consumer MUST be durable and atomic across all processes.
@@ -134,6 +134,15 @@ export function create020705DetachedStopConnector({
         deny();
       }
       if (!claimed) deny();
+      // A slow durable claim must not extend the signed death receipt.
+      // Keep the spent tombstone; never retry an expired recovery.
+      const claimedAt = now();
+      if (
+        !Number.isFinite(claimedAt) ||
+        claimedAt < time ||
+        claimedAt >= proof.expiresAtMs
+      )
+        deny();
       let stopped = true;
       // Attempt BOTH transport kill and Staging shutdown on failures.
       try {
