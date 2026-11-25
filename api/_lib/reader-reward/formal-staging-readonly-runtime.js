@@ -10,6 +10,8 @@ const STAGING_URL = 'https://' + STAGING_REF + '.supabase.co';
 const PROOF_REFERENCE = '2026-11-10T00:00:00.000Z';
 const STAGING_READ_ONLY_ROLE = 'novelight_formal_reader_ro';
 const SESSION_POOLER_HOST = /^aws-[0-9]+-[a-z0-9-]+\.pooler\.supabase\.com$/;
+// Official Staging Session Pooler host verified in the authenticated Connect UI.
+const STAGING_SESSION_POOLER_HOST = 'aws-0-ap-northeast-1.pooler.supabase.com';
 
 export function verifyStagingReadOnlyDatabaseTarget(env) {
   const value = env.STAGING_FORMAL_RO_DATABASE_URL;
@@ -38,6 +40,30 @@ export function verifyStagingReadOnlyDatabaseTarget(env) {
   if (!credentialsOk || !(direct || pooler))
     throw new Error('FORMAL_STAGING_READER_DB_INVALID');
   return value;
+}
+
+// Build only an in-memory Pooler URL. The protected Vercel Secret, database
+// role, password and effective read-only permissions remain unchanged.
+export function deriveStagingReadOnlySessionPoolerUrl(env) {
+  if (!stagingReadOnlyGate(env)) {
+    throw new Error('FORMAL_STAGING_ROUTE_DISABLED');
+  }
+  const original = new URL(verifyStagingReadOnlyDatabaseTarget(env));
+  if (
+    original.hostname !== 'db.' + STAGING_REF + '.supabase.co' ||
+    original.username !== STAGING_READ_ONLY_ROLE
+  ) {
+    throw new Error('FORMAL_STAGING_READER_DB_INVALID');
+  }
+  original.hostname = STAGING_SESSION_POOLER_HOST;
+  original.username = STAGING_READ_ONLY_ROLE + '.' + STAGING_REF;
+  original.port = '5432';
+  const derived = original.toString();
+  verifyStagingReadOnlyDatabaseTarget({
+    ...env,
+    STAGING_FORMAL_RO_DATABASE_URL: derived
+  });
+  return derived;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -101,7 +127,7 @@ export function createStagingReadOnlyFormalApplication(env = process.env) {
     throw new Error('FORMAL_STAGING_ROUTE_DISABLED');
   }
   // Never reuse migration sync's privileged postgres credentials in an HTTP route.
-  const readOnlyDatabaseUrl = verifyStagingReadOnlyDatabaseTarget(env);
+  const readOnlyDatabaseUrl = deriveStagingReadOnlySessionPoolerUrl(env);
   const publishableKey =
     env.STAGING_SUPABASE_PUBLISHABLE_KEY ??
     env.NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY;
@@ -160,7 +186,9 @@ export function createStagingReadOnlyFormalApplication(env = process.env) {
       verifiedByTrustedServer: false,
       trustedServerVerified: false
     },
-    env
+    // Existing fixed staging diagnostics must report the effective route.
+    // This copy never mutates process.env or the stored Vercel Secret.
+    env: { ...env, STAGING_FORMAL_RO_DATABASE_URL: readOnlyDatabaseUrl }
   });
 }
 

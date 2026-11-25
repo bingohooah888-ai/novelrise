@@ -6,6 +6,7 @@ import { URL } from 'node:url';
 import {
   createFormalStagingReadOnlyHandler,
   createStagingReadOnlyFormalApplication,
+  deriveStagingReadOnlySessionPoolerUrl,
   withStagingVerifiedReaderQuery,
   stagingReadOnlyGate
 } from '../api/_lib/reader-reward/formal-staging-readonly-runtime.js';
@@ -166,6 +167,87 @@ test('read-only gate rejects every write and unrelated reward view before DB acc
   await admin(request('earning_source', 'POST'), reviewPost);
   assert.equal(reviewPost.code, 405);
   assert.equal(created, 0);
+});
+
+test('Staging read-only DIRECT route becomes official Session Pooler only in memory', () => {
+  const original =
+    'postgresql://novelight_formal_reader_ro:temporary-unit-password@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres';
+  const env = {
+    ...ACTIVE,
+    PGSSLMODE: 'require',
+    STAGING_FORMAL_RO_DATABASE_URL: original
+  };
+  const derived = deriveStagingReadOnlySessionPoolerUrl(env);
+  const source = new URL(original);
+  const target = new URL(derived);
+  assert.equal(target.hostname, 'aws-0-ap-northeast-1.pooler.supabase.com');
+  assert.equal(
+    target.username,
+    'novelight_formal_reader_ro.wmlzjgvxgoyrovdhbqbg'
+  );
+  assert.equal(target.password, source.password);
+  assert.equal(target.port, '5432');
+  assert.equal(target.pathname, source.pathname);
+  assert.equal(target.protocol, source.protocol);
+  assert.equal(target.search, '');
+  assert.equal(target.hash, '');
+  assert.equal(env.STAGING_FORMAL_RO_DATABASE_URL, original);
+  assert.equal(
+    verifyStagingReadOnlyDatabaseTarget({
+      ...env,
+      STAGING_FORMAL_RO_DATABASE_URL: derived
+    }),
+    derived
+  );
+  assert.equal(classifyStagingReaderDatabaseRoute(derived), 'POOLER');
+  assert.equal(classifyStagingReaderDatabaseRoute(original), 'DIRECT');
+});
+
+test('Staging Session Pooler derivation fails closed for unexpected routes', () => {
+  const valid =
+    'postgresql://novelight_formal_reader_ro:temporary-unit-password@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres';
+  const env = {
+    ...ACTIVE,
+    PGSSLMODE: 'require',
+    STAGING_FORMAL_RO_DATABASE_URL: valid
+  };
+  const invalid = [
+    { VERCEL_ENV: 'production' },
+    { STAGING_PROJECT_REF: 'fiepaguycecrredwrcwx' },
+    { PGSSLMODE: 'disable' },
+    { STAGING_FORMAL_RO_DATABASE_URL: valid.replace(':5432/', ':6543/') },
+    {
+      STAGING_FORMAL_RO_DATABASE_URL: valid.replace(
+        'novelight_formal_reader_ro:',
+        'postgres:'
+      )
+    },
+    {
+      STAGING_FORMAL_RO_DATABASE_URL: valid.replace(
+        'db.wmlzjgvxgoyrovdhbqbg.supabase.co',
+        'db.fiepaguycecrredwrcwx.supabase.co'
+      )
+    },
+    {
+      STAGING_FORMAL_RO_DATABASE_URL: valid.replace(
+        'db.wmlzjgvxgoyrovdhbqbg.supabase.co',
+        'aws-0-ap-northeast-1.pooler.supabase.com'
+      )
+    },
+    {
+      STAGING_FORMAL_RO_DATABASE_URL: valid.replace(
+        'temporary-unit-password',
+        ''
+      )
+    }
+  ];
+  for (const override of invalid) {
+    assert.throws(
+      () => deriveStagingReadOnlySessionPoolerUrl({ ...env, ...override }),
+      /FORMAL_STAGING_(?:ROUTE_DISABLED|READER_DB_INVALID)/
+    );
+  }
+  assert.equal(env.STAGING_FORMAL_RO_DATABASE_URL, valid);
 });
 
 test('Staging database connection refuses a Production Postgres target before open', () => {
