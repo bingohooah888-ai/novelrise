@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: novelight-gatea-staging-independent-stop
+  group: ${{ github.event.comment.body == 'NOVELIGHT_GATEA_INDEPENDENT_RECOVERY_PREFLIGHT' && 'novelight-gatea-independent-recovery-preflight' || 'novelight-gatea-staging-independent-stop' }}
   cancel-in-progress: false
 
 jobs:
@@ -164,6 +164,9 @@ jobs:
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
+      - name: Install locked dependencies without recovery credentials
+        shell: bash
+        run: npm ci --ignore-scripts --no-audit --no-fund --quiet
       - name: Validate isolated credential references without I/O
         shell: bash
         env:
@@ -176,7 +179,6 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = '1'
           test "$GITHUB_REF" = 'refs/heads/main'
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          npm ci --ignore-scripts --no-audit --no-fund --quiet
           node --input-type=module <<'NODE'
           import { validate020705RecoveryEnvironment } from './.github/ai-02-07-05-app-composition/gatea-independent-recovery-runner.mjs';
           validate020705RecoveryEnvironment(process.env);
