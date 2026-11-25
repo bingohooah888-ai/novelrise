@@ -4,7 +4,7 @@
 import { create020705AccessRecoveryClient } from '../staging-ai-02-07-05/gatea-access-recovery-client.mjs';
 import { create020705TrustedIndependentRecovery } from './trusted-main-live-runtime.mjs';
 import { verify020705IndependentStagingCensus } from './staging-live-bindings.mjs';
-import { create020705IndependentCensusReader, validate020705CensusUrl } from './gatea-independent-census.mjs';
+import { create020705IndependentCensusReader, validate020705CensusToken } from './gatea-independent-census.mjs';
 
 function deny() { throw new Error('AI_020705_INDEPENDENT_RUNNER_NO_GO'); }
 
@@ -18,12 +18,14 @@ export function validate020705RecoveryEnvironment(env = {}) {
         env.GITHUB_RUN_ATTEMPT !== '1' ||
         !/^[1-9][0-9]*$/u.test(env.GITHUB_RUN_ID ?? '') ||
         origin.protocol !== 'https:' || origin.origin !== env.GATEA_ACCESS_ORIGIN ||
-        !/^novelight-ai-gatea-controller\.[a-z0-9-]+\.workers\.dev$/u.test(origin.hostname) ||
+        origin.origin !== 'https://novelight-ai-gatea-controller.bingo-hooah-888.workers.dev' ||
         !/^[a-zA-Z0-9._-]+\.access$/u.test(env.GATEA_ACCESS_CLIENT_ID ?? '') ||
         typeof env.GATEA_ACCESS_CLIENT_SECRET !== 'string' ||
         !env.GATEA_ACCESS_CLIENT_SECRET ||
-        env.OPENAI_API_KEY || env.STAGING_DATABASE_URL) deny();
-    validate020705CensusUrl(env.GATEA_CENSUS_DATABASE_URL);
+        env.OPENAI_API_KEY || env.STAGING_DATABASE_URL ||
+        env.GATEA_CENSUS_DATABASE_URL || env.SUPABASE_ACCESS_TOKEN ||
+        env.SUPABASE_DB_PASSWORD) deny();
+    validate020705CensusToken(env.GATEA_CENSUS_READ_TOKEN);
     return true;
   } catch { deny(); }
 }
@@ -47,7 +49,7 @@ export function create020705IndependentRecoveryRunner({
     trustedControllerKeyId: pinnedControllerKeyId, expectedChallengeNonce
   });
   const reader = create020705IndependentCensusReader({
-    connectionString: env.GATEA_CENSUS_DATABASE_URL, scope
+    token: env.GATEA_CENSUS_READ_TOKEN, scope
   });
   const independentCensus = async (target) => {
     const report = await reader(target);
