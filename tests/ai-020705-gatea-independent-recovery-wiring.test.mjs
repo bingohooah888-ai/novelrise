@@ -13,7 +13,8 @@ const env = {
   GITHUB_TRIGGERING_ACTOR: 'bingohooah888-ai',
   GITHUB_RUN_ATTEMPT: '1',
   GITHUB_RUN_ID: '9',
-  GATEA_ACCESS_ORIGIN: 'https://novelight-ai-gatea-controller.fixture.workers.dev',
+  GATEA_ACCESS_ORIGIN:
+    'https://novelight-ai-gatea-controller.fixture.workers.dev',
   GATEA_ACCESS_CLIENT_ID: 'fixture.access',
   GATEA_ACCESS_CLIENT_SECRET: 'fixture-only',
   GATEA_CENSUS_DATABASE_URL:
