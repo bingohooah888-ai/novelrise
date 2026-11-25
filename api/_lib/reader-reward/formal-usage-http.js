@@ -7,6 +7,7 @@ import {
   isSameOriginRequest,
   requireAdmin
 } from '../admin-auth.js';
+import { URL } from 'node:url';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fieldsAre = (value, keys) =>
@@ -18,6 +19,84 @@ const bearer = (value) =>
   typeof value === 'string'
     ? (value.match(/^Bearer\s+(\S+)$/i)?.[1] ?? null)
     : null;
+
+const P1_STAGING_DB_HOST = 'db.wmlzjgvxgoyrovdhbqbg.supabase.co';
+const P1_STAGING_POOLER_HOST = /^aws-[0-9]+-[a-z0-9-]+\.pooler\.supabase\.com$/;
+
+export function classifyStagingReaderDatabaseRoute(value) {
+  if (typeof value !== 'string') return 'UNKNOWN';
+  try {
+    const target = new URL(value);
+    if (
+      !['postgres:', 'postgresql:'].includes(target.protocol) ||
+      !target.password ||
+      target.pathname !== '/postgres' ||
+      target.search ||
+      target.hash
+    ) {
+      return 'UNKNOWN';
+    }
+    const username = decodeURIComponent(target.username);
+    if (
+      target.hostname === P1_STAGING_DB_HOST &&
+      username === 'novelight_formal_reader_ro' &&
+      (!target.port || target.port === '5432')
+    ) {
+      return 'DIRECT';
+    }
+    if (
+      P1_STAGING_POOLER_HOST.test(target.hostname) &&
+      username === 'novelight_formal_reader_ro.wmlzjgvxgoyrovdhbqbg' &&
+      target.port === '5432'
+    ) {
+      return 'POOLER';
+    }
+  } catch {
+    // Invalid or unavailable connection values are never returned to clients.
+  }
+  return 'UNKNOWN';
+}
+
+export function classifyStagingReaderConnectionFailure(error) {
+  const code = typeof error?.code === 'string' ? error.code : '';
+  const message = typeof error?.message === 'string' ? error.message : '';
+  if (
+    code === '28P01' ||
+    code === '28000' ||
+    /\b(?:password authentication failed|invalid authorization specification)\b/i.test(
+      message
+    )
+  ) {
+    return 'P1_CONNECT_AUTH';
+  }
+  if (
+    code === 'ENOTFOUND' ||
+    code === 'EAI_AGAIN' ||
+    /\b(?:getaddrinfo|name resolution|dns lookup)\b/i.test(message)
+  ) {
+    return 'P1_CONNECT_DNS';
+  }
+  if (
+    code === 'ENETUNREACH' ||
+    code === 'EHOSTUNREACH' ||
+    /\b(?:network is unreachable|no route to host)\b/i.test(message)
+  ) {
+    return 'P1_CONNECT_NETWORK';
+  }
+  if (code === 'ECONNREFUSED') return 'P1_CONNECT_REFUSED';
+  if (
+    code === 'ECONNRESET' ||
+    code === 'EPIPE' ||
+    /^08[0-9A-Z]{3}$/.test(code) ||
+    /\b(?:connection terminated|connection reset)\b/i.test(message)
+  ) {
+    return 'P1_CONNECT_DROPPED';
+  }
+  if (['53300', '57P01', '57P03'].includes(code)) {
+    return 'P1_CONNECT_SERVER';
+  }
+  return 'P1_CONNECT_OTHER';
+}
 
 const P1_TLS_CODES = new Set([
   'CERT_HAS_EXPIRED',
@@ -251,10 +330,18 @@ export function createFormalUsageHttpHandlers({
         (env.STAGING_SUPABASE_URL ?? env.NOVELIGHT_STAGING_SUPABASE_URL) ===
           'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
       ) {
+        const category = classifyStagingReaderReadFailure(error);
+        res.setHeader('X-NOVELIGHT-P1-Read-Failure', category);
         res.setHeader(
-          'X-NOVELIGHT-P1-Read-Failure',
-          classifyStagingReaderReadFailure(error)
+          'X-NOVELIGHT-P1-DB-Route',
+          classifyStagingReaderDatabaseRoute(env.STAGING_FORMAL_RO_DATABASE_URL)
         );
+        if (category === 'P1_CONNECT') {
+          res.setHeader(
+            'X-NOVELIGHT-P1-Connect-Detail',
+            classifyStagingReaderConnectionFailure(error)
+          );
+        }
       }
       return stop(res, 503, 'FORMAL_REWARD_UNAVAILABLE');
     }

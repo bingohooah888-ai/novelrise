@@ -11,6 +11,8 @@ import {
 } from '../api/_lib/reader-reward/formal-staging-readonly-runtime.js';
 import { createUnregisteredFormalApplication } from '../api/_lib/reader-reward/formal-application-host.js';
 import {
+  classifyStagingReaderConnectionFailure,
+  classifyStagingReaderDatabaseRoute,
   classifyStagingReaderReadFailure,
   createFormalUsageHttpHandlers
 } from '../api/_lib/reader-reward/formal-usage-http.js';
@@ -581,6 +583,45 @@ test('Staging reader GET diagnostic maps safe fixed categories only', () => {
   }
 });
 
+test('Staging DB route diagnostic reveals only a fixed connection type', () => {
+  const direct =
+    'postgresql://novelight_formal_reader_ro:dummy@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres';
+  const pooler =
+    'postgresql://novelight_formal_reader_ro.wmlzjgvxgoyrovdhbqbg:dummy@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres';
+  assert.equal(classifyStagingReaderDatabaseRoute(direct), 'DIRECT');
+  assert.equal(classifyStagingReaderDatabaseRoute(pooler), 'POOLER');
+  assert.equal(classifyStagingReaderDatabaseRoute('REDACTED'), 'UNKNOWN');
+  assert.equal(classifyStagingReaderDatabaseRoute(undefined), 'UNKNOWN');
+  assert.equal(
+    classifyStagingReaderDatabaseRoute(
+      direct.replace('wmlzjgvxgoyrovdhbqbg', 'productionotherref')
+    ),
+    'UNKNOWN'
+  );
+  assert.equal(
+    classifyStagingReaderDatabaseRoute(direct.replace(':dummy@', ':@')),
+    'UNKNOWN'
+  );
+});
+
+test('Staging DB connection diagnostics expose fixed subcodes only', () => {
+  const cases = [
+    [{ code: '28P01' }, 'P1_CONNECT_AUTH'],
+    [{ code: 'ENOTFOUND' }, 'P1_CONNECT_DNS'],
+    [{ code: 'EAI_AGAIN' }, 'P1_CONNECT_DNS'],
+    [{ code: 'ENETUNREACH' }, 'P1_CONNECT_NETWORK'],
+    [{ code: 'EHOSTUNREACH' }, 'P1_CONNECT_NETWORK'],
+    [{ code: 'ECONNREFUSED' }, 'P1_CONNECT_REFUSED'],
+    [{ code: 'ECONNRESET' }, 'P1_CONNECT_DROPPED'],
+    [{ code: '08006' }, 'P1_CONNECT_DROPPED'],
+    [{ code: '53300' }, 'P1_CONNECT_SERVER'],
+    [{ message: 'hidden private connection credential' }, 'P1_CONNECT_OTHER']
+  ];
+  for (const [error, expected] of cases) {
+    assert.equal(classifyStagingReaderConnectionFailure(error), expected);
+  }
+});
+
 test('only scoped Staging reader GET adds fixed failure header', async () => {
   const failure = Object.assign(
     new Error('private URL, password and bearer must not be returned'),
@@ -607,7 +648,14 @@ test('only scoped Staging reader GET adds fixed failure header', async () => {
       throw failure;
     }
   };
-  const staging = createFormalUsageHttpHandlers({ ...args, env: ACTIVE });
+  const staging = createFormalUsageHttpHandlers({
+    ...args,
+    env: {
+      ...ACTIVE,
+      STAGING_FORMAL_RO_DATABASE_URL:
+        'postgresql://novelight_formal_reader_ro:dummy@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres'
+    }
+  });
   const stagingResult = response();
   await staging.reader(request('new_reader'), stagingResult);
   assert.equal(stagingResult.code, 503);
@@ -616,6 +664,11 @@ test('only scoped Staging reader GET adds fixed failure header', async () => {
     error: 'FORMAL_REWARD_UNAVAILABLE'
   });
   assert.equal(stagingResult.headers['X-NOVELIGHT-P1-Read-Failure'], 'P1_TLS');
+  assert.equal(stagingResult.headers['X-NOVELIGHT-P1-DB-Route'], 'DIRECT');
+  assert.equal(
+    stagingResult.headers['X-NOVELIGHT-P1-Connect-Detail'],
+    undefined
+  );
   assert.doesNotMatch(
     JSON.stringify(stagingResult),
     /private URL|password|bearer/
@@ -632,6 +685,11 @@ test('only scoped Staging reader GET adds fixed failure header', async () => {
     productionResult.headers['X-NOVELIGHT-P1-Read-Failure'],
     undefined
   );
+  assert.equal(productionResult.headers['X-NOVELIGHT-P1-DB-Route'], undefined);
+  assert.equal(
+    productionResult.headers['X-NOVELIGHT-P1-Connect-Detail'],
+    undefined
+  );
 
   const unauthorized = request('new_reader');
   unauthorized.headers = { ...headers, authorization: '' };
@@ -639,4 +697,38 @@ test('only scoped Staging reader GET adds fixed failure header', async () => {
   await staging.reader(unauthorized, denied);
   assert.equal(denied.code, 401);
   assert.equal(denied.headers['X-NOVELIGHT-P1-Read-Failure'], undefined);
+  assert.equal(denied.headers['X-NOVELIGHT-P1-DB-Route'], undefined);
+  assert.equal(denied.headers['X-NOVELIGHT-P1-Connect-Detail'], undefined);
+
+  const connectionFailure = Object.assign(
+    new Error('cannot reach private address'),
+    { code: 'ENETUNREACH' }
+  );
+  const scopedPooler = createFormalUsageHttpHandlers({
+    ...args,
+    inspectNewReader: async () => {
+      throw connectionFailure;
+    },
+    env: {
+      ...ACTIVE,
+      STAGING_FORMAL_RO_DATABASE_URL:
+        'postgresql://novelight_formal_reader_ro.wmlzjgvxgoyrovdhbqbg:dummy@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres'
+    }
+  });
+  const connectResult = response();
+  await scopedPooler.reader(request('new_reader'), connectResult);
+  assert.equal(connectResult.code, 503);
+  assert.equal(
+    connectResult.headers['X-NOVELIGHT-P1-Read-Failure'],
+    'P1_CONNECT'
+  );
+  assert.equal(connectResult.headers['X-NOVELIGHT-P1-DB-Route'], 'POOLER');
+  assert.equal(
+    connectResult.headers['X-NOVELIGHT-P1-Connect-Detail'],
+    'P1_CONNECT_NETWORK'
+  );
+  assert.deepEqual(connectResult.body, {
+    ok: false,
+    error: 'FORMAL_REWARD_UNAVAILABLE'
+  });
 });
