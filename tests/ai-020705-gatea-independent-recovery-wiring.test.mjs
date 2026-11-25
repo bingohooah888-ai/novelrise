@@ -101,7 +101,7 @@ const row = {
   scopePreview: scope.previewDeploymentId
 };
 const json = (body, status = 201) =>
-  new Response(JSON.stringify(body), {
+  new globalThis.Response(JSON.stringify(body), {
     status,
     headers: { 'content-type': 'application/json' }
   });
