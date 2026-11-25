@@ -126,7 +126,8 @@ async function sign020705Death({ proof, keyId, nonce, pkcs8, cryptoImpl }) {
 export async function dispatch020705DeathToRecoveryController({
   service,
   scope,
-  envelope
+  envelope,
+  receiptOnly = false
 } = {}) {
   if (!validScope(scope) ||
       typeof service?.fetch !== 'function' ||
@@ -147,7 +148,7 @@ export async function dispatch020705DeathToRecoveryController({
         body: payload
       }
     ));
-    if (response?.status !== 200 ||
+    if (response?.status !== (receiptOnly ? 202 : 200) ||
         !/application\/json/iu.test(
           response.headers?.get?.('content-type') ?? ''
         )) deny();
@@ -157,7 +158,9 @@ export async function dispatch020705DeathToRecoveryController({
     if (
       Object.keys(result ?? {}).sort().join(',') !==
         'approvalCommentId,controllerRunId,noPaidRetry,runId,status' ||
-      result.status !== 'INDEPENDENT_STAGING_STOP_AND_CLEANUP_VERIFIED' ||
+      result.status !== (receiptOnly
+        ? 'SIGNED_DEATH_RECEIPT_AVAILABLE'
+        : 'INDEPENDENT_STAGING_STOP_AND_CLEANUP_VERIFIED') ||
       result.noPaidRetry !== true ||
       result.runId !== scope.runId ||
       result.approvalCommentId !== scope.approvalCommentId ||
@@ -385,7 +388,8 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
     await dispatch020705DeathToRecoveryController({
       service: this.env.GATEA_RECOVERY_CONTROLLER,
       scope,
-      envelope
+      envelope,
+      receiptOnly: this.env.GATEA_RECOVERY_DISPATCH_MODE === 'github-prestarted'
     });
     return Object.freeze({
       state: 'CLAIMED', noPaidRetry: true,
@@ -408,6 +412,26 @@ export class GateAWatchdogDurableObject extends SyntheticA1 {
       authorizesMutation: false, authorizesPaidCall: false });
   }
   async fetch(request) {
+    // Private, OWNER-signed read of the existing durable receipt. No new row,
+    // public route or claim is created by this operation.
+    try {
+      const url = new URL(request.url);
+      if (url.origin === 'https://gatea-do.internal' &&
+          url.pathname === '/_novelight/gatea/receipt' &&
+          !url.search && !url.hash) {
+        if (request.method !== 'POST' ||
+            request.headers.get('content-type') !== 'application/json' ||
+            this.env.GATEA_RECOVERY_DISPATCH_MODE !== 'github-prestarted') deny();
+        const raw = await request.text();
+        if (raw.length > 4096) deny();
+        const input = JSON.parse(raw);
+        if (Object.keys(input).sort().join(',') !== 'nonce,scope,signature') deny();
+        const result = await this.readReceipt(input);
+        return new Response(JSON.stringify(result), {
+          headers: { 'content-type': 'application/json', 'cache-control': 'no-store' }
+        });
+      }
+    } catch { return new Response(null, { status: 404 }); }
     // A1 is a legacy DO class. The private HMAC-authenticated fetch is
     // reachable only from a separately approved cross-Worker DO binding.
     // The default Worker fetch never forwards this path to the DO.

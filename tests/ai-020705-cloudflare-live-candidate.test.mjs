@@ -195,7 +195,7 @@ test('expired heartbeat can yield a fresh signed death after GitHub exit', async
       GATEA_RECOVERY_CONTROLLER: {
         async fetch(request) {
           dispatched = await request.json();
-          return new Response(
+          return new globalThis.Response(
             JSON.stringify({
               status: 'INDEPENDENT_STAGING_STOP_AND_CLEANUP_VERIFIED',
               noPaidRetry: true,

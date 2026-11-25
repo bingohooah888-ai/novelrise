@@ -1,6 +1,6 @@
 {
   "name": "novelight-ai-gatea-controller",
-  "main": "./gatea-controller-execution-entry-candidate.mjs",
+  "main": "./gatea-access-recovery-relay.mjs",
   "account_id": "6831b18fe814232fa2dd4c470b95aa15",
   "compatibility_date": "2026-11-03",
   "compatibility_flags": ["nodejs_compat"],
