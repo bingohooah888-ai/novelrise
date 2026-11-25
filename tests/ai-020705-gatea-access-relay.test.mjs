@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import test from 'node:test';
-import relay, { verify020705AccessAssertion } from '../.github/staging-ai-02-07-05/gatea-access-recovery-relay.mjs';
+import relay, {
+  verify020705AccessAssertion
+} from '../.github/staging-ai-02-07-05/gatea-access-recovery-relay.mjs';
 import { create020705AccessRecoveryClient } from '../.github/staging-ai-02-07-05/gatea-access-recovery-client.mjs';
 import { verify020705PrivateDoClaim } from '../.github/staging-ai-02-07-05/gatea-private-claim-auth-candidate.mjs';
 
@@ -118,10 +120,7 @@ test('Access assertion pins issuer, audience and service identity', async () => 
     { iat: NOW / 1000 + 1 }
   ]) {
     assert.equal(
-      await verify020705AccessAssertion({
-        ...args,
-        token: assertion(patch)
-      }),
+      await verify020705AccessAssertion({ ...args, token: assertion(patch) }),
       false
     );
   }
@@ -233,8 +232,5 @@ test('relay exchanges signed receipt and HMAC claim without certifying cleanup',
   };
   assert.equal(await client.claimRecoveryOnce(claim), true);
   assert.equal(claimed, true);
-  await assert.rejects(
-    client.claimRecoveryOnce(claim),
-    /ACCESS_CLIENT_NO_GO/u
-  );
+  await assert.rejects(client.claimRecoveryOnce(claim), /ACCESS_CLIENT_NO_GO/u);
 });
