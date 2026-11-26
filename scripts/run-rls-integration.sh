@@ -65,6 +65,16 @@ AI_REPLAY=(
 )
 "${AI_REPLAY[@]}" -f supabase/checks/20261027120000_novelight_ai_shared_runtime_foundation_postcheck.sql
 "${AI_REPLAY[@]}" -f tests/rls/ai-runtime-foundation.sql
+# Candidate PR only: prove review RPC permissions and safe rollback/reapply in
+# disposable PostgreSQL. Never call any hosted Supabase project from CI.
+echo "::group::AI review candidate isolated postcheck and rollback/reapply"
+"${AI_REPLAY[@]}" -f supabase/checks/20261028084410_novelight_ai_review_candidates_postcheck.sql
+"${AI_REPLAY[@]}" -f supabase/rollback/20261028084410_novelight_ai_review_candidates_rollback.sql
+"${AI_REPLAY[@]}" -f supabase/checks/20261028084410_novelight_ai_review_candidates_precheck.sql
+"${AI_REPLAY[@]}" -f supabase/migrations/20261028084410_novelight_ai_review_candidates.sql
+"${AI_REPLAY[@]}" -f supabase/checks/20261028084410_novelight_ai_review_candidates_postcheck.sql
+NOVELIGHT_AI_REVIEW_DISPOSABLE=1 bash tests/rls/ai-review-candidates-concurrency.sh
+echo "::endgroup::"
 echo "::endgroup::"
 # Only disposable CI PostgreSQL: the chronological replay already installed
 # the candidate SQL. Verify it, roll back while empty, then exercise exact
