@@ -19,9 +19,12 @@
   function analyze({ title, content } = {}) {
     if (typeof title !== 'string' || typeof content !== 'string') return null;
     const findings = [];
+    let omitted = false;
     const add = (code, message, line = null) => {
       if (findings.length < MAX_FINDINGS) {
         findings.push({ code, message, line });
+      } else {
+        omitted = true;
       }
     };
 
@@ -37,6 +40,7 @@
     // The editor already sets maxlength. Bound inspection defensively too.
     const body = content.slice(0, MAX_CONTENT);
     const stack = [];
+    let bracketLimitReached = false;
     let line = 1;
     let lineLength = 0;
     let longParagraphReported = false;
@@ -57,8 +61,13 @@
       }
       if (Object.hasOwn(OPEN, char)) {
         // Do not let adversarial input make a huge stack.
-        if (stack.length < 1000) stack.push({ opener: char, line });
-      } else if (CLOSE.has(char)) {
+        if (stack.length < 1000 && !bracketLimitReached) {
+          stack.push({ opener: char, line });
+        } else if (!bracketLimitReached) {
+          bracketLimitReached = true;
+          add('bracket-limit', '括弧が深く入れ子になっています。確認範囲を超えました。', line);
+        }
+      } else if (CLOSE.has(char) && !bracketLimitReached) {
         const last = stack[stack.length - 1];
         if (last && OPEN[last.opener] === char) {
           stack.pop();
@@ -71,8 +80,11 @@
         }
       }
     }
-    for (const item of stack.slice(0, 3)) {
-      add('unmatched-open', '閉じ括弧を確認してください。', item.line);
+    if (!bracketLimitReached) {
+      for (const item of stack.slice(0, 3)) {
+        add('unmatched-open', '閉じ括弧を確認してください。', item.line);
+      }
+      if (stack.length > 3) omitted = true;
     }
 
     const placeholder =
@@ -102,9 +114,29 @@
       previousLine = currentLine;
     }
 
+    // Literal conventions only: do not infer linguistic errors, author
+    // intent, or rewrite text. Each extra category reports at most one line.
+    const conventions = [
+      ['mixed-ellipsis', /…{1,}(?!…)/u, /\.{3,}/u, '三点リーダーとピリオドの連続が混在しています。'],
+      ['mixed-question', /？/u, /\?/u, '全角・半角の疑問符が混在しています。'],
+      ['mixed-exclamation', /！/u, /!/u, '全角・半角の感嘆符が混在しています。']
+    ];
+    for (const [code, full, half, message] of conventions) {
+      if (full.test(body) && half.test(body)) {
+        const at = lines.findIndex((text) => half.test(text));
+        add(code, message + '意図した表記か確認してください。', at + 1);
+      }
+    }
+    const emptyRuby = lines.findIndex((text) => /｜[^\n《》｜]+《[ \t　]*》/u.test(text));
+    if (emptyRuby >= 0) {
+      add('empty-ruby', 'ルビの読みが空欄です。意図した記法か確認してください。', emptyRuby + 1);
+    }
+
     return Object.freeze({
       titleLength: title.length,
       contentLength: content.length,
+      omitted,
+      inspectionLimited: bracketLimitReached || content.length > MAX_CONTENT,
       findings: Object.freeze(findings.map((finding) => Object.freeze(finding)))
     });
   }
@@ -161,7 +193,9 @@
     summary.textContent = report.findings.length
       ? '確認候補 ' +
         report.findings.length +
-        '件（必ずしも誤りとは限りません）'
+        '件（必ずしも誤りとは限りません）' +
+        (report.omitted ? '。表示上限があります。' : '') +
+        (report.inspectionLimited ? '。一部の確認範囲を超えています。' : '')
       : '今回の機械的な確認では候補はありません。誤字脱字がないことを保証するものではありません。';
 
     const list = doc.createElement('ul');
@@ -220,7 +254,7 @@
     const keydown = (event) => {
       if (event.key === 'Escape') dismiss();
     };
-    close.addEventListener('click', dismiss);
+    close.addEventListener('click', () => dismiss());
     modal.addEventListener('click', (event) => {
       if (event.target === modal) dismiss();
     });

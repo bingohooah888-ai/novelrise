@@ -80,6 +80,31 @@ test('adjacent repeated lines are advisory and bounded', () => {
   assert.ok(!separate.findings.some((f) => f.code === 'repeated-line'));
 });
 
+test('literal notation checks are optional and never include text', () => {
+  const result = analyze({
+    title: '章',
+    content: '本当？ really?\n驚いた！ wow!\n…… ...\n｜月光《》'
+  });
+  assert.deepEqual(Array.from(result.findings, (f) => f.code), [
+    'mixed-ellipsis',
+    'mixed-question',
+    'mixed-exclamation',
+    'empty-ruby'
+  ]);
+  assert.ok(!JSON.stringify(result).includes('really'));
+  assert.equal(result.inspectionLimited, false);
+  const deep = analyze({
+    title: '章',
+    content: '（'.repeat(1001) + '）'.repeat(1001)
+  });
+  assert.equal(deep.inspectionLimited, true);
+  assert.ok(deep.findings.some((f) => f.code === 'bracket-limit'));
+  assert.ok(!deep.findings.some((f) => f.code === 'unmatched-close'));
+  const capped = analyze({ title: '章', content: '」'.repeat(30) });
+  assert.equal(capped.findings.length, 12);
+  assert.equal(capped.omitted, true);
+});
+
 class FakeNode {
   constructor(tag) {
     this.tag = tag;
@@ -212,4 +237,20 @@ test('both editors expose check without changing save/publish or sending story t
   assert.doesNotMatch(runtime, /addEventListener\('submit'/u);
   assert.match(runtime, /item\.textContent\s*=/u);
   assert.match(runtime, /finding\.line === null/u);
+});
+
+// TEMPORARY_FORMAT_DIAGNOSTIC_20261126
+test('report installed formatter output for the changed test file', async () => {
+  const prettier = await import('prettier');
+  const { readFile } = await import('node:fs/promises');
+  const path = new URL(import.meta.url);
+  const source = await readFile(path, 'utf8');
+  const clean = source.split('// TEMPORARY_FORMAT_DIAGNOSTIC_20261126')[0].trimEnd() + '\n';
+  const options = await prettier.resolveConfig(path.pathname);
+  const formatted = await prettier.format(clean, {
+    ...options,
+    filepath: path.pathname
+  });
+  console.log('NOVELIGHT_FORMAT_VERSION ' + prettier.version);
+  console.log('NOVELIGHT_FORMAT_FULL ' + JSON.stringify(formatted));
 });
