@@ -6,6 +6,7 @@
 
   const attached = new WeakSet();
   const pending = new WeakSet();
+  const mountedReaders = new WeakMap();
 
   function sameOwner(session, ownerId, initialToken) {
     return (
@@ -68,6 +69,7 @@
       section?.remove();
       subscription?.unsubscribe();
       if (mounted) attached.delete(host);
+      mountedReaders.delete(host);
     }
 
     try {
@@ -264,6 +266,37 @@
       host.appendChild(section);
       attached.add(host);
       mounted = true;
+      mountedReaders.set(host, {
+        client,
+        ownerId,
+        novelId: Number(novelId),
+        async reload() {
+          if (disposed || !reader) return false;
+          try {
+            const before = await client.auth.getSession();
+            if (
+              before.error ||
+              !sameOwner(before.data?.session, ownerId, session.access_token)
+            ) {
+              clear();
+              return false;
+            }
+            const loaded = await reader.reload();
+            const after = await client.auth.getSession();
+            if (
+              after.error ||
+              !sameOwner(after.data?.session, ownerId, session.access_token)
+            ) {
+              clear();
+              return false;
+            }
+            return loaded === true;
+          } catch {
+            clear();
+            return false;
+          }
+        }
+      });
       return true;
     } catch {
       clear();
@@ -273,5 +306,19 @@
     }
   }
 
-  root.NovelightAiBibleOwnerStudio = Object.freeze({ attach });
+  // The existing private reader reloads preview, outline and saved review
+  // state. No new save/candidate decision endpoint is introduced here.
+  async function refresh({ client, ownerId, novelId, doc = root.document } = {}) {
+    const host = doc?.getElementById?.('main-content');
+    const mounted = mountedReaders.get(host);
+    if (!mounted) return null;
+    if (
+      mounted.client !== client ||
+      mounted.ownerId !== ownerId ||
+      mounted.novelId !== Number(novelId)
+    ) return false;
+    return mounted.reload();
+  }
+
+  root.NovelightAiBibleOwnerStudio = Object.freeze({ attach, refresh });
 })(globalThis);

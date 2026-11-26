@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+
+const cloneSnapshot = (value) => JSON.parse(JSON.stringify(value));
 import { URL } from 'node:url';
 
+import { createOfflineOwnerNovelBibleCheckpoint } from '../api/_lib/ai/owner-novel-bible-checkpoint.js';
 import { createOwnerNovelBibleModelBridge } from '../api/_lib/ai/owner-novel-bible-model-bridge.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
@@ -326,4 +330,507 @@ test('02-07-05 post-model episode transfer refuses stale candidate', async () =>
   );
   assert.equal(state.modelCalls, 1);
   assert.equal(state.reviewCalls, 0);
+});
+
+test('02-07-05 verified prior manuscript sends changed excerpt only, then saves pending review', async () => {
+  const oldText = '凛は赤い鍵を持っていた。';
+  const checkpoint = {
+    analysis: {
+      episode_id: 11,
+      source_hash: createHash('sha256')
+        .update(JSON.stringify(['第一話', oldText]))
+        .digest('hex')
+    },
+    episode: {
+      id: 11,
+      novel_id: 41,
+      title: '第一話',
+      content: oldText
+    }
+  };
+  const { state, make } = fixture();
+  let reads = 0;
+  const bridge = make({
+    readVerifiedHistory: async ({ actorId, novelId, episodeId }) => {
+      reads += 1;
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 41);
+      assert.equal(episodeId, 11);
+      return checkpoint;
+    }
+  });
+  const result = await bridge.stage({
+    token: TOKEN,
+    novelId: 41,
+    episodeId: 11
+  });
+  assert.equal(result.stagedCount, 1);
+  assert.equal(reads, 2);
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.reviewCalls, 1);
+  assert.equal(JSON.parse(state.prompt.user).untrusted_excerpt, '青');
+  assert.equal(state.reviewInput.modelText.includes('青'), true);
+  assert.equal(state.reviewInput.sourceHash.length, 64);
+  assert.ok(!JSON.stringify(state.prompt).includes(oldText));
+  assert.ok(!JSON.stringify(result).includes(CONTENT));
+});
+
+test('02-07-05 invalid trusted historical revisions fail before any paid call', async () => {
+  const { state, make } = fixture();
+  for (const historical of [
+    { analysis: { episode_id: 12, source_hash: '0'.repeat(64) } },
+    {
+      analysis: { episode_id: 11, source_hash: '0'.repeat(64) },
+      episode: {
+        id: 11,
+        novel_id: 99,
+        title: '第一話',
+        content: '別作品'
+      }
+    },
+    { analysis: { episode_id: 11, source_hash: 'not-a-hash' } }
+  ]) {
+    await assert.rejects(
+      make({ readVerifiedHistory: async () => historical }).stage({
+        token: TOKEN,
+        novelId: 41,
+        episodeId: 11
+      }),
+      /AI_BIBLE_MODEL_BRIDGE_DENIED|AI_BIBLE_CHUNK_INVALID/u
+    );
+  }
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.reviewCalls, 0);
+});
+
+test('02-07-05 identical or deletion-only revisions do not spend AI budget', async () => {
+  for (const [before, after] of [
+    ['凛は青い鍵を持っていた。', '凛は青い鍵を持っていた。'],
+    ['凛は青い鍵を持っていた。', '凛は鍵を持っていた。']
+  ]) {
+    const { state, make } = fixture({ content: after });
+    const checkpoint = {
+      analysis: {
+        episode_id: 11,
+        source_hash: createHash('sha256')
+          .update(JSON.stringify(['第一話', before]))
+          .digest('hex')
+      },
+      episode: { id: 11, novel_id: 41, title: '第一話', content: before }
+    };
+    const result = await make({
+      readVerifiedHistory: async () => checkpoint
+    }).stage({ token: TOKEN, novelId: 41, episodeId: 11 });
+    assert.deepEqual(result, {
+      novelId: 41,
+      stagedCount: 0,
+      requiresAuthorReview: false
+    });
+    assert.equal(state.modelCalls, 0);
+    assert.equal(state.reviewCalls, 0);
+  }
+});
+
+test('02-07-05 history changed during provider response refuses review persistence', async () => {
+  const { state, make } = fixture();
+  const before = '凛は赤い鍵を持っていた。';
+  const historicalHash = createHash('sha256')
+    .update(JSON.stringify(['第一話', before]))
+    .digest('hex');
+  let reads = 0;
+  const bridge = make({
+    readVerifiedHistory: async () => {
+      reads += 1;
+      return {
+        analysis: { episode_id: 11, source_hash: historicalHash },
+        episode: {
+          id: 11,
+          novel_id: 41,
+          title: '第一話',
+          content: reads === 1 ? before : '凛は緑の鍵を持っていた。'
+        }
+      };
+    }
+  });
+  await assert.rejects(
+    bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(reads, 2);
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.reviewCalls, 0);
+});
+
+test('02-07-05 one-call bridge resumes confirmed chunks without repeated AI expense', async () => {
+  const { state, make } = fixture({ content: '青'.repeat(3100) });
+  let row = null;
+  let recorded = 0;
+  const repository = {
+    async readSnapshot() {
+      return row === null ? null : cloneSnapshot(row);
+    },
+    async compareAndSwap(change) {
+      recorded += 1;
+      if (
+        change.expectedRevision !== (row?.revision ?? null) ||
+        change.expectedSourceHash !== (row?.source_hash ?? null)
+      ) {
+        return null;
+      }
+      row = {
+        episode_id: 11,
+        source_hash: change.nextSourceHash,
+        summary: cloneSnapshot(change.nextSummary),
+        revision: (row?.revision ?? 0) + 1
+      };
+      return cloneSnapshot(row);
+    }
+  };
+  const checkpoint = createOfflineOwnerNovelBibleCheckpoint({
+    enabled: true,
+    repository
+  });
+  const bridge = make({
+    checkpoint,
+    aiRouter: {
+      async run() {
+        state.modelCalls += 1;
+        return { text: '{"suggestions":[]}' };
+      }
+    },
+    reviewWorkflow: {
+      async stage() {
+        state.reviewCalls += 1;
+        return { novelId: 41, stagedCount: 0 };
+      }
+    }
+  });
+  const run = (chunkIndex) =>
+    bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11, chunkIndex });
+
+  assert.equal((await run(0)).requiresAuthorReview, true);
+  assert.equal(recorded, 1);
+  assert.equal(row.summary.novelightPhase2.state, 'in_progress');
+  assert.equal(state.modelCalls, 1);
+  assert.deepEqual(await run(0), {
+    novelId: 41,
+    stagedCount: 0,
+    requiresAuthorReview: false
+  });
+  assert.equal(state.modelCalls, 1);
+  assert.equal(recorded, 1);
+
+  // Each request handles exactly one chunk: no automatic provider loop.
+  assert.equal((await run(1)).requiresAuthorReview, true);
+  assert.equal((await run(2)).requiresAuthorReview, true);
+  assert.equal(state.modelCalls, 3);
+  assert.equal(state.reviewCalls, 3);
+  assert.equal(recorded, 3);
+  assert.equal(row.summary.novelightPhase2.state, 'complete');
+  assert.deepEqual(await run(2), {
+    novelId: 41,
+    stagedCount: 0,
+    requiresAuthorReview: false
+  });
+  assert.equal(state.modelCalls, 3);
+});
+
+test('02-07-05 failed candidate staging never acknowledges a paid chunk', async () => {
+  const { state, make } = fixture();
+  let journalCalls = 0;
+  const bridge = make({
+    checkpoint: {
+      async inspect() {
+        return 'pending';
+      },
+      async record() {
+        journalCalls += 1;
+        return { complete: true, alreadyRecorded: false, remainingChunks: 0 };
+      }
+    },
+    reviewWorkflow: {
+      async stage() {
+        state.reviewCalls += 1;
+        throw new Error('SYNTHETIC_PENDING_WRITE_FAILURE');
+      }
+    }
+  });
+  await assert.rejects(
+    bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /SYNTHETIC_PENDING_WRITE_FAILURE/u
+  );
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.reviewCalls, 1);
+  assert.equal(journalCalls, 0);
+});
+
+test('02-07-05 revocation during candidate persistence prevents final checkpoint', async () => {
+  const { state, make } = fixture();
+  let committed = 0;
+  const bridge = make({
+    checkpoint: {
+      async inspect() {
+        return 'pending';
+      },
+      async record() {
+        committed += 1;
+        return { complete: true, alreadyRecorded: false, remainingChunks: 0 };
+      }
+    },
+    reviewWorkflow: {
+      async stage() {
+        state.reviewCalls += 1;
+        state.consent = false;
+        return { novelId: 41, stagedCount: 1 };
+      }
+    }
+  });
+  await assert.rejects(
+    bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(state.modelCalls, 1);
+  assert.equal(state.reviewCalls, 1);
+  assert.equal(committed, 0);
+});
+
+function checkpointFixture() {
+  let row = null;
+  const writes = [];
+  const repository = {
+    async readSnapshot() {
+      return row === null ? null : cloneSnapshot(row);
+    },
+    async compareAndSwap(change) {
+      if (
+        change.expectedRevision !== (row?.revision ?? null) ||
+        change.expectedSourceHash !== (row?.source_hash ?? null)
+      ) {
+        return null;
+      }
+      row = {
+        episode_id: 11,
+        source_hash: change.nextSourceHash,
+        revision: (row?.revision ?? 0) + 1,
+        summary: cloneSnapshot(change.nextSummary)
+      };
+      writes.push(cloneSnapshot(row));
+      return cloneSnapshot(row);
+    }
+  };
+  return {
+    checkpoint: createOfflineOwnerNovelBibleCheckpoint({
+      enabled: true,
+      repository
+    }),
+    writes,
+    get row() {
+      return row;
+    }
+  };
+}
+
+test('02-07-05 empty body completes without model or review and never double writes', async () => {
+  const journal = checkpointFixture();
+  const { state, make } = fixture({ content: '' });
+  const bridge = make({ checkpoint: journal.checkpoint });
+  const first = await bridge.stage({
+    token: TOKEN,
+    novelId: 41,
+    episodeId: 11
+  });
+  assert.deepEqual(first, {
+    novelId: 41,
+    stagedCount: 0,
+    requiresAuthorReview: false
+  });
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.reviewCalls, 0);
+  assert.equal(journal.writes.length, 1);
+  assert.equal(journal.row.summary.novelightPhase2.zeroReason, 'empty-body');
+  await bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 });
+  assert.equal(journal.writes.length, 1);
+});
+
+test('02-07-05 verified deletion or title-only is cost-free but checkpointed', async () => {
+  for (const [title, before, after, reason] of [
+    ['第一話', '凛が赤い鍵を持つ。', '凛が鍵を持つ。', 'deletion-only'],
+    ['改題', '本文そのまま', '本文そのまま', 'title-only']
+  ]) {
+    const journal = checkpointFixture();
+    const oldTitle = reason === 'title-only' ? '第一話' : title;
+    const { state, make } = fixture({ title, content: after });
+    const previous = {
+      analysis: {
+        episode_id: 11,
+        source_hash: createHash('sha256')
+          .update(JSON.stringify([oldTitle, before]))
+          .digest('hex')
+      },
+      episode: { id: 11, novel_id: 41, title: oldTitle, content: before }
+    };
+    const bridge = make({
+      checkpoint: journal.checkpoint,
+      readVerifiedHistory: async () => previous
+    });
+    const result = await bridge.stage({
+      token: TOKEN,
+      novelId: 41,
+      episodeId: 11
+    });
+    assert.equal(result.stagedCount, 0);
+    assert.equal(state.modelCalls, 0);
+    assert.equal(state.reviewCalls, 0);
+    assert.equal(journal.writes.length, 1);
+    assert.equal(journal.row.summary.novelightPhase2.zeroReason, reason);
+  }
+});
+
+test('02-07-05 mid-run edit CAS-replans before a new one-chunk model call', async () => {
+  const journal = checkpointFixture();
+  const { state, make } = fixture({
+    content: '青'.repeat(3100)
+  });
+  const bridge = make({
+    checkpoint: journal.checkpoint,
+    aiRouter: {
+      async run() {
+        state.modelCalls += 1;
+        return { text: '{"suggestions":[]}' };
+      }
+    },
+    reviewWorkflow: {
+      async stage() {
+        state.reviewCalls += 1;
+        return { novelId: 41, stagedCount: 0 };
+      }
+    }
+  });
+  await bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 });
+  const initialSource = journal.row.summary.novelightPhase2.targetSourceHash;
+  assert.deepEqual(journal.row.summary.novelightPhase2.completedIndices, [0]);
+  state.content = '赤' + '青'.repeat(3100);
+  await bridge.stage({ token: TOKEN, novelId: 41, episodeId: 11 });
+  assert.equal(state.modelCalls, 2);
+  assert.equal(state.reviewCalls, 2);
+  assert.equal(journal.writes.length, 3);
+  assert.notEqual(
+    journal.row.summary.novelightPhase2.targetSourceHash,
+    initialSource
+  );
+  assert.deepEqual(
+    journal.writes[1].summary.novelightPhase2.completedIndices,
+    []
+  );
+  assert.deepEqual(journal.row.summary.novelightPhase2.completedIndices, [0]);
+  assert.equal(journal.row.summary.novelightPhase2.state, 'in_progress');
+});
+
+test('read-only chunk plan finds the next index without any paid AI or candidate writes', async () => {
+  const { state, make } = fixture({ content: '青'.repeat(3100) });
+  const checkpoint = {
+    async inspect({ chunkIndex }) {
+      return chunkIndex === 0 ? 'completed' : 'pending';
+    },
+    async record() {
+      throw new Error('INSPECTION_MUST_NOT_RECORD');
+    }
+  };
+  const response = await make({ checkpoint }).inspectPlan({
+    token: TOKEN,
+    novelId: 41,
+    episodeId: 11
+  });
+  assert.deepEqual(response, {
+    novelId: 41,
+    episodeId: 11,
+    chunkCount: 3,
+    nextChunkIndex: 1,
+    status: 'ready'
+  });
+  assert.equal(state.modelCalls, 0);
+  assert.equal(state.reviewCalls, 0);
+  assert.ok(!JSON.stringify(response).includes('青'));
+  assert.ok(!JSON.stringify(response).includes(TOKEN));
+});
+
+test('read-only plan reports completed and CAS replan without mutating journals', async () => {
+  for (const [response, expected] of [
+    ['completed', { nextChunkIndex: null, status: 'completed' }],
+    ['replan', { nextChunkIndex: 0, status: 'replan_required' }]
+  ]) {
+    const { state, make } = fixture();
+    const checkpoint = {
+      async inspect() {
+        return response;
+      },
+      async record() {
+        throw new Error('MUST_NOT_WRITE');
+      },
+      async replan() {
+        throw new Error('MUST_NOT_REPLAN_DURING_READ');
+      }
+    };
+    const observed = await make({ checkpoint }).inspectPlan({
+      token: TOKEN,
+      novelId: 41,
+      episodeId: 11
+    });
+    assert.equal(observed.nextChunkIndex, expected.nextChunkIndex);
+    assert.equal(observed.status, expected.status);
+    assert.equal(observed.chunkCount, 1);
+    assert.equal(state.modelCalls, 0);
+  }
+});
+
+test('plan inspection checks owner, consent and manuscript freshness twice', async () => {
+  const forbidden = fixture({ owner: OTHER });
+  await assert.rejects(
+    forbidden.make().inspectPlan({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  const noConsent = fixture({ consent: false });
+  await assert.rejects(
+    noConsent.make().inspectPlan({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  const stale = fixture();
+  await assert.rejects(
+    stale
+      .make({
+        checkpoint: {
+          async inspect() {
+            stale.state.content = '途中で改稿された';
+            return 'pending';
+          },
+          async record() {
+            throw new Error('MUST_NOT_RECORD');
+          }
+        }
+      })
+      .inspectPlan({ token: TOKEN, novelId: 41, episodeId: 11 }),
+    /AI_BIBLE_MODEL_BRIDGE_DENIED/u
+  );
+  assert.equal(stale.state.modelCalls, 0);
+  assert.equal(stale.state.reviewCalls, 0);
+});
+
+test('unmodified chapter plan reports no provider work', async () => {
+  const { state, make } = fixture();
+  const sourceHash = createHash('sha256')
+    .update(JSON.stringify(['第一話', CONTENT]))
+    .digest('hex');
+  const response = await make({
+    readVerifiedHistory: async () => ({
+      analysis: { episode_id: 11, source_hash: sourceHash }
+    })
+  }).inspectPlan({ token: TOKEN, novelId: 41, episodeId: 11 });
+  assert.deepEqual(response, {
+    novelId: 41,
+    episodeId: 11,
+    chunkCount: 0,
+    nextChunkIndex: null,
+    status: 'unchanged'
+  });
+  assert.equal(state.modelCalls, 0);
 });

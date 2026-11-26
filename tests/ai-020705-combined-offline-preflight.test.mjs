@@ -31,7 +31,7 @@ const approved = {
   novelId: 41,
   episodeId: 11,
   provider: 'openai',
-  model: 'gpt-5.6-luna',
+  model: 'gpt-6.1-sol',
   capMicros: 10000000,
   consentRevision: 'synthetic-test-v1',
   expiresAt: new Date(NOW + 300000).toISOString()

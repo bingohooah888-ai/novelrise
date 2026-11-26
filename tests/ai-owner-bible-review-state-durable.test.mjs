@@ -6,7 +6,11 @@ import { URL } from 'node:url';
 import { createSupabaseOwnerBibleReviewStateRepository } from '../api/_lib/ai/owner-bible-review-state-repository.js';
 import { createOfflineOwnerBibleReviewStateWiring } from '../api/_lib/ai/owner-bible-review-state-offline-wiring.js';
 import { createOfflineOwnerSessionCheck } from '../api/_lib/ai/owner-session-evidence.js';
-import { createOfflinePrivateSessionReader } from '../api/_lib/ai/owner-private-session-reader.js';
+import {
+  createOfflinePrivateSessionReader,
+  createOfflineReadOnlyAuthSessionLookup
+} from '../api/_lib/ai/owner-private-session-reader.js';
+import { createOfflineServiceRoleSessionLookup } from '../api/_lib/ai/owner-service-role-session-reader.js';
 import { createOfflineOwnerBibleReviewStateWorkflow } from '../api/_lib/ai/owner-bible-review-state-offline.js';
 
 const ACTOR = '11111111-1111-4111-8111-111111111111';
@@ -153,6 +157,163 @@ const scope = {
   novelId: 17,
   bearerToken: TOKEN
 };
+
+// A trusted, separately authorized PG session observer supplies ONLY a
+// parameter-bound one-row boolean. No database, JWT or secrets are used here.
+// prettier-ignore
+test('private session lookup uses two bound UUIDs and the signed-session contract', async () => {
+  const calls = [];
+  const queryClient = {
+    async query(statement, values) {
+      calls.push({ statement, values });
+      return { command: 'SELECT', rowCount: 1, rows: [{ active: true }] };
+    }
+  };
+  const lookupOneSession = createOfflineReadOnlyAuthSessionLookup({
+    queryClient
+  });
+  const readExistingSession = createOfflinePrivateSessionReader({
+    lookupOneSession
+  });
+  const verified = await readExistingSession({
+    sessionId: SESSION.toUpperCase(),
+    actorId: ACTOR.toUpperCase()
+  });
+  assert.deepEqual(verified, {
+    data: { id: SESSION, user_id: ACTOR },
+    error: null
+  });
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].statement, /^SELECT EXISTS /u);
+  assert.ok(calls[0].statement.includes('auth.sessions'));
+  assert.ok(calls[0].statement.includes('id = $1::uuid AND user_id = $2::uuid'));
+  assert.deepEqual(calls[0].values, [SESSION, ACTOR]);
+  assert.doesNotMatch(calls[0].statement, new RegExp(SESSION, 'u'));
+  assert.doesNotMatch(calls[0].statement, new RegExp(ACTOR, 'u'));
+
+  const signed = createOfflineOwnerSessionCheck({
+    verifySignedClaims: async () => ({
+      data: {
+        claims: {
+          sub: ACTOR,
+          session_id: SESSION,
+          role: 'authenticated',
+          aud: 'authenticated',
+          iat: 100,
+          exp: 999999
+        }
+      },
+      error: null
+    }),
+    readExistingSession,
+    nowEpochSeconds: () => 500
+  });
+  assert.deepEqual(
+    await signed({ bearerToken: TOKEN, actorId: ACTOR, novelId: 17 }),
+    { active: true, binding: SESSION }
+  );
+  assert.equal(calls.length, 2);
+});
+
+// prettier-ignore
+test('session lookup fails closed on missing capability, revocation or odd PG receipts', async () => {
+  let queries = 0;
+  const invalid = [
+    { command: 'SELECT', rowCount: 1, rows: [{ active: false }] },
+    { command: 'SELECT', rowCount: 1, rows: [{ active: 'true' }] },
+    { command: 'SELECT', rowCount: 1, rows: [{ active: true, id: SESSION }] },
+    { command: 'SELECT', rowCount: 2, rows: [{ active: true }] },
+    { command: 'UPDATE', rowCount: 1, rows: [{ active: true }] },
+    { command: 'SELECT', rowCount: 1, rows: [] },
+    { command: 'SELECT', rowCount: 0, rows: [{ active: true }] },
+    null
+  ];
+  const client = {
+    async query() {
+      queries += 1;
+      return invalid.shift();
+    }
+  };
+  const lookup = createOfflineReadOnlyAuthSessionLookup({
+    queryClient: client
+  });
+  for (let i = 0; i < 8; i += 1) {
+    assert.equal(
+      await lookup({ sessionId: SESSION, actorId: ACTOR }),
+      false
+    );
+  }
+  assert.equal(queries, 8);
+  assert.equal(await lookup({ sessionId: TOKEN, actorId: ACTOR }), false);
+  assert.equal(await lookup({ sessionId: SESSION, actorId: FOREIGN }), false);
+  // A syntactically valid foreign actor is bound to SQL but cannot be
+  // treated as authorized without a strict true database receipt.
+  assert.equal(queries, 9);
+  assert.equal(
+    await createOfflineReadOnlyAuthSessionLookup()({
+      sessionId: SESSION,
+      actorId: ACTOR
+    }),
+    false
+  );
+  assert.equal(
+    await createOfflineReadOnlyAuthSessionLookup({
+      queryClient: {
+        async query() {
+          throw new Error('PRIVATE_AUTH_CREDENTIALS_MUST_NOT_LEAK');
+        }
+      }
+    })({ sessionId: SESSION, actorId: ACTOR }),
+    false
+  );
+});
+
+// No new private PostgreSQL credentials are needed for the Staging reader:
+// it uses the same server-only service-role client as the CAS repository.
+test('service-only session probe is strict and fail-closed', async () => {
+  const calls = [];
+  let response = { data: true, error: null };
+  const lookup = createOfflineServiceRoleSessionLookup({
+    serviceClient: {
+      async rpc(name, args) {
+        calls.push([name, args]);
+        return response;
+      }
+    }
+  });
+  assert.equal(await lookup({ sessionId: SESSION, actorId: ACTOR }), true);
+  assert.deepEqual(calls, [
+    [
+      'novelight_ai_owner_session_exists_v1',
+      { p_session_id: SESSION, p_actor_id: ACTOR }
+    ]
+  ]);
+  response = { data: 'true', error: null };
+  assert.equal(await lookup({ sessionId: SESSION, actorId: ACTOR }), false);
+  response = { data: true, error: { code: '42501' } };
+  assert.equal(await lookup({ sessionId: SESSION, actorId: ACTOR }), false);
+  response = { data: null, error: null };
+  assert.equal(await lookup({ sessionId: SESSION, actorId: ACTOR }), false);
+  assert.equal(
+    await lookup({ sessionId: 'not-a-uuid', actorId: ACTOR }),
+    false
+  );
+  assert.equal(
+    await createOfflineServiceRoleSessionLookup()({
+      sessionId: SESSION,
+      actorId: ACTOR
+    }),
+    false
+  );
+  const exploding = createOfflineServiceRoleSessionLookup({
+    serviceClient: {
+      async rpc() {
+        throw new Error('SECRET_NOT_FOR_LOGS');
+      }
+    }
+  });
+  assert.equal(await exploding({ sessionId: SESSION, actorId: ACTOR }), false);
+});
 
 test('constructor requires scoped server capabilities, never creates a client', () => {
   assert.throws(
@@ -446,7 +607,27 @@ test('SQL proposal requires service_role, RLS, ownership and signed session evid
     .split('\n')
     .filter((line) => !line.trimStart().startsWith('--'))
     .join('\n');
-  assert.doesNotMatch(executableSql, /security definer/i);
+  // Exactly one SECURITY DEFINER may exist, only inside a non-exposed private schema.
+  assert.equal((executableSql.match(/security definer/gi) ?? []).length, 1);
+  assert.match(sql, /create schema novelight_ai_private;/);
+  assert.match(sql, /create function novelight_ai_private\.session_active_v1/);
+  assert.match(
+    sql,
+    /language plpgsql security definer set search_path = '' as \$\$/
+  );
+  assert.match(
+    sql,
+    /revoke all on function novelight_ai_private\.session_active_v1[\s\S]*from public, anon, authenticated/
+  );
+  assert.match(
+    sql,
+    /create function public\.novelight_ai_owner_session_exists_v1/
+  );
+  assert.match(
+    sql,
+    /grant execute on function public\.novelight_ai_owner_session_exists_v1[\s\S]*to service_role/
+  );
+  assert.doesNotMatch(executableSql, /grant[^;]*on\s+auth\.sessions/i);
   assert.match(sql, /current_user <> 'service_role'/);
   assert.match(
     sql,
@@ -455,6 +636,14 @@ test('SQL proposal requires service_role, RLS, ownership and signed session evid
   assert.match(
     sql,
     /from auth\.sessions s[\s\S]*s\.id = p_session_id and s\.user_id = p_actor_id[\s\S]*for share of s/
+  );
+  assert.match(
+    sql,
+    /s\.not_after is null or s\.not_after > pg_catalog\.clock_timestamp\(\)/
+  );
+  assert.match(
+    sql,
+    /if not novelight_ai_private\.session_active_v1\([\s\S]*p_session_id,p_actor_id,true/
   );
   assert.match(sql, /pg_advisory_xact_lock/);
   assert.match(sql, /p_expected_revision <> 0/);

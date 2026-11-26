@@ -72,7 +72,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
     episodeId: 11,
     expiresAt,
     mainSha: SHA,
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     novelId: 41,
     previewDeploymentId: PREVIEW,
     provider: 'openai',
@@ -91,6 +91,17 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
   function dbChain() {
     const chain = {
       eq() { return chain; },
+      select() { return chain; },
+      single: async () => ({
+        error: null, count: 1,
+        data: {
+          singleton: 1, enabled: false,
+          user_day_cap_micros: 0,
+          user_month_cap_micros: 0,
+          global_day_cap_micros: 0,
+          global_month_cap_micros: 0
+        }
+      }),
       maybeSingle: async () => ({
         error: null,
         data: { id: 41, user_id: OWNER_ID }
@@ -111,7 +122,24 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
       return {
         update() { actions.push('stop-db'); return dbChain(); },
         delete() { actions.push('delete-' + table); return dbChain(); },
-        select() { return dbChain(); }
+        select() {
+          if (table !== 'novelight_ai_runtime_settings') return dbChain();
+          return {
+            eq() {
+              return {
+                async single() {
+                  return {error: null, data: {
+                    singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
+                    user_day_cap_micros: 10000000,
+                    user_month_cap_micros: 10000000,
+                    global_day_cap_micros: 10000000,
+                    global_month_cap_micros: 10000000
+                  }};
+                }
+              };
+            }
+          };
+        }
       };
     }
   };
@@ -145,7 +173,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
       novelId: 41,
       episodeId: 11,
       provider: 'openai',
-      model: 'gpt-5.6-luna',
+      model: 'gpt-6.1-sol',
       routeCount: 1,
       maxProviderCalls: 1,
       noRetry: true,
@@ -196,7 +224,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
     previewDeploymentId: PREVIEW,
     capMicros: approval.capMicros,
     provider: 'openai',
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     stagingProjectRef: synthetic.projectRef
   };
   const proofs = Object.fromEntries([
@@ -214,7 +242,7 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
     serviceClient,
     authAdmin,
     guardedProvider,
-    request: { model: 'gpt-5.6-luna', system: 'synthetic', user: 'synthetic story' },
+    request: { model: 'gpt-6.1-sol', system: 'synthetic', user: 'synthetic story' },
     readComments: async () => comments,
     async writeComment(body) {
       actions.push(body.includes('_CLAIMED ') ? 'github-claim' : 'github-consumed');
@@ -236,8 +264,12 @@ function setup({ failedModel = false, failedStop = false, failedCensus = false }
       actions.push('census');
       return {
         projectRef: synthetic.projectRef,
+        userId: synthetic.userId,
+        novelId: synthetic.novelId,
+        approvalCommentId: synthetic.approvalCommentId,
         runtimeDisabledZero: !failedCensus,
         approvalTombstoneCount: 1,
+        chunkClaimsRetained: 0, // Legacy one-shot fixture has no chunk claim.
         ...Object.fromEntries(ZERO.map((key) => [key, 0]))
       };
     },

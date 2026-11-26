@@ -59,7 +59,7 @@ function scenario({
     previewDeploymentId: 'dpl_test123',
     capMicros: 1000000,
     provider: 'openai',
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     stagingProjectRef: STAGING,
     expiresAt,
     consentRevision: 'synthetic-policy'
@@ -80,7 +80,7 @@ function scenario({
           episodeId: 11,
           expiresAt,
           mainSha: MAIN,
-          model: 'gpt-5.6-luna',
+          model: 'gpt-6.1-sol',
           novelId: 41,
           previewDeploymentId: 'dpl_test123',
           provider: 'openai',
@@ -97,6 +97,18 @@ function scenario({
       select() {
         return this;
       },
+      single: async () => ({
+        error: null,
+        count: 1,
+        data: {
+          singleton: 1,
+          enabled: false,
+          user_day_cap_micros: 0,
+          user_month_cap_micros: 0,
+          global_day_cap_micros: 0,
+          global_month_cap_micros: 0
+        }
+      }),
       maybeSingle: async () => ({
         data: { id: 41, user_id: OWNER },
         error: null
@@ -106,12 +118,28 @@ function scenario({
       }
     };
   }
+  // prettier-ignore
   const serviceClient = {
     supabaseUrl: URL,
     from(table) {
       return {
         select() {
-          return chain();
+          if (table !== 'novelight_ai_runtime_settings') return chain();
+          return {
+            eq() {
+              return {
+                async single() {
+                  return {error: null, data: {
+                    singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
+                    user_day_cap_micros: 10000000,
+                    user_month_cap_micros: 10000000,
+                    global_day_cap_micros: 10000000,
+                    global_month_cap_micros: 10000000
+                  }};
+                }
+              };
+            }
+          };
         },
         insert() {
           history.push('audit:' + table);
@@ -231,8 +259,12 @@ function scenario({
       history.push('census');
       return {
         projectRef: STAGING,
+        userId: OWNER,
+        novelId: 41,
+        approvalCommentId: 777,
         runtimeDisabledZero: true,
         approvalTombstoneCount: 1,
+        chunkClaimsRetained: 0, // Legacy one-shot fixture has no chunk claim.
         ...Object.fromEntries(ZERO.map((key) => [key, 0]))
       };
     }
@@ -273,7 +305,7 @@ function scenario({
       assert.equal(options.method, 'POST');
       const body = JSON.parse(options.body);
       assert.equal(body.store, false);
-      assert.equal(body.model, 'gpt-5.6-luna');
+      assert.equal(body.model, 'gpt-6.1-sol');
       assert.equal(body.max_output_tokens, 256);
       assert.match(body.input, /玲奈/u);
       return {
@@ -306,7 +338,7 @@ function scenario({
     },
     route: {
       provider: 'openai',
-      model: 'gpt-5.6-luna',
+      model: 'gpt-6.1-sol',
       inputMicrosPerMillion: 10000,
       outputMicrosPerMillion: 20000,
       maxOutputTokens: 256

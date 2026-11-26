@@ -30,7 +30,7 @@ const approved = {
   episodeId: 22,
   expiresAt: EXPIRY,
   mainSha: MAIN,
-  model: 'gpt-5.6-luna',
+  model: 'gpt-6.1-sol',
   novelId: 11,
   previewDeploymentId: PREVIEW,
   provider: 'openai',
@@ -178,7 +178,7 @@ function proofFixture() {
     },
     readBillingProtection: {
       provider: 'openai',
-      model: 'gpt-5.6-luna',
+      model: 'gpt-6.1-sol',
       currency: 'JPY',
       providerAccountVerified: true,
       currentOfficialRatesVerified: true,
@@ -321,7 +321,7 @@ test('one-shot Staging DB claim stores tested candidate SHA; no model retry', as
     novelId: 11,
     episodeId: 22,
     provider: 'openai',
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     routeCount: 1,
     maxProviderCalls: 1,
     noRetry: true,
@@ -344,8 +344,31 @@ test('one-shot Staging DB claim stores tested candidate SHA; no model retry', as
     sha: CANDIDATE,
     id: PREVIEW
   };
+  // prettier-ignore
   const serviceClient = {
     supabaseUrl: URL,
+    from(table) {
+      if (table !== 'novelight_ai_runtime_settings') throw Error('unexpected table');
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                async single() {
+                  return {error: null, data: {
+                    singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
+                    user_day_cap_micros: 10000000,
+                    user_month_cap_micros: 10000000,
+                    global_day_cap_micros: 10000000,
+                    global_month_cap_micros: 10000000
+                  }};
+                }
+              };
+            }
+          };
+        }
+      };
+    },
     rpc: async (_name, input) => {
       params.push(input);
       return { data: params.length === 1, error: null };
@@ -365,11 +388,11 @@ test('one-shot Staging DB claim stores tested candidate SHA; no model retry', as
   };
   const provider = createPaidTrialOneShotOpenAiProvider(options);
   assert.equal(
-    (await provider.generate({ model: 'gpt-5.6-luna' })).text,
+    (await provider.generate({ model: 'gpt-6.1-sol' })).text,
     'synthetic'
   );
   await assert.rejects(
-    provider.generate({ model: 'gpt-5.6-luna' }),
+    provider.generate({ model: 'gpt-6.1-sol' }),
     /AI_020705_PAID_ONE_SHOT_DENIED/u
   );
   assert.equal(params[0].p_main_sha, CANDIDATE);
@@ -405,7 +428,7 @@ test('candidate protected runner accepts only main-sourced trusted workflow and 
     novelId: 11,
     episodeId: 22,
     provider: 'openai',
-    model: 'gpt-5.6-luna',
+    model: 'gpt-6.1-sol',
     routeCount: 1,
     maxProviderCalls: 1,
     noRetry: true,
@@ -463,7 +486,7 @@ test('candidate protected runner accepts only main-sourced trusted workflow and 
     capMicros: CAP,
     previewDeploymentId: PREVIEW,
     provider: 'openai',
-    model: 'gpt-5.6-luna'
+    model: 'gpt-6.1-sol'
   };
   const options = {
     context,
@@ -479,7 +502,7 @@ test('candidate protected runner accepts only main-sourced trusted workflow and 
     serviceClient,
     authAdmin: { getUserById: async () => ({}), deleteUser: async () => ({}) },
     guardedProvider,
-    request: { model: 'gpt-5.6-luna', system: 'offline', user: 'synthetic' },
+    request: { model: 'gpt-6.1-sol', system: 'offline', user: 'synthetic' },
     readComments: async () => [],
     writeComment: async () => {},
     disableTrialEnvironment: async () => true,

@@ -1483,6 +1483,60 @@ test('review-state IDs survive reordering, but altered checks cannot inherit pri
   assert.deepEqual(parsed.reviewedIds, []);
 });
 
+test('changed AI fact evidence reopens a reviewed warning without resetting on reorder', () => {
+  const payload = fixture();
+  payload.novelId = 17;
+  const group = payload.facts.find((item) => item.kind === 'event');
+  group.suggestions.push(
+    {
+      id: 11,
+      revision: 1,
+      sourceEpisodeId: 3,
+      payload: { summary: '追加候補A', evidence: '証拠A' }
+    },
+    {
+      id: 12,
+      revision: 1,
+      sourceEpisodeId: 4,
+      payload: { summary: '追加候補B', evidence: '証拠B' }
+    }
+  );
+  const check = () =>
+    localReviewSummary(payload).checks.find(
+      (item) => item.title === '確定設定との重複候補'
+    );
+  const first = check();
+  assert.ok(first);
+  assert.equal(Object.hasOwn(first, 'context'), false);
+  const saved = {
+    version: 1,
+    novelId: 17,
+    revision: 2,
+    reviewedIds: [first.id]
+  };
+  assert.deepEqual(
+    globalThis.NovelightAiBibleAuthorWorkspace.parseReviewSnapshot(
+      saved,
+      17,
+      localReviewSummary(payload).checks
+    ).reviewedIds,
+    [first.id]
+  );
+
+  group.suggestions.reverse();
+  assert.equal(check().id, first.id);
+  group.suggestions[0].payload.evidence = '本文改稿後の新しい根拠';
+  assert.notEqual(check().id, first.id);
+  assert.deepEqual(
+    globalThis.NovelightAiBibleAuthorWorkspace.parseReviewSnapshot(
+      saved,
+      17,
+      localReviewSummary(payload).checks
+    ).reviewedIds,
+    []
+  );
+});
+
 test('wrong-work and malformed review-state snapshots clear private content', () => {
   const payload = fixture();
   payload.novelId = 17;
@@ -1571,4 +1625,105 @@ test('save conflicts and late responses never report a persisted confirmation', 
   await pending;
   assert.match(target.textContent, /この画面だけの確認済み：0\/1件/);
   assert.doesNotMatch(target.textContent, /確認状態を保存しました/);
+});
+
+test('non-sequential CAS receipts never show saved or allow a blind retry', async () => {
+  const payload = fixture();
+  payload.novelId = 17;
+  payload.characters.push({ name: '蒼', aliases: ['青い鍵の持ち主'] });
+  const target = new FakeElement('div', doc);
+  let writes = 0;
+  assert.equal(
+    render({
+      target,
+      payload,
+      reviewState: {
+        version: 1,
+        novelId: 17,
+        revision: 7,
+        reviewedIds: []
+      },
+      saveReviewState: async (change) => {
+        writes += 1;
+        return {
+          version: 1,
+          novelId: 17,
+          revision: 9,
+          reviewedIds: change.reviewedIds
+        };
+      }
+    }),
+    true
+  );
+  const button = nodes(target, 'button').find(
+    (node) => node.className === 'novelight-ai-workspace-reviewed-button'
+  );
+  await button.listeners.get('click')();
+  assert.equal(writes, 1);
+  assert.equal(button.disabled, true);
+  assert.equal(button.attributes['aria-pressed'], 'false');
+  assert.match(target.textContent, /保存に失敗しました/u);
+  assert.match(target.textContent, /再読込して確認してください/u);
+  assert.doesNotMatch(target.textContent, /確認状態を保存しました/u);
+  await button.listeners.get('click')();
+  assert.equal(writes, 1);
+});
+
+test('ambiguous author CAS response forces a fresh read before another save', async () => {
+  const payload = fixture();
+  payload.novelId = 17;
+  payload.characters.push({ name: '蒼', aliases: ['青い鍵の持ち主'] });
+  const checkId = localReviewSummary(payload).checks[0].id;
+  const target = new FakeElement('div', doc);
+  let durable = {
+    version: 1,
+    novelId: 17,
+    revision: 0,
+    reviewedIds: []
+  };
+  let writes = 0;
+  assert.equal(
+    render({
+      target,
+      payload,
+      reviewState: durable,
+      saveReviewState: async (change) => {
+        writes += 1;
+        // The server commits, but the transport loses the success receipt.
+        durable = {
+          version: 1,
+          novelId: 17,
+          revision: 1,
+          reviewedIds: change.reviewedIds
+        };
+        throw new Error('SYNTHETIC_RESPONSE_LOST');
+      }
+    }),
+    true
+  );
+  const button = nodes(target, 'button').find(
+    (node) => node.className === 'novelight-ai-workspace-reviewed-button'
+  );
+  await button.listeners.get('click')();
+  assert.equal(writes, 1);
+  assert.equal(button.disabled, true);
+  assert.equal(button.attributes['aria-pressed'], 'false');
+  assert.match(target.textContent, /再読込して確認してください/u);
+  await button.listeners.get('click')();
+  assert.equal(writes, 1);
+  assert.deepEqual(durable.reviewedIds, [checkId]);
+
+  const resumed = new FakeElement('div', doc);
+  assert.equal(
+    render({
+      target: resumed,
+      payload,
+      reviewState: durable,
+      saveReviewState: async () => {
+        throw new Error('MUST_NOT_SAVE_ON_RELOAD');
+      }
+    }),
+    true
+  );
+  assert.match(resumed.textContent, /保存済みの確認済み：1\/1件/u);
 });

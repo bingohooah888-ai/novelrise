@@ -18,12 +18,12 @@ const APPROVED = {
   novelId: 41,
   episodeId: 11,
   provider: 'openai',
-  model: 'gpt-5.6-luna',
+  model: 'gpt-6.1-sol',
   routeCount: 1,
   maxProviderCalls: 1,
   noRetry: true,
   fallbackDisabled: true,
-  capMicros: 2528640,
+  capMicros: 1000000,
   mainSha: SHA,
   previewDeploymentId: 'dpl_test123',
   expiresAt: new Date(NOW + 3600000).toISOString(),
@@ -39,10 +39,11 @@ const DEPLOYMENT = {
   sha: SHA,
   id: 'dpl_test123'
 };
-const REQUEST = { model: 'gpt-5.6-luna', system: 'offline', user: 'synthetic' };
+const REQUEST = { model: 'gpt-6.1-sol', system: 'offline', user: 'synthetic' };
 
 // prettier-ignore
-function fixture({ changes = {}, deployment = {}, rpcReply, providerError } = {}) {
+function fixture({ changes = {}, deployment = {}, rpcReply, providerError,
+  runtimeReply } = {}) {
   let rpcCalls = 0;
   let modelCalls = 0;
   const consumed = new Set();
@@ -52,6 +53,31 @@ function fixture({ changes = {}, deployment = {}, rpcReply, providerError } = {}
     now: () => NOW,
     serviceClient: {
       supabaseUrl: DEPLOYMENT.supabaseUrl,
+      from(table) {
+        assert.equal(table, 'novelight_ai_runtime_settings');
+        return {
+          select() {
+            return {
+              eq(column, id) {
+                assert.equal(column, 'singleton');
+                assert.equal(id, 1);
+                return {
+                  async single() {
+                    if (runtimeReply !== undefined) return runtimeReply;
+                    return {error: null, data: {
+                      singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
+                      user_day_cap_micros: 10000000,
+                      user_month_cap_micros: 10000000,
+                      global_day_cap_micros: 10000000,
+                      global_month_cap_micros: 10000000
+                    }};
+                  }
+                };
+              }
+            };
+          }
+        };
+      },
       async rpc(name, args) {
         rpcCalls += 1;
         assert.equal(name, 'novelight_ai_020705_claim_once');
@@ -163,7 +189,7 @@ test('wrong deployment, budget, scope, expiry, model and claim fail closed', () 
 test('a model mismatch is rejected before any DB or network access', async () => {
   const { provider, counts } = fixture();
   await assert.rejects(
-    provider.generate({ ...REQUEST, model: 'other-model' }),
+    provider.generate({ ...REQUEST, model: 'gpt-5.6-luna' }),
     /AI_020705_PAID_ONE_SHOT_DENIED/u
   );
   assert.deepEqual(counts(), { rpcCalls: 0, modelCalls: 0 });
@@ -188,4 +214,63 @@ test('migration is private service-only, immutable and atomically unique', () =>
   assert.match(sql, /to service_role/u);
   assert.match(sql, /v_runtime.enabled is not true/u);
   assert.doesNotMatch(sql, /delete from public\.novelight_ai_020705_one_shot_claims/iu);
+});
+
+// prettier-ignore
+test('Cloudflare outage plus Staging OFF or low cap blocks dispatch after claim', async () => {
+  const runtime = {singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
+    user_day_cap_micros: 10000000, user_month_cap_micros: 10000000,
+    global_day_cap_micros: 10000000, global_month_cap_micros: 10000000};
+  for (const runtimeReply of [
+    {data: {...runtime, enabled: false}, error: null},
+    {data: {...runtime, global_day_cap_micros: 0}, error: null},
+    {data: {...runtime, user_day_cap_micros: 'invalid'}, error: null},
+    {data: null, error: {code: 'PGRST116'}},
+    {data: null, error: null}
+  ]) {
+    const {provider, counts} = fixture({runtimeReply});
+    await assert.rejects(provider.generate(REQUEST),
+      /AI_020705_PAID_ONE_SHOT_DENIED/u);
+    assert.deepEqual(counts(), {rpcCalls: 1, modelCalls: 0});
+    await assert.rejects(provider.generate(REQUEST),
+      /AI_020705_PAID_ONE_SHOT_DENIED/u);
+    assert.equal(counts().modelCalls, 0);
+  }
+});
+// prettier-ignore
+test('post-claim staging readback supports verified numeric-string caps', async () => {
+  const {provider, counts} = fixture({runtimeReply: {error: null, data: {
+    singleton: 1, enabled: true, updated_at: new Date(NOW).toISOString(),
+    user_day_cap_micros: '10000000', user_month_cap_micros: '10000000',
+    global_day_cap_micros: '10000000', global_month_cap_micros: '10000000'
+  }}});
+  assert.equal((await provider.generate(REQUEST)).text, '{"suggestions":[]}');
+  assert.deepEqual(counts(), {rpcCalls: 1, modelCalls: 1});
+});
+
+// prettier-ignore
+test('a stale or absent Staging lease denies a paid POST even without STOP notice', async () => {
+  const live = {
+    singleton: 1, enabled: true,
+    user_day_cap_micros: 10000000, user_month_cap_micros: 10000000,
+    global_day_cap_micros: 10000000, global_month_cap_micros: 10000000
+  };
+  for (const updated_at of [
+    undefined, '', 'not-a-date',
+    new Date(NOW - 15001).toISOString(),
+    new Date(NOW + 1).toISOString()
+  ]) {
+    const {provider, counts} = fixture({runtimeReply: {
+      data: {...live, updated_at}, error: null
+    }});
+    await assert.rejects(provider.generate(REQUEST),
+      /AI_020705_PAID_ONE_SHOT_DENIED/u);
+    assert.deepEqual(counts(), {rpcCalls: 1, modelCalls: 0});
+  }
+  const {provider, counts} = fixture({runtimeReply: {
+    data: {...live, updated_at: new Date(NOW - 15000).toISOString()},
+    error: null
+  }});
+  assert.equal((await provider.generate(REQUEST)).text, '{"suggestions":[]}');
+  assert.deepEqual(counts(), {rpcCalls: 1, modelCalls: 1});
 });

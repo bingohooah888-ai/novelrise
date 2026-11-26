@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 import { createOwnerBibleAnalyzeApiHandler } from '../api/ai-owner-bible-analyze.js';
+import '../novelight-ai-bible-trial-offline-http.js';
 
 const OWNER = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
@@ -44,9 +46,11 @@ function fixture({
   consent = true,
   budget = true,
   flags = {},
-  ownerWork = OWNER
+  ownerWork = OWNER,
+  offlinePlanEnabled = false,
+  inspect = null
 } = {}) {
-  const calls = { auth: 0, model: 0, reserve: 0, data: [] };
+  const calls = { auth: 0, model: 0, reserve: 0, inspect: 0, data: [] };
   const data = {
     from(table) {
       calls.data.push(table);
@@ -112,12 +116,37 @@ function fixture({
   };
   const handler = createOwnerBibleAnalyzeApiHandler({
     env: { ...ENV, ...flags },
+    offlinePlanEnabled,
     createServiceClient() {
       return data;
     },
     createTrialBridge() {
       calls.model += 1;
-      return { stage() { calls.reserve += 1; } };
+      return {
+        stage() {
+          calls.reserve += 1;
+          return {
+            novelId: 41,
+            stagedCount: 1,
+            requiresAuthorReview: true
+          };
+        },
+        inspectPlan(args) {
+          calls.inspect += 1;
+          assert.equal(args.novelId, 41);
+          assert.equal(args.episodeId, 11);
+          assert.equal(args.token, TOKEN);
+          return inspect
+            ? inspect(args)
+            : {
+                novelId: 41,
+                episodeId: 11,
+                chunkCount: 2,
+                nextChunkIndex: 0,
+                status: 'ready'
+              };
+        }
+      };
     }
   });
   const request = {
@@ -225,4 +254,230 @@ test('missing server flag, other actor, absent bearer and cross-origin deny', as
     })).statusCode,
     403
   );
+});
+
+// Retain explicit synthetic event order; no live service or provider access.
+// prettier-ignore
+// Synthetic owner plan contract; no paid model or live connection.
+// prettier-ignore
+test('plan GET stays default OFF and never constructs a provider bridge', async () => {
+  const f = fixture();
+  const r = await f.call({
+    query: { novel_id: '41', episode_id: '11' },
+    headers: {
+      ...f.request.headers,
+      'x-novelight-ai-trial-status': undefined,
+      'x-novelight-ai-trial-plan': '1'
+    }
+  });
+  assert.equal(r.statusCode, 405);
+  assert.equal(f.calls.auth, 0);
+  assert.equal(f.calls.model, 0);
+});
+
+// Synthetic owner plan contract; no paid model or live connection.
+// prettier-ignore
+test('offline plan GET passes fresh owner, consent and budget stop without billing', async () => {
+  const f = fixture({ offlinePlanEnabled: true });
+  const r = await f.call({
+    query: { novel_id: '41', episode_id: '11' },
+    headers: {
+      ...f.request.headers,
+      'x-novelight-ai-trial-status': undefined,
+      'x-novelight-ai-trial-plan': '1'
+    }
+  });
+  assert.equal(r.statusCode, 200);
+  assert.deepEqual(r.body, {
+    novelId: 41,
+    episodeId: 11,
+    chunkCount: 2,
+    nextChunkIndex: 0,
+    status: 'ready'
+  });
+  assert.equal(f.calls.auth, 2);
+  assert.equal(f.calls.model, 1);
+  assert.equal(f.calls.inspect, 1);
+  assert.equal(f.calls.reserve, 0);
+  assert.ok(f.calls.data.includes('novelight_ai_runtime_settings'));
+  assert.ok(!JSON.stringify(r.body).includes(TOKEN));
+});
+
+// Synthetic owner plan contract; no paid model or live connection.
+// prettier-ignore
+test('disabled consent, cost ceiling, foreign owner and malformed plans fail closed', async () => {
+  const changes = (f) => ({
+    query: { novel_id: '41', episode_id: '11' },
+    headers: {
+      ...f.request.headers,
+      'x-novelight-ai-trial-status': undefined,
+      'x-novelight-ai-trial-plan': '1'
+    }
+  });
+  for (const f of [
+    fixture({ offlinePlanEnabled: true, consent: false }),
+    fixture({ offlinePlanEnabled: true, budget: false }),
+    fixture({ offlinePlanEnabled: true, ownerWork: OTHER }),
+    fixture({ offlinePlanEnabled: true, actor: OTHER })
+  ]) {
+    const reply = await f.call(changes(f));
+    assert.equal(reply.statusCode, 404);
+    assert.equal(f.calls.inspect, 0);
+    assert.equal(f.calls.reserve, 0);
+  }
+  const malformed = fixture({
+    offlinePlanEnabled: true,
+    inspect: () => ({
+      novelId: 41,
+      episodeId: 11,
+      chunkCount: 1,
+      nextChunkIndex: 0,
+      status: 'ready',
+      manuscript: 'PRIVATE_MANUSCRIPT'
+    })
+  });
+  const response = await malformed.call(changes(malformed));
+  assert.equal(response.statusCode, 503);
+  assert.ok(!JSON.stringify(response.body).includes('PRIVATE_MANUSCRIPT'));
+  assert.equal(malformed.calls.reserve, 0);
+});
+
+// Synthetic owner plan contract; no paid model or live connection.
+// prettier-ignore
+test('offline browser adapter only stages after plan, and locks ambiguous failure', async () => {
+  const f = fixture({ offlinePlanEnabled: true });
+  let signedIn = true;
+  const client = {
+    auth: {
+      async getSession() {
+        return {
+          data: {
+            session: signedIn
+              ? { user: { id: OWNER }, access_token: TOKEN }
+              : null
+          },
+          error: null
+        };
+      }
+    }
+  };
+  const transport = async (url, options) => {
+    const params = new URL(url, 'https://novelight.jp').searchParams;
+    const headers = Object.fromEntries(
+      Object.entries(options.headers).map(([key, value]) => [
+        key.toLowerCase(),
+        value
+      ])
+    );
+    const input = await f.call({
+      method: options.method,
+      query: params.has('novel_id')
+        ? {
+            novel_id: params.get('novel_id'),
+            episode_id: params.get('episode_id')
+          }
+        : {},
+      headers: {
+        ...headers,
+        host: 'novelight.jp',
+        origin: 'https://novelight.jp',
+        'sec-fetch-site': 'same-origin'
+      },
+      ...(options.body ? { body: JSON.parse(options.body) } : {})
+    });
+    return {
+      ok: input.statusCode === 200,
+      status: input.statusCode,
+      json: async () => input.body
+    };
+  };
+  const make = () =>
+    globalThis.NovelightAiBibleTrialOfflineHttp.createOfflineTrial({
+      enabled: true,
+      ownerId: OWNER,
+      novelId: 41,
+      client,
+      fetcher: transport
+    });
+  assert.equal(
+    globalThis.NovelightAiBibleTrialOfflineHttp.createOfflineTrial({
+      client, ownerId: OWNER, novelId: 41, fetcher: transport
+    }),
+    null
+  );
+  const trial = make();
+  const args = { novelId: 41, episodeId: 11, chunkIndex: 0, token: TOKEN };
+  await assert.rejects(trial.stage(args), /AI_TRIAL_OFFLINE_HTTP_UNAVAILABLE/u);
+  assert.equal(f.calls.reserve, 0);
+  const planned = await trial.inspectPlan(args);
+  assert.equal(planned.nextChunkIndex, 0);
+  assert.equal(f.calls.reserve, 0);
+  assert.equal(trial.cancelPending(), true);
+  await assert.rejects(trial.stage(args), /AI_TRIAL_OFFLINE_HTTP_UNAVAILABLE/u);
+  assert.equal(f.calls.reserve, 0);
+  await trial.inspectPlan(args);
+  const receipt = await trial.stage(args);
+  assert.deepEqual(receipt, {
+    novelId: 41,
+    stagedCount: 1,
+    requiresAuthorReview: true
+  });
+  assert.equal(f.calls.reserve, 1);
+  await assert.rejects(trial.inspectPlan(args), /AI_TRIAL_OFFLINE_HTTP_UNAVAILABLE/u);
+  assert.equal(f.calls.reserve, 1);
+  assert.equal(trial.stop(), true);
+  await assert.rejects(trial.stage(args), /AI_TRIAL_OFFLINE_HTTP_UNAVAILABLE/u);
+  assert.equal(f.calls.reserve, 1);
+
+  const second = make();
+  await second.inspectPlan(args);
+  signedIn = false;
+  await assert.rejects(second.stage(args), /AI_TRIAL_OFFLINE_HTTP_UNAVAILABLE/u);
+  assert.equal(f.calls.reserve, 1);
+});
+
+// Synthetic owner plan contract; no paid model or live connection.
+// prettier-ignore
+test('unknown offline transport outcome cannot resend a possibly paid chunk', async () => {
+  let attempts = 0;
+  const client = {
+    auth: {
+      async getSession() {
+        return {
+          data: {
+            session: { user: { id: OWNER }, access_token: TOKEN }
+          },
+          error: null
+        };
+      }
+    }
+  };
+  const offline = globalThis.NovelightAiBibleTrialOfflineHttp.createOfflineTrial({
+    enabled: true,
+    novelId: 41,
+    ownerId: OWNER,
+    client,
+    fetcher: async (_url, options) => {
+      if (options.method === 'POST') {
+        attempts += 1;
+        throw new Error('SYNTHETIC_PROVIDER_RESULT_UNKNOWN');
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          novelId: 41,
+          episodeId: 11,
+          chunkCount: 1,
+          nextChunkIndex: 0,
+          status: 'ready'
+        })
+      };
+    }
+  });
+  const args = { token: TOKEN, novelId: 41, episodeId: 11, chunkIndex: 0 };
+  await offline.inspectPlan(args);
+  await assert.rejects(offline.stage(args), /AI_TRIAL_OFFLINE_HTTP_UNAVAILABLE/u);
+  await assert.rejects(offline.stage(args), /AI_TRIAL_OFFLINE_HTTP_UNAVAILABLE/u);
+  await assert.rejects(offline.inspectPlan(args), /AI_TRIAL_OFFLINE_HTTP_UNAVAILABLE/u);
+  assert.equal(attempts, 1);
 });

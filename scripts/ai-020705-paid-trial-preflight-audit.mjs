@@ -35,7 +35,7 @@ export function auditAi020705PaidTrialPlan(evidence = {}) {
       e.chunkIndex === 0,
     one_provider_one_call:
       e.provider === 'openai' &&
-      e.model === 'gpt-5.6-luna' &&
+      e.model === 'gpt-6.1-sol' &&
       e.routeCount === 1 &&
       e.maxProviderCalls === 1 &&
       e.fallbackDisabled === true &&

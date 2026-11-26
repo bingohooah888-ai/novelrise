@@ -9,6 +9,7 @@
     "runtime:gate": "node scripts/runtime-gate-entry.mjs",
     "nlo:fast-patch": "node scripts/nlo-fast-patch-gate.mjs",
     "nlo:ai:resume": "node scripts/nlo-ai-phase2-resume.mjs",
+    "nlo:ai:staging:dual-readonly": "node scripts/nlo-staging-dual-session.mjs",
     "nlo:capabilities": "node scripts/nlo-capability-core.mjs",
     "preflight": "npm run preflight:fast",
     "preflight:agent": "npm run runtime:gate -- --phase=implementation && npm run preflight:fix",

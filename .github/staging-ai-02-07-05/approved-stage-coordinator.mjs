@@ -4,7 +4,8 @@
 // The actual workflow does not invoke this without another approval/change.
 import {
   claim020705OwnerApproval,
-  consume020705OwnerApproval
+  consume020705OwnerApproval,
+  verify020705ClaimedOwnerApproval
 } from './owner-paid-trial-ledger.mjs';
 import { run020705SinglePaidTrial } from './paid-trial-cleanup-runner.mjs';
 
@@ -14,7 +15,8 @@ export async function coordinate020705ProtectedStagingTrial({
   approvalCommentId,
   expected,
   runId,
-  now,
+  now = Date.now,
+  ownerLedgerAlreadyClaimed = false,
   guardedProvider,
   request,
   invokeModel,
@@ -23,14 +25,25 @@ export async function coordinate020705ProtectedStagingTrial({
   cleanup,
   finalCensus
 } = {}) {
-  const claimed = await claim020705OwnerApproval({
-    readComments,
-    writeComment,
-    approvalCommentId,
-    expected,
-    runId,
-    now
-  });
+  // The comprehensive Runner claims before synthetic fixture creation
+  // so independent recovery can act before paid admission.
+  // Re-read the real ledger; a flag alone is never proof of a claim.
+  const claimed = ownerLedgerAlreadyClaimed === true
+    ? verify020705ClaimedOwnerApproval({
+        comments: await readComments(),
+        approvalCommentId,
+        expected,
+        runId,
+        now: now()
+      })
+    : await claim020705OwnerApproval({
+        readComments,
+        writeComment,
+        approvalCommentId,
+        expected,
+        runId,
+        now
+      });
 
   let result = 'failure';
   let outcome;
@@ -57,12 +70,17 @@ export async function coordinate020705ProtectedStagingTrial({
   } finally {
     // A consumed approval is never reusable, even if the model timed out,
     // the DB was unavailable or cleanup could not prove the zero census.
-    await consume020705OwnerApproval({
-      writeComment,
-      approvalCommentId,
-      runId,
-      result
-    });
+    // The encompassing Runner owns final consumption in preclaimed mode,
+    // after its independent final census. Failure retains CLAIMED for
+    // independent recovery and still cannot be retried.
+    if (ownerLedgerAlreadyClaimed !== true) {
+      await consume020705OwnerApproval({
+        writeComment,
+        approvalCommentId,
+        runId,
+        result
+      });
+    }
   }
   if (failed) throw new Error(failed);
   return outcome;

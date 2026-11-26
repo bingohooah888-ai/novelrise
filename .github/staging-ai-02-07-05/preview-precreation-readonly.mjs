@@ -210,7 +210,7 @@ export function inspect020705CandidateStagingOffline({
       watchdogPlan.independentZeroCensusRequired !== true ||
       watchdogPlan.stopOnTimeoutRequired !== true ||
       budget?.provider !== 'openai' ||
-      budget?.model !== 'gpt-5.6-luna' ||
+      budget?.model !== 'gpt-6.1-sol' ||
       budget?.currency !== 'JPY' ||
       budget?.maxPosts !== 1 ||
       budget?.noRetry !== true ||

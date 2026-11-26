@@ -14,7 +14,7 @@ const approved = {
   mainSha: SHA, previewDeploymentId: PREVIEW,
   approvalCommentId: 700, runId: 1001,
   actorId: UID, novelId: 41, episodeId: 11,
-  provider: 'openai', model: 'gpt-5.6-luna',
+  provider: 'openai', model: 'gpt-6.1-sol',
   capMicros: 10000000, consentRevision: 'synthetic-test-v1',
   expiresAt: new Date(NOW + 300000).toISOString()
 };
@@ -52,7 +52,7 @@ function observers() {
       expiresAt: approved.expiresAt
     }),
     readBillingProtection: async () => ({
-      provider: 'openai', model: 'gpt-5.6-luna', currency: 'JPY',
+      provider: 'openai', model: 'gpt-6.1-sol', currency: 'JPY',
       providerAccountVerified: true, currentOfficialRatesVerified: true,
       exchangeRateVerified: true, singleAttemptNoRetry: true,
       capEnforcedExternally: true, worstCaseTotalMicros: 2000000

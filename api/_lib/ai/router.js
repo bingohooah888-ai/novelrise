@@ -46,6 +46,10 @@ export function createAiRouter({
   providers,
   routes,
   cache = null,
+  // Optional, server-only post-reservation gate. The existing caller's
+  // authorization and kill switch must be checked AGAIN immediately before
+  // a potentially billable provider invocation (including fallback).
+  beforeProviderAttempt = null,
   enabled = false
 }) {
   if (
@@ -55,6 +59,8 @@ export function createAiRouter({
     typeof budget.settle !== 'function' ||
     !audit ||
     typeof audit.record !== 'function' ||
+    (beforeProviderAttempt !== null &&
+      typeof beforeProviderAttempt !== 'function') ||
     !providers ||
     !routes
   ) {
@@ -157,6 +163,20 @@ export function createAiRouter({
       try {
         for (const route of candidates) {
           selectedRoute = route;
+          // This is OUTSIDE the provider try/catch but INSIDE the settlement
+          // finally. A stop after reserve settles 0, never consumes a model
+          // attempt, and cannot be mistaken for a retryable provider failure.
+          if (
+            beforeProviderAttempt &&
+            (await beforeProviderAttempt({
+              feature,
+              principal,
+              workId,
+              readerScope
+            })) !== true
+          ) {
+            throw new AiRouterError('AI_ACCESS_DENIED');
+          }
           try {
             const result = await providers[route.provider].generate({
               model: route.model,
@@ -210,20 +230,34 @@ export function createAiRouter({
       } finally {
         // On network failure a provider might still bill. Charge the upper
         // bound for uncertain attempts rather than refunding them blindly.
-        await budget.settle({
-          reservationId: reservation.id,
-          chargedMicros: Math.min(ceilingMicros, chargedMicros)
-        });
-        await audit.record({
-          featureKey,
-          actorId: principal.id,
-          workId,
-          provider: selectedRoute?.provider || null,
-          model: selectedRoute?.model || null,
-          chargedMicros: Math.min(ceilingMicros, chargedMicros),
-          cacheHit: false,
-          outcome: response ? 'success' : 'failed'
-        });
+        // Both independent cleanup actions must run even when one backend
+        // fails. A failed settlement must never return model output as if the
+        // paid reservation had been closed; the authoritative durable ledger
+        // remains responsible for reconciliation.
+        let cleanupError = null;
+        try {
+          await budget.settle({
+            reservationId: reservation.id,
+            chargedMicros: Math.min(ceilingMicros, chargedMicros)
+          });
+        } catch (error) {
+          cleanupError = error;
+        }
+        try {
+          await audit.record({
+            featureKey,
+            actorId: principal.id,
+            workId,
+            provider: selectedRoute?.provider || null,
+            model: selectedRoute?.model || null,
+            chargedMicros: Math.min(ceilingMicros, chargedMicros),
+            cacheHit: false,
+            outcome: response && !cleanupError ? 'success' : 'failed'
+          });
+        } catch (error) {
+          if (!cleanupError) cleanupError = error;
+        }
+        if (cleanupError) throw cleanupError;
       }
 
       if (!response) {

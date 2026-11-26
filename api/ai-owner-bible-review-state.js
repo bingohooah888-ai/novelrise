@@ -13,6 +13,7 @@ import { createOfflineOwnerBibleReviewStateApiHandler } from './_lib/ai/owner-bi
 import { createSupabaseOwnerBibleReviewStateRepository } from './_lib/ai/owner-bible-review-state-repository.js';
 import { createOfflineOwnerSessionCheck } from './_lib/ai/owner-session-evidence.js';
 import { createOfflinePrivateSessionReader } from './_lib/ai/owner-private-session-reader.js';
+import { createOfflineServiceRoleSessionLookup } from './_lib/ai/owner-service-role-session-reader.js';
 
 function unavailable(res) {
   return res.status(503).json({ error: 'REVIEW_STATE_UNAVAILABLE' });
@@ -42,6 +43,7 @@ export function createOwnerBibleReviewStateApiHandler({
   createServiceClient = createClient,
   createAuthorClient = createClient,
   lookupOneSession,
+  sessionLookupMode,
   nowEpochSeconds = () => Math.floor(Date.now() / 1000)
 } = {}) {
   let handler = null;
@@ -72,8 +74,14 @@ export function createOwnerBibleReviewStateApiHandler({
     ) {
       return res.status(400).json({ error: 'INVALID_NOVEL_ID' });
     }
+    // Production stays OFF. Restricted RPC is an explicitly selected
+    // Staging-only server dependency, never a browser-provided option.
     if (
-      typeof lookupOneSession !== 'function' ||
+      (typeof lookupOneSession !== 'function' &&
+        sessionLookupMode !== 'restricted_rpc') ||
+      (lookupOneSession !== undefined && sessionLookupMode !== undefined) ||
+      (sessionLookupMode !== undefined &&
+        sessionLookupMode !== 'restricted_rpc') ||
       typeof nowEpochSeconds !== 'function' ||
       typeof createServiceClient !== 'function' ||
       typeof createAuthorClient !== 'function' ||
@@ -83,6 +91,12 @@ export function createOwnerBibleReviewStateApiHandler({
     }
     const config = resolveOwnerNovelBiblePreviewConfig(env);
     if (!config) return unavailable(res);
+    if (
+      sessionLookupMode === 'restricted_rpc' &&
+      config.url !== 'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+    ) {
+      return unavailable(res);
+    }
     if (!handler) {
       try {
         const serviceClient = createServiceClient(
@@ -103,12 +117,16 @@ export function createOwnerBibleReviewStateApiHandler({
           createAuthorClient,
           env
         });
+        const sessionLookup =
+          typeof lookupOneSession === 'function'
+            ? lookupOneSession
+            : createOfflineServiceRoleSessionLookup({ serviceClient });
         const repository = createSupabaseOwnerBibleReviewStateRepository({
           serviceClient,
           checkSession: createOfflineOwnerSessionCheck({
             verifySignedClaims: (token) => serviceClient.auth.getClaims(token),
             readExistingSession: createOfflinePrivateSessionReader({
-              lookupOneSession
+              lookupOneSession: sessionLookup
             }),
             nowEpochSeconds
           })
@@ -156,5 +174,16 @@ export function createOwnerBibleReviewStateApiHandler({
   };
 }
 
-// Vercel uses the default: no session observer, no enablement, HTTP 404.
-export default createOwnerBibleReviewStateApiHandler();
+// Production and ordinary previews remain OFF. The isolated AI 02-07-05
+// Preview can opt in only with its own exact environment flags and Staging
+// Supabase target. The signed-session RPC must already be present and granted
+// on the isolated Staging DB; missing dependencies return 503, never success.
+const isolatedStagingPreview =
+  process.env.VERCEL_ENV === 'preview' &&
+  process.env.NOVELIGHT_AI_020705_STAGING_PREVIEW_ENABLED === 'true' &&
+  process.env.SUPABASE_URL === 'https://wmlzjgvxgoyrovdhbqbg.supabase.co';
+
+export default createOwnerBibleReviewStateApiHandler({
+  enabled: isolatedStagingPreview,
+  sessionLookupMode: isolatedStagingPreview ? 'restricted_rpc' : undefined
+});

@@ -25,8 +25,16 @@ const COUNTS = [
   'usageAudit'
 ];
 
-function build({ badKey = false, killFailed = false } = {}) {
+function build({
+  badKey = false,
+  killFailed = false,
+  heartbeatAge = 1000,
+  observedAge = 0,
+  receiptLifetime = 10000,
+  claimDelay = 0
+} = {}) {
   const calls = [];
+  let clock = NOW;
   const scope = {
     repository: 'bingohooah888-ai/novelrise',
     stagingProjectRef: 'wmlzjgvxgoyrovdhbqbg',
@@ -56,8 +64,22 @@ function build({ badKey = false, killFailed = false } = {}) {
             eq() {
               return this;
             },
-            then(resolve) {
-              resolve({ error: null });
+            select() {
+              return this;
+            },
+            async single() {
+              return {
+                count: 1,
+                error: null,
+                data: {
+                  singleton: 1,
+                  enabled: false,
+                  user_day_cap_micros: 0,
+                  user_month_cap_micros: 0,
+                  global_day_cap_micros: 0,
+                  global_month_cap_micros: 0
+                }
+              };
             }
           };
         },
@@ -119,9 +141,9 @@ function build({ badKey = false, killFailed = false } = {}) {
         runnerConfirmedDead: true,
         controllerIsRunner: false,
         controllerRunId: 2002,
-        observedAtMs: NOW,
-        runnerHeartbeatAtMs: NOW - 1000,
-        expiresAtMs: NOW + 10000
+        observedAtMs: NOW - observedAge,
+        runnerHeartbeatAtMs: NOW - observedAge - heartbeatAge,
+        expiresAtMs: NOW - observedAge + receiptLifetime
       };
       return {
         domain: 'NOVELIGHT_AI_020705_DETACHED_DEATH_V1',
@@ -144,6 +166,7 @@ function build({ badKey = false, killFailed = false } = {}) {
     },
     claimRecoveryOnce: async () => {
       calls.push('claim');
+      clock += claimDelay;
       return true;
     },
     stopModelTransport: async () => {
@@ -162,12 +185,16 @@ function build({ badKey = false, killFailed = false } = {}) {
       calls.push('census');
       return {
         projectRef: scope.stagingProjectRef,
+        userId: synthetic.userId,
+        novelId: synthetic.novelId,
+        approvalCommentId: synthetic.approvalCommentId,
         runtimeDisabledZero: true,
         approvalTombstoneCount: 1,
+        chunkClaimsRetained: 0, // Legacy one-shot fixture has no chunk claim.
         ...Object.fromEntries(COUNTS.map((name) => [name, 0]))
       };
     },
-    now: () => NOW
+    now: () => clock
   });
   return { trial, calls };
 }
@@ -197,4 +224,30 @@ test('failed transport kill attempts runtime stop, but does not delete fixture',
   assert.ok(calls.includes('stop'));
   assert.equal(calls.includes('delete-user'), false);
   assert.ok(calls.includes('census'));
+});
+
+test('fresh terminal proof accepts a historical heartbeat past 15 seconds', async () => {
+  const { trial, calls } = build({ heartbeatAge: 16000, observedAge: 1000 });
+  assert.equal((await trial.recover()).noPaidRetry, true);
+  assert.ok(calls.includes('claim'));
+  assert.equal(calls.at(-1), 'census');
+});
+
+test('expired or overlong death receipt is rejected before claim', async () => {
+  for (const options of [
+    { observedAge: 10000, heartbeatAge: 16000 },
+    { receiptLifetime: 10001, heartbeatAge: 16000 },
+    { heartbeatAge: -1 }
+  ]) {
+    const { trial, calls } = build(options);
+    await assert.rejects(trial.recover(), /AI_020705_DETACHED_STOP_DENIED/u);
+    assert.equal(calls.includes('claim'), false);
+    assert.equal(calls.includes('stop'), false);
+  }
+});
+
+test('claim finishing at receipt expiry leaves claim spent without cleanup', async () => {
+  const { trial, calls } = build({ heartbeatAge: 16000, claimDelay: 10000 });
+  await assert.rejects(trial.recover(), /AI_020705_DETACHED_STOP_DENIED/u);
+  assert.deepEqual(calls, ['independent-death', 'claim']);
 });

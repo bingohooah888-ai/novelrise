@@ -115,6 +115,54 @@ async function ownerTrialReadiness({ env, client, ownerId, novelId }) {
   }
 }
 
+// Strict projection: never send manuscript, budget, session or provider data
+// back to the author UI. This plan is advisory; stage() must recheck all gates.
+// Preserve the strict synthetic transport contract's projection layout.
+// prettier-ignore
+function safeOfflinePlan(value, novelId, episodeId) {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    Object.keys(value).length !== 5 ||
+    Object.keys(value).some(
+      (key) =>
+        ![
+          'novelId',
+          'episodeId',
+          'chunkCount',
+          'nextChunkIndex',
+          'status'
+        ].includes(key)
+    ) ||
+    value.novelId !== novelId ||
+    value.episodeId !== episodeId ||
+    !Number.isSafeInteger(value.chunkCount) ||
+    value.chunkCount < 0 ||
+    value.chunkCount > 64
+  ) return null;
+  const { status, nextChunkIndex, chunkCount } = value;
+  const noWork =
+    (status === 'completed' || status === 'unchanged') &&
+    nextChunkIndex === null;
+  const pending =
+    status === 'ready' &&
+    Number.isSafeInteger(nextChunkIndex) &&
+    nextChunkIndex >= 0 &&
+    nextChunkIndex < chunkCount &&
+    nextChunkIndex < 64;
+  const replan =
+    status === 'replan_required' &&
+    nextChunkIndex === 0 &&
+    chunkCount > 0;
+  const empty =
+    status === 'zero_cost_completion' &&
+    chunkCount === 0 &&
+    (nextChunkIndex === 0 || nextChunkIndex === null);
+  if (!noWork && !pending && !replan && !empty) return null;
+  return { novelId, episodeId, chunkCount, nextChunkIndex, status };
+}
+
 function bearerToken(value) {
   if (typeof value !== 'string') return null;
   const match = value.match(/^Bearer\s+(\S{16,4096})$/i);
@@ -129,7 +177,9 @@ function bearerToken(value) {
 export function createOwnerBibleAnalyzeApiHandler({
   env = process.env,
   createServiceClient = createClient,
-  createTrialBridge = null
+  createTrialBridge = null,
+  // Test/offline-only injection: the deployed default never enables this GET.
+  offlinePlanEnabled = false
 } = {}) {
   return async function ownerBibleAnalyzeApi(req, res) {
     applyAdminSecurityHeaders(res);
@@ -147,8 +197,14 @@ export function createOwnerBibleAnalyzeApiHandler({
     }
     const readiness =
       req.method === 'GET' &&
-      req.headers?.['x-novelight-ai-trial-status'] === '1';
-    if (req.method !== 'POST' && !readiness) {
+      req.headers?.['x-novelight-ai-trial-status'] === '1' &&
+      req.headers?.['x-novelight-ai-trial-plan'] !== '1';
+    const plan =
+      offlinePlanEnabled === true &&
+      req.method === 'GET' &&
+      req.headers?.['x-novelight-ai-trial-plan'] === '1' &&
+      req.headers?.['x-novelight-ai-trial-status'] !== '1';
+    if (req.method !== 'POST' && !readiness && !plan) {
       return fail(res, 405, 'METHOD_NOT_ALLOWED');
     }
     if (!isSameOriginRequest(req)) {
@@ -157,6 +213,7 @@ export function createOwnerBibleAnalyzeApiHandler({
     // Writes require a real Origin and a non-simple trial header.
     if (
       !readiness &&
+      !plan &&
       (typeof req.headers?.origin !== 'string' ||
         req.headers['x-novelight-ai-trial'] !== '1' ||
         !/^application\/json(?:\s*;|$)/i.test(req.headers['content-type'] ?? ''))
@@ -167,10 +224,20 @@ export function createOwnerBibleAnalyzeApiHandler({
     if (!token) return fail(res, 401, 'UNAUTHORIZED');
 
     let input;
-    if (readiness) {
+    if (readiness || plan) {
       const novelId = positiveId(req.query?.novel_id);
-      if (!novelId) return fail(res, 400, 'INVALID_REQUEST');
-      input = { novelId };
+      const episodeId = plan ? positiveId(req.query?.episode_id) : null;
+      const queryKeys = Object.keys(req.query ?? {});
+      if (
+        !novelId ||
+        (plan &&
+          (!episodeId ||
+            queryKeys.length !== 2 ||
+            queryKeys.some(
+              (key) => key !== 'novel_id' && key !== 'episode_id'
+            )))
+      ) return fail(res, 400, 'INVALID_REQUEST');
+      input = plan ? { novelId, episodeId } : { novelId };
     } else {
       let size;
       try {
@@ -224,6 +291,42 @@ export function createOwnerBibleAnalyzeApiHandler({
         return res.status(200).json({ ...approved, trialReady: true });
       }
 
+      if (plan) {
+        // Reuse the existing trusted consent, kill-switch, scope and combined
+        // budget-cap readiness before any unmounted plan inspection.
+        const approved = await ownerTrialReadiness({
+          env,
+          client: serviceClient,
+          ownerId: config.id,
+          novelId: input.novelId
+        });
+        if (!approved || approved.episodeId !== input.episodeId) {
+          return fail(res, 404, 'NOT_FOUND');
+        }
+        const bridge = await createTrialBridge({
+          ownerId: config.id,
+          serviceClient
+        });
+        if (typeof bridge?.inspectPlan !== 'function') {
+          return fail(res, 503, 'AI_TRIAL_UNAVAILABLE');
+        }
+        const projected = safeOfflinePlan(
+          await bridge.inspectPlan({ token, ...input }),
+          input.novelId,
+          input.episodeId
+        );
+        if (!projected) return fail(res, 503, 'AI_TRIAL_UNAVAILABLE');
+        const fresh = await serviceClient.auth.getUser(token);
+        if (
+          fresh?.error ||
+          fresh?.data?.user?.id?.toLowerCase() !== config.id ||
+          env.NOVELIGHT_AI_ENABLED !== 'true'
+        ) {
+          return fail(res, 404, 'NOT_FOUND');
+        }
+        return res.status(200).json(projected);
+      }
+
       const bridge = await createTrialBridge({
         ownerId: config.id,
         serviceClient
@@ -237,16 +340,22 @@ export function createOwnerBibleAnalyzeApiHandler({
         !Number.isSafeInteger(outcome.stagedCount) ||
         outcome.stagedCount < 0 ||
         outcome.stagedCount > 12 ||
-        outcome.requiresAuthorReview !== true
+        !(
+          outcome.requiresAuthorReview === true ||
+          (outcome.stagedCount === 0 &&
+            outcome.requiresAuthorReview === false)
+        )
       ) {
         return fail(res, 503, 'AI_TRIAL_UNAVAILABLE');
       }
-      // Strict response projection: never echo prompts, unpublished text,
-      // provider output, credentials or private creative notes to browsers.
+      // A server-confirmed, already-completed checkpoint returns a strict
+      // zero-work receipt, not a 503 that invites another paid POST. This is
+      // NOT evidence that a concurrent in-flight duplicate was cancelled.
+      // Never echo prompts, unpublished text, secrets or provider output.
       return res.status(200).json({
         novelId: input.novelId,
         stagedCount: outcome.stagedCount,
-        requiresAuthorReview: true
+        requiresAuthorReview: outcome.requiresAuthorReview
       });
     } catch (error) {
       if (

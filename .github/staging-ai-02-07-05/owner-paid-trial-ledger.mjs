@@ -86,7 +86,7 @@ export function inspect020705OwnerLedger({ comments, approvalCommentId, expected
     approved.confirmation !== 'STAGING PAID 1 CALL APPROVED' ||
     approved.approvalScope !== 'synthetic-one-provider-one-call-only' ||
     approved.provider !== 'openai' ||
-    approved.model !== 'gpt-5.6-luna' ||
+    approved.model !== 'gpt-6.1-sol' ||
     approved.stagingProjectRef !== 'wmlzjgvxgoyrovdhbqbg' ||
     !SHA.test(approved.mainSha) ||
     !DEPLOYMENT.test(approved.previewDeploymentId) ||

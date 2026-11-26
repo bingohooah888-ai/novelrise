@@ -271,8 +271,12 @@
 
   // Stable, opaque UI checklist IDs. These are NOT access grants, signed IDs,
   // or authorization for AI candidates. No private heading is sent as a key.
-  function reviewCheckId(title, detail, occurrence) {
-    const source = JSON.stringify([title, detail, occurrence]);
+  function reviewCheckId(title, detail, occurrence, context) {
+    const source = JSON.stringify(
+      context === undefined
+        ? [title, detail, occurrence]
+        : [title, detail, occurrence, context]
+    );
     let first = 2166136261;
     let second = 2246822519;
     for (let i = 0; i < source.length; i += 1) {
@@ -285,6 +289,27 @@
       first.toString(16).padStart(8, '0') +
       second.toString(16).padStart(8, '0')
     );
+  }
+
+  // Include the versioned evidence in a warning's identity. Otherwise an
+  // edited AI candidate could inherit an earlier author's "reviewed" mark
+  // merely because the warning's visible label stayed the same. Sorting
+  // records keeps the identity stable when the preview reorders them.
+  function factReviewContext(group) {
+    const records = [group.confirmed, group.suggestions].map((items) =>
+      items
+        .map((item) =>
+          JSON.stringify([
+            item.id ?? null,
+            item.revision ?? null,
+            item.sourceEpisodeId ?? null,
+            item.payload.summary ?? '',
+            item.payload.evidence ?? ''
+          ])
+        )
+        .sort()
+    );
+    return JSON.stringify([group.kind, group.key, records]);
   }
 
   // A persistence receipt must come from an independently owner-authorized
@@ -346,9 +371,11 @@
     for (const group of payload.facts) {
       const confirmed = group.confirmed ?? [];
       const suggestions = group.suggestions ?? [];
+      const context = factReviewContext(group);
       pending += suggestions.length;
       if (confirmed.length && suggestions.length) {
         checks.push({
+          context,
           title: '確定設定との重複候補',
           detail:
             '「' +
@@ -358,6 +385,7 @@
       }
       if (confirmed.length > 1) {
         checks.push({
+          context,
           title: '複数の確定記録',
           detail: '「' + group.key + '」に確定記録が複数あります。'
         });
@@ -367,6 +395,7 @@
           suggestions.some((record) => !(record.payload.evidence ?? '').trim())
         ) {
           checks.push({
+            context,
             title: 'AI候補の根拠未登録',
             detail: '「' + group.key + '」の未確定候補に引用根拠がありません。'
           });
@@ -380,6 +409,7 @@
         }
         if ([...bySource.values()].some((summaries) => summaries.size > 1)) {
           checks.push({
+            context,
             title: '同一出典の異なる確定記述',
             detail:
               '「' + group.key + '」は同じ出典IDに複数の異なる記述があります。'
@@ -392,9 +422,10 @@
       const identity = JSON.stringify([check.title, check.detail]);
       const occurrence = repeated.get(identity) ?? 0;
       repeated.set(identity, occurrence + 1);
+      const { context, ...visible } = check;
       return {
-        ...check,
-        id: reviewCheckId(check.title, check.detail, occurrence)
+        ...visible,
+        id: reviewCheckId(check.title, check.detail, occurrence, context)
       };
     });
     return {
@@ -581,6 +612,9 @@
     let reviewedIds = new Set(snapshot?.reviewedIds ?? []);
     let revision = snapshot?.revision ?? 0;
     let saving = false;
+    // A failed/ambiguous CAS may have committed despite transport failure.
+    // Never offer a second POST with an unverified revision: reload first.
+    let reloadRequired = false;
     const reviewButtons = [];
     const isCurrentView = () => !target.hidden && target.children?.[0] === wrap;
 
@@ -601,7 +635,7 @@
           '件（保存されません）';
       for (const { button, id } of reviewButtons) {
         const reviewed = reviewedIds.has(id);
-        button.disabled = saving;
+        button.disabled = saving || reloadRequired;
         button.setAttribute('aria-pressed', String(reviewed));
         button.textContent = snapshot
           ? reviewed
@@ -624,7 +658,7 @@
       reviewedButton.type = 'button';
       reviewButtons.push({ button: reviewedButton, id: item.id });
       reviewedButton.addEventListener('click', async () => {
-        if (saving) return;
+        if (saving || reloadRequired) return;
         const next = new Set(reviewedIds);
         if (next.has(item.id)) next.delete(item.id);
         else next.add(item.id);
@@ -651,7 +685,7 @@
           );
           if (
             !verified ||
-            verified.revision <= revision ||
+            verified.revision !== revision + 1 ||
             verified.reviewedIds.length !== next.size ||
             verified.reviewedIds.some((id) => !next.has(id))
           ) {
@@ -663,8 +697,9 @@
           saveStatus.textContent = '確認状態を保存しました。';
         } catch {
           if (isCurrentView()) {
+            reloadRequired = true;
             saveStatus.textContent =
-              '保存に失敗しました。変更は反映していません。';
+              '保存に失敗しました。結果が不明なため再読込して確認してください。';
           }
         } finally {
           saving = false;

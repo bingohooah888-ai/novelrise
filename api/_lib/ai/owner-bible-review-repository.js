@@ -66,6 +66,116 @@ export function createSupabaseOwnerBibleReviewRepository({
   const bible = createSupabaseAiBible({ serviceClient, authorClient });
 
   return Object.freeze({
+    // Stable newest-first keyset page across pending/accepted decisions.
+    // 26th row is lookahead only; it is NEVER returned as a candidate.
+    // No offset scans, schema change, mutation, or user-supplied sort field.
+    async listReviewPage({ actorId, novelId, beforeId = null }) {
+      requireScope(actorId, novelId);
+      if (beforeId !== null && !validId(beforeId)) unavailable();
+      let query = serviceClient
+        .from('novelight_ai_review_candidates')
+        .select(
+          'id,actor_id,novel_id,source_episode_id,source_hash,' +
+            'fact_kind,fact_key,summary,evidence,status,revision'
+        )
+        .eq('actor_id', actorId)
+        .eq('novel_id', novelId)
+        .in('status', ['pending', 'accepted']);
+      if (beforeId !== null) query = query.lt('id', beforeId);
+      const { data, error } = await query
+        .order('id', { ascending: false })
+        .limit(26);
+      if (error || !Array.isArray(data) || data.length > 26) unavailable();
+      const records = data.map(mapRow);
+      if (
+        records.some(
+          (record, i) =>
+            !['pending', 'accepted'].includes(record.status) ||
+            (i > 0 && records[i - 1].id <= record.id) ||
+            (beforeId !== null && record.id >= beforeId)
+        )
+      ) {
+        unavailable();
+      }
+      const rows = records.slice(0, 25);
+      return {
+        rows,
+        nextBeforeId: records.length > 25 ? rows[rows.length - 1].id : null
+      };
+    },
+
+    // Version markers are computed independently of the current page.
+    // A candidate is a revised version only if an earlier candidate with
+    // the SAME actor/work/episode/kind/key has a DIFFERENT source hash.
+    // Keep queries scoped and bounded (at most 25 candidates, five at once).
+    async listPriorVersionIds({ actorId, novelId, candidates }) {
+      requireScope(actorId, novelId);
+      if (!Array.isArray(candidates) || candidates.length > 25) unavailable();
+      const ids = new Set();
+      const matches = [];
+      for (const candidate of candidates) {
+        if (
+          !candidate ||
+          !validId(candidate.id) ||
+          !validId(candidate.episodeId) ||
+          typeof candidate.factKind !== 'string' ||
+          ![
+            'character',
+            'relationship',
+            'location',
+            'world',
+            'timeline',
+            'event',
+            'foreshadowing',
+            'other'
+          ].includes(candidate.factKind) ||
+          typeof candidate.factKey !== 'string' ||
+          !candidate.factKey.trim() ||
+          candidate.factKey.length > 120 ||
+          !SHA256.test(candidate.sourceHash) ||
+          ids.has(Number(candidate.id))
+        ) {
+          unavailable();
+        }
+        ids.add(Number(candidate.id));
+      }
+      for (let start = 0; start < candidates.length; start += 5) {
+        const batch = await Promise.all(
+          candidates.slice(start, start + 5).map(async (candidate) => {
+            const { data, error } = await serviceClient
+              .from('novelight_ai_review_candidates')
+              .select('id')
+              .eq('actor_id', actorId)
+              .eq('novel_id', novelId)
+              .eq('source_episode_id', candidate.episodeId)
+              .eq('fact_kind', candidate.factKind)
+              .eq('fact_key', candidate.factKey)
+              // A rejected prior proposal still proves that an earlier
+              // manuscript version existed. Review decisions must not
+              // determine whether source revisions are related.
+              .neq('source_hash', candidate.sourceHash)
+              .lt('id', candidate.id)
+              .order('id', { ascending: false })
+              .limit(1);
+            if (error || !Array.isArray(data) || data.length > 1) {
+              unavailable();
+            }
+            if (data.length) {
+              if (!validId(data[0]?.id) || Number(data[0].id) >= candidate.id) {
+                unavailable();
+              }
+              return Number(candidate.id);
+            }
+            return null;
+          })
+        );
+        for (const id of batch) {
+          if (id !== null) matches.push(id);
+        }
+      }
+      return matches;
+    },
+
     async listAuthorConfirmed({ actorId, novelId }) {
       requireScope(actorId, novelId);
       const canon = await bible.listOwnerCanon({ actorId, novelId });

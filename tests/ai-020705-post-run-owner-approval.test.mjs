@@ -33,7 +33,7 @@ const approvalPayload = {
   episodeId: 998892072,
   expiresAt: '2026-11-16T12:50:00.000Z',
   mainSha: MAIN,
-  model: 'gpt-5.6-luna',
+  model: 'gpt-6.1-sol',
   novelId: 998892071,
   previewDeploymentId: 'dpl_approved123',
   provider: 'openai',

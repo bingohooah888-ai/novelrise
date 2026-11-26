@@ -4,8 +4,13 @@
 // Live activation requires a separately approved runtime, authenticated
 // author-JWT adapter, explicit consent and atomic budget/storage verification.
 import { createOwnerBibleReviewWorkflow } from './owner-bible-review-workflow.js';
+import {
+  createOfflineOwnerNovelBibleCheckpoint,
+  createSupabaseOwnerNovelBibleCheckpointRepository
+} from './owner-novel-bible-checkpoint.js';
 import { createSupabaseOwnerBibleReviewRepository } from './owner-bible-review-repository.js';
 import { createOwnerNovelBibleModelBridge } from './owner-novel-bible-model-bridge.js';
+import { createOwnerNovelBibleVerifiedHistoryReader } from './owner-novel-bible-verified-history.js';
 import { createAiRouter } from './router.js';
 import {
   createSupabaseAiAudit,
@@ -28,6 +33,9 @@ function workId(value) {
   return value;
 }
 
+// Preserve the existing owner trial lifecycle while injecting a narrow
+// post-reservation server stop gate; no alternate provider pipeline.
+// prettier-ignore
 export function createOwnerNovelBibleTrialRuntime({
   enabled = false,
   externalProcessingApproved = false,
@@ -36,6 +44,10 @@ export function createOwnerNovelBibleTrialRuntime({
   serviceClient,
   createAuthorClient,
   permissionCheck,
+  readVerifiedHistory,
+  checkpointEnabled = false,
+  checkpointRepository,
+  atomicAdmissionEnabled = false,
   providers,
   routes,
   cache = null
@@ -49,12 +61,83 @@ export function createOwnerNovelBibleTrialRuntime({
     typeof serviceClient?.rpc !== 'function' ||
     typeof createAuthorClient !== 'function' ||
     typeof permissionCheck !== 'function' ||
+    (readVerifiedHistory !== undefined &&
+      typeof readVerifiedHistory !== 'function') ||
+    (checkpointRepository !== undefined &&
+      (typeof checkpointRepository?.readSnapshot !== 'function' ||
+        typeof checkpointRepository?.compareAndSwap !== 'function')) ||
+    typeof atomicAdmissionEnabled !== 'boolean' ||
+    (atomicAdmissionEnabled && checkpointEnabled !== true) ||
     !providers ||
     !routes
   ) {
     unavailable();
   }
   const owner = ownerId.toLowerCase();
+  // The offline trial uses the existing authoritative analysis checkpoint
+  // and revision storage, not HTTP-provided previous chapter text. Tests may
+  // inject a synthetic reader; no public route or paid model is enabled here.
+  const historyReader =
+    readVerifiedHistory === undefined
+      ? createOwnerNovelBibleVerifiedHistoryReader({ serviceClient })
+      : readVerifiedHistory;
+  // The existing owner-only bridge remains one-call/one-chunk. A separately
+  // enabled checkpoint journal records only verified successful chunks and
+  // never starts an extra paid call or enables the deployed HTTP endpoint.
+  const checkpoint = checkpointEnabled
+    ? createOfflineOwnerNovelBibleCheckpoint({
+        enabled: true,
+        repository:
+          checkpointRepository ??
+          createSupabaseOwnerNovelBibleCheckpointRepository({ serviceClient }),
+        atomicAdmissionEnabled
+      })
+    : undefined;
+
+  // Reuse the existing durable runtime kill switch and cost ceilings,
+  // not a browser button or an in-memory flag. Missing DB state fails closed.
+  // This gate is read-only; stop/cleanup writers remain independently owned
+  // by the existing Staging-only detached stop and cleanup components.
+  async function runtimeActive() {
+    try {
+      const result = await serviceClient
+        .from('novelight_ai_runtime_settings')
+        .select(
+          'enabled,user_day_cap_micros,user_month_cap_micros,' +
+            'global_day_cap_micros,global_month_cap_micros'
+        )
+        .eq('singleton', 1)
+        .maybeSingle();
+      const row = result?.data;
+      return (
+        !result?.error &&
+        row?.enabled === true &&
+        [
+          row.user_day_cap_micros,
+          row.user_month_cap_micros,
+          row.global_day_cap_micros,
+          row.global_month_cap_micros
+        ].every(
+          (value) =>
+            Number.isSafeInteger(Number(value)) && Number(value) > 0
+        )
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  // Both the trial Router and the downstream candidate/checkpoint bridge
+  // use this permission checker. A stop after a paid response blocks
+  // candidate persistence but never skips Router budget settlement.
+  async function trialPermission(args) {
+    if (!(await runtimeActive())) return false;
+    try {
+      return (await permissionCheck(args)) === true;
+    } catch {
+      return false;
+    }
+  }
 
   async function verifyOwner(token) {
     if (
@@ -100,7 +183,7 @@ export function createOwnerNovelBibleTrialRuntime({
       return false;
     }
     return (
-      (await permissionCheck({
+      (await trialPermission({
         actorId: owner,
         novelId,
         episodeId,
@@ -109,7 +192,77 @@ export function createOwnerNovelBibleTrialRuntime({
     );
   }
 
+  // Reuse exactly the existing authenticated owner/Router/repository
+  // composition for both one-chunk staging and the non-paid plan inspection.
+  // In particular, no author client or budget adapter exists before Auth.
+  async function openOwnerBridge(token, episode) {
+    // Do not instantiate any token-bound author client, Router, budget
+    // adapter, model provider or repository before fresh owner Auth.
+    await verifyOwner(token);
+    const authorClient = await createAuthorClient({
+      token,
+      actorId: owner
+    });
+    if (
+      !authorClient ||
+      authorClient === serviceClient ||
+      typeof authorClient.rpc !== 'function'
+    ) {
+      unavailable();
+    }
+
+    const repository = createSupabaseOwnerBibleReviewRepository({
+      serviceClient,
+      authorClient
+    });
+    const workflow = createOwnerBibleReviewWorkflow({
+      enabled: true,
+      ownerId: owner,
+      authClient,
+      serviceClient,
+      repository
+    });
+    const router = createAiRouter({
+      enabled: true,
+      authorize: (context) => authorize(context, episode),
+      beforeProviderAttempt: async (context) => {
+        // A stop, revoked consent or changed owner during the budget RPC
+        // must block the provider BEFORE the first network request.
+        await verifyOwner(token);
+        return authorize(context, episode);
+      },
+      budget: createSupabaseAiBudget({ serviceClient }),
+      audit: createSupabaseAiAudit({ serviceClient }),
+      providers,
+      routes,
+      cache
+    });
+    const bridge = createOwnerNovelBibleModelBridge({
+      enabled: true,
+      externalProcessingApproved: true,
+      ownerId: owner,
+      authClient,
+      serviceClient,
+      aiRouter: router,
+      reviewWorkflow: workflow,
+      permissionCheck: trialPermission,
+      readVerifiedHistory: historyReader,
+      checkpoint
+    });
+
+    return bridge;
+  }
+
   return Object.freeze({
+    async inspectPlan({ token, novelId, episodeId } = {}) {
+      if (!enabled || externalProcessingApproved !== true) {
+        throw new Error('AI_TRIAL_RUNTIME_DISABLED');
+      }
+      const work = workId(novelId);
+      const episode = workId(episodeId);
+      const bridge = await openOwnerBridge(token, episode);
+      return bridge.inspectPlan({ token, novelId: work, episodeId: episode });
+    },
     async stage({ token, novelId, episodeId, chunkIndex = 0 } = {}) {
       if (!enabled || externalProcessingApproved !== true) {
         throw new Error('AI_TRIAL_RUNTIME_DISABLED');
@@ -123,54 +276,7 @@ export function createOwnerNovelBibleTrialRuntime({
       ) {
         denied();
       }
-
-      // Do not instantiate any token-bound author client, Router, budget
-      // adapter, model provider or repository before fresh owner Auth.
-      await verifyOwner(token);
-      const authorClient = await createAuthorClient({
-        token,
-        actorId: owner
-      });
-      if (
-        !authorClient ||
-        authorClient === serviceClient ||
-        typeof authorClient.rpc !== 'function'
-      ) {
-        unavailable();
-      }
-
-      const repository = createSupabaseOwnerBibleReviewRepository({
-        serviceClient,
-        authorClient
-      });
-      const workflow = createOwnerBibleReviewWorkflow({
-        enabled: true,
-        ownerId: owner,
-        authClient,
-        serviceClient,
-        repository
-      });
-      const router = createAiRouter({
-        enabled: true,
-        authorize: (context) => authorize(context, episode),
-        budget: createSupabaseAiBudget({ serviceClient }),
-        audit: createSupabaseAiAudit({ serviceClient }),
-        providers,
-        routes,
-        cache
-      });
-      const bridge = createOwnerNovelBibleModelBridge({
-        enabled: true,
-        externalProcessingApproved: true,
-        ownerId: owner,
-        authClient,
-        serviceClient,
-        aiRouter: router,
-        reviewWorkflow: workflow,
-        permissionCheck
-      });
-      // Only the bridge sees the request. It must independently verify the
-      // live episode and consent and validate all evidence before staging.
+      const bridge = await openOwnerBridge(token, episode);
       return bridge.stage({
         token,
         novelId: work,

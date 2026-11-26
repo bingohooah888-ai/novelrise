@@ -1887,6 +1887,16 @@ async function actionSupabaseStagingNloReadOnly(request) {
   return JSON.stringify(safe, null, 2);
 }
 
+async function actionNloStagingDualSessionOverlap(request) {
+  ensureNoArgs(request.args);
+  const { runNloStagingDualSessionOverlap } = await import(
+    '../../../scripts/nlo-staging-dual-session.mjs'
+  );
+  // This narrow Staging-only operation permits no arbitrary SQL or writes.
+  const safe = await runNloStagingDualSessionOverlap();
+  return JSON.stringify(safe, null, 2);
+}
+
 async function actionCloudflareNloReadOnly(request) {
   const { runNloCloudflareAction } = await import('./cloudflare-readonly.js');
   const permitted = new Set([
@@ -1909,6 +1919,7 @@ const ACTIONS = new Map([
   ['nlo_workspace_metadata', actionNloWorkspaceMetadata],
   ['supabase_staging_actions', actionSupabaseStagingNloReadOnly],
   ['supabase_staging_action_logs', actionSupabaseStagingNloReadOnly],
+  ['nlo_staging_dual_session_overlap', actionNloStagingDualSessionOverlap],
   ['point10x_stage38_dispatch', actionPoint10xStage38Dispatch],
   ['scout_ro_staging_dispatch', actionScoutRoStagingDispatch],
   ['gsc_index_inspect', actionGscIndexInspect],

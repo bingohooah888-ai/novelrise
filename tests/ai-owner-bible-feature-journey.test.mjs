@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
+import { URL } from 'node:url';
 
 import { createAiRouter } from '../api/_lib/ai/router.js';
 import { createOwnerBibleReviewWorkflow } from '../api/_lib/ai/owner-bible-review-workflow.js';
@@ -149,6 +150,13 @@ function makeJourney({
         .filter((row) => row.status === 'pending')
         .map((row) => ({ ...row }));
     },
+    async listAccepted({ actorId, novelId }) {
+      assert.equal(actorId, OWNER);
+      assert.equal(novelId, 41);
+      return [...state.pending.values()]
+        .filter((row) => row.status === 'accepted')
+        .map((row) => ({ ...row }));
+    },
     async readCandidate({ actorId, novelId, candidateId }) {
       const row = state.pending.get(candidateId);
       return row?.actorId === actorId && row.novelId === novelId
@@ -282,10 +290,19 @@ function makeJourney({
     }
   };
   const fetcher = async (url, options) => {
-    assert.equal(url, '/api/ai-owner-bible-review?novel_id=41');
+    assert.ok(url.startsWith('/api/ai-owner-bible-review?novel_id=41'));
     state.uiRequests.push(options.method);
     if (options.method === 'GET') {
-      const data = await workflow.list({ token: TOKEN, novelId: 41 });
+      const params = new URL(url, 'https://offline.test').searchParams;
+      const transferId = params.get('transfer_candidate_id');
+      const data = transferId
+        ? await workflow.verifyTransfer({
+            token: TOKEN,
+            novelId: 41,
+            candidateId: Number(transferId),
+            expectedRevision: Number(params.get('expected_revision'))
+          })
+        : await workflow.list({ token: TOKEN, novelId: 41 });
       return {
         ok: true,
         async json() {
@@ -315,13 +332,14 @@ function makeJourney({
     bridge,
     workflow,
     root,
-    async attachReviewUi() {
+    async attachReviewUi(onAccepted) {
       return globalThis.NovelightAiBibleReviewActions.attach({
         client,
         doc,
         novelId: 41,
         ownerId: OWNER,
-        fetcher
+        fetcher,
+        onAccepted
       });
     },
     signOut() {
@@ -465,4 +483,36 @@ test('non-owner identity cannot reach the provider or author controls', async ()
   assert.equal(journey.state.modelCalls, 0);
   assert.equal(await journey.attachReviewUi(), false);
   assert.equal(journey.root.children.length, 0);
+});
+
+test('accepted candidate survives author review reload and needs explicit note saving', async () => {
+  const journey = makeJourney();
+  await journey.bridge.stage(request);
+  assert.equal(await journey.attachReviewUi(), true);
+  const firstList = journey.root.children[0].children[1];
+  await firstList.children[0].children[1].listeners.get('click')();
+  assert.equal(journey.state.pending.get(1).status, 'accepted');
+
+  const transferred = [];
+  assert.equal(
+    await journey.attachReviewUi(async (candidate) => {
+      transferred.push(candidate);
+      return true;
+    }),
+    true
+  );
+  const restored = journey.root.children[1];
+  const list = restored.children[1];
+  assert.match(list.children[1].textContent, /確認済み候補/u);
+  assert.match(list.children[2].children[0].textContent, /凛/u);
+  const transfer = list.children[2].children[1].children[0];
+  await transfer.listeners.get('click')();
+  assert.equal(transferred.length, 1);
+  assert.equal(transferred[0].key, '凛');
+  assert.equal(transferred[0].episodeId, 11);
+  assert.match(restored.children[2].textContent, /保存.*押してください/u);
+  assert.deepEqual(journey.state.confirmedCanon, [
+    { kind: 'character', key: '凛' }
+  ]);
+  assert.deepEqual(journey.state.uiRequests, ['GET', 'POST', 'GET', 'GET']);
 });
