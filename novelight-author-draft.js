@@ -101,6 +101,7 @@
       .nl-preview-modal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(18,14,10,.72)}
       .nl-preview-card{width:min(820px,100%);max-height:88vh;overflow:auto;border-radius:16px;background:#fffdf8;padding:30px;box-shadow:0 24px 80px rgba(0,0,0,.24)}
       .nl-preview-kicker{color:#8c775b;font-size:11px;font-weight:900;letter-spacing:.12em}.nl-preview-title{margin:7px 0 22px;font-size:28px;line-height:1.5}.nl-preview-content{white-space:pre-wrap;word-break:break-word;font-size:17px;line-height:2}.nl-preview-close{position:sticky;top:0;float:right;margin:-8px -8px 8px 12px;padding:8px 11px;border:1px solid #d8ccb9;border-radius:8px;background:#fff;font:inherit;font-weight:900;cursor:pointer}
+      .nl-textcheck-title{margin:8px 0 12px;font-size:23px;color:#403123}.nl-textcheck-note{font-size:13px;line-height:1.8;color:#64574a}.nl-textcheck-counts{font-size:12px;font-weight:800;color:#6e5d48}.nl-textcheck-summary{margin-top:18px;font-size:14px;font-weight:900;color:#473426}.nl-textcheck-list{margin:12px 0 0;padding-left:22px;line-height:1.8;color:#50463b;font-size:13px}.nl-textcheck-list li+li{margin-top:8px}
       #scheduleAt.nl-schedule-source{display:none!important}
       .nl-schedule-picker{display:grid;grid-template-columns:minmax(0,1fr) 88px 88px;gap:8px;align-items:center}
       .nl-schedule-picker input,.nl-schedule-picker select{width:100%;min-width:0}
@@ -258,6 +259,14 @@
     });
     preview.addEventListener('click', previewCurrent);
     actions.append(save, preview);
+    if (typeof window.NovelightPrepublishCheck?.openReport === 'function') {
+      const check = document.createElement('button');
+      check.type = 'button';
+      check.className = 'nl-draft-button';
+      check.textContent = '文章チェック';
+      check.addEventListener('click', () => window.NovelightPrepublishCheck.openReport());
+      actions.appendChild(check);
+    }
     tools.append(state, actions, proseHelp);
     buttons.insertAdjacentElement('beforebegin', tools);
     return state;

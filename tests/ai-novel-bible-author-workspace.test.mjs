@@ -876,6 +876,65 @@ test('character dossiers combine exact registry names, aliases and author notes'
   assert.equal(JSON.stringify(payload), before);
 });
 
+test('shared aliases never assign a record to two character profiles', () => {
+  const payload = fixture();
+  payload.characters.push({
+    name: '蒼',
+    aliases: ['青い鍵の持ち主']
+  });
+  payload.characters[0].aliases.push('青い鍵の持ち主');
+  payload.notes.push({
+    type: 'character',
+    title: '青い鍵の持ち主',
+    body: '未分類の人物ノート'
+  });
+  payload.facts.push(
+    {
+      kind: 'character',
+      key: '凛',
+      confirmed: [{ payload: { summary: '一人称は私', evidence: '' } }],
+      suggestions: []
+    },
+    {
+      kind: 'character',
+      key: '青い鍵の持ち主',
+      confirmed: [],
+      suggestions: [
+        { payload: { summary: '鍵を持っていた', evidence: '手に鍵' } }
+      ]
+    }
+  );
+  const before = JSON.stringify(payload);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const profiles = nodes(target, 'div').find(
+    (item) => item.className === 'novelight-ai-workspace-character-profiles'
+  );
+  const profileText = profiles.textContent;
+  assert.match(profileText, /凛／作者確定 1件・AI未確定 0件/);
+  assert.match(profileText, /蒼／作者確定 0件・AI未確定 0件/);
+  assert.match(profileText, /人物を一意に特定できない設定（1項目）/);
+  assert.doesNotMatch(profileText, /鍵を持っていた/);
+  assert.doesNotMatch(
+    profileText,
+    /作者の創作ノート（非公開）：青い鍵の持ち主/
+  );
+  const choose = nodes(profiles, 'button').find(
+    (item) => item.className === 'novelight-ai-workspace-character-focus'
+  );
+  choose.listeners.get('click')();
+  const visible = () => nodes(target, 'article').filter((item) => !item.hidden);
+  const hasKey = (item) => item.textContent.includes('鍵を持っていた');
+  assert.equal(visible().some(hasKey), false);
+  const jump = nodes(profiles, 'button').find(
+    (item) =>
+      item.className === 'novelight-ai-workspace-character-unmatched-focus'
+  );
+  jump.listeners.get('click')();
+  assert.equal(visible().some(hasKey), true);
+  assert.equal(JSON.stringify(payload), before);
+});
+
 test('unmatched character headings remain visible without invented identity', () => {
   const payload = fixture();
   payload.facts.push({
@@ -1540,8 +1599,10 @@ test('save conflicts and late responses never report a persisted confirmation', 
     (node) => node.className === 'novelight-ai-workspace-reviewed-button'
   );
   await button.listeners.get('click')();
-  assert.match(target.textContent, /保存に失敗しました/);
-  assert.match(target.textContent, /保存済みの確認済み：0\/1件/);
+  assert.match(target.textContent, /保存結果を確認できませんでした/);
+  assert.match(target.textContent, /最後に確認できた確認済み：0\/1件/);
+  assert.match(target.textContent, /画面を再読み込み/);
+  assert.equal(button.disabled, true);
   let resolveWrite;
   const late = new Promise((resolve) => {
     resolveWrite = resolve;
