@@ -80,7 +80,7 @@ test('retention comparison uses one cohort and percentage points', () => {
   const comparison = insights.buildRetentionComparison(row);
   assert.equal(comparison.current.rate, 40);
   assert.equal(comparison.current.notYet, 60);
-  assert.equal(comparison.difference, -15);
+  assert.equal(comparison.difference.toFixed(1), '-15.0');
   const text = insights.retentionComparisonText(row, 30);
   assert.match(text, /直近30日/u);
   assert.match(text, /直前30日/u);
