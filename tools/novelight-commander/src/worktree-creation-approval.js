@@ -30,6 +30,27 @@ export function validateCreationApproval({ request, source, approval, now = Date
   return Object.freeze({ requestId: request.requestId, approvalId: approval.id, branch: request.branch, expectedHead: request.expectedHead });
 }
 
+// The creation operation must use the same repository as the existing
+// OWNER-approved Bridge configuration, not merely the inherited cwd/root.
+export async function assertCreationRootBinding(configuredRepoRoot, securityRoot) {
+  if (typeof configuredRepoRoot !== 'string' || typeof securityRoot !== 'string' ||
+      !path.isAbsolute(configuredRepoRoot) || !path.isAbsolute(securityRoot)) fail();
+  const normalize = p => process.platform === 'win32'
+    ? path.resolve(p).toLowerCase() : path.resolve(p);
+  try {
+    const configured = normalize(configuredRepoRoot);
+    const permitted = normalize(securityRoot);
+    if (configured !== permitted) fail();
+    const info = await fs.lstat(configuredRepoRoot);
+    const physical = await fs.realpath(configuredRepoRoot);
+    const permittedPhysical = await fs.realpath(securityRoot);
+    if (!info.isDirectory() || info.isSymbolicLink() ||
+        normalize(physical) !== configured ||
+        normalize(permittedPhysical) !== permitted) fail();
+    return true;
+  } catch { fail(); }
+}
+
 // This directory is derived from the pre-existing local Bridge state path,
 // not supplied by a remote request. Claim is never removed on failure.
 export async function claimCreation(statePath, binding) {
