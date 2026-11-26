@@ -6,7 +6,14 @@ import {
   OFFLINE_TOOL_SMOKE_SCRIPT
 } from '../tools/novelight-commander/src/local-sandbox-package.mjs';
 import { restoreRuntimeUpdate } from '../tools/novelight-commander/src/runtime-update-plan.mjs';
-import { mkdtemp, mkdir, writeFile, readFile, realpath, rm } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  readFile,
+  realpath,
+  rm
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -40,16 +47,24 @@ test('exact detached restore verifies forward delta and refuses wrong approval o
       stdio: ['ignore', 'pipe', 'pipe']
     }).trim();
   try {
-    await mkdir(path.dirname(path.join(runtimeRoot, file)), { recursive: true });
+    await mkdir(path.dirname(path.join(runtimeRoot, file)), {
+      recursive: true
+    });
     await mkdir(configuredRoot);
     git('init');
     git('config', 'user.email', 'nlo-test@example.invalid');
     git('config', 'user.name', 'NLO test');
-    await writeFile(path.join(runtimeRoot, file), 'export const version = 1;\n');
+    await writeFile(
+      path.join(runtimeRoot, file),
+      'export const version = 1;\n'
+    );
     git('add', file);
     git('commit', '-m', 'base');
     const expectedBase = git('rev-parse', 'HEAD');
-    await writeFile(path.join(runtimeRoot, file), 'export const version = 2;\n');
+    await writeFile(
+      path.join(runtimeRoot, file),
+      'export const version = 2;\n'
+    );
     git('add', file);
     git('commit', '-m', 'candidate');
     const expectedHead = git('rev-parse', 'HEAD');
