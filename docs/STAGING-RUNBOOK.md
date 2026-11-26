@@ -32,7 +32,7 @@ NOVELIGHTでは「壊れない」だけでなく「壊れても戻せる」こ�
 | --- | --- | --- |
 | アプリURL / deployment | Vercel Productionとcanonical `NOVELIGHT_APP_URL`。Production bootstrapが対象hostを検証する | 通常実行はVercel `deployment_status` が返す実Preview URLが対象。手動時だけGitHub Repository Variable `STAGING_BASE_URL`をfallback候補にできるが、必ず明示したcommit SHAと照合する。PreviewのStripe戻り先は`VERCEL_URL`から自動導出し、deploymentごとの`NOVELIGHT_APP_URL`重複入力を不要にする |
 | Supabase project URL | approval-scoped GitHub Production値をProduction bootstrapがVercelへ同期し、機能証明する | GitHub Repository Variable `STAGING_SUPABASE_URL`が期待値の正本。Vercel Preview `SUPABASE_URL`は同じprojectを指し、write前に`staging-environment-facts`経由でexact matchを検証する |
-| Supabase schema / migration | `supabase/migrations/*.sql`とProduction migration historyをProduction deploy gateで比較する | `supabase/migrations/*.sql`を望ましいschemaの正本とする。通常のwrite smokeは`verify-staging-schema-capabilities.mjs`で必要なCheckout RPCを既存Staging server credentialから`OPTIONS`確認し、RPC本体を実行せずschema capabilityを証明する。migrationを含むmain pushのProduction migration planでは、承認handoff前に`verify-staging-migration-parity.mjs`でStaging migration historyとの完全一致も別途read-only確認する |
+| Supabase schema / migration | `supabase/migrations/*.sql`とProduction migration historyをProduction deploy gateで比較する | `supabase/migrations/*.sql`をProduction対象schemaの正本とし、既存Stagingに適用済みのSCOUT正式版4件だけを`supabase/staging-migrations/`に固定保存する。通常のwrite smokeは`verify-staging-schema-capabilities.mjs`で必要なCheckout RPCを既存Staging server credentialから`OPTIONS`確認し、RPC本体を実行せずschema capabilityを証明する。migrationを含むmain pushのProduction migration planでは、承認handoff前に`verify-staging-migration-parity.mjs`でProduction対象全件＋固定Staging専用4件に限定したバージョン・SQL SHA-256・バイト数の一致を別途read-only確認する |
 | Supabase browser key | Vercel Production runtime | GitHub `staging` Environment Secret `STAGING_SUPABASE_PUBLISHABLE_KEY`がE2E期待値。Vercel Preview `SUPABASE_PUBLISHABLE_KEY`との一致は値をログへ出さずSHA-256 fingerprintで検証する |
 | Supabase server secret | approval-scoped Production credentialをbootstrapがVercelへ同期 | GitHub `staging` Environment Secretはfixtureとschema capability proof用、Vercel Preview secretはServerless用。公開APIは存在booleanだけを返し、最終的な同一project/権限の成立はschema capability proofとauthenticated E2Eのsemantic proofで確認する |
 | Stripe credentials / Price | Stripe live resourcesが正本。Production bootstrapがVercelへ同期しno-live-charge control proofまで同一承認内で行う | Vercel PreviewはStripe test resourcesのみ。公開factsでsecret key modeが`test`、必要Priceが存在することを先行検査し、billing smokeの`cs_test_` Checkoutとsubscription lifecycleを最終semantic proofとする |
@@ -82,7 +82,17 @@ revisionがまだ一致しない場合だけ短いbounded retryを行う。設�
 
 このgateは、Staging smokeへ新しいManagement API Secretを要求せず、「Checkout APIが500になって初めてRPC不足を推測する」状態を防ぐための早期capability proofである。必要RPCが存在しない、対象RPCがPOST可能として公開されていない、Staging server credentialが使えない、またはProduction projectを指している場合は `SCHEMA_DRIFT` としてfail closedする。
 
-一方、14桁migration version集合の完全一致は、migrationを含むmain pushに対するProduction migration planで `scripts/verify-staging-migration-parity.mjs` を実行して別途確認する。こちらはSupabase Management APIのread-only queryを使用し、Production chat-approval handoffより前にStaging migration historyがrepositoryと完全一致していることを要求する。
+一方、14桁migration version集合の完全一致は、migrationを含むmain pushに対するProduction migration planで `scripts/verify-staging-migration-parity.mjs` を実行して別途確認する。こちらはSupabase Management APIのread-only queryを使用し、Production chat-approval handoffより前にProduction対象migrationがStagingにすべて存在すること、SCOUT正式版4件だけがStaging専用で記録されていて名前・SQL SHA-256・バイト数が一致すること、その他のStaging専有履歴が存在しないことを要求する。
+
+### Staging専用SCOUT migration履歴の例外（固定4件のみ）
+
+- **Production向けの正本は引き続き `supabase/migrations/`**。正式リリース前のSCOUT専用4件（`20261110080421`, `20261111095412`, `20261111103051`, `20261111104317`）をここへ入れない。
+- 上記4件のSQLと元のversion/nameは`supabase/staging-migrations/`に保存し、それ以外の例外を自動追加しない。Staging専用project refは`wmlzjgvxgoyrovdhbqbg`に固定。Production projectへの切替は拒否する。
+- **旧方式はlocal/remoteの14桁versionの全件完全一致**。新方式ではProduction対象migrationの全件存在に加え、Staging専用4件を固定allowlistとして追加して厳格に照合する。余分なversion、欠落、重複、誤ったmigration name、複数statement、SQL SHA-256/byte長不一致、未知のローカルStagingファイルはすべてfail closed。
+- Production migration計画でのread-only照合は`scripts/verify-staging-migration-parity.mjs`が継続担当し、既存Productionのpending完全一致・dry-run・明示承認ゲートを**変更しない**。
+- 専用Staging同期ワークフローだけが、接続先を再検証し既存4件のSQL digest・name・versionをDBにread-onlyで照合した後、実行runner内に4件を一時コピーする。これはGit mainへの追加ではなく、既存remote-only履歴をSupabase CLIが認識するための処理。未知の履歴や不一致は拒否する。
+- 固定4件より古いProduction対象migrationもStagingへ同期可能とするため、Staging専用ワークフローの**既存2回のdry-runと承認済み1回のapplyだけ**に`--include-all`を付ける。直前の**pending完全一致・main SHA/target再検証・pre/postchecks**は従来どおり必須。自動実行やProduction適用を許可する変更ではない。
+- この例外が不要になる正式リリース時には、別承認のMigration計画で例外の解消と復帰方針を決める。安易に履歴を削除・repairしない。
 
 ### migrationを含む変更の昇格順序
 
@@ -96,7 +106,7 @@ migrationを含む変更では次の順序を維持する。
 6. Production migration planはStaging migration historyの完全一致をread-onlyで確認し、PASSした場合だけchat-approval handoffを出す。
 7. freshなProduction承認後もProduction境界のpending一致とdry-runを再確認してから適用する。
 
-Production migration plan側のStaging exact parity再確認は、安全に意味がある重複確認なので削除しない。Staging同期そのものはProduction deploy workflowへ混在させず、Production mutationと別の非Production操作として扱う。
+Production migration plan側のProduction対象全件＋固定4件の厳格なStaging照合は、安全に意味がある再確認なので削除しない。Staging同期そのものはProduction deploy workflowへ混在させず、Production mutationと別の非Production操作として扱う。
 
 ## 自動Read-only smoke
 
@@ -171,7 +181,7 @@ Authenticated Staging smokeはDesktopとMobileで同じFree作者を共有しな
 1. Staging専用Supabase projectを用意する。
 2. Staging専用のpublishable key / server-side secretを使う。
 3. 本番Supabase project ID、service-role/secret keyをStagingに渡さない。
-4. Staging側へ本番と同じmigrationを再現可能な手順で適用し、必要schema capabilityを機械確認する。migrationを含むmain昇格時はProduction migration planでもStaging migration historyの完全一致を確認する。
+4. Staging側へ本番と同じmigrationを再現可能な手順で適用し、必要schema capabilityを機械確認する。migrationを含むmain昇格時はProduction migration planでProduction対象全件＋固定Staging専用4件のみを厳格に照合する。
 5. Stripeはtest modeのみを使用する。
 6. Staging専用Price、Checkout設定を使用する。
 7. GitHub `staging` EnvironmentへStaging専用Secretsだけを登録する。
@@ -192,7 +202,7 @@ Authenticated Staging smokeはDesktopとMobileで同じFree作者を共有しな
 - `STAGING_SUPABASE_SECRET_KEY`
 - `STAGING_SUPABASE_PUBLISHABLE_KEY`
 
-通常のStaging schema capability proofは既存の `STAGING_SUPABASE_SECRET_KEY` を使用し、追加のSupabase Management API SecretをStaging Environmentへ要求しない。migrationを含むmain push時のexact history parityはProduction migration plan側の既存Management API境界でread-only確認する。
+通常のStaging schema capability proofは既存の `STAGING_SUPABASE_SECRET_KEY` を使用し、追加のSupabase Management API SecretをStaging Environmentへ要求しない。migrationを含むmain push時の固定4件含む厳格なhistory parityはProduction migration plan側の既存Management API境界でread-only確認する。
 
 Vercel Deployment Protection用の `VERCEL_AUTOMATION_BYPASS_SECRET` はread-only smokeでも利用するため、GitHub Repository Actions Secretとして管理する。
 
@@ -247,6 +257,6 @@ Stagingを通過しただけで本番変更を自動承認しない。
 - 本番用SecretsとStaging用Secretsが混在していない
 - 復旧手段がある
 
-migrationを含むmain pushでは、Production migration plan自身がStaging exact parityを再確認する。Stagingがcurrent repositoryと一致しない間は、Production chat-approval handoffをREADYとして扱わない。
+migrationを含むmain pushでは、Production migration plan自身がProduction対象全件＋固定Staging専用4件の厳格な一致を再確認する。不一致が1件でもある間は、Production chat-approval handoffをREADYとして扱わない。
 
 本番DB変更、高リスクmain merge、production write smoke等は既存の承認ポイントを維持する。

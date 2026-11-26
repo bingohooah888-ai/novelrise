@@ -2,8 +2,7 @@
 // network client, secrets or workflow trigger. A separately approved protected
 // workflow must inject verified callbacks and the guarded provider; this file
 // must NEVER be used to turn AI on or provision a user.
-import { isPaidTrialOneShotGuardedProvider } from
-  '../../api/_lib/ai/paid-trial-one-shot-provider.js';
+import { isPaidTrialOneShotGuardedProvider } from './paid-trial-one-shot-provider.mjs';
 
 function deny() {
   throw new Error('AI_020705_PAID_RUNNER_DENIED');
@@ -16,6 +15,8 @@ export async function run020705SinglePaidTrial({
   stop,
   cleanup,
   finalCensus,
+  invokeModel,
+  reviewResponse,
   phase = () => {}
 } = {}) {
   if (
@@ -29,6 +30,8 @@ export async function run020705SinglePaidTrial({
     typeof stop !== 'function' ||
     typeof cleanup !== 'function' ||
     typeof finalCensus !== 'function' ||
+    (invokeModel !== undefined && typeof invokeModel !== 'function') ||
+    (reviewResponse !== undefined && typeof reviewResponse !== 'function') ||
     typeof phase !== 'function'
   ) {
     deny();
@@ -36,13 +39,43 @@ export async function run020705SinglePaidTrial({
 
   let callFailed = false;
   let cleanupFailed = false;
+  let review = null;
   try {
     phase('PAID_ONE_SHOT_POST_ATTEMPT');
     // The provider itself claims a unique DB row atomically IMMEDIATELY
     // before its only external POST. No retry or fallback is permitted.
-    const response = await guardedProvider.generate(request);
+    const response = invokeModel
+      ? await invokeModel()
+      : await guardedProvider.generate(request);
     if (typeof response?.text !== 'string' || !response.text.trim()) {
       callFailed = true;
+    } else if (reviewResponse) {
+      // The reviewed synthetic excerpt is never copied into runner logs.
+      // Only four non-content attestation fields may leave this boundary.
+      const checked = await reviewResponse(response.text);
+      const fields = [
+        'candidateCount',
+        'verifiedEvidenceCount',
+        'sourceHash',
+        'responseHash',
+        'accountedMicros'
+      ];
+      if (
+        !checked ||
+        Object.keys(checked).sort().join(',') !== fields.sort().join(',') ||
+        !Number.isSafeInteger(checked.candidateCount) ||
+        checked.candidateCount < 1 ||
+        checked.candidateCount > 12 ||
+        checked.verifiedEvidenceCount !== checked.candidateCount ||
+        !Number.isSafeInteger(checked.accountedMicros) ||
+        checked.accountedMicros < 0 ||
+        checked.accountedMicros > 10000000 ||
+        !/^[a-f0-9]{64}$/u.test(checked.sourceHash) ||
+        !/^[a-f0-9]{64}$/u.test(checked.responseHash)
+      ) {
+        throw new Error('AI_020705_SYNTHETIC_ANALYSIS_INVALID');
+      }
+      review = Object.freeze({ ...checked });
     }
   } catch {
     callFailed = true;
@@ -81,6 +114,7 @@ export async function run020705SinglePaidTrial({
   return Object.freeze({
     outcome: 'one_call_succeeded_and_cleanup_verified',
     provider: 'openai',
-    model: 'gpt-5.6-luna'
+    model: 'gpt-5.6-luna',
+    ...(review ? { review } : {})
   });
 }

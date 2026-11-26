@@ -7,7 +7,7 @@ import {
   inspect020705OwnerLedger
 } from '../.github/staging-ai-02-07-05/owner-paid-trial-ledger.mjs';
 import { run020705SinglePaidTrial } from '../.github/staging-ai-02-07-05/paid-trial-cleanup-runner.mjs';
-import { createPaidTrialOneShotOpenAiProvider } from '../api/_lib/ai/paid-trial-one-shot-provider.js';
+import { createPaidTrialOneShotOpenAiProvider } from '../.github/staging-ai-02-07-05/paid-trial-one-shot-provider.mjs';
 
 const NOW = Date.parse('2026-11-01T08:00:00Z');
 const OWNER = '11111111-1111-4111-8111-111111111111';

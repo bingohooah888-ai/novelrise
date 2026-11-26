@@ -1,7 +1,15 @@
+import { createHash } from 'node:crypto';
+
 // NLO Cloudflare integration: scoped, sanitized read-only operations and
 // approval plans only. NEVER deploy, mutate, store credentials or auto-recover.
 // The live independent Watchdog (Gate A) remains NO-GO.
 const ACCOUNT_ID = '6831b18fe814232fa2dd4c470b95aa15';
+const WATCHDOG = 'novelight-ai-gatea-watchdog';
+const WATCHDOG_NAMESPACE = '015ef5be967f4fbfbad31ab24a22bf26';
+const WATCHDOG_CLASS = 'GateAWatchdogDurableObject';
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const SHA256 = /^[a-f0-9]{64}$/u;
+const MAX_SOURCE_BYTES = 4 * 1024 * 1024;
 const BASE = 'https://api.cloudflare.com/client/v4';
 const PREFIX = 'novelight-ai-gatea-';
 const WORKER_NAME = /^novelight-ai-gatea-[a-z0-9-]{1,60}$/u;
@@ -116,6 +124,69 @@ export function createNloCloudflareReadOnly({
     return safeBody(payload);
   }
   const accountPath = '/client/v4/accounts/' + ACCOUNT_ID;
+  // Hash Cloudflare's raw /content/v2 response locally. This is NOT a
+  // reconstructible hash of the original Wrangler multipart build or A1 files.
+  // Never serialize source bytes, response headers, or API errors to the Bridge.
+  async function hashWorkerContent() {
+    const url = new URL(accountPath + '/workers/scripts/' +
+      WATCHDOG + '/content/v2', BASE);
+    let response;
+    try {
+      response = await fetchImpl(url.href, {
+        method: 'GET',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          Accept: 'application/javascript'
+        },
+        redirect: 'error',
+        signal: AbortSignal.timeout(10000)
+      });
+    } catch {
+      deny('nlo_cf_network_unavailable');
+    }
+    if (!response?.ok || response.status !== 200) {
+      if (response?.status === 401 || response?.status === 403)
+        deny('nlo_cf_content_permission_denied');
+      if (response?.status === 429) deny('nlo_cf_rate_limited');
+      deny('nlo_cf_content_unavailable');
+    }
+    const length = Number(response.headers?.get?.('content-length'));
+    if (Number.isFinite(length) && length > MAX_SOURCE_BYTES)
+      deny('nlo_cf_content_too_large');
+    const type = response.headers?.get?.('content-type') ?? '';
+    if (typeof type === 'string' && /application\/json/iu.test(type))
+      deny('nlo_cf_content_unexpected_type');
+    const hash = createHash('sha256');
+    let bytes = 0;
+    try {
+      if (typeof response.body?.getReader === 'function') {
+        const reader = response.body.getReader();
+        while (true) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          if (!(value instanceof Uint8Array) ||
+              bytes + value.byteLength > MAX_SOURCE_BYTES) {
+            await reader.cancel();
+            deny('nlo_cf_content_too_large');
+          }
+          bytes += value.byteLength;
+          hash.update(value);
+        }
+      } else if (typeof response.arrayBuffer === 'function') {
+        const data = await response.arrayBuffer();
+        if (!(data instanceof ArrayBuffer) || data.byteLength > MAX_SOURCE_BYTES)
+          deny('nlo_cf_content_too_large');
+        bytes = data.byteLength;
+        hash.update(new Uint8Array(data));
+      } else {
+        deny('nlo_cf_content_unreadable');
+      }
+    } catch {
+      deny('nlo_cf_content_read_failed');
+    }
+    if (bytes === 0) deny('nlo_cf_content_empty');
+    return {sha256: hash.digest('hex'), bytes};
+  }
   const result = Object.freeze({
     async account() {
       const d = await request('GET', accountPath);
@@ -207,6 +278,79 @@ export function createNloCloudflareReadOnly({
         source: 'cloudflare_graphql_workers_invocations_adaptive',
         access: 'read_only', rawLogsReturned: false};
     },
+    async watchdogProvenance(expectedContentSha256 = null) {
+      // One exact Worker and namespace only, not a generic content download.
+      if (expectedContentSha256 !== null &&
+          !SHA256.test(expectedContentSha256))
+        deny('nlo_cf_expected_hash_invalid');
+      const list = await result.deployments(WATCHDOG);
+      if (list.truncated || list.deployments.length < 1)
+        deny('nlo_cf_deployment_not_unique');
+      const sorted = [...list.deployments].sort((a, b) =>
+        Date.parse(b.createdOn ?? '') - Date.parse(a.createdOn ?? ''));
+      const active = sorted[0];
+      if (!UUID.test(active?.id ?? '') || !active?.createdOn)
+        deny('nlo_cf_deployment_invalid');
+      const base = accountPath + '/workers/scripts/' + WATCHDOG;
+      const deployment = await request('GET', base + '/deployments/' + active.id);
+      if (deployment?.id !== active.id ||
+          !Array.isArray(deployment.versions) ||
+          deployment.versions.length !== 1 ||
+          deployment.versions[0]?.percentage !== 100 ||
+          !UUID.test(deployment.versions[0].version_id ?? ''))
+        deny('nlo_cf_deployment_version_unverified');
+      const versionId = deployment.versions[0].version_id;
+      const [version, settings, namespaces] = await Promise.all([
+        request('GET', base + '/versions/' + versionId),
+        request('GET', base + '/settings'),
+        result.namespaces()
+      ]);
+      if (version?.id !== versionId ||
+          !Array.isArray(settings?.bindings) ||
+          namespaces.truncated)
+        deny('nlo_cf_version_settings_unverified');
+      const bindingMatches = settings.bindings.filter((b) =>
+        b?.name === 'GATEA_WATCHDOG' &&
+        b?.type === 'durable_object_namespace' &&
+        b?.class_name === WATCHDOG_CLASS &&
+        (!b.script_name || b.script_name === WATCHDOG)
+      );
+      const exportInfo = version.resources?.script_runtime?.exports?.[WATCHDOG_CLASS];
+      const namespaceMatches = namespaces.namespaces.filter((n) =>
+        n.id === WATCHDOG_NAMESPACE &&
+        n.script === WATCHDOG &&
+        n.name === WATCHDOG + '_' + WATCHDOG_CLASS
+      );
+      const bindingVerified = bindingMatches.length === 1 &&
+        settings.bindings.filter((b) => b?.name === 'GATEA_WATCHDOG').length === 1;
+      const sqliteClassVerified =
+        exportInfo?.type === 'durable-object' &&
+        exportInfo.storage === 'sqlite' &&
+        (!exportInfo.state || exportInfo.state === 'created');
+      const namespaceVerified = namespaceMatches.length === 1;
+      const content = await hashWorkerContent();
+      const after = await result.deployments(WATCHDOG);
+      if (after.truncated ||
+          after.deployments.length !== list.deployments.length ||
+          after.deployments[0]?.id !== list.deployments[0]?.id)
+        deny('nlo_cf_deployment_changed_mid_read');
+      const hashMatchesExpected = expectedContentSha256 === null
+        ? null : content.sha256 === expectedContentSha256;
+      return {
+        worker: WATCHDOG, accountId: ACCOUNT_ID,
+        deploymentId: active.id, versionId,
+        contentSha256: content.sha256, contentBytes: content.bytes,
+        contentRepresentation: 'CLOUDFLARE_CONTENT_V2_EXACT_RESPONSE_BYTES',
+        hashMatchesExpected, expectedComparableSourceRequired: true,
+        originalA1HashesDirectlyComparable: false,
+        bindingVerified, sqliteClassVerified, namespaceVerified,
+        rollbackCandidateVersionId: versionId,
+        rollbackEligibility: 'NOT_VERIFIED_BY_READ_ONLY',
+        recoveryAuthorized: false, liveRecoveryAuthorized: false,
+        gateA: 'NO_GO', access: 'read_only',
+        sourceReturned: false, secretsReturned: false
+      };
+    },
     async watchdogStatus() {
       const [a, b] = await Promise.all([result.workers(), result.namespaces()]);
       const hasWorker = a.scripts.some((x) => x.name === PREFIX + 'watchdog');
@@ -273,6 +417,11 @@ export async function runNloCloudflareAction({
   if (action === 'cloudflare_do_object_count') {
     ensureArgs(args, ['namespaceId']);
     return client.objects(args.namespaceId);
+  }
+  if (action === 'cloudflare_watchdog_provenance') {
+    if (!exact(args, []) && !exact(args, ['expectedContentSha256']))
+      deny('nlo_cf_invalid_args');
+    return client.watchdogProvenance(args.expectedContentSha256 ?? null);
   }
   if (action === 'cloudflare_watchdog_status') {
     ensureArgs(args, []);

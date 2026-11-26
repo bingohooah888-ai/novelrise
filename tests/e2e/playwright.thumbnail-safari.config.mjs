@@ -7,6 +7,7 @@ export default defineConfig({
   testMatch: [
     'thumbnail-safari-png-fallback.spec.js',
     'episode-illustrations-webkit.spec.js',
+    'reader-text-autosize.spec.js',
     'author-cover-safari-png.spec.js'
   ],
   outputDir: 'test-results',

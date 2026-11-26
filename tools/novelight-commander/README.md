@@ -65,6 +65,32 @@ gh_pr_checks / gh_run_list / supabase_migration_list / vercel_list
 
 read_novel / read_novel_cached / get_novel_cache / list_novel_cache / read_audit
 
+## Supabase Staging Branchデプロイ履歴・失敗ログ診断（未接続／既定OFF）
+
+既存のNLO MCPとOwner専用GitHub Issue Bridgeに、次の読み取り専用ツールを用意する。
+
+- `supabase_staging_actions`：公式Management API `GET /v1/projects/wmlzjgvxgoyrovdhbqbg/actions` を使い、対象Stagingのaction run日時・ステップ・結果だけを取得
+- `supabase_staging_action_logs`（`runId`指定）：同じStaging Branchの実行一覧から該当runを確認した後、公式API `GET /v1/projects/wmlzjgvxgoyrovdhbqbg/actions/{run_id}/logs` の失敗を分類
+
+検証対象は固定のStaging Branch ref `wmlzjgvxgoyrovdhbqbg`、Branch UUID `4ea5dd93-4032-4d53-8b4f-46bef5cb50d2`。Production `fiepaguycecrredwrcwx` のAPI/DBへ接続しない。取得ログは全文・SQL・ユーザー情報・メール・トークン・秘密・不明フィールドを返さず、定義済みカテゴリ、非秘密の14桁Migration版番号、SQLSTATE、行数に限定する。ログ本文はメモリ内で捨て、ファイルやGitHub Issueに保存しない。未知の実行や別Branchのrunは拒否し、HTTP 401/403/429、API形状違いは再試行せず停止する。
+
+実API利用は別承認まで禁止。NLOを最新版へ更新する前に今回のDraft PRを審査・本番統合する必要がある。オフラインではモック応答でのみテストする。
+
+```text
+# NLO稼働マシンの既存ローカル資格のみ（Git / Issue / Chatには秘密値を渡さない）
+NLO_SUPABASE_STAGING_READONLY_ENABLED=false
+NLO_SUPABASE_STAGING_PROJECT_REF=wmlzjgvxgoyrovdhbqbg
+# SUPABASE_ACCESS_TOKEN は既存のManagement API用ローカル環境に既にある場合のみ再利用
+```
+
+実読取を行う前に、`NLO_SUPABASE_STAGING_READONLY_ENABLED=true` への変更と対象runを個別に承認する。Management APIの権限は `action_runs_read`（OAuthの場合 `environment:read`）。既存ローカルManagement APIトークンをNLOから参照できなければ認証不足のためNO-GO。既存の `NOVELIGHT_COMMANDER_SUPABASE_SERVICE_ROLE_KEY`、Supabase publishable/anon key、GitHub PAT、`CONTROL_PLANE_API_KEY`は代用禁止。追加トークンの作成やSecret変更は今回の作業に含めない。
+
+`actions`のAPIがBranch refを受け付けない、対象Branch UUIDを検証できない、デプロイログ権限を返さない場合は**別refへの自動切替を行わない**。特に親Production refへのfallbackは禁止。NLOの機能実装・合成テストと実Staging診断成功を混同しない。
+
+公式仕様：
+- https://supabase.com/docs/reference/api/v1-list-action-runs
+- https://supabase.com/docs/reference/api/v1-get-action-run-logs
+
 ## Cloudflare独立WatchdogのNLO連携（Gate A、読み取り専用）
 
 `cloudflare_account` / `cloudflare_workers` / `cloudflare_durable_objects` / `cloudflare_worker_deployments` / `cloudflare_worker_observability` / `cloudflare_worker_metrics` / `cloudflare_do_object_count` / `cloudflare_watchdog_status` / `cloudflare_plan_change` がNLO直接MCPとIssue Bridgeで使用できます。

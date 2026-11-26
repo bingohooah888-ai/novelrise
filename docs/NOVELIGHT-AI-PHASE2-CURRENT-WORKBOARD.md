@@ -1,13 +1,201 @@
 # NOVELIGHT AI 工程②（02-07-05）— 継続用・唯一の現状ボード
 
-**最終内容確認：2026-11-09 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
+**最終内容確認：2026-11-11 JST／Git追跡の継続ボード（source_mainは監査時点の基準SHA）。** 次のチャットでこの文書を必ず最新main・MASTER・AGENTSと照合してから使用する。ここに書かれた過去の承認は再利用不可。これは新たなCloudflare／Staging／Production実行承認ではない。
 
 <!-- CONTINUITY_FINGERPRINT_START -->
-source_main: 9e7edb66cb83c061b048c2873450d3e50b6e8be3
-source_master_blob: 91d11fa367b7de64990b13397b13d4bb6e3c0230
+source_main: 545042b9429d1023ea1488a15188c45b8497012c
+source_master_blob: e2501f9ed0722964e76fd0a49bf200717850b81d
 phase: 02-07-05
-last_reviewed_jst: 2026-11-09
+last_reviewed_jst: 2026-11-11
 <!-- CONTINUITY_FINGERPRINT_END -->
+
+## 2026-11-11 NLO恒久機能追加（Supabase Stagingデプロイ履歴・失敗ログ診断／新Draft）
+
+- **基準**：main `545042b9429d1023ea1488a15188c45b8497012c`（PR #2850統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 不変。旧ボードの#2850未統合記述は履歴であり最新状態ではない。
+- **主要な実装**：NLO `tools/novelight-commander` の直接MCPとOWNER専用GitHub Bridgeへ `supabase_staging_actions` / `supabase_staging_action_logs` を追加。公式Management API `GET /v1/projects/{ref}/actions` / `GET /v1/projects/{ref}/actions/{run_id}/logs` の静的GETだけを利用。Staging `wmlzjgvxgoyrovdhbqbg` と既知Branch UUIDへ固定。Production `fiepaguycecrredwrcwx` は接続不可。ログ原文・SQL・個人情報・Secretは返さず、確定済みrunのステップ、エラー分類、SQLSTATE、Migration版番号だけを返す。
+- **資格と権限**：既存ローカルのManagement API用 `SUPABASE_ACCESS_TOKEN` が利用でき、`action_runs_read` 権限がある場合のみ。新しいtoken生成、GitHub PATやservice_roleの代用、資格値の出力、今回のSecret追加は不可。`NLO_SUPABASE_STAGING_READONLY_ENABLED` は既定false。別の実Staging読取承認とNLOローカル更新までOFF。
+- **試験／未実証**：現Draftは一切の実Management API・Staging DBを呼ばず合成応答で認証拒否、対象Branchのrun限定、他Branch/Production拒否、ログ漏洩、401/403/429、本文容量上限、API形状不一致を検証。実APIがStaging refを受け付けるか、資格がNLO稼働プロセスに存在するか、`action_runs_read` が承認されているか、現行Branchの実失敗ログが残っているかは**未確認**。
+- **継続**：このDraftはmain未統合・NLO未展開。PRのmain統合、Vercel Production自動デプロイ可能性、ローカルNLO更新、実API読取は別の承認境界。Preview新規作成、DBクエリ、Migration実行・repair、Secret変更、実JWT、有料AI、Watchdog/Runner実稼働禁止。AI正式Gate A〜E **0/5**。
+
+
+## 2026-11-11 継続：確認状態Staging接続前の権限・Migration・rollback一括監査（Draft未統合）
+
+- **基準と統合後証跡**：main `fe1f5fffaf738d3fea1ee78959bc07598fce207a`、PR #2848統合済み、CodeQL run #43003951093 SUCCESS、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 不変。過去段落の「新Draft／未統合」は当時の履歴であり現在状態ではない。
+- **既知Migration分岐**：Staging ref `wmlzjgvxgoyrovdhbqbg` のremote-only `20261110080421`（SCOUT）とmain local-only `20261110172000`（作者閲覧維持）は過去の読取診断証拠。現行Staging再取得は未承認のため行わない。既存 `scripts/audit-staging-migration-recovery.mjs` を活用し、両方向差分と修復禁止を維持。
+- **SQL権限の具体的P0**：PostgreSQL `FOR SHARE` には対象テーブル列のSELECTだけでなくUPDATE権限が必要。`service_role` のRLS bypassと `auth.sessions` の参照・ロック可否は別。現行の確認状態PROPOSALには `service_role` のauth schema usage、auth.sessionsのid/user_id SELECT・UPDATE（ロック用）、novelsのSELECT・UPDATEを事前に検証するfail-closedガードを追加。権限自動追加・SECURITY DEFINER化・Auth Data API公開はしない。
+- **オフラインでの実装**：service_role readerは確認状態のread後、返却直前にも `novels(id,user_id)` の作品所有権を再検証する。`reports/sql/novelight_ai_owner_review_state_READONLY_PREFLIGHT.sql` はauth行／JWTを取得せず権限booleanだけを返す未実行SELECT。`reports/sql/novelight_ai_owner_review_state_ROLLBACK_PROPOSAL.sql` は孤立Stagingの空テーブルに限定した未実行の別途破壊的承認必須案（DROP CASCADEなし）。関連合成テストと `docs/NOVELIGHT-AI-PHASE2-REVIEW-STATE-STAGING-READINESS.md` を追加。
+- **次の承認候補S0**：隔離Staging `wmlzjgvxgoyrovdhbqbg`、その時点のexact SHAを条件に、①Migration history **版番号のみ**読取1回、②pg_catalog権限SELECT **1回**、合計2回まで。Preview/JWT/SQL mutation/DB書込/AIはゼロ。移行履歴不一致または権限不足・対象違いならNO-GOとし修復は別承認。S1/S2のStaging write・Migration・実JWTと本番公開はこの承認に含まない。Gate A〜Eは **0/5**。
+- **今回禁止の境界**：main統合、Preview生成、Staging/Production設定・データ変更、DB接続、Migration実行/repair、Secret、実Auth/JWT、有料AI、Watchdog/Runner、本番API有効化を行わない。S0でも対象プロジェクトと承認条件を再照合し、ログから個人情報・Secretを排除する。
+
+
+
+## 2026-11-11 継続：作品カルテ確認状態の永続化用SQL提案・service-role CAS repository・既存セッション検証接続を一括オフライン実装（新Draft）
+
+- **最新正本**：main `a3da5374ea31da483da17c3701e476c2813b8f2c`（PR #2846 squash統合済み）。MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 不変。継続ボードの旧PR未統合記述は履歴。過去の本番承認は再利用しない。
+- **SQL設計のみ・未適用**：`reports/sql/novelight_ai_owner_review_state_PROPOSAL.sql` は **Migrationではない**。専用 `novelight_ai_owner_review_states`（actor_id+novel_id主キー、revision、最大100件のreviewed_ids、novels外部キー）、service_role以外の権限剥奪、RLS有効化、SECURITY INVOKERでservice_role専用 `novelight_ai_owner_review_state_cas` の原子的初回INSERT/UPDATEを設計。`FOR SHARE`でnovels所有者と `auth.sessions(id,user_id)` の行を保護し、トランザクション内のrevision比較と衝突時0行返却を定義。実DBのSQL構文・実権限・ロック挙動は**未実証**。
+- **永続化repository**：新規 `api/_lib/ai/owner-bible-review-state-repository.js` は、既存AI候補保存と同じservice-role限定のSupabase `.from` / `.rpc` パターンに準拠し、作者本人・作品ID・署名付きセッション証拠・妥当なIDとrevision・RPC返却値の形式を検証。bearerはRPCへ送らず、署名済みsession_idのみサーバー内で渡す。競合時はnull、拒否・異常応答では失敗として扱う。`api/_lib/ai/owner-bible-review-state-offline.js` がtokenをrepositoryへ非公開注入し、既存のサーバー側認可も維持。
+- **サーバー接続**：新規 `api/_lib/ai/owner-bible-review-state-offline-wiring.js` は既存 `createOfflineOwnerSessionCheck` / `createOfflinePrivateSessionReader` と、署名・発行者等を検証すべき `serviceClient.auth.getClaims`、権限限定 `lookupOneSession`（存在booleanのみ）、trusted server clock、既存Owner workflowを合成接続。public `api/*.js` と `story-notes.html` はimportしない。default OFF。実 `lookupOneSession` とprivileged session observerは**未供給**。
+- **合成検証**：初回revision0→1、2回目更新、競合、他作者・違う作品、旧revision、不正ID、欠落権限、署名不正、セッション失効（読取り中も含む）、RPCエラー、偽造receipt、ユーザー向けプレビュー・候補採否の分離、SQL権限・RLS・セッションロック・Migration非混入をテスト。環境を伴うSQL/RLS/本番接続の動作実証ではない。
+- **継続的禁止と次工程**：本Draftをmainへ統合しない。Preview生成、実DB書込、Migration/repair、Staging/Production、実JWT、Secret変更、有料AI、Runner/Watchdog稼働、公開API有効化を行わない。Supabase Previewの既知migration divergenceはREAD ONLY。`auth.sessions`のservice_role参照権限とPostgres上の実CAS/RLS、実作者JWT、公開ルート・フラグ、Staging実動作の証拠は独立承認までNO-GO。正式Gate A〜Eは **0/5**。
+
+
+
+## 2026-11-11 継続：作者「確認済み」状態のサーバー側CAS・Owner HTTP／Browser契約をオフライン一括実装（新Draft）
+
+- **正本・対象**：main `9546af76e6b1100737c17966312440fd9077da69`（PR #2845統合済み）。MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 不変。新規隔離branchから1 Draft PRのみ作成し、本番・Preview・Staging・DB・Secretは変更しない。
+- **既存部品の再利用**：既存の作者作品カルテ `localReviewSummary` による同じ確認ポイントIDをサーバー側でも計算。既存 `createOwnerBibleReviewWorkflow` と同様に `auth.getUser(token)`、管理人ID allowlist、`novels(id,user_id)` の作品所有権再確認を利用した専用の未mount workflowを実装。`readOwnerPreview` はクライアント申告ではなく独立して作品所有権を確認するサーバー専用readerとして注入する。既存AI候補の `accepted/rejected` は作者の「確認済み」と意味が異なるため、`novelight_ai_review_decide` を転用しない。
+- **作者体験の一括実装**：`GET`で `version:1,novelId,revision,reviewedIds` だけを取得し、本人／作品／現在の確認ポイントIDを照合して復元。`POST`は明示操作・現在のrevision・100件以下の妥当なIDを要求。保存前に認証再確認し、保存repositoryの原子的 `compareAndSwap` 契約へ引き渡す。旧revision不一致、同時書込負け、古い確認ポイント、別作者・別作品、権限失効では失敗を返し、保存成功と誤表示しない。確認済みはAI候補の採用や正式設定への転記ではない。
+- **HTTP／Browserオフライン接続**：新規 `api/_lib/ai/owner-bible-review-state-offline-api.js`（公開API未mount・既定OFF）は明示フラグ2件と `enabled=true` を要求し、Same-Origin、Bearer、POST Origin・追加ヘッダ、JSON形式・上限を検査。`novelight-ai-bible-owner-review-state-offline-http.js` も未importの独立モジュールで、作者・トークン一致の前後確認、GET/POST、409競合検出を行う。既存 `OwnerStudio.attach` → `OwnerPanel.createOfflineReader` → `AuthorWorkspace.render` への任意注入を使い、架空作者の保存・再開を一連で検証。`story-notes.html` 等公開UIは変更なし。
+- **未完成・未実証**：実保存テーブル／transactional RPC・DB/RLS、実 `auth.sessions` 有効性確認、実作者JWT、実HTTP route、Preview、Staging、本人試用、AI Providerは未接続。`readSnapshot` / `compareAndSwap` は将来の永続化driverの注入口のみ。同時CASの証明は合成メモリrepositoryであり、今回のコードだけで実データは保存されない。Productionの機能スイッチはOFF。正式Gate A〜Eは **0/5**。
+- **残工程**：専用の原子的永続化repository＋DB/RLSを別途承認のうえ整備し、既存の実セッション検証・所有権RPCと結線してStaging実JWT／ブラウザ検証／Gate A〜Eへ進む。Supabase Previewの既知Migration分岐は **READ ONLY**、修復・再実行なし。新DraftのCI・CodeQL結果を実証正本とし、main統合は禁止。
+
+
+
+## 2026-11-11 継続：作者チェックリストの再開契約と保存失敗時表示を一括オフライン接続（本Draftのみ）
+
+- **起点**：main `1d3f3f3cae61cbe0e06682ff06e6aeed8f4ca882`（PR #2844統合済み）。MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 不変。隔離ブランチで実装し、main/Production・Preview・Stagingは変更しない。
+- **機能**：既存の確認ポイントへ安定したopaque UI IDを割り当て、作者の確認済みID・作品ID・revisionを検証する。元データが変化して古い確認ポイントが消えた場合、無関係な確認済みを転用しない。独立して認可される外部保存Reader/Writerを明示注入したときだけ保存・再開・CAS receiptの検証を行う。保存失敗・版競合・セッション変更時に保存成功や確認状態を偽表示しない。注入なしでは従来どおり「画面だけの確認済み（保存されません）」。
+- **接続範囲**：既存AuthorWorkspace→OwnerPanel.createOfflineReader→OwnerStudio.attachの注入契約を再利用。studio側で毎回本人と同一セッションを確認し、作者画面・本番HTMLには注入しない。AI抽出候補の自動確定・本文変更はしない。既存章ナビ・owner preview・offline HTTP・認証基盤の作り直しなし。
+- **未実装・未実証**：実保存repository、サーバーCAS書込、DB/RLS、実JWT/session capability、新owner review HTTP route、story-notes.html mount、実Staging browserは別途実装・承認が必要。本Draftは外部実接続・有料AI・Production変更なし。正式Gate A〜Eは0/5、Supabase Preview既知Migration不一致はREAD ONLY維持。
+- **テスト**：snapshotの所有作品一致、ID安定性、古い項目除外、保存成功・失敗・revision競合、reload/dispose、別Owner切替、非永続モード回帰、機密を返さないことを合成fixtureで局所検証。CI/CodeQLは新Draft HEADの実際の結果を正本とする。
+
+
+## 2026-11-11 継続：作者が章→話数→出典記録へ絞り込む操作をオフライン改善（本番未接続・新Draft）
+
+- **正本**：main `2df08620f917de3935eeda21f287f00bc994f80b`（PR #2843は統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d` 変更なし、main CI/CodeQL SUCCESS。Vercel Productionは既存 `600b8855682b5ab562f57d1c26b102d4d7fb6ded` READY、test-only最新mainのビルドは既存ignore stepにより意図的CANCELED。
+- **機能ギャップと優先順位**：
+  1. **P0 本Draftで改善**：既存作者作品カルテでは話数選択欄が章選択より先に出ており、章を選択しても全章の話数が残る。既存 `AuthorWorkspace.render` のみ調整し、章→当該章の出典話数だけ表示、章未設定にも対応、章変更で古い選択を解除、フォーカスとクリアでも選択肢を同期。未参照の話は追加しない。
+  2. **P1 本Draftで改善**：出典別記録の「同じ見出しを検索」は残しつつ、検証済み章・話数が存在する記録には**出典話数限定のフォーカスボタン**を追加。同じ見出しの別話記録を混入させない。本文ページへの遷移や編集、保存はしない。
+  3. **P2 次回の判断**：画面だけのレビュー確認は現在非永続。確認結果を保存・再開する作者体験は別の永続化契約と実Auth/DB/RLS承認が必要。未承認なので新しい保存/SQLを推測で作らない。
+  4. **P3 公開直前の必須接続**：既存 `OwnerStudio`・`OwnerPanel`・owner-only GETと章情報HTTP offline readerは合成で連結済み。本番 `story-notes.html` の章情報Reader未mount、サーバー `lookupOneSession` 実capability欠如。実JWT・権限限定session lookup・RLS・作者HTTPルート・Staging確認と正式Gate A〜Eは未実証0/5。
+- **安全/範囲**： `novelight-ai-bible-author-workspace.js` と関連表示テストのみのUI変更。既存UIや作品カルテGETは作り直さない。 `story-notes.html`、`OwnerStudio`、`OwnerPanel`、公開API、AI Runner/Watchdog、Workflow、Migration、Secretを変更しない。章情報は既存のサーバー認可済み投影だけを使用し、候補の確定・原稿読取・課金・外部通信は行わない。既定OFF・OFFLINE preflight only。
+- **検証**：既存章の表示順、章ごとの話数候補、未設定章、出典別ショートカット、全解除、別章非表示、元データ不変を合成fixtureで確認。CI・CodeQLは本DraftのHEADを正本とする。Supabase Previewの既知Migration不一致はREAD ONLY。Preview生成、DB書込/修復、実JWT、Staging/Production、本番API有効化、main統合は承認なしに行わない。
+
+
+
+## 2026-11-11 継続：作品カルテ実GET＋章情報GETの接続部品をオフライン完成（新Draft・本番未mount）
+
+- **正本**：main `7c58b707270d1c7e1e29253e0fbc0c686dfb0563`（PR #2840統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`（不変）、mainのNOVELIGHT CI/CodeQL SUCCESS、Vercel Production同SHA READY。
+- **サーバー側の残接続**：新規 `api/_lib/ai/owner-bible-outline-offline-wiring.js` は既存 `createOwnerNovelBiblePreviewHandler` から本人認証・作品所有者検証済みプレビューを**サーバー内だけで**取得するReaderを合成し、PR #2838の未mount `createOfflineOwnerBibleOutlineApiHandler` へ渡す。既存 `owner-bible-offline-navigation`、`owner-outline-internal-adapter`、`owner-session-evidence`、`owner-private-session-reader` をそのまま再利用。`serviceClient.auth.getClaims(token)` と、**独立してサーバー側で許可されるべき** `lookupOneSession` (exact session ID + actor IDのboolean attestation) を注入する。新しい認証基盤／AuthDBアクセス／SQLは追加していない。
+- **作者HTTP境界**：新規 `novelight-ai-bible-owner-outline-offline-http.js` は必ず明示注入された `fetcher`＋`client.auth.getSession`＋`enabled=true` を要する任意のReader。固定Same Origin `GET /api/ai-owner-bible-outline?novel_id=...` を模擬環境のみで読取り、作品ID/返却列を検証し、途中で作者/トークンが変わればnullを返す。プレビューを作者が自己申告する権限grantには使わず、既存Studio/Panel/Workspaceの認可・表示を維持。本文や下書きタイトル・セッション内部情報を渡さない。
+- **実装・安全境界**：新ファイルはそれぞれ `api/_lib` と**本番HTMLからimportされない独立ブラウザモジュール**。公開 `api/*.js`、`story-notes.html`、`OwnerStudio`、`OwnerPanel`、Workflow、Migrationは変更なし。サーバー `enabled=false` が初期値で、OFFLINE PREFLIGHT ONLY維持。本番API有効化・実JWT/DB/通信接続なし。作者向け実利用は未提供。
+- **合成fixture検証**：既存preview handlerでの本人・所有権確認→ `getClaims` と `lookupOneSession`（合成）→作者RPC二重読取（合成）→サニタイズ済み章列をReaderのHTTPレスポンスとして受信→`OwnerStudio.attach`→既存の章・話UI→ログアウト/失効時旧データ消去までの一括オフライン導線を検証。初期無効、匿名/別作品、欠損能力、署名NG、セッション失効、異常レスポンス、トークン変更も検証。テスト結果は本DraftのCI/CodeQL証拠参照。
+- **未接続／未実証**：実環境の権限限定 `auth.sessions` boolean observerは**未実装**（本ファクトリーには注入口のみ）。実Supabase `auth.getClaims` の署名/発行者/時刻/失効証拠、StagingのRLSやRPC、実JWT、作者HTTPルート、実ブラウザ表示、有料AIは一切確認していない。正式Gate A〜E **0/5**。実公開の別承認が必要。
+- **Supabase Preview読み取り専用**：Staging-only `20261110080421`（SCOUT）、main-only `20261110172000`（作者閲覧維持）という既知のMigration不一致を記録するのみ。番号変更・history repair・Preview生成・DB変更なし。今回のDraft PRはmain統合禁止、Preview/Staging/Production/Secret/実JWT/有料AI/独立Watchdog操作禁止。
+
+
+
+## 2026-11-11 継続：作品カルテ→章→話→非公開設定のオフライン作者操作を完成（新Draft、未統合）
+
+- **最新正本**：main `b8a5f955eccefe1061132080c219af22abe814f3`（#2838統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`。mainのCI・CodeQL・Production Readiness SUCCESS、Vercel Production同SHA READY。今回の変更は隔離Draftのみ。
+- **機能実装**：既存 `novelight-ai-bible-author-workspace.js` の作者専用・閲覧専用UIに、既存の許可済み `episodeById` と `OwnerOutline.project` を利用した**章セレクト**を追加。作者は章→話数を順に選び、その章/話が実際の出典である確定設定と未確定候補だけを、既存の人物・世界観・伏線・出来事等のカードとして探せる。章位置は創作内時系列と混同せず、参照のないメモは章で勝手に紐づけない。章未設定の話も明示的に選べる。章切替時に古い話数選択を解除し、全文検索／作者確定状態／カテゴリー等と併用可能。既存の一括フィルター解除や各フォーカス操作が章セレクトを解除する。
+- **一連のオフライン動作検証**：`OwnerStudio.attach` → 既存の管理人プレビューGET模擬応答 → `readOutline` 注入 → PR #2838の `createOfflineOwnerBibleOutlineApiHandler` → 既存 `OwnerBibleNavigation`／作者限定RPC／セッション照合の模擬経路 → `OwnerPanel.createOfflineReader`／`AuthorWorkspace.render` → 章/話選択 → 非公開設定表示 → ログアウト消去を一つのテストで実証。すべて合成fixtureで、実Auth、実JWT、実DB、実RPC、外部通信、実課金はゼロ。追加で複数章、章未設定、別の章の情報非表示、リセット、元データ不変、欠損参照拒否も検証。
+- **境界**：本番の `story-notes.html`／`OwnerStudio`／`OwnerPanel`／public `api/*.js`／Workflowは変更しない。本番画面は `readOutline` を注入しておらず新APIは未mount・既定404。作者向け実利用はまだ不可。秘密原稿・JWT・セッション情報は外部出力しない。
+- **Supabase Preview（READのみ）**：Staging-only `20261110080421`（SCOUT）、local-only `20261110172000`（作者閲覧維持率）を維持。Migration repair/実行、Preview生成はしない。
+- **必須残工程とNO-GO**：実環境のサーバー専用プレビュー取得、署名・セッション存在チェック、作者専用HTTPルート、Browser接続、Staging実証・最終品質の承認が必要。MASTER方針に従って次も機能完成を優先しつつ、承認前に実接続しない。正式Gate A〜Eは**0/5**。main統合、Preview、Staging/Production操作、DB書込、Migration、Secret、実JWT・実Auth/DB・有料AI・独立Watchdogは引き続き禁止。
+
+
+
+## 2026-11-11 継続：作者専用章情報HTTP境界をオフライン接続（本番未接続）
+
+- **基準**：main `4abbb30721ace3d7a74560e235d53d28b4273601`（PR #2837統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`。該当mainのNOVELIGHT CI/CodeQL SUCCESS、Vercel Production READY。今回の変更は別Draftのみ、main/Productionを更新しない。
+- **作者向け機能**：既存 `OwnerStudio.attach` → `OwnerPanel.createOfflineReader` → `OwnerOutline.project` の表示経路は前PRでオフライン接続済み。今回、`api/_lib/ai/owner-bible-outline-offline-api.js` に**非公開・未mountのHTTP handler factory**を追加。`GET` + Same Origin + bearer形式 + 正数novel_idを検査し、サーバー専用の注入 `readOwnerPreview` で取得した正しい作品プレビューを既存 `createOfflineOwnerBibleNavigation` に引き渡す。内部では既存 `owner-outline-internal-adapter`／`owner-session-evidence`／`owner-private-session-reader` を再利用し、返却値は `novelId, aiGenerated:false, outlineRows` の章／話数表示列だけとする。非公開原稿本文、話タイトル、下書き状態、JWT、セッション情報は返さない。
+- **実行境界**：既定の `enabled=false` と既存のプレビュー許可フラグ・個別の章フラグがそろわなければ404。public `api/*.js` と `story-notes.html` は新handlerをimportせず、Browserでの新しいoutline fetchもなし。Auth/DB接続、JWT検証機能やprivileged session queryの実実装、Staging資格は今回追加していない。注入が不足・失敗ならプレビューや章情報を出さない。これは**将来の専用APIに必要なオフラインHTTP契約完成**であり、本番接続完成／作者利用可能を意味しない。
+- **テスト**：合成JWT相当の架空文字列・模擬Auth／owner／auth.sessions存在判定・既存RPC fixtureのみ。入力遮断、同一作品の章情報の投影、署名・セッション三点照合、RPC二重読取、途中失効・改変拒否、秘密文字列を返さないこと、既存作者画面が新API未接続であることを検証。実JWTやDB/APIリクエストは0。Node関連テスト、CI/CodeQLは新Draft HEAD結果を参照。
+- **Supabase Preview（READのみ）**：リモート専有 `20261110080421`（`formal_scout_level_staging_2762_20261110`）とリポジトリ専有 `20261110172000`（`author_reader_retention_cross_visit`）が別機能として分岐。自動rename/repairやMigration実行をせず、差分とエラーを継続記録。
+- **残る必須接続**：実環境では `readOwnerPreview` と、署名検証・限定privileged `auth.sessions` 存在確認のサーバー専用capabilityが未供給。これらを勝手に仮定してGOしない。次工程もMASTERの機能完成優先で既存部品の再利用を検討。Staging実JWT/DB/Preview/Secret/有料AI/Watchdogとmain統合は別途明示承認のみ。正式Gate A〜E **0/5**。
+
+
+
+## 2026-11-11 作者向け章情報のオフライン表示接続（新Draft候補・実環境OFF）
+
+- **正本**：最新main `148524993c0c96d0432cec1380cf2c01263b7cc3`、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`。PR #2835・#2825はともに統合済み。Vercel Productionは同SHAでREADY、CI/CodeQL/Production ReadinessはSUCCESS。ただし本番の管理人プレビューフラグを有効にした事実や実JWT検証を意味しない。
+- **ユーザー機能の既存経路**：`story-notes.html` が作者の作品・セッションを確認後、既存 `NovelightAiBibleOwnerStudio.attach` を起動し、管理人フラグがONの場合だけ `GET /api/ai-owner-novel-bible` の非公開設定を表示する。レビュー採否、下書きへの明示転記、同意と管理人試用の画面は既存部品を使用。一般作者向け公開・有料AI実行とは異なる。
+- **不足・今回の最小実装**：章／話数を正規の順序で表示する既存 `NovelightAiBibleOwnerOutline.project` と `OwnerPanel.createOfflineReader` の読取契約が、作者Studioの呼び出し境界では未接続だった。Studioに**任意の外部注入 `readOutline`** を追加し、受け取る前後の現在セッション一致を確認して既存Readerへ渡す。**公開済みstory-notes側は `readOutline` を一切渡さない**ため、未承認のHTTP・RPC・Auth・DB・AI呼び出しを増やさない。偽の話順や作者判定は行わず、合成fixture上だけで既存の章表示UIを動かす。
+- **オフライン試験**：読み取り依存の注入、章・話数の表示、途中ログアウト／主体変更、無効な入力と読取失敗の遮断を検証。開発中のテスト成功は将来のserver-owner-outline GETの実接続承認ではない。
+- **Supabase Preview failure（READのみ）**：Stagingのremote 215版とmain local 215版の差は remote-only `20261110080421`（`formal_scout_level_staging_2762_20261110`）、local-only `20261110172000`（`author_reader_retention_cross_visit`）。**別機能のMigrationが分岐した状態**であり、番号だけ変更する処理は禁止。リモート適用状態・修復方針は未確定で、DB・Preview・Migration変更は個別承認までNO-GO。
+- **次の境界**：Draft PRでのオフライン実装・CI/CodeQLのみ。main統合・Vercel Production自動デプロイは別途本番承認、Staging／Preview／実JWT／DB／Secret／有料AI／独立Watchdog実行はさらに別承認が必要。Gate A〜Eは**0/5**。これ以前のボード文中の「未統合」は履歴であって最新状態ではない。
+
+
+
+## 2026-11-11 継続：#2835 main統合後の #2825 オフライン再同期（本番実行なし）
+
+- **最新基準**：main `fd651701e8bc810db8523e629024d9bde23ca6be`（#2835 squash統合済み）、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`（不変）。#2825 の同期前HEAD `f636bfa917fc024caddb6da84e395b44790ab6ec`。#2835の旧本番承認は消費済みで#2825に流用しない。mainとProductionはこの同期で更新しない。
+- **競合と選択**：ローカル `origin/main` を既存Draft #2825の隔離worktreeへmergeし、競合は本ボードと `tests/ai-020705-candidate-runtime-contract-offline.test.mjs` のみ。新mainの制御コードはそのまま保持。候補SHAテストは #2825 側のAPI互換shimと制御Providerの**同一関数identity**を検証する仕様を維持し、認証・nonce・scopeの拒否条件を緩和しない。新mainの制御面独立テストは他の専用テストに残る。
+- **#2835の確認済み結果**：main CI / CodeQL SUCCESS。Vercelの新main Productionデプロイは既存ignore commandにより意図的CANCELEDで、`novelight.jp` のREADYは旧Production SHA `95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3`。Productionで#2835の新コードが稼働したとみなさない。
+- **Supabase READ ONLY**：GitHub連携のSupabase Preview checkはFAILURE（`Remote migration versions not found in local migrations directory.`）。Staging `wmlzjgvxgoyrovdhbqbg` から取得したremote 215版と新main `supabase/migrations` のlocal 215版を名前の先頭14桁で比較すると、remote専有 `20261110080421`、local専有 `20261110172000`。同番号ではなく、migrationの実体・適用状態や安全な同期方法は未確認。DB/Branch修復、Migration実行、Preview作成をしない。Staging Branch一覧の古い `MIGRATIONS_FAILED` と `ACTIVE_HEALTHY` は継続観測扱い。
+- **残る境界**：#2825はDraftのオフライン再同期・回帰試験・GitHub CI/CodeQL確認のみ。新mainへの統合、Staging/Productionの変更、Secret・DB書込、実JWT、有料AI、独立Watchdog稼働は別途明示承認まで禁止。Gate A〜Eは **0/5**。AI工程②のオフライン実装進捗と実証完了を混同しない。
+
+
+
+## 2026-11-10 継続：制御コード分離のオフライン実装（本Draft PR内／実環境OFF）
+
+- **観測基準**：main 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3、MASTER blob e2501f9ed0722964e76fd0a49bf200717850b81d、作業開始時PR #2825 HEAD 5f210513dc13c6fe73fa6b585819cf8080fc0531。新しいHEADはGitHub PRを優先。NLO resume BASELINE_MATCH、AUTHORIZATION NONE。
+- **実装**：API側に残っていた一回限り有料Providerガードの実装を変更せずに既存 `.github/staging-ai-02-07-05` 制御フォルダへ移動。保護Runnerの2箇所のimportをローカル制御モジュールへ変更。API側は3 exportの互換shimとし、WeakMapとDB claimの実装は一箇所のみ。
+- **検証**：既存のOwner/署名Watchdog/候補SHA/Runner/Provider試験を局所実行。追加した静的import閉包とAPI互換identityの試験が成功。GitHub CI/CodeQLは更新HEADの最新実行結果を参照。既存PASSの無関係な再実行禁止は維持。
+- **次の作業**：この制御フォルダの候補SHA関連差分だけを独立審査できる小PRの範囲として整理する。現時点で別PR作成・main統合・保護Workflow live化はしない。実Controller/nonce、OWNER認証、Staging専用資格・Preview、実JWT/DB、有料Modelは未実証。Gate A〜E **0/5**、本番未公開。詳細は同PRの接続計画書§9。
+
+## 2026-11-10 継続：制御面分離・Gate A〜C READ-ONLY判断（新しい実行権限なし）
+
+- **基準**：main 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3、MASTER blob e2501f9ed0722964e76fd0a49bf200717850b81d、Draft PR #2825 事前HEAD 96515f16b81f47e952e864e0162fc32115eb0b30。NLO resume BASELINE_MATCH、Runtime Gate start PASS（degraded）。コード/Workflow未変更、Gate A〜E 0/5。
+- **設計判断**：既存mainの02-07-05 workflowはOFFLINE PREFLIGHT ONLY。候補SHA対応の権限契約はDraft PR内にあり、信頼済みmain上の実制御jobからは未使用。後段では制御面だけを審査した小PRで信頼済みmainへ分離配置する案を第一候補とするが、PR作成・main統合・実行接続はいずれも別承認。候補PRのNode/workflowをSecrets付きで直接動かさない。
+- **Gate B READ**：旧Staging branch HEAD 0e4f3f594193d137d582fb693703ffdfe1d1cfd3。Vercel SSO Protectionは有効、対象旧branchおよび候補SHAのPreviewはそれぞれ0件。旧branch専用9キー中6名、未確認3名は SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY / NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY。共通Previewや他branchのキーを代用しない。値の復号/変更なし。
+- **Supabase READ**：Staging ref wmlzjgvxgoyrovdhbqbg はbranch一覧に存在。古い branch status MIGRATIONS_FAILED と preview_project_status ACTIVE_HEALTHY が併記され、個別project GETはNotFound。一方、同refのmigration一覧READは成功し215件、one-shot claim版20261101060000あり。実DBの操作権限・稼働・接続分離はこれだけで保証されない。矛盾するAPI結果は実接続前に解消する。
+- **Gate A/C未証明**：外部独立Watchdogの実kill/revoke/cleanup/zero census、保護jobのOWNER真正性・永続nonce、実JWTと原子claim、Provider利用資格と実費10円上限はいずれも未実証。既知の合成PASS・SQL6件・Cron停止・DO3件凍結は再実行/変更しない。
+- **次の境界**：制御面の最小差分とProductionデプロイ影響を別承認前に審査。Staging branch/Preview/Secrets/Watchdog/JWT/DB/有料AIは対象SHAとscope別の明示承認までNO-GO。詳細は本Draft PR内の接続計画書§8。新HEADはPRを再取得して判断。
+
+## 2026-11-10 継続：候補SHA方式を既存権限契約へオフライン整合（本PR内、実環境OFF）
+
+- **最新基準**：main 95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3、MASTER blob e2501f9ed0722964e76fd0a49bf200717850b81d。NLO隔離コピーでorigin/mainを再取得後、resume=BASELINE_MATCH（AUTHORIZATION=NONE、CLOUD_MUTATIONS=0）。mainやStaging branchは変更しない。
+- **変更箇所**：既存のOwner paid trial ledger、独立署名Watchdog/原子nonce、保護Runner、6種のread-only証明、one-shot Providerの候補SHA契約を整合。main基準は別フィールドに残し、候補SHA、専用Staging branch、Preview、OWNER承認コメント・Issue #294・run ID、合成対象、費用上限を同一試行に結び付ける。追加の監視基盤は作らない。
+- **重要なDB契約**：原子claimの既存 p_main_sha 列へ「試験する候補SHA」を渡す（旧main方式は従来通りmain SHA）。DB schema・Migration・RLS変更なし。Owner台帳・Watchdog・Runnerは元のmainと候補を別々に照合する。
+- **対象試験**：旧main限定契約43/43、新規候補限定契約5/5合格（隔離ローカル）。幅広い局所テストは依存未導入の1件以外合格、GitHub CI/CodeQLで最終判定する。新たな実JWT、Staging/Preview、Secret、外部Watchdog、課金、DB、Production操作はゼロ。
+- **残る真の阻害要因**：信頼済み制御コードをmain側へ安全に配置する方法、Owner承認の実API真正性、独立した署名鍵・永続atomic nonce、実Watchdog kill/revoke/cleanup、Staging専用資格、実JWT/実DB/費用上限の証明。PR全体をmainへ先行統合せず、別途の対象限定承認で解決する。現行有料WorkflowはOFFLINE PREFLIGHT ONLY、Gate A〜Eは0/5。
+- **詳細**：Draft PR #2825に含めた「Gate A〜C実環境接続・実証計画書」の§7。main未統合の文書であり、最新HEADはGitHub PRを優先。
+
+## 2026-11-10 OWNER採用：候補SHA限定Staging先行方式（オフライン実装）
+
+- **設計方針の承認のみ**：現行main `95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3` を本番基準SHAとして維持し、検証対象のPR候補SHAとは**別値**で照合する。OwnerはStaging先行の候補SHA方式を採用したが、**実環境・main統合・Preview生成・Secret・実JWT・有料AI等は承認していない**。
+- **最小オフライン実装**：既存 `preview-precreation-readonly.mjs` に候補SHAの任意スコープと `inspect020705CandidateStagingOffline` を追加。mainの実SHA観測は変えず、Staging branchとPreview SHAは候補SHAに固定。OWNER/Issue #294/承認ID/run/モデル/10円上限・1回/停止計画を同じ候補に束縛。共通Preview資格情報と不一致はNO-GO。**実承認認証・独立停止・実Provider利用資格は常に未確認、実行許可はfalse**。
+- **既存ライブ系はOFF**：保護Runner/OWNER paid ledger/署名Watchdogの現行 main SHA 固定と Workflow `OFFLINE PREFLIGHT ONLY` は**未変更**。候補SHAの実行に必要な台帳・署名・DB claim側の変更／実証は次の**一括レビュー**対象であり、今回は制約を外さない。Gate A〜Eは**0/5**。
+- **詳細**：本Draft PR #2825内の実環境接続・実証計画書に、OWNER採用決定、具体的な候補SHA読取り契約、残る正式アダプター接続境界を追記。GitHub Actions結果はPR本文の当該HEADを参照。
+
+
+## 2026-11-10 実環境接続の依存・実証手順を一括固定（コード再作成なし）
+
+- 実証手順の詳細：このDraft PRに追加したGate A〜C実環境接続計画書（PR変更ファイル参照）。**承認不要の接続設計とREAD証拠の整理のみ**。新しいWatchdog/Runner/承認レイヤー・実LIVEアダプターを追加しない。
+- このチャットで観測したmainは`95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3`、PR #2825は作業着手時`368914c919e3b057cba0b7dd9a17b39d865d9326`（Draft・未統合）。新しいHEADはPR本文と実行時GitHubから必ず再取得。Staging branchは当時mainより**43コミット古く**Preview作成は未実施。
+- **工程②の実装側**：既存の作品カルテ一連の模擬操作およびGate A/B/Cオフライン連結は既存PR内で合格済み。実認証・実DB・外部AI・独立Watchdogを動かした証拠ではなく、Gate A〜Eは**0/5**。
+- **A/B/Cの実接続に必要**：(A) Runnerとは独立したController/heartbeat・真正性・最小停止権限と独立zero census、(B) Production非共有のStaging秘密値とSSO保護のexact SHA Preview、(C) Protected Workflow、合成Auth/JWT、Owner一回限り承認・実原子DB claim、料金/同意とcleanup。全てに費用・資格・期限を固定。
+- **重要なSHA循環依存**：既存Runnerの`trustedRef=refs/heads/main`と`Preview SHA == main SHA`を守ると、未統合PRの新コードをStaging先行検証する前にmain/Productionへ入れる必要が生じる。**候補SHA限定Staging実証方式をOWNERが先に選択し、正式な別PR/承認で検証契約を変更することを推奨。勝手なSHA条件緩和やmain統合はしない。**
+- **2026-11-10公式Provider参考**：`gpt-5.6-luna`の公開モデル資料と標準料金は確認できた。ただしアカウントの利用資格・為替・実請求・上限10円以内は未実証。ユーザーの課金承認前に再確認する。
+- 今回は**既存PASSの再実行不要**。文書のみの変更なら、無関係の実JWT・Staging・ブラウザ試験を起動しない。新たな承認要求は、候補SHA設計のOWNER判断と実環境・費用・停止権限・回数の確定後に限定する。
+
+
+
+## 2026-11-10 オフラインでのGate A〜C統合（管理人承認前）
+
+- **最新確認**：main `95f9ddff7fb882ae4f3edaa89ef77ec79d52bcf3`。PR #2825のHEADは作業着手時`14b9a0773a042f833e2d3d4f830eacf8a0e6f329`（Draft）。直近main追加差分はAnalytics CSSのみでGate A〜Cの検査コードとの競合なし。Staging `staging/ai-02-07-05-gatebc-20261105` はmainより**43コミット古い**。PRへのmain同期やStagingブランチの変更は禁止のまま。
+- **実装**：既存`protected-runner-offline-drill.mjs`に`inspect020705CombinedGateABCOffline`を追加。既存のPreview事前確認、独立Supervisor観測、保護Runnerの6証拠を**同じmain SHA・Staging ref・Preview・管理人・作品・承認コメント・run ID**で整合させる。既知のブランチ不一致・共通PreviewのSecret未分離があれば後段の観測コールバックを呼ばず`PREVIEW_PRECONDITIONS_NO_GO`。スコープ混同・不正観測では機密を伏せた一律拒否。既存のSupervisorやRunnerは再実装していない。
+- **新規対象試験**：A〜Cの合成証拠整合、旧SHA、共通Previewキー、Owner/Previewスコープ混同、観測例外でのfail-closedを**5/5 PASS**。オフライン・純粋な合成入力で、ネットワーク/Watchdog起動/DB/Secret/外部Modelアクセスなし。既存の有効な合格試験を無意味に再実行しない。
+- **正確な完了区別**：これは**オフラインの照合処理が動作する状態**であり、独立Watchdogの実配備・revoke/cleanup、認証済み観測源、Vercel Previewの資格分離、実JWT、保護された実行Workflow、原子claim、10円以内の有料AI1回は**すべて未実証**。単体検査に合格しても`authorizesExecution`/`authorizesMutation`/`authorizesPaidCall`は全てfalse。正式Gate A〜Eは**0/5**。
+- **残件と承認順**：①既存Watchdogに外部資格情報・独立死活監視・停止/清掃/zero censusを結線し費用/最小権限を確証、②Productionと共有しない専用Staging資格・最新SHA整合とPreview保護を確証、③承認済みのone-shot実Runner経路へ実JWT/claim/Provider/停止を結線して単発実証。この3点は環境・SHA・費用・回数・停止条件が確定するまで**外部操作承認を要求しない**。main統合・Preview作成・環境変数変更・DB書込・有料AIは現在禁止。
+
+
+
+## 2026-11-10 最新main・Draft PR #2825 事前確認（Feature First）
+
+- **監査基準（読み取り専用）**：main `b826679b35862580d8097d7ddf95be3243500237`、MASTER blob `e2501f9ed0722964e76fd0a49bf200717850b81d`、Draft PR #2825 HEAD `bbd639ba55a1862e49d4f536fccb0876f795062b`。PRはDraft・未統合（main/Productionへのコード反映ではない）。ボードの新fingerprintはmainの**観測値**であり、PRをmergeしてよい承認ではない。
+- **工程②のコード側**：PR #2825では作品カルテの本文・候補・出典・作者レビュー・創作ノートへの**作者が選択して転記／既存保存RPCで再読込**までオフライン結線済み。2026-11-10 HEADの既存CI・CodeQLはPASS。作者が保存前に候補を再読込する経路も実装済み。**実JWT・外部モデル・実DB保存は未検証**であり、正式Gate A～Eは0/5を維持。
+- **main進行の確認**：監査開始時は `a6a921fffe276252c5b93f4d2ef097a61efe12d0`。作業中に `b826679b35862580d8097d7ddf95be3243500237` へ1 commit前進し、差分はAnalytics UI/DB migration関連8ファイルのみ。AI工程②の監査対象アダプター・MASTER・AGENTSには変更なし。PR #2825のbaseは旧main `a6a921fffe276252c5b93f4d2ef097a61efe12d0` のままで、無断でPR branchへのmain syncやmain統合は行わない。
+- **Gate A（外部独立実行の不足）**：read-only `detached-supervisor-offline-drill.mjs`と既存署名・終端・cleanup契約は実外部コントローラの実行/停止権限を持たない。現時点で実独立host/heartbeat、最小権限トークンと期限・費用上限、Runner死亡の独立確認、Staging限定stop/revoke/cleanup、他権限によるzero censusが不足。2026-11-05のA2-P2三件／SQL6件PASS・A2-P3 Cron停止PASSは**再実行禁止**。過去のDO残存3件は承認がないため**そのまま維持**。A2専用権限・課金条件未確認のままWorker/DOを配備・削除しない。
+- **Gate B（現時点の阻害要因）**：`staging/ai-02-07-05-gatebc-20261105` HEAD `0e4f3f594193d137d582fb693703ffdfe1d1cfd3`、最新mainより**42コミット古い**。このブランチの最新SHAと一致する新Previewは未存在（当日対象ブランチ一覧0件）。Vercel設定名は当該ブランチ専用6種＋共通Preview3種＝計9種だが、共通 `SUPABASE_SECRET_KEY`／`SUPABASE_PUBLISHABLE_KEY`／`NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY` の**Staging専用接続を非機密メタデータだけで証明できない**。9名揃うことと分離済みは別。値の復号・転記・変更は未実施。新たな`inspect020705PreviewPrecreation`オフライン判定は、旧ブランチSHA不一致・共通資格キー未証明を個別に返すが、**Preview作成は許可しない**。
+- **Gate C（現時点の阻害要因）**：既存 `.github/workflows/ai-020705-owner-staging-paid-trial.yml`は**OFFLINE PREFLIGHT ONLY**。既存`protected-stage-executor.mjs`はライブのJWT/Provider/Claim/Stopアダプター注入を必要とし、Workflowからは接続されていない。保護runnerの真正性、Staging限定実JWT・合成同意、実原子one-shot claim/消費墓標、OpenAIの実利用資格・円換算最新価格・**10円以内**・一回限り・停止・独立censusは本番同等の実証なし。2026-11-10のStagingの固定read-only SELECTではAI OFF、4予算0、対象AI関連行0、claimテーブルRLS ON・service_role限定EXECUTEを観測。**あくまで当時のスナップショット**であり実試行直前に再確認要。
+- **重要なSHA依存**：現行の保護Runner／Gate Bの検証は、対象Preview SHAと**承認対象main SHAの厳密一致**を要求する。未統合PR #2825のHEADを、mainと同一と扱うことはできない。新Staging branchの更新、main統合、Preview、Secret操作のどれも今の依頼では許可されていない。実行環境の承認前に、**PR統合後のSHAを基準にした本番影響の範囲**を別途特定するか、別PRで正式に検証された一回限りのSHA設計を承認してもらう必要がある。勝手に緩和しない。
+- **次の一括承認前準備**：1）Aの外部停止資格とWorkers/DO費用・稼働選択、2）Bの専用ブランチ/commit・Preview保護・共通SecretsがProductionに到達しないことの非機密証跡、3）Cのprotected Workflow・実JWT・claim・provider資格/価格上限・独立停止/清掃の接続先を**一枚のpreflight台帳**にまとめる。すべて確定するまで個別の外部変更ボタンを出さない。既存PASS再試験、新Watchdog/Runner増設、全体の制約緩和はしない。
+- **このPRでの修正範囲**：既存preview/read-only、detached supervisor、protected runnerの計3アダプターに、**未接続依存と環境メタデータ不足が判定できるread-onlyフィールドのみ**追加。対象テストの拡張と本ボード更新までで、Workflow・DB・Secrets・Vercel・Cloudflare・既存の停止/実行ロジックに変更は加えない。PRのHEAD更新後は、ここに記載した以前のHEADを**監査基点**として残し、最新HEADとPR本文の結果を優先する。
+
+
 
 ## 0. 最初に結論を確認する
 
@@ -15,14 +203,6 @@ last_reviewed_jst: 2026-11-09
 - 「工程②が20～30％」は根拠となる工数計測がない以前の推測。**確定した進捗率として使わない。**
 - 正式完了ゲート **A～Eのうち、現時点の完了判定は0/5**。これは工数進捗0%を意味しない。実装済みコード・単体試験は別軸で進んでいる。
 - **Aの合成試験部分がPASSでもGate A全体はNO-GO**。B/Cの安全な準備を並行して進めてよいが、Gate A未完を隠してB/C/Dのクラウド操作を実行しない。
-
-## 0.1 2026-11-09：AI機能開発の並行レーン（最新Owner方針）
-
-- OWNERの最新指示：Gate Bの第4回Windows DPAPI実機試験・保護ファイル更新は凍結し、新しい試験回数を増やさない。第1～3回の証拠とGUARD_ONLYを維持する。
-- ノベルバイブルのAPI・作者向け試作・同意管理の既存実装は再利用する。Gate A～Eは正式0/5 NO-GOで、実AI課金、外部API、Staging/Production公開を許可したものではない。
-- 並行する作者向け改善は、端末内で完結する原稿の文章セルフチェック（入力漏れ、括弧、仮置き文字、長文段落）から実施する。既存の「公開チェック」を置き換えず、AI校正・誤字脱字検出・作品の評価と誤称しない。投稿/保存のブロックも行わない。
-- 新たなオフライン機能は最新main起点の専用ブランチと独立Draft PRで扱う。DPAPI専用Draft PR #2774には混在させない。各機能の本番反映・有料AI・実データ操作には別承認が必要。
-- 今回のmain差分は、2026-11-05基準以降のillustrations・account deletion・Point10x・NLO更新などで、Novel Bible APIと評価ロジック本体に差分がないことを確認。MASTER blob `91d11fa367b7de64990b13397b13d4bb6e3c0230` は同一。
 
 ## 1. 一覧：工程②の実際の完了条件
 

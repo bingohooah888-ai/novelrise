@@ -16,7 +16,7 @@ function sourceBetween(start, end) {
 }
 
 const hostSource = sourceBetween(
-  '  function isVercelPreviewHost() {',
+  '  let verifiedProductionDeploymentHost = null;',
   '  function validateStagingBrowserConfig('
 );
 const analyticsSource = sourceBetween(
@@ -30,11 +30,25 @@ const acquisitionSource = sourceBetween(
 
 function isPreviewFor(hostname) {
   const scope = { location: { hostname } };
+  class DeploymentEnvironmentRequest {
+    open() {}
+    setRequestHeader() {}
+    send() {
+      this.status = 404;
+    }
+  }
   return new Function(
     'window',
     'VERCEL_INTERNAL_PRODUCTION_HOST',
+    'VERCEL_PRODUCTION_ENV_PATH',
+    'XMLHttpRequest',
     hostSource + '; return isVercelPreviewHost();'
-  )(scope, 'novelrise.vercel.app');
+  )(
+    scope,
+    'novelrise.vercel.app',
+    '/api/public-production-environment',
+    DeploymentEnvironmentRequest
+  );
 }
 
 function analyticsFixture(hostname) {

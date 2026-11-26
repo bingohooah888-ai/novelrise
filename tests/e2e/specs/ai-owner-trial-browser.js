@@ -80,6 +80,7 @@ test('private owner can explicitly run once and review pending candidate', async
           ok: true,
           json: async () => ({
             novelId: 41,
+            aiGenerated: false,
             candidates: [{
               id: 77,
               episodeId: 11,

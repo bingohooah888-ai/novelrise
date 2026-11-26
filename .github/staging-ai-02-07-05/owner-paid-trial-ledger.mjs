@@ -13,6 +13,12 @@ const APPROVAL_KEYS = [
   'model', 'novelId', 'previewDeploymentId', 'provider',
   'stagingProjectRef'
 ].sort();
+const CANDIDATE_KEYS = [
+  ...APPROVAL_KEYS, 'approvalIssueNumber', 'candidateSha',
+  'repository', 'runId', 'stagingBranch'
+].sort();
+const BRANCH = /^staging\/ai-02-07-05-[a-z0-9-]+$/u;
+const REPO = 'bingohooah888-ai/novelrise';
 
 function deny() {
   throw new Error('AI_020705_OWNER_LEDGER_DENIED');
@@ -58,8 +64,25 @@ export function inspect020705OwnerLedger({ comments, approvalCommentId, expected
   if (approvals.length !== 1 || !isOwner(approvals[0])) deny();
   const approved = payload(approvals[0].body, 'APPROVE');
   const expiry = Date.parse(approved?.expiresAt);
+  const candidate = approved?.candidateSha !== undefined ||
+    approved?.stagingBranch !== undefined ||
+    expected?.candidateSha !== undefined ||
+    expected?.stagingBranch !== undefined;
   if (
-    !exactKeys(approved, APPROVAL_KEYS) ||
+    !exactKeys(approved, candidate ? CANDIDATE_KEYS : APPROVAL_KEYS) ||
+    (candidate && (
+      !SHA.test(approved?.candidateSha ?? '') ||
+      approved.candidateSha === approved.mainSha ||
+      !BRANCH.test(approved?.stagingBranch ?? '') ||
+      approved.repository !== REPO ||
+      approved.approvalIssueNumber !== 294 ||
+      !Number.isSafeInteger(approved.runId) || approved.runId < 1 ||
+      expected?.candidateSha !== approved.candidateSha ||
+      expected?.stagingBranch !== approved.stagingBranch ||
+      expected?.repository !== REPO ||
+      expected?.approvalIssueNumber !== 294 ||
+      expected?.runId !== approved.runId
+    )) ||
     approved.confirmation !== 'STAGING PAID 1 CALL APPROVED' ||
     approved.approvalScope !== 'synthetic-one-provider-one-call-only' ||
     approved.provider !== 'openai' ||
@@ -100,6 +123,11 @@ export function inspect020705OwnerLedger({ comments, approvalCommentId, expected
   return Object.freeze({
     approvalCommentId,
     mainSha: approved.mainSha,
+    ...(candidate ? {
+      candidateSha: approved.candidateSha,
+      stagingBranch: approved.stagingBranch,
+      runId: approved.runId
+    } : {}),
     previewDeploymentId: approved.previewDeploymentId,
     expiresAt: approved.expiresAt,
     capMicros: approved.capMicros,
@@ -137,6 +165,10 @@ export async function claim020705OwnerApproval({
   const claim = {
     approvalCommentId,
     mainSha: snapshot.mainSha,
+    ...(snapshot.candidateSha ? {
+      candidateSha: snapshot.candidateSha,
+      stagingBranch: snapshot.stagingBranch
+    } : {}),
     previewDeploymentId: snapshot.previewDeploymentId,
     runId
   };
@@ -219,8 +251,114 @@ export function verify020705ClaimedOwnerApproval({
     matches[0].user?.login !== 'github-actions[bot]' ||
     payload(matches[0].body, 'CLAIMED')?.runId !== runId ||
     payload(matches[0].body, 'CLAIMED')?.mainSha !== snapshot.mainSha ||
+    payload(matches[0].body, 'CLAIMED')?.candidateSha !== snapshot.candidateSha ||
+    payload(matches[0].body, 'CLAIMED')?.stagingBranch !== snapshot.stagingBranch ||
     payload(matches[0].body, 'CLAIMED')?.previewDeploymentId !==
       snapshot.previewDeploymentId
   ) deny();
   return Object.freeze({ ...snapshot, ownerLedgerClaimed: true });
+}
+
+
+/**
+ * Read-only handoff after GitHub Actions assigns GITHUB_RUN_ID.
+ * An OWNER intent opens the run; only a LATER, distinct OWNER approval
+ * for that exact run is eligible. Reuses the existing one-use paid ledger:
+ * no approval creation, CLAIMED write, credentials or paid permission here.
+ */
+export function inspect020705PostRunOwnerApproval({
+  comments,
+  intentCommentId,
+  runId,
+  mainSha,
+  candidateSha,
+  stagingBranch,
+  expectClaimed = false,
+  now = Date.now()
+} = {}) {
+  if (typeof expectClaimed !== 'boolean' || !Array.isArray(comments) ||
+      !Number.isSafeInteger(intentCommentId) || intentCommentId < 1 ||
+      !Number.isSafeInteger(runId) || runId < 1 ||
+      !SHA.test(mainSha ?? '') || !SHA.test(candidateSha ?? '') ||
+      mainSha === candidateSha ||
+      !BRANCH.test(stagingBranch ?? '') ||
+      !Number.isFinite(now)) deny();
+
+  const intentRows = comments.filter((comment) => comment?.id === intentCommentId);
+  if (intentRows.length !== 1 || !isOwner(intentRows[0])) deny();
+  const intent = intentRows[0];
+  const intentPrefix = 'NOVELIGHT_STAGING_AI_020705_INTEGRATION_INTENT ';
+  if (typeof intent.body !== 'string' ||
+      !intent.body.startsWith(intentPrefix)) deny();
+  let intentPayload;
+  try {
+    intentPayload = JSON.parse(intent.body.slice(intentPrefix.length));
+  } catch { deny(); }
+  if (!exactKeys(intentPayload, [
+    'candidateSha', 'mainSha', 'pr', 'scope', 'stagingProjectRef'
+  ]) ||
+      intentPayload.mainSha !== mainSha ||
+      intentPayload.candidateSha !== candidateSha ||
+      intentPayload.stagingProjectRef !== 'wmlzjgvxgoyrovdhbqbg' ||
+      intentPayload.pr !== 2895 ||
+      intentPayload.scope !== 'read-only-protected-entry-no-live-execution' ||
+      typeof intent.created_at !== 'string' ||
+      !Number.isFinite(Date.parse(intent.created_at)) ||
+      Date.parse(intent.created_at) > now ||
+      (intent.updated_at != null &&
+        intent.updated_at !== intent.created_at)) deny();
+
+  // The approval is a separate OWNER comment posted after the run started.
+  // A duplicate or edited approval cannot be resolved by 'first wins'.
+  const approvals = comments.filter((comment) =>
+    typeof comment?.body === 'string' &&
+    comment.body.startsWith(PREFIX + 'APPROVE ')
+  );
+  const candidates = approvals.filter((comment) =>
+    payload(comment.body, 'APPROVE')?.runId === runId
+  );
+  if (candidates.length !== 1 || !isOwner(candidates[0])) deny();
+  const approval = candidates[0];
+  if (!Number.isSafeInteger(approval.id) || approval.id === intentCommentId ||
+      !Number.isFinite(Date.parse(approval.created_at)) ||
+      Date.parse(approval.created_at) <= Date.parse(intent.created_at) ||
+      Date.parse(approval.created_at) > now ||
+      (approval.updated_at != null &&
+        approval.updated_at !== approval.created_at)) deny();
+  const approved = payload(approval.body, 'APPROVE');
+  if (approved?.runId !== runId ||
+      approved?.mainSha !== mainSha ||
+      approved?.candidateSha !== candidateSha ||
+      approved?.stagingBranch !== stagingBranch ||
+      approved?.capMicros > 1000000) deny();
+
+  const inspect = expectClaimed
+    ? verify020705ClaimedOwnerApproval : inspect020705OwnerLedger;
+  const checked = inspect({
+    comments,
+    approvalCommentId: approval.id,
+    runId,
+    expected: {
+      mainSha,
+      candidateSha,
+      stagingBranch,
+      repository: REPO,
+      approvalIssueNumber: 294,
+      runId,
+      previewDeploymentId: approved.previewDeploymentId,
+      capMicros: approved.capMicros
+    },
+    now
+  });
+  return Object.freeze({
+    state: 'RUN_BOUND_OWNER_APPROVAL_READ_ONLY',
+    runId,
+    approvalCommentId: checked.approvalCommentId,
+    previewDeploymentId: checked.previewDeploymentId,
+    candidateSha,
+    capMicros: checked.capMicros,
+    authorizesPaidCall: false,
+    authorizesStagingWrite: false,
+    authorizesPreviewCreation: false
+  });
 }

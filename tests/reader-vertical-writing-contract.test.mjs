@@ -23,10 +23,11 @@ const [
 
 function readerSettings() {
   const values = new Map();
+  const styleValues = new Map();
   const document = {
     body: {
       dataset: {},
-      style: { setProperty() {} }
+      style: { setProperty: (name, value) => styleValues.set(name, value) }
     }
   };
   const window = {
@@ -40,7 +41,12 @@ function readerSettings() {
     scrollTo() {}
   };
   vm.runInNewContext(settingsScript, { window, document, console });
-  return { api: window.NovelightReadingSettings, document, values };
+  return {
+    api: window.NovelightReadingSettings,
+    document,
+    values,
+    styleValues
+  };
 }
 
 test('legacy settings remain horizontal; vertical mode persists', () => {
@@ -84,7 +90,15 @@ test('vertical reading measures and resumes leftward progress', () => {
 
 test('illustrations stay upright and bounded in vertical mode', () => {
   assert.match(settingsCss, /writing-mode: vertical-rl/);
-  assert.match(settingsCss, /text-orientation: upright/);
+  // Book text uses context-sensitive punctuation; navigation labels stay upright.
+  assert.equal(
+    (settingsCss.match(/text-orientation: mixed;/g) || []).length,
+    3
+  );
+  assert.equal(
+    (settingsCss.match(/text-orientation: upright;/g) || []).length,
+    2
+  );
   assert.match(settingsCss, /line-break: anywhere/);
   assert.match(settingsCss, /overflow-x: auto/);
   assert.match(settingsCss, /\.content > \.episode-inline-illustration/);
@@ -108,4 +122,40 @@ test('episode and contest trackers record horizontal scrolling', () => {
   assert.match(continuity, /novelight-reading-mode-changed/);
   assert.match(contestTracker, /NovelightReadingSettings\?\.contentProgress/);
   assert.match(contestTracker, /context\.content\.addEventListener\?\./);
+});
+
+test('iOS vertical reader font size remains user-controlled', () => {
+  const { api, styleValues } = readerSettings();
+  for (const [size, expected] of [
+    ['small', '15px'],
+    ['standard', '17px'],
+    ['large', '19px'],
+    ['xlarge', '21px'],
+    ['small', '15px']
+  ]) {
+    const next = api.apply({
+      ...api.DEFAULTS,
+      writingMode: 'vertical',
+      fontSize: size
+    });
+    assert.equal(next.fontSize, size);
+    assert.equal(styleValues.get('--reader-font-size'), expected);
+  }
+
+  for (const selector of [
+    "body.novelight-page-episode[data-reading-direction='vertical'] .content",
+    "body.novelight-page-episode[data-landscape-reader='active'] #card .content",
+    "body.novelight-page-episode[data-landscape-reader='active'][data-landscape-reader-rotated='true'] #card .content"
+  ]) {
+    const index = settingsCss.indexOf(selector + ' {');
+    assert.notEqual(index, -1, selector);
+    const rule = settingsCss.slice(index, settingsCss.indexOf('}', index));
+    assert.match(rule, /-webkit-text-size-adjust: none;/);
+    assert.match(rule, /text-size-adjust: none;/);
+  }
+
+  assert.equal(
+    (settingsCss.match(/-webkit-text-size-adjust: none;/g) || []).length,
+    3
+  );
 });

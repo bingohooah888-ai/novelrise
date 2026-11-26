@@ -109,23 +109,45 @@ test('staging validation is consolidated into one deployment-status workflow', a
   }
 });
 
-test('owner high-risk approval relay validates exact SHA, marks draft ready, then reruns failed CI', async () => {
+test('owner approval checks SHA, reruns CI, and does not merge', async () => {
   const workflow = await read('.github/workflows/high-risk-pr-approval.yml');
   const readiness = await read('scripts/check-merge-readiness.mjs');
   assert.match(workflow, /actions: write/);
-  assert.match(workflow, /contents: write/);
-  assert.match(workflow, /pull-requests: write/);
+  assert.match(workflow, /contents: read/);
+  assert.match(workflow, /pull-requests: read/);
+  assert.doesNotMatch(workflow, /contents: write/);
+  assert.doesNotMatch(workflow, /pull-requests: write/);
+  assert.match(
+    workflow,
+    /github\.event\.comment\.user\.login == 'bingohooah888-ai'/
+  );
+  assert.match(
+    workflow,
+    /github\.event\.comment\.author_association == 'OWNER'/
+  );
   assert.match(workflow, /NOVELIGHT_HIGH_RISK_APPROVE/);
   assert.match(workflow, /high-risk-approval-lib\.mjs challenge/);
-  assert.match(workflow, /Mark approved draft PR ready for review/);
-  assert.match(workflow, /gh api graphql/);
-  assert.match(workflow, /markPullRequestReadyForReview/);
-  assert.match(workflow, /\.draft == false/);
-  assert.ok(
-    workflow.indexOf('Mark approved draft PR ready for review') <
-      workflow.indexOf('Re-run failed NOVELIGHT CI automatically')
+  assert.match(workflow, /\.head\.sha == \$sha/);
+  const approvalIndex = workflow.indexOf(
+    'Validate exact PR head and one-time challenge'
   );
+  const rerunIndex = workflow.indexOf(
+    'Re-run failed NOVELIGHT CI automatically'
+  );
+  const waitIndex = workflow.indexOf(
+    'Wait for approved-head NOVELIGHT CI success'
+  );
+  assert.ok(approvalIndex >= 0);
+  assert.ok(rerunIndex > approvalIndex);
+  assert.ok(waitIndex > rerunIndex);
   assert.match(workflow, /rerun-failed-jobs/);
+  assert.match(workflow, /\.head_sha == \$sha/);
+  assert.doesNotMatch(workflow, /Mark approved draft PR ready for review/);
+  assert.doesNotMatch(workflow, /markPullRequestReadyForReview/);
+  assert.doesNotMatch(workflow, /gh pr ready/);
+  assert.doesNotMatch(workflow, /gh pr merge/);
+  assert.doesNotMatch(workflow, /Queue squash auto-merge/);
+  assert.doesNotMatch(workflow, /Finalize guarded squash merge/);
   assert.match(readiness, /enforceHighRiskApproval/);
   assert.match(readiness, /author_association === 'OWNER'/);
   assert.match(readiness, /High-risk paths:/);
@@ -138,7 +160,6 @@ test('owner high-risk approval relay validates exact SHA, marks draft ready, the
     /Verify current base and merge-readiness contract[\s\S]*?GH_TOKEN: \$\{\{ github\.token \}\}/
   );
 });
-
 test('Production static verification requires stable all-route convergence', async () => {
   const verification = await read('scripts/verify-production-static.sh');
   const routeLoops = verification.match(/while IFS= read -r route; do/g) ?? [];

@@ -19,10 +19,10 @@ const shouldSkip = (changedPaths, overrides = {}) =>
     ...overrides
   });
 
-test('Vercel retains main-only deployments and uses the guard', () => {
+test('Vercel keeps every Git auto-deployment disabled during reconnect safety hold', () => {
   const configPath = new URL('../vercel.json', import.meta.url);
   const config = JSON.parse(readFileSync(configPath, 'utf8'));
-  assert.deepEqual(config.git.deploymentEnabled, { '**': false, main: true });
+  assert.deepEqual(config.git.deploymentEnabled, { '**': false, main: false });
   assert.equal(config.ignoreCommand, 'node scripts/vercel-ignore-build.mjs');
 });
 

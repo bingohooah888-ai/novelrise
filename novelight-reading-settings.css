@@ -187,7 +187,10 @@ body.novelight-page-episode[data-reading-theme='dark'] .meta {
 
 body.novelight-page-episode[data-reading-direction='vertical'] .content {
   writing-mode: vertical-rl;
-  text-orientation: upright;
+  text-orientation: mixed;
+  /* Keep iOS reader text at the user-selected size across illustration redraws. */
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
   line-break: anywhere;
   width: 100%;
   height: min(72dvh, 680px);
@@ -299,7 +302,10 @@ body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-but
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     writing-mode: vertical-rl;
-    text-orientation: upright;
+    text-orientation: mixed;
+    /* Keep iOS reader text at the user-selected size across illustration redraws. */
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
     line-break: anywhere;
     overflow-wrap: anywhere;
     scroll-padding-inline: 28px;
@@ -446,7 +452,10 @@ body.novelight-page-episode[data-reading-theme='dark'] .reading-writing-mode-but
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     writing-mode: vertical-rl;
-    text-orientation: upright;
+    text-orientation: mixed;
+    /* Keep iOS reader text at the user-selected size across illustration redraws. */
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
     line-break: anywhere;
     overflow-wrap: anywhere;
     scroll-padding-inline: 28px;

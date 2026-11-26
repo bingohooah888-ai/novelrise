@@ -72,6 +72,11 @@ test('even six matching offline contracts grant NO execution authority', async (
   assert.equal(x.authorizesExecution, false);
   assert.equal(x.authorizesPaidCall, false);
   assert.equal(x.authorizesStagingWrite, false);
+  assert.equal(x.missingLiveDependencies.length, 6);
+  assert.ok(x.missingLiveDependencies.includes(
+    'SYNTHETIC_REAL_JWT_AND_AUTH_REVOCATION'));
+  assert.ok(x.missingLiveDependencies.includes(
+    'PROVIDER_ENTITLEMENT_PRICE_AND_TEN_YEN_CAP'));
 });
 // prettier-ignore
 test('one missing or failing proof returns NO-GO and never starts runner', async () => {

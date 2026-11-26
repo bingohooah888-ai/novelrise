@@ -106,13 +106,62 @@ async function sendReplyEmail({ env, fetchImpl, id, to, subject, message }) {
 
   const responseBody = await response.json().catch(() => ({}));
   if (!response.ok || !responseBody?.id) {
-    const error = new Error('Resend rejected inquiry reply');
-    error.code = 'RESEND_REJECTED';
+    // Missing confirmation, timeouts and transient failures are not proof of rejection.
+    const definitelyRejected =
+      !response.ok &&
+      response.status >= 400 &&
+      response.status < 500 &&
+      response.status !== 408 &&
+      response.status !== 429;
+    const error = new Error(
+      definitelyRejected
+        ? 'Resend rejected inquiry reply'
+        : 'Resend reply delivery outcome is unknown'
+    );
+    error.code = definitelyRejected
+      ? 'RESEND_REJECTED'
+      : 'RESEND_DELIVERY_UNKNOWN';
     error.httpStatus = response.status;
     throw error;
   }
 
   return { id: responseBody.id };
+}
+
+async function listReplyHistory(supabase, id) {
+  const { data, error } = await supabase
+    .from('admin_inquiry_replies')
+    .select('id,subject,message,status,sent_at,created_at')
+    .eq('inquiry_id', id)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return data ?? [];
+}
+
+async function beginReplyAudit(supabase, adminUserId, id, reply, to) {
+  const { data, error } = await supabase
+    .from('admin_inquiry_replies')
+    .insert({
+      inquiry_id: id,
+      admin_user_id: adminUserId,
+      subject: reply.subject,
+      message: reply.message,
+      idempotency_key: idempotencyKey({ id, to, ...reply }),
+      status: 'sending'
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id;
+}
+
+async function finishReplyAudit(supabase, auditId, values) {
+  const { error } = await supabase
+    .from('admin_inquiry_replies')
+    .update(values)
+    .eq('id', auditId);
+  if (error) throw error;
 }
 
 export function createAdminInquiryReplyHandler({
@@ -124,18 +173,34 @@ export function createAdminInquiryReplyHandler({
   sendReply = sendReplyEmail
 }) {
   return async function handler(req, res) {
-    if (req.method !== 'POST') {
+    if (req.method !== 'POST' && req.method !== 'GET') {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const admin = await requireAdmin({ req, res, supabase, env });
     if (!admin) return;
 
-    const id = parsePositiveId(req.body?.id);
-    const reply = normalizeReply(req.body);
-    if (!id || !reply) {
-      return res.status(400).json({ error: 'Invalid request' });
+    const id = parsePositiveId(
+      req.method === 'GET' ? req.query?.id : req.body?.id
+    );
+    if (!id) return res.status(400).json({ error: 'Invalid request' });
+
+    if (req.method === 'GET') {
+      try {
+        const inquiry = await getInquiry(supabase, id);
+        if (!inquiry) return res.status(404).json({ error: 'Not found' });
+        const replies = await listReplyHistory(supabase, id);
+        return res.status(200).json({ replies });
+      } catch (error) {
+        console.error('NOVELIGHT reply history unavailable', {
+          message: error?.message ?? 'unknown error'
+        });
+        return res.status(500).json({ error: 'Reply history unavailable' });
+      }
     }
+
+    const reply = normalizeReply(req.body);
+    if (!reply) return res.status(400).json({ error: 'Invalid request' });
 
     try {
       const inquiry = await getInquiry(supabase, id);
@@ -148,20 +213,85 @@ export function createAdminInquiryReplyHandler({
         return res.status(409).json({ error: 'Inquiry email is unavailable' });
       }
 
-      const delivery = await sendReply({
-        env,
-        fetchImpl,
-        id,
-        to,
-        subject: reply.subject,
-        message: reply.message
-      });
-      const updatedInquiry = await setResolved(supabase, admin.id, id);
+      // The private table's partial UNIQUE index acquires the send claim
+      // atomically, including across independent function instances.
+      let auditId;
+      try {
+        auditId = await beginReplyAudit(supabase, admin.id, id, reply, to);
+      } catch (error) {
+        if (error?.code === '23505') {
+          return res.status(409).json({
+            error:
+              '同じ返信は送信中または送信済みです。返信履歴とResendの記録を確認してから操作してください。'
+          });
+        }
+        throw error;
+      }
+      let delivery;
+      try {
+        delivery = await sendReply({
+          env,
+          fetchImpl,
+          id,
+          to,
+          subject: reply.subject,
+          message: reply.message
+        });
+      } catch (error) {
+        // An ambiguous outcome stays "sending": never claim it was not delivered.
+        if (
+          error?.code !== 'RESEND_REJECTED' &&
+          error?.code !== 'RESEND_NOT_CONFIGURED'
+        ) {
+          console.error('NOVELIGHT reply delivery outcome is unknown', {
+            status: error?.httpStatus ?? null
+          });
+          return res.status(503).json({
+            error:
+              '送信結果を確認できません。Resendの送信記録を確認するまで再送しないでください。',
+            deliveryStatus: 'unknown'
+          });
+        }
+        try {
+          await finishReplyAudit(supabase, auditId, { status: 'failed' });
+        } catch (auditError) {
+          console.error('NOVELIGHT reply failure audit unavailable', {
+            message: auditError?.message ?? 'unknown error'
+          });
+        }
+        throw error;
+      }
 
-      return res.status(200).json({
-        inquiry: updatedInquiry ?? { id, status: 'resolved' },
-        delivery: { id: delivery.id }
-      });
+      try {
+        await finishReplyAudit(supabase, auditId, {
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          resend_email_id: delivery.id
+        });
+      } catch (error) {
+        console.error('NOVELIGHT sent reply audit unavailable', {
+          message: error?.message ?? 'unknown error'
+        });
+        return res.status(500).json({
+          error: 'Email accepted but history save failed. Do not resend.'
+        });
+      }
+
+      try {
+        const updatedInquiry = await setResolved(supabase, admin.id, id);
+        return res.status(200).json({
+          inquiry: updatedInquiry ?? { id, status: 'resolved' },
+          delivery: { id: delivery.id }
+        });
+      } catch (error) {
+        console.error('NOVELIGHT inquiry status update after reply failed', {
+          message: error?.message ?? 'unknown error'
+        });
+        return res.status(200).json({
+          delivery: { id: delivery.id },
+          warning: 'status_update_failed'
+        });
+      }
     } catch (error) {
       if (error?.code === 'RESEND_NOT_CONFIGURED') {
         return res

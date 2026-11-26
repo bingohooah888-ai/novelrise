@@ -7,6 +7,9 @@ const REPO = 'bingohooah888-ai/novelrise';
 const MODEL = 'gpt-5.6-luna';
 const MIGRATION = '20261101060000_novelight_ai_020705_one_shot_claim';
 const SHA = /^[a-f0-9]{40}$/u;
+const BRANCH = /^staging\/ai-02-07-05-[a-z0-9-]+$/u;
+const candidateMode = (a) =>
+  a?.candidateSha !== undefined || a?.stagingBranch !== undefined;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const OBSERVERS = [
   'readMain',
@@ -25,13 +28,26 @@ function exactScope(value, approved) {
     value?.approvalCommentId === approved.approvalCommentId &&
     value?.runId === approved.runId &&
     value?.novelId === approved.novelId &&
-    value?.episodeId === approved.episodeId;
+    value?.episodeId === approved.episodeId &&
+    (!candidateMode(approved)
+      ? value?.candidateSha === undefined &&
+        value?.stagingBranch === undefined &&
+        value?.capMicros === undefined
+      : value?.candidateSha === approved.candidateSha &&
+        value?.stagingBranch === approved.stagingBranch &&
+        value?.capMicros === approved.capMicros &&
+        value?.actorId === approved.actorId);
 }
 
 function validApproved(a) {
   return a?.repository === REPO &&
     a?.stagingProjectRef === REF &&
     SHA.test(a?.mainSha ?? '') &&
+    (!candidateMode(a) || (
+      SHA.test(a?.candidateSha ?? '') &&
+      a.candidateSha !== a.mainSha &&
+      BRANCH.test(a?.stagingBranch ?? '')
+    )) &&
     /^dpl_[a-z0-9]+$/iu.test(a?.previewDeploymentId ?? '') &&
     Number.isSafeInteger(a?.approvalCommentId) && a.approvalCommentId > 0 &&
     Number.isSafeInteger(a?.runId) && a.runId > 0 &&
@@ -54,6 +70,8 @@ export function create020705ReadOnlyStageProofs({ approved, observers, now = Dat
     !validApproved(approved) ||
     !observers ||
     OBSERVERS.some((name) => typeof observers[name] !== 'function') ||
+    (candidateMode(approved) &&
+      typeof observers.readCandidateBranch !== 'function') ||
     typeof now !== 'function'
   ) throw new Error('AI_020705_PROOF_CONFIG_DENIED');
 
@@ -88,18 +106,35 @@ export function create020705ReadOnlyStageProofs({ approved, observers, now = Dat
         x?.environment === 'staging' &&
         x?.environmentReviewerApproved === true &&
         x?.stagingOnlyCredentials === true &&
-        x?.protectedExecution === true),
+        x?.protectedExecution === true &&
+        (!candidateMode(approved) || (
+          x?.checkoutSha === approved.candidateSha &&
+          x?.stagingBranch === approved.stagingBranch &&
+          x?.candidateCheckoutVerified === true &&
+          x?.untrustedPrWorkflow === false
+        ))),
 
-    verifyApprovedPreview: (scope) => check(scope, 'readPreview',
+    verifyApprovedPreview: async (scope) => {
+      const validPreview = await check(scope, 'readPreview',
       (x) => x?.id === approved.previewDeploymentId &&
         x?.projectName === 'novelrise' &&
         x?.repository === REPO &&
-        x?.gitCommitSha === approved.mainSha &&
+        x?.gitCommitSha === (approved.candidateSha ?? approved.mainSha) &&
+        (!candidateMode(approved) ||
+          x?.gitBranch === approved.stagingBranch) &&
         x?.target === 'preview' &&
         x?.state === 'READY' &&
         x?.ssoProtected === true &&
         x?.stagingSupabaseUrl === URL &&
-        x?.ownerPreviewApproved === true),
+        x?.ownerPreviewApproved === true);
+      if (!validPreview || !candidateMode(approved)) return validPreview;
+      // This observer must independently read the GitHub branch head.
+      return check(scope, 'readCandidateBranch',
+        (x) => x?.repository === REPO &&
+          x?.branch === approved.stagingBranch &&
+          x?.sha === approved.candidateSha &&
+          x?.verifiedReadOnly === true);
+    },
 
     verifyAtomicMigration: (scope) => check(scope, 'readMigration',
       (x) => x?.projectRef === REF &&

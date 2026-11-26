@@ -740,6 +740,15 @@ async function actionNloHealth(request, config) {
   ].join('\n');
 }
 
+async function actionNloWorkspaceMetadata(request, config) {
+  ensureNoArgs(request.args);
+  const { inspectNloGitWorkspaces } = await import(
+    './git-workspace-metadata-readonly.js'
+  );
+  const data = await inspectNloGitWorkspaces({ repoRoot: config.repoRoot });
+  return JSON.stringify(data, null, 2);
+}
+
 async function actionRepoSnapshot(request, config) {
   ensureNoArgs(request.args);
   await run('git', ['fetch', 'origin', 'main', '--prune'], {
@@ -1825,6 +1834,32 @@ async function actionGscIndexInspect(request) {
   return runGscReadOnlyBridgeAction({ args: request.args });
 }
 
+async function actionScoutRoStagingDispatch(request, config, sourceComment) {
+  const { readFile } = await import('node:fs/promises');
+  const registry = JSON.parse(
+    await readFile(
+      new URL('../../../.novelight/nlo-capabilities.json', import.meta.url),
+      'utf8'
+    )
+  );
+  const capability = registry.capabilities?.find(
+    (item) => item.id === 'nlo.github.scout-ro-staging-dispatch'
+  );
+  if (capability?.status !== 'enabled') {
+    throw new Error('SCOUT_RO_DISPATCH_HOLD:CAPABILITY_NOT_ENABLED');
+  }
+  const { dispatchScoutRoStagingOnce } = await import(
+    './scout-ro-staging-dispatch.js'
+  );
+  const token = getToken();
+  const result = await dispatchScoutRoStagingOnce({
+    request,
+    sourceComment,
+    api: (method, route, body) => githubApi(token, method, route, body)
+  });
+  return JSON.stringify(result, null, 2);
+}
+
 async function actionPoint10xStage38Dispatch(request, config, sourceComment) {
   const { dispatchPoint10xStage38Once } = await import(
     './point10x-staging-identity-dispatch.js'
@@ -1838,13 +1873,28 @@ async function actionPoint10xStage38Dispatch(request, config, sourceComment) {
   return JSON.stringify(result, null, 2);
 }
 
+async function actionSupabaseStagingNloReadOnly(request) {
+  const { runNloSupabaseStagingAction } = await import(
+    './supabase-staging-action-logs.js'
+  );
+  if (!new Set(['supabase_staging_actions', 'supabase_staging_action_logs'])
+    .has(request.action)) throw new Error('nlo_sb_bridge_action_denied');
+  // Only action summaries and sanitized diagnostic categories can cross
+  // the owner-only GitHub Bridge. Raw Management API logs are never posted.
+  const safe = await runNloSupabaseStagingAction({
+    action: request.action, args: request.args
+  });
+  return JSON.stringify(safe, null, 2);
+}
+
 async function actionCloudflareNloReadOnly(request) {
   const { runNloCloudflareAction } = await import('./cloudflare-readonly.js');
   const permitted = new Set([
     'cloudflare_account', 'cloudflare_workers', 'cloudflare_durable_objects',
     'cloudflare_worker_deployments', 'cloudflare_worker_observability',
     'cloudflare_worker_metrics', 'cloudflare_do_object_count',
-    'cloudflare_watchdog_status', 'cloudflare_plan_change'
+    'cloudflare_watchdog_status', 'cloudflare_watchdog_provenance',
+    'cloudflare_plan_change'
   ]);
   if (!permitted.has(request.action)) throw new Error('nlo_cf_bridge_action_denied');
   const safe = await runNloCloudflareAction({action: request.action, args: request.args});
@@ -1856,7 +1906,11 @@ async function actionCloudflareNloReadOnly(request) {
 const ACTIONS = new Map([
   ['doctor', actionDoctor],
   ['nlo_health', actionNloHealth],
+  ['nlo_workspace_metadata', actionNloWorkspaceMetadata],
+  ['supabase_staging_actions', actionSupabaseStagingNloReadOnly],
+  ['supabase_staging_action_logs', actionSupabaseStagingNloReadOnly],
   ['point10x_stage38_dispatch', actionPoint10xStage38Dispatch],
+  ['scout_ro_staging_dispatch', actionScoutRoStagingDispatch],
   ['gsc_index_inspect', actionGscIndexInspect],
   ['cloudflare_account', actionCloudflareNloReadOnly],
   ['cloudflare_workers', actionCloudflareNloReadOnly],
@@ -1866,6 +1920,7 @@ const ACTIONS = new Map([
   ['cloudflare_worker_metrics', actionCloudflareNloReadOnly],
   ['cloudflare_do_object_count', actionCloudflareNloReadOnly],
   ['cloudflare_watchdog_status', actionCloudflareNloReadOnly],
+  ['cloudflare_watchdog_provenance', actionCloudflareNloReadOnly],
   ['cloudflare_plan_change', actionCloudflareNloReadOnly],
   ['codex_auth_diagnose', actionCodexAuthDiagnose],
   ['codex_auth_repair_user_override', actionCodexAuthRepairUserOverride],

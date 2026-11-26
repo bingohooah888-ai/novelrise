@@ -177,6 +177,12 @@ jobs:
             node scripts/staging-follow-list-pinned-sql.mjs compose \
               "$root" "$MIGRATION" "$filename" "$PR_NUMBER" \
               > /tmp/novelight-staging-candidate-persist.sql
+          elif [[ "$PR_NUMBER" == '2861' && "$MIGRATION" == '20261114121000' ]]; then
+            # One reviewed privileged RPC definition, with all four Git blobs pinned.
+            # The generic SQL security-definer denial remains unchanged.
+            node scripts/staging-illustration-pinned-sql.mjs compose \
+              "$root" "$MIGRATION" "$filename" "$PR_NUMBER" persist \
+              > /tmp/novelight-staging-candidate-persist.sql
           else
             node scripts/staging-candidate-persist-sql.mjs compose "$root" "$MIGRATION" "$filename" \
               > /tmp/novelight-staging-candidate-persist.sql
@@ -199,6 +205,10 @@ jobs:
           set -euo pipefail
           STAGING_DATABASE_URL="$(cat "$STAGING_DATABASE_URL_FILE")"
           export STAGING_DATABASE_URL
+          # Canonical four Staging-only SCOUT migrations must be verified by the
+          # existing SHA-256/name/byte-count proof before strict history parity.
+          # Unrecognized Staging history still causes a fail-closed mismatch.
+          bash scripts/verify-staging-migrations.sh prepare-staging-only
           find supabase/migrations -maxdepth 1 -type f \
             -name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*.sql' \
             -printf '%f\n' | cut -c1-14 | sort -u > /tmp/staging-main-migration-versions

@@ -191,49 +191,64 @@
     }
 
     const scale = Math.min(1, DELIVERY_MAX_EDGE / Math.max(width, height));
-    const outputWidth = Math.max(1, Math.round(width * scale));
-    const outputHeight = Math.max(1, Math.round(height * scale));
-    const canvas = document.createElement('canvas');
-    canvas.width = outputWidth;
-    canvas.height = outputHeight;
-    const context = canvas.getContext('2d', { alpha: true });
-    if (!context) {
-      throw illustrationError(
-        'convert',
-        '画像を最適化できませんでした。別の画像で再度お試しください。',
-        null,
-        'ILLUSTRATION_IMAGE_CANVAS_UNAVAILABLE'
-      );
+    let outputWidth = Math.max(1, Math.round(width * scale));
+    let outputHeight = Math.max(1, Math.round(height * scale));
+    // Safari may silently return PNG when WebP is requested. PNG can be
+    // substantially larger, so reduce dimensions before rejecting a valid
+    // source image. Preserve the 10 MiB and 2000px server limits.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const canvas = document.createElement('canvas');
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+      const context = canvas.getContext('2d', { alpha: true });
+      if (!context) {
+        throw illustrationError(
+          'convert',
+          '画像を最適化できませんでした。別の画像で再度お試しください。',
+          null,
+          'ILLUSTRATION_IMAGE_CANVAS_UNAVAILABLE'
+        );
+      }
+      try {
+        context.drawImage(image, 0, 0, outputWidth, outputHeight);
+      } catch (error) {
+        throw illustrationError(
+          'convert',
+          '画像を最適化できませんでした。別の画像で再度お試しください。',
+          error,
+          'ILLUSTRATION_IMAGE_DRAW_FAILED'
+        );
+      }
+      const blob = await canvasBlob(canvas, 'image/webp', 0.88);
+      const mimeType = String(blob.type || '').toLowerCase();
+      if (!DELIVERY_TYPES.has(mimeType)) {
+        throw illustrationError(
+          'convert',
+          '画像を配信用形式へ変換できませんでした。別の画像で再度お試しください。',
+          null,
+          'ILLUSTRATION_IMAGE_OUTPUT_FORMAT_INVALID'
+        );
+      }
+      if (blob.size >= 1 && blob.size <= INPUT_MAX_BYTES) {
+        return { blob, mimeType, width: outputWidth, height: outputHeight };
+      }
+      if (blob.size < 1 || attempt === 4 || Math.max(outputWidth, outputHeight) <= 512) {
+        throw illustrationError(
+          'convert',
+          '最適化後の画像容量が上限を超えました。別の画像で再度お試しください。',
+          null,
+          'ILLUSTRATION_IMAGE_OUTPUT_SIZE_INVALID'
+        );
+      }
+      outputWidth = Math.max(1, Math.floor(outputWidth * 0.8));
+      outputHeight = Math.max(1, Math.floor(outputHeight * 0.8));
     }
-    try {
-      context.drawImage(image, 0, 0, outputWidth, outputHeight);
-    } catch (error) {
-      throw illustrationError(
-        'convert',
-        '画像を最適化できませんでした。別の画像で再度お試しください。',
-        error,
-        'ILLUSTRATION_IMAGE_DRAW_FAILED'
-      );
-    }
-    const blob = await canvasBlob(canvas, 'image/webp', 0.88);
-    const mimeType = String(blob.type || '').toLowerCase();
-    if (!DELIVERY_TYPES.has(mimeType)) {
-      throw illustrationError(
-        'convert',
-        '画像を配信用形式へ変換できませんでした。別の画像で再度お試しください。',
-        null,
-        'ILLUSTRATION_IMAGE_OUTPUT_FORMAT_INVALID'
-      );
-    }
-    if (blob.size < 1 || blob.size > INPUT_MAX_BYTES) {
-      throw illustrationError(
-        'convert',
-        '最適化後の画像容量が上限を超えました。別の画像で再度お試しください。',
-        null,
-        'ILLUSTRATION_IMAGE_OUTPUT_SIZE_INVALID'
-      );
-    }
-    return { blob, mimeType, width: outputWidth, height: outputHeight };
+    throw illustrationError(
+      'convert',
+      '画像を最適化できませんでした。',
+      null,
+      'ILLUSTRATION_IMAGE_CONVERT_FAILED'
+    );
   }
 
   function insertMarker(textarea, marker) {
@@ -327,6 +342,17 @@
     if (message.includes('ILLUSTRATION_AI_USAGE_REQUIRED')) {
       return '先に挿絵のAI利用申告を設定してください。';
     }
+    if (error?.stage === 'upload') {
+      const code = String(error?.code || error?.errorCode || '');
+      if (/invalidmimetype/iu.test(code) ||
+          /mime type .* is not supported/iu.test(message)) {
+        return '保存先がこの画像形式を受け付けませんでした。運営へご連絡ください。';
+      }
+      if (Number(error?.statusCode || error?.status) === 413 ||
+          /payloadtoo large|entitytoolarge/iu.test(code)) {
+        return '画像の送信容量が上限を超えました。画像を小さくして再度お試しください。';
+      }
+    }
     switch (error?.stage) {
       case 'format':
       case 'read':
@@ -347,8 +373,12 @@
   function logUploadFailure(error, file, episodeId) {
     console.error('episode illustration upload failed', {
       stage: String(error?.stage || 'unknown'),
-      code: error?.code ? String(error.code) : null,
-      status: Number.isFinite(Number(error?.status)) ? Number(error.status) : null,
+      code: /^[a-z0-9_]{2,48}$/iu.test(String(error?.code || error?.errorCode || ''))
+        ? String(error?.code || error?.errorCode)
+        : null,
+      status: Number.isInteger(Number(error?.statusCode || error?.status))
+        ? Number(error?.statusCode || error?.status)
+        : null,
       episodeId: Number(episodeId),
       inputType: String(file?.type || ''),
       inputBytes: Number(file?.size || 0)

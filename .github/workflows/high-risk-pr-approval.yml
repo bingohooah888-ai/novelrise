@@ -6,9 +6,9 @@ on:
 
 permissions:
   actions: write
-  contents: write
+  contents: read
   issues: read
-  pull-requests: write
+  pull-requests: read
 
 concurrency:
   group: novelight-high-risk-pr-approval-${{ github.event.issue.number }}
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   rerun-ci:
-    name: Validate owner approval, re-run CI, and merge safely
+    name: Validate owner approval and re-run CI only
     if: >-
       github.event.issue.pull_request != null &&
       github.event.comment.user.login == 'bingohooah888-ai' &&
@@ -87,95 +87,6 @@ jobs:
 
           echo "head_sha=$approved_sha" >> "$GITHUB_OUTPUT"
           echo "Validated owner approval for PR #$PR_NUMBER at $approved_sha."
-
-      - name: Mark approved draft PR ready for review
-        shell: bash
-        env:
-          HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
-        run: |
-          set -euo pipefail
-
-          curl --silent --show-error --fail \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
-            > /tmp/pr-ready-before.json
-
-          jq -e \
-            --arg repo "$GITHUB_REPOSITORY" \
-            --arg sha "$HEAD_SHA" \
-            '.state == "open" and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $sha' \
-            /tmp/pr-ready-before.json >/dev/null || {
-              echo 'Safety stop: PR changed after approval validation.'
-              exit 1
-            }
-
-          if [ "$(jq -r '.draft' /tmp/pr-ready-before.json)" = 'true' ]; then
-            pr_node_id="$(jq -r '.node_id // empty' /tmp/pr-ready-before.json)"
-            test -n "$pr_node_id" || {
-              echo 'Safety stop: PR node ID is missing before ready-for-review transition.'
-              exit 1
-            }
-
-            graphql_query="mutation(\$id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: \$id }) { pullRequest { number isDraft headRefOid } } }"
-            gh api graphql \
-              -f query="$graphql_query" \
-              -F id="$pr_node_id" \
-              > /tmp/pr-ready-mutation.json
-
-            jq -e \
-              --argjson pr "$PR_NUMBER" \
-              --arg sha "$HEAD_SHA" \
-              '.data.markPullRequestReadyForReview.pullRequest.number == $pr and .data.markPullRequestReadyForReview.pullRequest.isDraft == false and .data.markPullRequestReadyForReview.pullRequest.headRefOid == $sha' \
-              /tmp/pr-ready-mutation.json >/dev/null || {
-                echo 'Safety stop: ready-for-review mutation returned an unexpected PR state.'
-                exit 1
-              }
-          else
-            echo "PR #$PR_NUMBER is already ready for review."
-          fi
-
-          curl --silent --show-error --fail \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
-            > /tmp/pr-ready-after.json
-
-          jq -e \
-            --arg repo "$GITHUB_REPOSITORY" \
-            --arg sha "$HEAD_SHA" \
-            '.state == "open" and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $sha and .draft == false' \
-            /tmp/pr-ready-after.json >/dev/null || {
-              echo 'Safety stop: ready-for-review transition failed or PR head changed.'
-              exit 1
-            }
-
-          echo "PR #$PR_NUMBER is ready for review at approved head $HEAD_SHA."
-
-      - name: Queue squash auto-merge while approval gates are pending
-        shell: bash
-        env:
-          HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
-        run: |
-          set -euo pipefail
-
-          auto_merge_enabled="$(gh api "repos/$GITHUB_REPOSITORY" --jq '.allow_auto_merge')"
-          if [ "$auto_merge_enabled" != 'true' ]; then
-            echo 'Repository auto-merge is disabled; continuing with the guarded CI relay.'
-            exit 0
-          fi
-
-          if gh pr merge "$PR_NUMBER" \
-            --repo "$GITHUB_REPOSITORY" \
-            --auto \
-            --squash \
-            --match-head-commit "$HEAD_SHA"; then
-            echo "Queued squash auto-merge for PR #$PR_NUMBER at approved head $HEAD_SHA."
-          else
-            echo 'Auto-merge could not be queued in the current GitHub merge state; guarded CI validation will continue.'
-          fi
 
       - name: Re-run failed NOVELIGHT CI automatically
         id: ci
@@ -267,70 +178,3 @@ jobs:
 
           echo 'Safety stop: NOVELIGHT CI did not complete successfully within five minutes.'
           exit 1
-
-      - name: Finalize guarded squash merge if still open
-        shell: bash
-        env:
-          HEAD_SHA: ${{ steps.approval.outputs.head_sha }}
-        run: |
-          set -euo pipefail
-
-          curl --silent --show-error --fail \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
-            > /tmp/pr-final.json
-
-          if [ "$(jq -r '.merged' /tmp/pr-final.json)" = 'true' ]; then
-            echo "PR #$PR_NUMBER was already merged by queued auto-merge."
-            exit 0
-          fi
-
-          jq -e \
-            --arg repo "$GITHUB_REPOSITORY" \
-            --arg sha "$HEAD_SHA" \
-            '.state == "open" and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $sha and .draft == false' \
-            /tmp/pr-final.json >/dev/null || {
-              echo 'Safety stop: PR changed after CI success or is no longer mergeable under the approved identity.'
-              exit 1
-            }
-
-          if gh pr merge "$PR_NUMBER" \
-            --repo "$GITHUB_REPOSITORY" \
-            --squash \
-            --match-head-commit "$HEAD_SHA"; then
-            echo "Merged PR #$PR_NUMBER with squash after exact owner approval and successful CI."
-            exit 0
-          fi
-
-          echo 'Direct merge command did not complete; checking for a queued auto-merge race.'
-          curl --silent --show-error --fail \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" \
-            > /tmp/pr-after-merge-attempt.json
-
-          jq -e \
-            --arg repo "$GITHUB_REPOSITORY" \
-            --arg sha "$HEAD_SHA" \
-            '.merged == true and .merged_at != null and .base.ref == "main" and .head.repo.full_name == $repo and .head.sha == $sha and (.merge_commit_sha | type == "string" and test("^[0-9a-f]{40}$"))' \
-            /tmp/pr-after-merge-attempt.json >/dev/null || {
-              echo 'Safety stop: merge command failed and the exact approved PR is not confirmed merged.'
-              exit 1
-            }
-
-          merged_sha="$(jq -r '.merge_commit_sha' /tmp/pr-after-merge-attempt.json)"
-          curl --silent --show-error --fail \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/commits/$merged_sha" \
-            > /tmp/merged-commit.json
-          jq -e --arg sha "$merged_sha" '.sha == $sha' /tmp/merged-commit.json >/dev/null || {
-            echo 'Safety stop: reported merge commit could not be verified.'
-            exit 1
-          }
-
-          echo "Queued auto-merge completed exact approved PR #$PR_NUMBER at head $HEAD_SHA; treating the guarded merge as successful."

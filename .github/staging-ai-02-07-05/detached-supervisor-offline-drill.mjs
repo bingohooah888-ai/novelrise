@@ -21,36 +21,51 @@ export async function inspect020705DetachedSupervisorOffline({
   readIndependentHeartbeat,
   now = Date.now
 } = {}) {
-  if (typeof now !== 'function' ||
-      !scope || typeof scope !== 'object' ||
-      typeof readOwnerLedger !== 'function' ||
-      typeof readGithubRunner !== 'function' ||
-      typeof readStagingCensus !== 'function' ||
-      typeof readIndependentHeartbeat !== 'function') deny();
+  if (
+    typeof now !== 'function' ||
+    !scope ||
+    typeof scope !== 'object' ||
+    typeof readOwnerLedger !== 'function' ||
+    typeof readGithubRunner !== 'function' ||
+    typeof readStagingCensus !== 'function' ||
+    typeof readIndependentHeartbeat !== 'function'
+  )
+    deny();
   const started = now();
   if (!Number.isFinite(started)) deny();
   let result;
   try {
     // Explicitly do not trust GitHub Actions as the heartbeat source.
     // Callback provenance must be externally reviewed before live use.
-    const [ledgerSnapshot, githubRunnerEvidence,
-      stagingEvidence, heartbeatEvidence] = await Promise.all([
-      readOwnerLedger(Object.freeze({...scope})),
-      readGithubRunner(Object.freeze({...scope})),
-      readStagingCensus(Object.freeze({...scope})),
-      readIndependentHeartbeat(Object.freeze({...scope}))
+    const [
+      ledgerSnapshot,
+      githubRunnerEvidence,
+      stagingEvidence,
+      heartbeatEvidence
+    ] = await Promise.all([
+      readOwnerLedger(Object.freeze({ ...scope })),
+      readGithubRunner(Object.freeze({ ...scope })),
+      readStagingCensus(Object.freeze({ ...scope })),
+      readIndependentHeartbeat(Object.freeze({ ...scope }))
     ]);
     const ended = now();
-    if (!Number.isFinite(ended) || ended < started ||
-        ended - started > 30000) deny();
+    if (!Number.isFinite(ended) || ended < started || ended - started > 30000)
+      deny();
     result = assess020705WatchdogHandoff({
-      scope, ledgerSnapshot, stagingEvidence,
-      githubRunnerEvidence, heartbeatEvidence, now: () => ended
+      scope,
+      ledgerSnapshot,
+      stagingEvidence,
+      githubRunnerEvidence,
+      heartbeatEvidence,
+      now: () => ended
     });
-    if (result.authorizesPaidCall !== false ||
-        result.authorizesMutation !== false ||
-        result.noPaidRetry !== true ||
-        result.requiresSeparateOwnerApproval !== true) deny();
+    if (
+      result.authorizesPaidCall !== false ||
+      result.authorizesMutation !== false ||
+      result.noPaidRetry !== true ||
+      result.requiresSeparateOwnerApproval !== true
+    )
+      deny();
     return Object.freeze({
       state: result.status,
       proposedActions: result.proposedActions,
@@ -58,6 +73,15 @@ export async function inspect020705DetachedSupervisorOffline({
       provenanceAuthenticated: false,
       separatelyDeployedWatchdogVerified: false,
       externalStopCapabilitiesVerified: false,
+      // This module has NO authenticated external controller adapter.
+      // These are live dependencies, not additional gates or approvals.
+      missingLiveDependencies: Object.freeze([
+        'INDEPENDENT_HOST_AND_HEARTBEAT',
+        'CONTROLLER_IDENTITY_AND_LEAST_PRIVILEGE',
+        'RUNNER_DEATH_PROVEN_OUTSIDE_RUNNER',
+        'STAGING_ONLY_KILL_REVOKE_CLEANUP_CAPABILITY',
+        'INDEPENDENT_ZERO_CENSUS_AND_COST_BOUND'
+      ]),
       authorizesExecution: false,
       authorizesMutation: false,
       authorizesPaidCall: false,

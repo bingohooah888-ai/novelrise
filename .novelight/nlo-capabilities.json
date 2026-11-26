@@ -135,18 +135,20 @@
     },
     {
       "id": "nlo.cloudflare.gatea-readonly",
-      "description": "NLO direct MCP and GitHub Bridge scoped Cloudflare account, Workers, Durable Objects, deployments, observability, and aggregated error metrics; mutation actions only generate inert OWNER approval plans. Secrets never enter chat or GitHub.",
+      "description": "NLO direct MCP and GitHub Bridge Cloudflare read-only inventory plus pinned existing Gate A Watchdog source-content digest, DO class/binding, active version and rollback candidate metadata; never return source, secrets or raw Cloudflare payload. Actual rollback eligibility and Gate A remain unverified.",
       "intents": [
         "inspect Cloudflare Workers",
         "read Cloudflare Durable Objects",
         "inspect NOVELIGHT Gate A watchdog",
         "CloudflareのプランとWorkerを確認",
-        "NLOでCloudflare運用"
+        "NLOでCloudflare運用",
+        "verify existing Cloudflare Watchdog source SHA-256 and rollback metadata"
       ],
       "aliases": [
         "NLO Cloudflare integration",
         "Cloudflare Watchdog inventory",
-        "Cloudflareメトリクス確認"
+        "Cloudflareメトリクス確認",
+        "NLO Cloudflare Watchdog provenance"
       ],
       "adapter": "tools/novelight-commander/src/cloudflare-readonly.js",
       "executionRisk": "C",
@@ -154,14 +156,16 @@
         "local_NLO_CLOUDFLARE_READ_TOKEN_scoped_workers_metadata_readonly",
         "NLO_CLOUDFLARE_READONLY_ENABLED_explicit_opt_in",
         "owner_account_id_exact_match",
-        "independent_explicit_owner_approval_for_all_cloudflare_writes"
+        "independent_explicit_owner_approval_for_all_cloudflare_writes",
+        "existing_NLO_CLOUDFLARE_READ_TOKEN_needs_workers_content_read_to_hash_source"
       ],
       "testCommands": [
-        "node --test tests/nlo-cloudflare-readonly.test.mjs"
+        "node --test tests/nlo-cloudflare-readonly.test.mjs",
+        "node --test tests/nlo-cloudflare-watchdog-provenance.test.mjs"
       ],
-      "version": "0.1.0",
+      "version": "0.2.0",
       "status": "testing",
-      "provenance": "2026-11-02 OWNER request; Cloudflare API Workers/DO and GraphQL official docs; live account API auth not yet configured"
+      "provenance": "2026-11-14 OWNER approved one-PR code-only NLO extension; Cloudflare official content/v2/deployment/version/settings GET docs; real content-read token permission unverified."
     },
     {
       "id": "nlo.github.point10x-stage38-staging-readonly-dispatch",
@@ -191,6 +195,66 @@
       "version": "0.1.0",
       "status": "enabled",
       "provenance": "2026-11-08 owner-requested NLO safe Stage 3.8 dispatch implementation; only after separately approved main merge and local NLO rollout; each dispatch requires fresh distinct Staging approval"
+    },
+    {
+      "id": "nlo.supabase.staging-action-logs-readonly",
+      "description": "Read-only Supabase Management API action-run list and sanitized migration error signals for the existing NOVELIGHT Staging branch only; never return raw logs, secrets, production events, or SQL contents.",
+      "intents": [
+        "inspect NOVELIGHT Staging migration failures",
+        "read Supabase Staging deployment actions",
+        "NLOでSupabaseの失敗ログを診断"
+      ],
+      "aliases": [
+        "Supabase Branch action runs",
+        "Supabase staging log diagnosis"
+      ],
+      "adapter": "tools/novelight-commander/src/supabase-staging-action-logs.js",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "existing_local_SUPABASE_ACCESS_TOKEN_management_api_action_runs_read",
+        "explicit_NLO_SUPABASE_STAGING_READONLY_ENABLED",
+        "fixed_branch_ref_wmlzjgvxgoyrovdhbqbg",
+        "fixed_branch_id_4ea5dd93_4032_4d53_8b4f_46bef5cb50d2",
+        "no_production_db_or_preview_or_migration_write",
+        "separate_owner_approval_before_real_staging_access"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-supabase-staging-action-logs.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "2026-11-11 OWNER request; Supabase official action runs and logs Management API; offline mock tests only, no live action runs queried"
+    },
+    {
+      "id": "nlo.github.scout-ro-staging-dispatch",
+      "description": "OWNER-only, one-use, approval-bound SCOUT RECORD Staging RO credential workflow dispatch via existing NLO GitHub Bridge; no new token or autonomous execution.",
+      "intents": [
+        "dispatch Scout RO staging credentials once",
+        "NOVELIGHT SCOUT RECORDのRO復旧ワークフローを承認後に起動"
+      ],
+      "aliases": [
+        "NLO Scout RO Staging one-shot dispatch",
+        "scout_ro_staging_dispatch"
+      ],
+      "adapter": "tools/novelight-commander/src/scout-ro-staging-dispatch.js",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "existing_nlo_owner_github_token",
+        "github_actions_read",
+        "github_actions_write",
+        "github_issues_write",
+        "fresh_owner_control_and_staging_approval_comments",
+        "exact_current_main_sha",
+        "exact_source_blob_pins",
+        "single_use_durable_claim",
+        "no_credential_values_in_bridge"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-scout-ro-staging-dispatch.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "enabled",
+      "provenance": "2026-11-16 OWNER-requested code-only NLO automation; requires separately approved main merge, promotion and local NLO rollout; no live dispatch authorized"
     }
   ]
 }

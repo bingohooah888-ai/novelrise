@@ -54,20 +54,22 @@ if (role === 'runner') {
       config.runnerPid === process.pid || config.modelPid === process.pid) {
     process.exit(5);
   }
-  let observedHeartbeat = false;
+  let lastValidHeartbeatAt = null;
   await safeWrite('watchdog-ready.json', {pid: process.pid});
   const tick = async () => {
     let heartbeat;
     try {
       heartbeat = await safeRead('runner-heartbeat.json');
     } catch {
-      return;
+      // SIGKILL during an async write may leave truncated JSON behind.
+      // Only a previously observed, valid heartbeat may be reused.
     }
-    if (!Number.isFinite(heartbeat?.at) || heartbeat.at > Date.now()) return;
-    observedHeartbeat = true;
-    const runnerIsDead = !alive(config.runnerPid);
-    if (!observedHeartbeat || !runnerIsDead ||
-        Date.now() - heartbeat.at < 250) return;
+    const now = Date.now();
+    if (Number.isFinite(heartbeat?.at) && heartbeat.at <= now) {
+      lastValidHeartbeatAt = heartbeat.at;
+    }
+    if (lastValidHeartbeatAt === null || alive(config.runnerPid) ||
+        now - lastValidHeartbeatAt < 250) return;
     try {
       // Simulated independent external stop and cleanup only.
       if (alive(config.modelPid)) process.kill(config.modelPid, 'SIGTERM');
