@@ -255,6 +255,36 @@
       "version": "0.1.0",
       "status": "enabled",
       "provenance": "2026-11-16 OWNER-requested code-only NLO automation; requires separately approved main merge, promotion and local NLO rollout; no live dispatch authorized"
+    },
+    {
+      "id": "nlo.github.isolated-worktree-create",
+      "description": "Default-off, exact-commit isolation creation via the existing OWNER-only Issue #1837 Bridge. No arbitrary commands or test execution; the configured repository and permitted root must agree before any local mutation.",
+      "intents": [
+        "create approved isolated worktree",
+        "承認済みコミットの隔離作業環境作成"
+      ],
+      "aliases": [
+        "create_isolated"
+      ],
+      "adapter": "tools/novelight-commander/src/worktree-safe-bridge.js",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "existing_nlo_owner_github_auth",
+        "explicit_local_NLO_WORKTREE_CREATE_ENABLED",
+        "fresh_immutable_owner_approval_bound_to_branch_sha_and_request",
+        "single_use_durable_claim",
+        "configured_repository_and_security_root_match",
+        "fresh_isolation_preflight",
+        "exact_local_commit",
+        "no_credential_export_or_arbitrary_command_execution"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-worktree-create.test.mjs",
+        "node --test tests/nlo-worktree-root-binding.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "PR #2962 merged at f0a954aabd7811bbf51a8c017d161c23b36d49ca; Windows isolated creation and exclusive claim fixtures PASS; live activation disabled; Issue #1837 preflight 7192721501 PASS; real worktree creation not yet demonstrated"
     }
   ]
 }
