@@ -935,6 +935,38 @@ test('shared aliases never assign a record to two character profiles', () => {
   assert.equal(JSON.stringify(payload), before);
 });
 
+test('unclassified character notes remain discoverable without a registry', () => {
+  const payload = fixture();
+  payload.characters = [];
+  payload.notes.push({
+    type: 'character',
+    title: '仮の人物',
+    body: '未登録人物の設定'
+  });
+  payload.facts.push({
+    kind: 'character',
+    key: '仮の人物',
+    confirmed: [{ payload: { summary: '人物設定', evidence: '' } }],
+    suggestions: []
+  });
+  const before = JSON.stringify(payload);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const profiles = nodes(target, 'div').find(
+    (item) => item.className === 'novelight-ai-workspace-character-profiles'
+  );
+  assert.match(profiles.textContent, /人物未分類の創作ノート（1件）/);
+  assert.match(profiles.textContent, /見出しが一致しない設定（1項目）/);
+  const button = nodes(profiles, 'button').find(
+    (item) => item.className === 'novelight-ai-workspace-character-note-focus'
+  );
+  button.listeners.get('click')();
+  const visible = nodes(target, 'article').filter((item) => !item.hidden);
+  assert.equal(visible.length, 2);
+  assert.ok(visible.some((item) => item.textContent.includes('未登録人物')));
+  assert.equal(JSON.stringify(payload), before);
+});
+
 test('unmatched character headings remain visible without invented identity', () => {
   const payload = fixture();
   payload.facts.push({

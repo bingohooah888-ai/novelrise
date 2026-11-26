@@ -829,7 +829,18 @@
         sourceIds
       };
     });
-    if (characterProfiles.length) {
+    const matched = new Set(
+      characterProfiles.flatMap((profile) => [...profile.names])
+    );
+    const unmatched = payload.facts.filter(
+      (group) =>
+        group.kind === 'character' && !matched.has(normalizeName(group.key))
+    );
+    const unmatchedNotes = payload.notes.filter(
+      (note) =>
+        note.type === 'character' && !matched.has(normalizeName(note.title))
+    );
+    if (characterProfiles.length || unmatched.length || unmatchedNotes.length) {
       const characterPanel = create(
         'div',
         'novelight-ai-workspace-character-profiles'
@@ -956,13 +967,6 @@
         detail.appendChild(choose);
         characterPanel.appendChild(detail);
       }
-      const matched = new Set(
-        characterProfiles.flatMap((profile) => [...profile.names])
-      );
-      const unmatched = payload.facts.filter(
-        (group) =>
-          group.kind === 'character' && !matched.has(normalizeName(group.key))
-      );
       if (unmatched.length) {
         const missing = create(
           'details',
@@ -1007,6 +1011,45 @@
           missing.appendChild(button);
         }
         characterPanel.appendChild(missing);
+      }
+      if (unmatchedNotes.length) {
+        const missingNotes = create(
+          'details',
+          'novelight-ai-workspace-character-unmatched-notes'
+        );
+        missingNotes.appendChild(
+          create(
+            'summary',
+            '',
+            '人物未分類の創作ノート（' + unmatchedNotes.length + '件）'
+          )
+        );
+        missingNotes.appendChild(
+          create(
+            'p',
+            '',
+            '人物を一意に特定できないノートです。登録内容は変更していません。'
+          )
+        );
+        for (const note of unmatchedNotes) {
+          const button = create(
+            'button',
+            'novelight-ai-workspace-character-note-focus',
+            note.title + ' の情報を検索'
+          );
+          button.type = 'button';
+          button.addEventListener('click', () => {
+            filter.value = note.title;
+            statusFilter.value = 'all';
+            categoryFilter.value = 'characters';
+            if (episodeFilter) episodeFilter.value = 'all';
+            if (chapterFilter) chapterFilter.value = 'all';
+            if (characterFilter) characterFilter.value = 'all';
+            updateFilter();
+          });
+          missingNotes.appendChild(button);
+        }
+        characterPanel.appendChild(missingNotes);
       }
       wrap.appendChild(characterPanel);
     }
