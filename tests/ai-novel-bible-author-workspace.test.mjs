@@ -910,33 +910,29 @@ test('shared aliases never assign a record to two character profiles', () => {
   const profiles = nodes(target, 'div').find(
     (item) => item.className === 'novelight-ai-workspace-character-profiles'
   );
-  assert.match(profiles.textContent, /凛／作者確定 1件・AI未確定 0件/);
-  assert.match(profiles.textContent, /蒼／作者確定 0件・AI未確定 0件/);
-  assert.match(profiles.textContent, /人物を一意に特定できない設定（1項目）/);
-  assert.doesNotMatch(profiles.textContent, /鍵を持っていた/);
+  const profileText = profiles.textContent;
+  assert.match(profileText, /凛／作者確定 1件・AI未確定 0件/);
+  assert.match(profileText, /蒼／作者確定 0件・AI未確定 0件/);
+  assert.match(profileText, /人物を一意に特定できない設定（1項目）/);
+  assert.doesNotMatch(profileText, /鍵を持っていた/);
   assert.doesNotMatch(
-    profiles.textContent,
+    profileText,
     /作者の創作ノート（非公開）：青い鍵の持ち主/
   );
   const choose = nodes(profiles, 'button').find(
     (item) => item.className === 'novelight-ai-workspace-character-focus'
   );
   choose.listeners.get('click')();
-  assert.ok(
-    nodes(target, 'article').filter((item) => !item.hidden).every(
-      (item) => !item.textContent.includes('鍵を持っていた')
-    )
-  );
+  const visible = () =>
+    nodes(target, 'article').filter((item) => !item.hidden);
+  const hasKey = (item) => item.textContent.includes('鍵を持っていた');
+  assert.equal(visible().some(hasKey), false);
   const jump = nodes(profiles, 'button').find(
     (item) =>
       item.className === 'novelight-ai-workspace-character-unmatched-focus'
   );
   jump.listeners.get('click')();
-  assert.ok(
-    nodes(target, 'article').filter((item) => !item.hidden).some(
-      (item) => item.textContent.includes('鍵を持っていた')
-    )
-  );
+  assert.equal(visible().some(hasKey), true);
   assert.equal(JSON.stringify(payload), before);
 });
 
