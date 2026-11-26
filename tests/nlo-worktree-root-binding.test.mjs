@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { assertCreationRootBinding } from '../tools/novelight-commander/src/worktree-creation-approval.js';
+import { createWorktreeSecurity } from '../tools/novelight-commander/src/worktree-safe-bridge.js';
 
 test('isolated creation binds the configured and permitted repository roots', async (t) => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'nlo-root-binding-'));
@@ -34,5 +35,37 @@ test('isolated creation binds the configured and permitted repository roots', as
   await assert.rejects(
     assertCreationRootBinding(alias, alias),
     /NLO_CREATE_AUTHORIZATION_DENIED/
+  );
+});
+
+test('worktree bridge defaults to the configured root without altering other process settings', async (t) => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'nlo-root-default-'));
+  t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const configured = await fs.realpath(temp);
+  const env = {};
+  const security = createWorktreeSecurity(configured, env);
+  assert.equal(security.primary, configured);
+  assert.deepEqual(env, {});
+  assert.equal(security.allowShell, false);
+  assert.equal(security.allowProduction, false);
+  assert.equal(
+    await assertCreationRootBinding(configured, security.primary),
+    true
+  );
+  const other = path.dirname(configured);
+  const mismatch = createWorktreeSecurity(configured, {
+    NOVELIGHT_COMMANDER_ROOT: other
+  });
+  await assert.rejects(
+    assertCreationRootBinding(configured, mismatch.primary),
+    /NLO_CREATE_AUTHORIZATION_DENIED/
+  );
+  assert.throws(() => createWorktreeSecurity('relative', env), /DENIED/);
+  assert.throws(
+    () =>
+      createWorktreeSecurity(configured, {
+        NOVELIGHT_COMMANDER_ROOT: 'relative'
+      }),
+    /DENIED/
   );
 });
