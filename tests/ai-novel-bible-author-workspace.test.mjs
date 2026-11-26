@@ -587,7 +587,12 @@ test('private chapter navigation joins real episode ordinals and offers focus ac
   assert.match(target.textContent, /第一章／第7話（エピソードID：100）/);
   assert.match(target.textContent, /物語内の時系列順ではありません/);
   const order = nodes(target, 'select')[2];
-  assert.equal(order.children.length, 3);
+  assert.deepEqual(
+    order.children.map((option) => option.value),
+    ['heading', 'source-id', 'episode-number', 'last-episode-number']
+  );
+  assert.match(target.textContent, /最後の参照話数：第2話/);
+  assert.match(target.textContent, /最後の参照話数：第7話/);
   order.value = 'episode-number';
   order.listeners.get('change')();
   const focus = nodes(target, 'button').find(
