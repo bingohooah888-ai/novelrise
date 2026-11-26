@@ -286,6 +286,31 @@
       "version": "0.1.0",
       "status": "testing",
       "provenance": "PR #2962 merged at f0a954aabd7811bbf51a8c017d161c23b36d49ca; Windows isolated creation and exclusive claim fixtures PASS; live activation disabled; Issue #1837 preflight 7192721501 PASS; real worktree creation not yet demonstrated"
+    },
+    {
+      "id": "nlo.github.workspace-operation-batch",
+      "description": "OWNER-only metadata batch for fixed Git object and HEAD checks, runtime file fingerprint matching, fixed PowerShell and Node version probes, and local system-browser availability. No remote shell, arbitrary paths, authenticated browser or mutation.",
+      "intents": [
+        "batch local workspace diagnostics",
+        "NLOで開発環境の情報を一括確認"
+      ],
+      "aliases": [
+        "workspace_batch"
+      ],
+      "adapter": "tools/novelight-commander/src/worktree-safe-bridge.js",
+      "executionRisk": "A",
+      "requiredPermissions": [
+        "existing_owner_only_issue_1837",
+        "configured_repository_and_security_root_match",
+        "metadata_only_results",
+        "fixed_child_command_and_minimal_environment"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-workspace-operation-batch.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "PR #2964 consolidated development; pending CI and live runtime verification"
     }
   ]
 }

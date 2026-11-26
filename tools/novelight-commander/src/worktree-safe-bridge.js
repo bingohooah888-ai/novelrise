@@ -6,6 +6,7 @@ import {
 } from './worktree-isolation-preflight.js';
 import { createIsolatedWorktree } from './worktree-isolation-create.js';
 import { consumeLocalPermit } from './worktree-local-permit.js';
+import { runWorkspaceBatch } from './workspace-operation-batch.js';
 import { assertCreationRootBinding, validateCreationApproval, claimCreation } from './worktree-creation-approval.js';
 import { createSecurityConfig, redactSecrets } from './security.js';
 import { runOnce } from './processes.js';
@@ -144,7 +145,7 @@ function parseRequest(comment) {
   catch { throw new Error('Worktree request is not valid JSON.'); }
   if (!REQUEST_ID_RE.test(String(request?.requestId || ''))) throw new Error('Invalid requestId.');
   request.branch = assertBranch(request.branch);
-  if (!['status', 'apply_file', 'preflight', 'commit_push', 'cleanup', 'isolation_preflight', 'create_isolated', 'runtime_identity'].includes(request.operation)) throw new Error('Unsupported worktree operation.');
+  if (!['status', 'apply_file', 'preflight', 'commit_push', 'cleanup', 'isolation_preflight', 'create_isolated', 'runtime_identity', 'workspace_batch'].includes(request.operation)) throw new Error('Unsupported worktree operation.');
   if (request.expectedHead != null && !SHA_RE.test(String(request.expectedHead))) throw new Error('Invalid expectedHead.');
   if (request.operation === 'isolation_preflight' && !SHA_RE.test(String(request.expectedHead || ''))) {
     throw new Error('NLO_ISOLATION_PREFLIGHT_REQUIRES_PINNED_HEAD');
@@ -316,6 +317,13 @@ async function cleanup(config, request) {
 }
 
 async function handle(config, request, sourceComment) {
+  if (request.operation === 'workspace_batch') {
+    if (Object.keys(request).sort().join(',') !== 'branch,operation,requestId,steps') {
+      throw new Error('NLO_BATCH_DENIED');
+    }
+    await assertCreationRootBinding(config.configuredRepoRoot, config.root);
+    return runWorkspaceBatch({ steps: request.steps, repoRoot: config.root });
+  }
   if (request.operation === 'runtime_identity') {
     if (Object.keys(request).sort().join(',') !== 'branch,operation,requestId') {
       throw new Error('NLO_RUNTIME_IDENTITY_INVALID');
