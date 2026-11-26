@@ -5,7 +5,7 @@ import {
   isolatedWorktreeTarget
 } from './worktree-isolation-preflight.js';
 import { createIsolatedWorktree } from './worktree-isolation-create.js';
-import { validateCreationApproval, claimCreation } from './worktree-creation-approval.js';
+import { assertCreationRootBinding, validateCreationApproval, claimCreation } from './worktree-creation-approval.js';
 import { createSecurityConfig, redactSecrets } from './security.js';
 import { runOnce } from './processes.js';
 
@@ -73,6 +73,7 @@ async function loadConfig() {
   return {
     security,
     root: security.primary,
+    configuredRepoRoot: String(raw.repoRoot || ''),
     pollSeconds: Math.max(60, Math.min(300, Number(raw.pollSeconds || 10))),
     statePath: path.join(path.dirname(configPath), 'worktree-safe-bridge-1837-state.json'),
     localAppData: String(process.env.LOCALAPPDATA || '')
@@ -323,6 +324,7 @@ async function handle(config, request, sourceComment) {
     const approval = await githubApi(getToken(), 'GET',
       '/repos/' + OWNER + '/' + REPOSITORY + '/issues/comments/' + request.approvalCommentId);
     const binding = validateCreationApproval({ request, source: sourceComment, approval, enabled: true });
+    await assertCreationRootBinding(config.configuredRepoRoot, config.root);
     await claimCreation(config.statePath, binding);
     return createIsolatedWorktree({
       repoRoot: config.root,
@@ -330,7 +332,10 @@ async function handle(config, request, sourceComment) {
       branch: request.branch,
       expectedHead: request.expectedHead,
       creationApproved: true,
-      preflight: () => isolationPreflight(config, request)
+      preflight: async () => {
+        await assertCreationRootBinding(config.configuredRepoRoot, config.root);
+        return isolationPreflight(config, request);
+      }
     });
   }
   if (request.operation === 'isolation_preflight') {
