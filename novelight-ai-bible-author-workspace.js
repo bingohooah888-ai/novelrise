@@ -607,6 +607,7 @@
     let reviewedIds = new Set(snapshot?.reviewedIds ?? []);
     let revision = snapshot?.revision ?? 0;
     let saving = false;
+    let saveUncertain = false;
     const reviewButtons = [];
     const isCurrentView = () => !target.hidden && target.children?.[0] === wrap;
 
@@ -615,7 +616,9 @@
         reviewedIds.has(item.id)
       ).length;
       reviewedProgress.textContent = snapshot
-        ? '保存済みの確認済み：' +
+        ? (saveUncertain
+            ? '最後に確認できた確認済み：'
+            : '保存済みの確認済み：') +
           reviewedCount +
           '/' +
           review.checks.length +
@@ -627,7 +630,7 @@
           '件（保存されません）';
       for (const { button, id } of reviewButtons) {
         const reviewed = reviewedIds.has(id);
-        button.disabled = saving;
+        button.disabled = saving || saveUncertain;
         button.setAttribute('aria-pressed', String(reviewed));
         button.textContent = snapshot
           ? reviewed
@@ -650,7 +653,7 @@
       reviewedButton.type = 'button';
       reviewButtons.push({ button: reviewedButton, id: item.id });
       reviewedButton.addEventListener('click', async () => {
-        if (saving) return;
+        if (saving || saveUncertain) return;
         const next = new Set(reviewedIds);
         if (next.has(item.id)) next.delete(item.id);
         else next.add(item.id);
@@ -689,8 +692,11 @@
           saveStatus.textContent = '確認状態を保存しました。';
         } catch {
           if (isCurrentView()) {
+            // A lost receipt may follow a committed write. Do not assert
+            // that the server is unchanged or retry a potentially stale CAS.
+            saveUncertain = true;
             saveStatus.textContent =
-              '保存に失敗しました。変更は反映していません。';
+              '保存結果を確認できませんでした。画面を再読み込みして保存状態を確認してください。';
           }
         } finally {
           saving = false;

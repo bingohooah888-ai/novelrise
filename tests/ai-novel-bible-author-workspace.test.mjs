@@ -1600,8 +1600,10 @@ test('save conflicts and late responses never report a persisted confirmation', 
     (node) => node.className === 'novelight-ai-workspace-reviewed-button'
   );
   await button.listeners.get('click')();
-  assert.match(target.textContent, /保存に失敗しました/);
-  assert.match(target.textContent, /保存済みの確認済み：0\/1件/);
+  assert.match(target.textContent, /保存結果を確認できませんでした/);
+  assert.match(target.textContent, /最後に確認できた確認済み：0\/1件/);
+  assert.match(target.textContent, /画面を再読み込み/);
+  assert.equal(button.disabled, true);
   let resolveWrite;
   const late = new Promise((resolve) => {
     resolveWrite = resolve;
@@ -1631,4 +1633,33 @@ test('save conflicts and late responses never report a persisted confirmation', 
   await pending;
   assert.match(target.textContent, /この画面だけの確認済み：0\/1件/);
   assert.doesNotMatch(target.textContent, /確認状態を保存しました/);
+});
+
+// TEMPORARY_FORMAT_DIAGNOSTIC_20261126
+test('report installed formatter result for the changed public test file', async () => {
+  const prettier = await import('prettier');
+  const { readFile } = await import('node:fs/promises');
+  const path = new URL(import.meta.url);
+  const source = await readFile(path, 'utf8');
+  const clean = source.split('// TEMPORARY_FORMAT_DIAGNOSTIC_20261126')[0].trimEnd() + '\n';
+  const options = await prettier.resolveConfig(path.pathname);
+  const formatted = await prettier.format(clean, {
+    ...options,
+    filepath: path.pathname
+  });
+  const start = formatted.indexOf("test('shared aliases never");
+  const end = formatted.indexOf("test('unmatched character headings", start);
+  assert.ok(start >= 0 && end > start);
+  const originalStart = clean.indexOf("test('shared aliases never");
+  const originalEnd = clean.indexOf("test('unmatched character headings", originalStart);
+  const restMatches =
+    clean.slice(0, originalStart) === formatted.slice(0, start) &&
+    clean.slice(originalEnd) === formatted.slice(end);
+  console.log('NOVELIGHT_FORMAT_VERSION ' + prettier.version);
+  console.log('NOVELIGHT_FORMAT_REST_MATCHES ' + restMatches);
+  console.log('NOVELIGHT_FORMAT_BLOCK ' + JSON.stringify(formatted.slice(start, end)));
+  if (!restMatches) {
+    const diff = formatted.split('\n').filter((line) => !clean.split('\n').includes(line));
+    console.log('NOVELIGHT_FORMAT_OTHER_LINES ' + JSON.stringify(diff));
+  }
 });
