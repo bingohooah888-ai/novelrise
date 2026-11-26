@@ -32,3 +32,35 @@ Do not activate, change existing runtime paths, merge, or deploy merely because
 this code exists. Complete current PR CI, review, the exact-HEAD OWNER integration
 approval, and one safe consolidated local rollout before live use. Gate A stays
 frozen and PR #2895 is untouched.
+
+## Local-only operation candidates
+
+The existing apply_file operation now uses a physical path guard and pinned raw
+Git blob bytes before atomic replacement. Dirty files, links, reserved paths,
+credential-like paths, and unexpected target roots fail closed. A checkout
+whose CRLF bytes differ from the pinned Git blob is deliberately rejected.
+The same-OS-user concurrent process threat is not solved by these checks.
+The prior repository-script preflight operation is disabled on this Bridge
+until actual OS isolation is proven; existing GitHub CI remains the fallback.
+
+The local-sandbox-package module builds a hash-pinned, locally approved .wsb
+package. It has no host mappings, networking, clipboard, GPU, audio, video or
+printer redirection, and requests Protected Client. It never launches Windows
+Sandbox, changes Windows features, or sends scripts/results to the public Issue.
+Windows Sandbox availability and effective isolation are unproven on the real
+machine. Microsoft's configuration and CLI documentation describe the options;
+the CLI has no guest process stdout/stderr retrieval. No guest/browser session
+or host shell is remotely authorized by this candidate.
+
+The runtime-update-plan module validates exact base, target and allowed NLO
+file delta in a separate, detached, clean checkout, and includes a local-only
+transaction with a mandatory independent maintenance verifier. It does not fetch
+or restart, and never updates the configured development checkout. Automatic
+rollback is attempted only from a clean known candidate; ambiguous state stops.
+There is no production caller for the maintenance verifier, and no automatic
+supervisor cutover is wired. The existing supervisor restart code 75 is a
+potential integration point, not a new authorization. No live rollout yet.
+
+Focused synthetic tests exercise file replacement, dirty-file/link denial,
+offline package preparation and a real temporary Git checkout update. These
+are not Windows guest or live-runtime proof. Do not mark capabilities enabled.

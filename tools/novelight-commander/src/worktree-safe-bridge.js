@@ -6,6 +6,7 @@ import {
 } from './worktree-isolation-preflight.js';
 import { createIsolatedWorktree } from './worktree-isolation-create.js';
 import { consumeLocalPermit } from './worktree-local-permit.js';
+import { writePinnedWorktreeFile, validatePhysicalEditPath } from './worktree-file-safe.mjs';
 import { runWorkspaceBatch } from './workspace-operation-batch.js';
 import { assertCreationRootBinding, validateCreationApproval, claimCreation } from './worktree-creation-approval.js';
 import { createSecurityConfig, redactSecrets } from './security.js';
@@ -231,8 +232,12 @@ async function statusResult(config, request) {
 }
 
 async function applyFile(config, request) {
-  const worktree = await ensureWorktree(config, request.branch, request.expectedHead);
+  await assertCreationRootBinding(config.configuredRepoRoot, config.root);
+  if (!SHA_RE.test(String(request.expectedHead || ''))) throw new Error('NLO_FILE_EDIT_DENIED');
   const relative = assertEditablePath(request.path);
+  validatePhysicalEditPath(relative);
+  const worktree = await ensureWorktree(config, request.branch, request.expectedHead);
+  await assertCreationRootBinding(worktree.target, await runGit(config, ['rev-parse', '--show-toplevel'], worktree.target));
   const expectedBlobSha = request.expectedBlobSha == null ? null : String(request.expectedBlobSha);
   if (expectedBlobSha != null && !SHA_RE.test(expectedBlobSha)) throw new Error('Invalid expectedBlobSha.');
   let currentBlob = null;
@@ -241,39 +246,16 @@ async function applyFile(config, request) {
   if (expectedBlobSha === null && currentBlob !== null) throw new Error('Target file already exists at HEAD; expectedBlobSha is required.');
   if (expectedBlobSha !== null && currentBlob !== expectedBlobSha) throw new Error(`Blob mismatch for ${relative}: expected ${expectedBlobSha}, observed ${currentBlob || 'missing'}.`);
   const content = decodeReplacementContent(request.contentBase64);
-  const absolute = path.resolve(worktree.target, relative);
-  const relCheck = path.relative(worktree.target, absolute);
-  if (relCheck.startsWith('..') || path.isAbsolute(relCheck)) throw new Error('Resolved file path escaped worktree.');
-  await fs.mkdir(path.dirname(absolute), { recursive: true });
-  await fs.writeFile(absolute, content);
+  await writePinnedWorktreeFile({ root: worktree.target, relative, expectedBlobSha, content });
   const status = await runGit(config, ['status', '--porcelain=v1', '--', relative], worktree.target);
   if (!status) throw new Error('Replacement produced no working-tree change.');
   return { branch: request.branch, head: worktree.head, path: relative, bytes: content.length, status };
 }
 
-const PREFLIGHTS = Object.freeze({
-  performance: [['npm', ['run', 'perf:p1:contracts']]],
-  test: [['npm', ['test']]],
-  check: [['npm', ['run', 'check', '--if-present']]],
-  performance_full: [
-    ['npm', ['run', 'perf:p1:contracts']],
-    ['npm', ['test']],
-    ['npm', ['run', 'check', '--if-present']]
-  ]
-});
-
-async function preflight(config, request) {
-  const worktree = await ensureWorktree(config, request.branch, request.expectedHead);
-  const profile = String(request.profile || 'performance');
-  const commands = PREFLIGHTS[profile];
-  if (!commands) throw new Error('Unsupported preflight profile.');
-  const results = [];
-  for (const [command, args] of commands) {
-    const result = await runOnce(command, args, worktree.target, config.security, 300000);
-    results.push({ command: `${command} ${args.join(' ')}`, code: result.code, stdout: bounded(result.stdout, 2500), stderr: bounded(result.stderr, 2500) });
-    if (result.code !== 0) throw new Error(`Preflight failed: ${command} ${args.join(' ')}\n${bounded(result.stderr || result.stdout, 3000)}`);
-  }
-  return { branch: request.branch, head: worktree.head, profile, results };
+// Repository scripts can access the credential-bearing OS user. The public
+// worktree Bridge must not run them until a real isolation boundary is proven.
+async function preflight() {
+  throw new Error('NLO_PREFLIGHT_OS_ISOLATION_REQUIRED');
 }
 
 async function commitPush(config, request) {

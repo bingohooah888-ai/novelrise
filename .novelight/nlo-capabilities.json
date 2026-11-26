@@ -311,6 +311,55 @@
       "version": "0.1.0",
       "status": "testing",
       "provenance": "PR #2964 consolidated development; pending CI and live runtime verification"
+    },
+    {
+      "id": "nlo.local.offline-sandbox-package",
+      "description": "Prepare a locally approved hash-pinned Windows Sandbox job configuration with no host mappings or network; never launch or export guest results.",
+      "intents": [
+        "prepare offline isolated local job",
+        "隔離実行パッケージ準備"
+      ],
+      "aliases": [
+        "local_sandbox_package"
+      ],
+      "adapter": "tools/novelight-commander/src/local-sandbox-package.mjs",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "local_owner_exact_script_hash",
+        "existing_windows_sandbox_feature",
+        "separate_live_isolation_proof_before_execution"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-local-operator-candidate.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "PR #2964; synthetic local package fixture only, Windows guest not launched"
+    },
+    {
+      "id": "nlo.local.runtime-update-transaction",
+      "description": "Plan and apply an exact NLO-only detached-runtime checkout update under independently verified local maintenance. No fetch, restart, or public Bridge exposure.",
+      "intents": [
+        "verify exact runtime update",
+        "安全なNLO差分更新"
+      ],
+      "aliases": [
+        "local_runtime_update"
+      ],
+      "adapter": "tools/novelight-commander/src/runtime-update-plan.mjs",
+      "executionRisk": "C",
+      "requiredPermissions": [
+        "local_owner_exact_base_target_and_file_scope",
+        "independently_held_runtime_maintenance_boundary",
+        "separate_runtime_checkout",
+        "no_remote_activation"
+      ],
+      "testCommands": [
+        "node --test tests/nlo-local-operator-candidate.test.mjs"
+      ],
+      "version": "0.1.0",
+      "status": "testing",
+      "provenance": "PR #2964; real synthetic Git fixture, live maintenance integration not established"
     }
   ]
 }
