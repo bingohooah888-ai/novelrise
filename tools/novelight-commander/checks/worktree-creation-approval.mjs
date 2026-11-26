@@ -1,0 +1,17 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import {validateCreationApproval,claimCreation} from '../src/worktree-creation-approval.js';
+const now = Date.parse('2026-11-26T12:00:00Z');
+const req = {operation:'create_isolated',requestId:'cmdr-20261126T120000Z-synthetic',branch:'feature/synthetic',expectedHead:'a'.repeat(40),confirmation:'CHAT_APPROVED',approvalCommentId:1};
+const base = {user:{login:'bingohooah888-ai'},author_association:'OWNER',issue_url:'https://api.github.com/repos/bingohooah888-ai/novelrise/issues/1837',created_at:'2026-11-26T11:59:00Z',updated_at:'2026-11-26T11:59:00Z'};
+const approval = {...base,id:1,body:'NOVELIGHT_NLO_WORKTREE_CREATE_APPROVAL '+JSON.stringify({requestId:req.requestId,branch:req.branch,expectedHead:req.expectedHead,scope:'create-isolated-worktree-only'})};
+const source = {...base,id:2};
+const valid = {request:req,source,approval,now,enabled:true};
+test('accepts separate pinned OWNER approval',()=>assert.equal(validateCreationApproval(valid).approvalId,1));
+test('default off and denies extra fields',()=>{assert.throws(()=>validateCreationApproval({...valid,enabled:false}));assert.throws(()=>validateCreationApproval({...valid,request:{...req,command:'arbitrary'}}));});
+test('rejects different author, association, issue and edited approval',()=>{for(const bad of [{user:{login:'someone'}},{author_association:'MEMBER'},{issue_url:'https://example.test'},{updated_at:'2026-11-26T11:59:01Z'}])assert.throws(()=>validateCreationApproval({...valid,approval:{...approval,...bad}}));});
+test('rejects stale, future, reversed and mismatched approvals',()=>{assert.throws(()=>validateCreationApproval({...valid,now:now+16*60000}));assert.throws(()=>validateCreationApproval({...valid,now:now-120000}));assert.throws(()=>validateCreationApproval({...valid,source:{...source,id:1}}));assert.throws(()=>validateCreationApproval({...valid,request:{...req,expectedHead:'b'.repeat(40)}}));});
+test('durable exclusive claim denies concurrent and later replay',async()=>{const dir=await fs.mkdtemp(path.join(os.tmpdir(),'nlo-approval-'));try{const state=path.join(dir,'state.json');const binding=validateCreationApproval(valid);const results=await Promise.allSettled([claimCreation(state,binding),claimCreation(state,binding)]);assert.equal(results.filter(x=>x.status==='fulfilled').length,1);await assert.rejects(claimCreation(state,binding));}finally{await fs.rm(dir,{recursive:true,force:true});}});

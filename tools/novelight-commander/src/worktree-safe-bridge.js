@@ -4,6 +4,8 @@ import {
   inspectIsolatedWorktree,
   isolatedWorktreeTarget
 } from './worktree-isolation-preflight.js';
+import { createIsolatedWorktree } from './worktree-isolation-create.js';
+import { validateCreationApproval, claimCreation } from './worktree-creation-approval.js';
 import { createSecurityConfig, redactSecrets } from './security.js';
 import { runOnce } from './processes.js';
 
@@ -140,12 +142,12 @@ function parseRequest(comment) {
   catch { throw new Error('Worktree request is not valid JSON.'); }
   if (!REQUEST_ID_RE.test(String(request?.requestId || ''))) throw new Error('Invalid requestId.');
   request.branch = assertBranch(request.branch);
-  if (!['status', 'apply_file', 'preflight', 'commit_push', 'cleanup', 'isolation_preflight'].includes(request.operation)) throw new Error('Unsupported worktree operation.');
+  if (!['status', 'apply_file', 'preflight', 'commit_push', 'cleanup', 'isolation_preflight', 'create_isolated'].includes(request.operation)) throw new Error('Unsupported worktree operation.');
   if (request.expectedHead != null && !SHA_RE.test(String(request.expectedHead))) throw new Error('Invalid expectedHead.');
   if (request.operation === 'isolation_preflight' && !SHA_RE.test(String(request.expectedHead || ''))) {
     throw new Error('NLO_ISOLATION_PREFLIGHT_REQUIRES_PINNED_HEAD');
   }
-  if (['apply_file', 'commit_push', 'cleanup'].includes(request.operation) && request.confirmation !== MUTATION_CONFIRMATION) {
+  if (['apply_file', 'commit_push', 'cleanup', 'create_isolated'].includes(request.operation) && request.confirmation !== MUTATION_CONFIRMATION) {
     throw new Error('Explicit chat approval marker is required for worktree mutation.');
   }
   return request;
@@ -311,7 +313,26 @@ async function cleanup(config, request) {
   return { branch: request.branch, removed: true };
 }
 
-async function handle(config, request) {
+async function handle(config, request, sourceComment) {
+  if (request.operation === 'create_isolated') {
+    // This is a separate local capability switch, not a remote override.
+    if (process.env.NLO_WORKTREE_CREATE_ENABLED !== 'true' ||
+        !Number.isSafeInteger(request.approvalCommentId) || request.approvalCommentId < 1) {
+      throw new Error('NLO_CREATE_AUTHORIZATION_DENIED');
+    }
+    const approval = await githubApi(getToken(), 'GET',
+      '/repos/' + OWNER + '/' + REPOSITORY + '/issues/comments/' + request.approvalCommentId);
+    const binding = validateCreationApproval({ request, source: sourceComment, approval, enabled: true });
+    await claimCreation(config.statePath, binding);
+    return createIsolatedWorktree({
+      repoRoot: config.root,
+      localAppData: config.localAppData,
+      branch: request.branch,
+      expectedHead: request.expectedHead,
+      creationApproved: true,
+      preflight: () => isolationPreflight(config, request)
+    });
+  }
   if (request.operation === 'isolation_preflight') {
     return await isolationPreflight(config, request);
   }
@@ -358,7 +379,7 @@ async function pollOnce(config, token, state) {
     try {
       request = parseRequest(comment);
       if (request && !state.processed.includes(request.requestId)) {
-        const result = await handle(config, request);
+        const result = await handle(config, request, comment);
         await postResult(token, request, 'success', JSON.stringify(result, null, 2));
         state.processed.push(request.requestId);
         state.processed = state.processed.slice(-200);
