@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildOfflineToolSmokeConfig, OFFLINE_TOOL_SMOKE_SCRIPT } from '../tools/novelight-commander/src/local-sandbox-package.mjs';
+import { buildOfflineToolSmokeConfig, prepareOfflineToolSmokePackage, OFFLINE_TOOL_SMOKE_SCRIPT } from '../tools/novelight-commander/src/local-sandbox-package.mjs';
 import { restoreRuntimeUpdate } from '../tools/novelight-commander/src/runtime-update-plan.mjs';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -48,4 +48,16 @@ test('exact detached restore verifies forward delta and refuses wrong approval o
     assert.equal(git('rev-parse','HEAD'),expectedBase);
     assert.equal(git('status','--porcelain'), '');
   } finally { await rm(root,{recursive:true,force:true}); }
+});
+
+test('local fixed package is written only after explicit approval and not launched', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'nlo-smoke-package-'));
+  try {
+    const tempRoot = await realpath(root);
+    await assert.rejects(prepareOfflineToolSmokePackage({ confirmation: 'wrong', tempRoot }));
+    const result = await prepareOfflineToolSmokePackage({ confirmation: 'LOCAL_OWNER_APPROVES_FIXED_OFFLINE_SMOKE', tempRoot });
+    assert.equal(result.launched, false);
+    assert.equal(result.hostMappings, 0);
+    assert.equal(await readFile(result.output, 'utf8'), buildOfflineToolSmokeConfig('LOCAL_OWNER_APPROVES_FIXED_OFFLINE_SMOKE'));
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
