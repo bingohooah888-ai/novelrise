@@ -74,9 +74,15 @@ test('adjacent repeated lines are advisory and bounded', () => {
     content: Array(8).fill(content).join('\n')
   });
   const repeats = result.findings.filter((f) => f.code === 'repeated-line');
-  assert.deepEqual(Array.from(repeats, (f) => f.line), [2, 3, 4]);
+  assert.deepEqual(
+    Array.from(repeats, (f) => f.line),
+    [2, 3, 4]
+  );
   assert.ok(!JSON.stringify(repeats).includes(content));
-  const separate = analyze({ title: '章', content: content + '\n\n' + content });
+  const separate = analyze({
+    title: '章',
+    content: content + '\n\n' + content
+  });
   assert.ok(!separate.findings.some((f) => f.code === 'repeated-line'));
 });
 
@@ -85,12 +91,10 @@ test('literal notation checks are optional and never include text', () => {
     title: '章',
     content: '本当？ really?\n驚いた！ wow!\n…… ...\n｜月光《》'
   });
-  assert.deepEqual(Array.from(result.findings, (f) => f.code), [
-    'mixed-ellipsis',
-    'mixed-question',
-    'mixed-exclamation',
-    'empty-ruby'
-  ]);
+  assert.deepEqual(
+    Array.from(result.findings, (f) => f.code),
+    ['mixed-ellipsis', 'mixed-question', 'mixed-exclamation', 'empty-ruby']
+  );
   assert.ok(!JSON.stringify(result).includes('really'));
   assert.equal(result.inspectionLimited, false);
   const deep = analyze({
@@ -237,20 +241,4 @@ test('both editors expose check without changing save/publish or sending story t
   assert.doesNotMatch(runtime, /addEventListener\('submit'/u);
   assert.match(runtime, /item\.textContent\s*=/u);
   assert.match(runtime, /finding\.line === null/u);
-});
-
-// TEMPORARY_FORMAT_DIAGNOSTIC_20261126
-test('report installed formatter output for the changed test file', async () => {
-  const prettier = await import('prettier');
-  const { readFile } = await import('node:fs/promises');
-  const path = new URL(import.meta.url);
-  const source = await readFile(path, 'utf8');
-  const clean = source.split('// TEMPORARY_FORMAT_DIAGNOSTIC_20261126')[0].trimEnd() + '\n';
-  const options = await prettier.resolveConfig(path.pathname);
-  const formatted = await prettier.format(clean, {
-    ...options,
-    filepath: path.pathname
-  });
-  console.log('NOVELIGHT_FORMAT_VERSION ' + prettier.version);
-  console.log('NOVELIGHT_FORMAT_FULL ' + JSON.stringify(formatted));
 });
