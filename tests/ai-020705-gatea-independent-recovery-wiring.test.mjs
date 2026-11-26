@@ -243,7 +243,6 @@ test('session revoker checks synthetic identity and session readback before succ
   await assert.rejects(revoke(scope.actorId), /STOP_PORT_NO_GO/u);
 });
 
-
 // Mock JWTs are local routing fixtures only; no credential issuance or I/O.
 // prettier-ignore
 test('preventive Data API ports use only fixed RPCs and distinct scoped roles', async () => {

@@ -1,9 +1,9 @@
 name: NOVELIGHT Gate A Staging Independent STOP (one-shot)
 
 # Cloudflare-independent, OWNER-triggered STOP only. It cannot arm AI or call providers.
-# The staging Environment must receive a NEW dedicated, STOP-only DB role
-# secret named GATEA_STAGING_STOP_DATABASE_URL; never reuse STAGING_DATABASE_URL.
-# This is an independent STOP execution path, not yet automatic failure detection.
+# Preventive candidate: fixed Data API STOP only, with separate final census.
+# Activation requires separately approved Staging-only role/JWT isolation.
+# No generic DB login, PAT, provider credential or automatic activation.
 on:
   issue_comment:
     types: [created]
@@ -30,7 +30,7 @@ jobs:
       github.triggering_actor == 'bingohooah888-ai' &&
       startsWith(github.event.comment.body, 'NOVELIGHT_GATEA_STAGING_STOP_ONCE ')
     runs-on: ubuntu-latest
-    environment: staging
+    environment: gatea-independent-recovery
     timeout-minutes: 6
     permissions:
       contents: read
@@ -72,64 +72,34 @@ jobs:
               .head.sha == $approved_sha
             ' >/dev/null
 
-      - name: STOP Staging once and independently read back
+      - name: Configure locked Node runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: STOP Staging through dedicated fixed RPC and verify actual row
         shell: bash
         env:
-          GATEA_STOP_DATABASE_URL: ${{ secrets.GATEA_STAGING_STOP_DATABASE_URL }}
-          STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
-          PGSSLMODE: require
+          GATEA_PREVENTIVE_STOP_ENABLED: ${{ vars.GATEA_PREVENTIVE_STOP_ENABLED }}
+          GATEA_STOP_PRINCIPAL_ID: ${{ vars.GATEA_STOP_PRINCIPAL_ID }}
+          GATEA_STOP_ACCESS_TOKEN: ${{ secrets.GATEA_STOP_ACCESS_TOKEN }}
+          GATEA_STAGING_PUBLISHABLE_KEY: ${{ vars.GATEA_STAGING_PUBLISHABLE_KEY }}
         run: |
           set -euo pipefail
-          test -n "$GATEA_STOP_DATABASE_URL"
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GATEA_PREVENTIVE_STOP_ENABLED" = 'true'
           node --input-type=module <<'NODE'
-          const stage = 'wmlzjgvxgoyrovdhbqbg';
-          const role = 'novelight_gatea_stop';
-          const url = new URL(process.env.GATEA_STOP_DATABASE_URL);
-          const stageUrl = new URL(process.env.STAGING_SUPABASE_URL);
-          const direct = url.hostname === 'db.' + stage + '.supabase.co' &&
-            url.username === role;
-          const pooled = /^aws-[0-9]+-[a-z0-9-]+\.pooler\.supabase\.com$/u.test(url.hostname) &&
-            url.username === role + '.' + stage;
-          if (stageUrl.origin !== 'https://' + stage + '.supabase.co' ||
-              !['postgres:', 'postgresql:'].includes(url.protocol) ||
-              !(direct || pooled) || url.port !== '5432' ||
-              url.pathname !== '/postgres' || !url.password ||
-              url.search || url.hash || process.env.PGSSLMODE !== 'require')
-            throw new Error('GATEA_STAGING_TARGET_OR_CREDENTIAL_NO_GO');
+          import { create020705PreventiveStopRpc } from './.github/ai-02-07-05-app-composition/gatea-independent-stop-ports.mjs';
+          const stop = create020705PreventiveStopRpc({
+            principalId: process.env.GATEA_STOP_PRINCIPAL_ID,
+            accessToken: process.env.GATEA_STOP_ACCESS_TOKEN,
+            publishableKey: process.env.GATEA_STAGING_PUBLISHABLE_KEY
+          });
+          await stop();
+          console.log('GATEA_STAGING_STOP_READBACK_PASS: independent final census still required');
           NODE
-          command -v psql >/dev/null
-          role_check="$(psql "$GATEA_STOP_DATABASE_URL" -XqAt -v ON_ERROR_STOP=1 -c "
-            SELECT CASE WHEN current_user = 'novelight_gatea_stop'
-               AND rolcanlogin AND NOT rolinherit
-               AND NOT (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls)
-               AND has_function_privilege(current_user, 'gatea_stop_private.stop_once()', 'EXECUTE')
-               AND NOT has_table_privilege(current_user, 'public.novelight_ai_runtime_settings', 'UPDATE')
-               AND NOT has_column_privilege(current_user, 'public.novelight_ai_runtime_settings', 'enabled', 'UPDATE')
-               AND NOT has_column_privilege(current_user, 'public.novelight_ai_runtime_settings', 'user_day_cap_micros', 'UPDATE')
-               AND NOT has_column_privilege(current_user, 'public.novelight_ai_runtime_settings', 'user_month_cap_micros', 'UPDATE')
-               AND NOT has_column_privilege(current_user, 'public.novelight_ai_runtime_settings', 'global_day_cap_micros', 'UPDATE')
-               AND NOT has_column_privilege(current_user, 'public.novelight_ai_runtime_settings', 'global_month_cap_micros', 'UPDATE')
-               AND NOT EXISTS (
-                 SELECT 1 FROM pg_auth_members
-                 WHERE member = (SELECT oid FROM pg_roles WHERE rolname = current_user)
-               )
-            THEN 'PASS' ELSE 'NO_GO' END
-            FROM pg_roles WHERE rolname = current_user;")"
-          test "$role_check" = 'PASS'
-          psql "$GATEA_STOP_DATABASE_URL" -Xq -v ON_ERROR_STOP=1 --single-transaction --file - <<'SQL'
-          SET LOCAL lock_timeout = '3s';
-          SET LOCAL statement_timeout = '10s';
-          SELECT gatea_stop_private.stop_once();
-          SQL
-          readback="$(psql "$GATEA_STOP_DATABASE_URL" -XqAt -v ON_ERROR_STOP=1 -c "
-            SELECT enabled::text, user_day_cap_micros, user_month_cap_micros,
-                   global_day_cap_micros, global_month_cap_micros
-            FROM public.novelight_ai_runtime_settings WHERE singleton = 1;")"
-          if [ "$readback" != 'false|0|0|0|0' ]; then
-            echo 'GATEA_STAGING_INDEPENDENT_STOP_READBACK_NO_GO'
-            exit 1
-          fi
-          echo 'GATEA_STAGING_INDEPENDENT_STOP_READBACK_PASS'
 
   recovery-preflight:
     # Separate OWNER trigger; never runs on PR CI or the existing STOP event.
