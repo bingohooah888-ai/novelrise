@@ -220,4 +220,6 @@ race checkpoint_cas "$CAS" 1 0
   exit 1
 }
 echo 'PASS: CAS recorded exactly one checkpoint, completed replay rejected'
+# Targeted preventive Gate A proof; same disposable database and no hosted I/O.
+dbsql -f tests/rls/ai-020705-gatea-preventive.sql
 echo 'PASS: all tests on existing disposable CI PostgreSQL; no hosted database touched'
