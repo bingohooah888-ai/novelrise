@@ -287,6 +287,58 @@ test('story index groups foreshadowing, timeline and events without inventing st
   assert.match(target.textContent, /参照エピソードID：901/);
 });
 
+test('story index filters missing references and pending records independently', () => {
+  const payload = fixture();
+  payload.facts[0].suggestions[0].sourceEpisodeId = 900;
+  payload.facts[0].suggestions.push({
+    payload: { summary: '出典なしの候補', evidence: '' }
+  });
+  payload.facts[1].confirmed[0].sourceEpisodeId = 100;
+  const before = JSON.stringify(payload);
+  const index = storyIndex(payload);
+  assert.equal(index.foreshadowing[0].referenceMissing, false);
+  assert.equal(index.foreshadowing[0].missingReferenceCount, 1);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const story = nodes(target, 'aside').find(
+    (item) => item.className === 'novelight-ai-workspace-story-index'
+  );
+  const filter = nodes(story, 'select').find(
+    (item) => item.attributes['aria-label'] === '伏線と出来事の確認状態'
+  );
+  filter.value = 'missing';
+  filter.listeners.get('change')();
+  assert.match(story.textContent, /伏線「青い鍵」/);
+  assert.match(story.textContent, /参照元未登録：1件/);
+  assert.doesNotMatch(story.textContent, /出来事「出発」/);
+  filter.value = 'confirmed';
+  filter.listeners.get('change')();
+  assert.match(story.textContent, /出来事「出発」/);
+  assert.doesNotMatch(story.textContent, /伏線「青い鍵」/);
+  filter.value = 'pending';
+  filter.listeners.get('change')();
+  assert.match(story.textContent, /伏線「青い鍵」/);
+  assert.doesNotMatch(story.textContent, /出来事「出発」/);
+  assert.equal(JSON.stringify(payload), before);
+});
+
+test('last reference order uses episode ordinals rather than IDs', () => {
+  const items = [
+    { key: 'a', kind: 'event', lastEpisodeNumber: 2 },
+    { key: 'b', kind: 'event', lastEpisodeNumber: null },
+    { key: 'c', kind: 'event', lastEpisodeNumber: 9 }
+  ];
+  const ordered = sortStoryEntries(items, 'last-episode-number');
+  assert.deepEqual(
+    ordered.map((item) => item.key),
+    ['c', 'a', 'b']
+  );
+  assert.deepEqual(
+    items.map((item) => item.key),
+    ['a', 'b', 'c']
+  );
+});
+
 test('matching exact headings only suggests possible cross-category links', () => {
   const payload = fixture();
   payload.facts.push({
@@ -535,7 +587,12 @@ test('private chapter navigation joins real episode ordinals and offers focus ac
   assert.match(target.textContent, /第一章／第7話（エピソードID：100）/);
   assert.match(target.textContent, /物語内の時系列順ではありません/);
   const order = nodes(target, 'select')[2];
-  assert.equal(order.children.length, 3);
+  assert.deepEqual(
+    order.children.map((option) => option.value),
+    ['heading', 'source-id', 'episode-number', 'last-episode-number']
+  );
+  assert.match(target.textContent, /最後の参照話数：第2話/);
+  assert.match(target.textContent, /最後の参照話数：第7話/);
   order.value = 'episode-number';
   order.listeners.get('change')();
   const focus = nodes(target, 'button').find(
@@ -932,6 +989,38 @@ test('shared aliases never assign a record to two character profiles', () => {
   );
   jump.listeners.get('click')();
   assert.equal(visible().some(hasKey), true);
+  assert.equal(JSON.stringify(payload), before);
+});
+
+test('unclassified character notes remain discoverable without a registry', () => {
+  const payload = fixture();
+  payload.characters = [];
+  payload.notes.push({
+    type: 'character',
+    title: '仮の人物',
+    body: '未登録人物の設定'
+  });
+  payload.facts.push({
+    kind: 'character',
+    key: '仮の人物',
+    confirmed: [{ payload: { summary: '人物設定', evidence: '' } }],
+    suggestions: []
+  });
+  const before = JSON.stringify(payload);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const profiles = nodes(target, 'div').find(
+    (item) => item.className === 'novelight-ai-workspace-character-profiles'
+  );
+  assert.match(profiles.textContent, /人物未分類の創作ノート（1件）/);
+  assert.match(profiles.textContent, /見出しが一致しない設定（1項目）/);
+  const button = nodes(profiles, 'button').find(
+    (item) => item.className === 'novelight-ai-workspace-character-note-focus'
+  );
+  button.listeners.get('click')();
+  const visible = nodes(target, 'article').filter((item) => !item.hidden);
+  assert.equal(visible.length, 2);
+  assert.ok(visible.some((item) => item.textContent.includes('未登録人物')));
   assert.equal(JSON.stringify(payload), before);
 });
 

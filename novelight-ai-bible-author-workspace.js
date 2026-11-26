@@ -189,6 +189,9 @@
           sourceEpisodeIds,
           // A missing source ID is not proof that a fictional event has no origin.
           referenceMissing: records.length > 0 && sourceEpisodeIds.length === 0,
+          missingReferenceCount: records.filter(
+            (record) => record.sourceEpisodeId == null
+          ).length,
           titleMatch: false
         };
       });
@@ -240,7 +243,8 @@
         result.push({
           ...entry,
           references: match.references,
-          firstEpisodeNumber: match.firstEpisodeNumber
+          firstEpisodeNumber: match.firstEpisodeNumber,
+          lastEpisodeNumber: match.references.at(-1)?.episodeNumber ?? null
         });
       }
       return result;
@@ -256,6 +260,11 @@
         const aNumber = a.firstEpisodeNumber ?? Number.POSITIVE_INFINITY;
         const bNumber = b.firstEpisodeNumber ?? Number.POSITIVE_INFINITY;
         if (aNumber !== bNumber) return aNumber - bNumber;
+      }
+      if (sortBy === 'last-episode-number') {
+        const aNumber = a.lastEpisodeNumber ?? Number.NEGATIVE_INFINITY;
+        const bNumber = b.lastEpisodeNumber ?? Number.NEGATIVE_INFINITY;
+        if (aNumber !== bNumber) return bNumber - aNumber;
       }
       if (sortBy === 'source-id') {
         const aId = a.sourceEpisodeIds[0] ?? Number.POSITIVE_INFINITY;
@@ -829,7 +838,18 @@
         sourceIds
       };
     });
-    if (characterProfiles.length) {
+    const matched = new Set(
+      characterProfiles.flatMap((profile) => [...profile.names])
+    );
+    const unmatched = payload.facts.filter(
+      (group) =>
+        group.kind === 'character' && !matched.has(normalizeName(group.key))
+    );
+    const unmatchedNotes = payload.notes.filter(
+      (note) =>
+        note.type === 'character' && !matched.has(normalizeName(note.title))
+    );
+    if (characterProfiles.length || unmatched.length || unmatchedNotes.length) {
       const characterPanel = create(
         'div',
         'novelight-ai-workspace-character-profiles'
@@ -956,13 +976,6 @@
         detail.appendChild(choose);
         characterPanel.appendChild(detail);
       }
-      const matched = new Set(
-        characterProfiles.flatMap((profile) => [...profile.names])
-      );
-      const unmatched = payload.facts.filter(
-        (group) =>
-          group.kind === 'character' && !matched.has(normalizeName(group.key))
-      );
       if (unmatched.length) {
         const missing = create(
           'details',
@@ -1007,6 +1020,45 @@
           missing.appendChild(button);
         }
         characterPanel.appendChild(missing);
+      }
+      if (unmatchedNotes.length) {
+        const missingNotes = create(
+          'details',
+          'novelight-ai-workspace-character-unmatched-notes'
+        );
+        missingNotes.appendChild(
+          create(
+            'summary',
+            '',
+            '人物未分類の創作ノート（' + unmatchedNotes.length + '件）'
+          )
+        );
+        missingNotes.appendChild(
+          create(
+            'p',
+            '',
+            '人物を一意に特定できないノートです。登録内容は変更していません。'
+          )
+        );
+        for (const note of unmatchedNotes) {
+          const button = create(
+            'button',
+            'novelight-ai-workspace-character-note-focus',
+            note.title + ' の情報を検索'
+          );
+          button.type = 'button';
+          button.addEventListener('click', () => {
+            filter.value = note.title;
+            statusFilter.value = 'all';
+            categoryFilter.value = 'characters';
+            if (episodeFilter) episodeFilter.value = 'all';
+            if (chapterFilter) chapterFilter.value = 'all';
+            if (characterFilter) characterFilter.value = 'all';
+            updateFilter();
+          });
+          missingNotes.appendChild(button);
+        }
+        characterPanel.appendChild(missingNotes);
       }
       wrap.appendChild(characterPanel);
     }
@@ -1132,11 +1184,12 @@
       ['heading', '見出し順'],
       ['source-id', '参照エピソードID順（時系列ではありません）']
     ];
-    if (projected)
-      sortOptions.push([
-        'episode-number',
-        '実際の話数順（物語内の時系列ではありません）'
-      ]);
+    if (projected) {
+      sortOptions.push(
+        ['episode-number', '実際の話数順（物語内の時系列ではありません）'],
+        ['last-episode-number', '最後の参照話数が新しい順']
+      );
+    }
     for (const [value, title] of sortOptions) {
       const option = create('option', '', title);
       option.value = value;
@@ -1144,20 +1197,66 @@
     }
     storyOrder.value = 'heading';
     storyPanel.appendChild(storyOrder);
+    const storyFilter = create('select', 'novelight-ai-workspace-order');
+    storyFilter.setAttribute('aria-label', '伏線と出来事の確認状態');
+    for (const [value, title] of [
+      ['all', 'すべての伏線・出来事'],
+      ['pending', 'AI未確定候補あり'],
+      ['confirmed', '作者確定記録あり'],
+      ['missing', '参照元未登録の記録あり'],
+      ['matching', '同じ見出しの別区分あり']
+    ]) {
+      const option = create('option', '', title);
+      option.value = value;
+      storyFilter.appendChild(option);
+    }
+    storyFilter.value = 'all';
+    storyPanel.appendChild(storyFilter);
+    const matchesStoryFilter = (entry) => {
+      switch (storyFilter.value) {
+        case 'pending':
+          return entry.candidateCount > 0;
+        case 'confirmed':
+          return entry.confirmedCount > 0;
+        case 'missing':
+          return entry.missingReferenceCount > 0;
+        case 'matching':
+          return entry.titleMatch;
+        default:
+          return true;
+      }
+    };
     const indexRows = create('div', 'novelight-ai-workspace-story-rows');
     storyPanel.appendChild(indexRows);
     function redrawStoryIndex() {
       indexRows.textContent = '';
-      for (const [title, rows] of [
+      for (const [title, entries] of [
         ['伏線', story.foreshadowing],
         ['出来事・時系列', story.events]
       ]) {
+        const rows = entries.filter(matchesStoryFilter);
         const container = create('div', 'novelight-ai-workspace-story-group');
         container.appendChild(
-          create('h4', '', title + '（' + rows.length + '項目）')
+          create(
+            'h4',
+            '',
+            title +
+              '（' +
+              rows.length +
+              (storyFilter.value === 'all' ? '' : '/' + entries.length) +
+              '項目）'
+          )
         );
         if (!rows.length) {
-          container.appendChild(create('p', '', '登録情報はありません。'));
+          container.appendChild(
+            create(
+              'p',
+              '',
+              storyFilter.value === 'all'
+                ? '登録情報はありません。'
+                : '条件に一致する登録情報はありません。'
+            )
+          );
         }
         for (const entry of sortStoryEntries(rows, storyOrder.value)) {
           const row = create('p', 'novelight-ai-workspace-story-row');
@@ -1196,6 +1295,12 @@
             entry.candidateCount +
             '件' +
             references +
+            (projected && entry.lastEpisodeNumber != null
+              ? '／最後の参照話数：第' + entry.lastEpisodeNumber + '話'
+              : '') +
+            (entry.missingReferenceCount
+              ? '／参照元未登録：' + entry.missingReferenceCount + '件'
+              : '') +
             (entry.titleMatch
               ? '／同じ見出しの別区分あり（関連性は未判定）'
               : '');
@@ -1228,6 +1333,7 @@
       }
     }
     storyOrder.addEventListener('change', redrawStoryIndex);
+    storyFilter.addEventListener('change', redrawStoryIndex);
     redrawStoryIndex();
     wrap.appendChild(storyPanel);
 
