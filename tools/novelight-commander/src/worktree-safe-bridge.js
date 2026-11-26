@@ -5,6 +5,7 @@ import {
   isolatedWorktreeTarget
 } from './worktree-isolation-preflight.js';
 import { createIsolatedWorktree } from './worktree-isolation-create.js';
+import { consumeLocalPermit } from './worktree-local-permit.js';
 import { assertCreationRootBinding, validateCreationApproval, claimCreation } from './worktree-creation-approval.js';
 import { createSecurityConfig, redactSecrets } from './security.js';
 import { runOnce } from './processes.js';
@@ -143,7 +144,7 @@ function parseRequest(comment) {
   catch { throw new Error('Worktree request is not valid JSON.'); }
   if (!REQUEST_ID_RE.test(String(request?.requestId || ''))) throw new Error('Invalid requestId.');
   request.branch = assertBranch(request.branch);
-  if (!['status', 'apply_file', 'preflight', 'commit_push', 'cleanup', 'isolation_preflight', 'create_isolated'].includes(request.operation)) throw new Error('Unsupported worktree operation.');
+  if (!['status', 'apply_file', 'preflight', 'commit_push', 'cleanup', 'isolation_preflight', 'create_isolated', 'runtime_identity'].includes(request.operation)) throw new Error('Unsupported worktree operation.');
   if (request.expectedHead != null && !SHA_RE.test(String(request.expectedHead))) throw new Error('Invalid expectedHead.');
   if (request.operation === 'isolation_preflight' && !SHA_RE.test(String(request.expectedHead || ''))) {
     throw new Error('NLO_ISOLATION_PREFLIGHT_REQUIRES_PINNED_HEAD');
@@ -315,16 +316,28 @@ async function cleanup(config, request) {
 }
 
 async function handle(config, request, sourceComment) {
+  if (request.operation === 'runtime_identity') {
+    if (Object.keys(request).sort().join(',') !== 'branch,operation,requestId') {
+      throw new Error('NLO_RUNTIME_IDENTITY_INVALID');
+    }
+    let rootsMatch = false;
+    try { rootsMatch = await assertCreationRootBinding(config.configuredRepoRoot, config.root); }
+    catch { /* Do not expose paths or raw errors. */ }
+    return { result: 'NLO_RUNTIME_IDENTITY', protocolRevision: 'local-permit-v1',
+      rootsMatch, authorizationMode: 'local-single-use-permit-and-owner-approval',
+      legacyGlobalSwitchAccepted: false, pathsOrSecretsExposed: false };
+  }
   if (request.operation === 'create_isolated') {
-    // This is a separate local capability switch, not a remote override.
-    if (process.env.NLO_WORKTREE_CREATE_ENABLED !== 'true' ||
-        !Number.isSafeInteger(request.approvalCommentId) || request.approvalCommentId < 1) {
+    // The independent local permit replaces the broad startup switch.
+    // It is never issued or modified through this Bridge.
+    if (!Number.isSafeInteger(request.approvalCommentId) || request.approvalCommentId < 1) {
       throw new Error('NLO_CREATE_AUTHORIZATION_DENIED');
     }
     const approval = await githubApi(getToken(), 'GET',
       '/repos/' + OWNER + '/' + REPOSITORY + '/issues/comments/' + request.approvalCommentId);
     const binding = validateCreationApproval({ request, source: sourceComment, approval, enabled: true });
     await assertCreationRootBinding(config.configuredRepoRoot, config.root);
+    const localPermit = await consumeLocalPermit(config.statePath, binding);
     await claimCreation(config.statePath, binding);
     return createIsolatedWorktree({
       repoRoot: config.root,
@@ -334,7 +347,9 @@ async function handle(config, request, sourceComment) {
       creationApproved: true,
       preflight: async () => {
         await assertCreationRootBinding(config.configuredRepoRoot, config.root);
-        return isolationPreflight(config, request);
+        const proof = await isolationPreflight(config, request);
+        if (Date.now() >= localPermit.expiresAt) throw new Error('NLO_LOCAL_PERMIT_DENIED');
+        return proof;
       }
     });
   }
