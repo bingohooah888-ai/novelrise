@@ -64,6 +64,16 @@ export function decodeReplacementContent(base64) {
   return buffer;
 }
 
+// The existing locally configured repository is the default for this Bridge
+// only. Never derive its root from the supervisor's working directory.
+// Explicitly configured conflicting or relative roots must still fail closed.
+export function createWorktreeSecurity(configuredRepoRoot, env = process.env) {
+  if (!path.isAbsolute(configuredRepoRoot || '')) throw new Error('NLO_CREATE_AUTHORIZATION_DENIED');
+  const explicit = String(env.NOVELIGHT_COMMANDER_ROOT || '');
+  if (explicit && !path.isAbsolute(explicit)) throw new Error('NLO_CREATE_AUTHORIZATION_DENIED');
+  return createSecurityConfig({ ...env, NOVELIGHT_COMMANDER_ROOT: explicit || configuredRepoRoot });
+}
+
 async function loadConfig() {
   const configPathValue = String(process.env.NOVELIGHT_BRIDGE_CONFIG || '').trim();
   if (!configPathValue) throw new Error('NOVELIGHT_BRIDGE_CONFIG is missing.');
@@ -72,11 +82,12 @@ async function loadConfig() {
   if (raw.owner !== OWNER || raw.repository !== REPOSITORY || Number(raw.issueNumber) !== CONTROL_ISSUE) {
     throw new Error('Worktree bridge identity mismatch.');
   }
-  const security = createSecurityConfig();
+  const configuredRepoRoot = String(raw.repoRoot || '');
+  const security = createWorktreeSecurity(configuredRepoRoot);
   return {
     security,
     root: security.primary,
-    configuredRepoRoot: String(raw.repoRoot || ''),
+    configuredRepoRoot,
     pollSeconds: Math.max(60, Math.min(300, Number(raw.pollSeconds || 10))),
     statePath: path.join(path.dirname(configPath), 'worktree-safe-bridge-1837-state.json'),
     localAppData: String(process.env.LOCALAPPDATA || '')
@@ -317,6 +328,7 @@ async function handle(config, request, sourceComment) {
       rootsMatch, authorizationMode: 'local-single-use-permit-and-owner-approval',
       legacyGlobalSwitchAccepted: false, pathsOrSecretsExposed: false };
   }
+  await assertCreationRootBinding(config.configuredRepoRoot, config.root);
   if (request.operation === 'create_isolated') {
     // The independent local permit replaces the broad startup switch.
     // It is never issued or modified through this Bridge.
