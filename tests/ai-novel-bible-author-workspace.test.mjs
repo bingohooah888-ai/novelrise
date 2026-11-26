@@ -287,6 +287,58 @@ test('story index groups foreshadowing, timeline and events without inventing st
   assert.match(target.textContent, /参照エピソードID：901/);
 });
 
+test('story index filters missing references and pending records independently', () => {
+  const payload = fixture();
+  payload.facts[0].suggestions[0].sourceEpisodeId = 900;
+  payload.facts[0].suggestions.push({
+    payload: { summary: '出典なしの候補', evidence: '' }
+  });
+  payload.facts[1].confirmed[0].sourceEpisodeId = 100;
+  const before = JSON.stringify(payload);
+  const index = storyIndex(payload);
+  assert.equal(index.foreshadowing[0].referenceMissing, false);
+  assert.equal(index.foreshadowing[0].missingReferenceCount, 1);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const story = nodes(target, 'aside').find(
+    (item) => item.className === 'novelight-ai-workspace-story-index'
+  );
+  const filter = nodes(story, 'select').find(
+    (item) => item.attributes['aria-label'] === '伏線と出来事の確認状態'
+  );
+  filter.value = 'missing';
+  filter.listeners.get('change')();
+  assert.match(story.textContent, /伏線「青い鍵」/);
+  assert.match(story.textContent, /参照元未登録：1件/);
+  assert.doesNotMatch(story.textContent, /出来事「出発」/);
+  filter.value = 'confirmed';
+  filter.listeners.get('change')();
+  assert.match(story.textContent, /出来事「出発」/);
+  assert.doesNotMatch(story.textContent, /伏線「青い鍵」/);
+  filter.value = 'pending';
+  filter.listeners.get('change')();
+  assert.match(story.textContent, /伏線「青い鍵」/);
+  assert.doesNotMatch(story.textContent, /出来事「出発」/);
+  assert.equal(JSON.stringify(payload), before);
+});
+
+test('last reference order uses episode ordinals rather than IDs', () => {
+  const items = [
+    { key: 'a', kind: 'event', lastEpisodeNumber: 2 },
+    { key: 'b', kind: 'event', lastEpisodeNumber: null },
+    { key: 'c', kind: 'event', lastEpisodeNumber: 9 }
+  ];
+  const ordered = sortStoryEntries(items, 'last-episode-number');
+  assert.deepEqual(
+    ordered.map((item) => item.key),
+    ['c', 'a', 'b']
+  );
+  assert.deepEqual(
+    items.map((item) => item.key),
+    ['a', 'b', 'c']
+  );
+});
+
 test('matching exact headings only suggests possible cross-category links', () => {
   const payload = fixture();
   payload.facts.push({
