@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { buildOfflineSandboxConfig, prepareOfflineSandboxPackage } from '../src/local-sandbox-package.mjs';
+import { planRuntimeUpdate, validateUpdatePaths, applyRuntimeUpdate } from '../src/runtime-update-plan.mjs';
+const hash = b => createHash('sha256').update(b).digest('hex');
+test('offline package only accepts exact local script and disables all redirections', async t => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'nlo-sandbox-test-')));
+  t.after(() => fs.rm(root,{recursive:true,force:true}));
+  const script = Buffer.from('Write-Output "synthetic <&>"');
+  const p = path.join(root,'test.ps1'); await fs.writeFile(p,script);
+  const config = buildOfflineSandboxConfig(script,hash(script));
+  assert.match(config, /<Networking>Disable<\/Networking>/);
+  assert.match(config, /<ProtectedClient>Enable<\/ProtectedClient>/);
+  assert.match(config, /<ClipboardRedirection>Disable<\/ClipboardRedirection>/);
+  assert.doesNotMatch(config, /MappedFolders|HostFolder|synthetic/);
+  assert.throws(() => buildOfflineSandboxConfig(script,'a'.repeat(64)), /DENIED/);
+  await assert.rejects(prepareOfflineSandboxPackage({scriptPath:p,expectedSha256:hash(script),confirmation:'wrong',tempRoot:root}),/DENIED/);
+  const result = await prepareOfflineSandboxPackage({scriptPath:p,expectedSha256:hash(script),confirmation:'LOCAL_OWNER_APPROVES_OFFLINE_SCRIPT_ONLY',tempRoot:root});
+  assert.equal(await fs.readFile(result.output,'utf8'),config);
+  assert.equal(result.launched,false); assert.equal(result.hostMappings,0);
+});
+test('runtime update plan verifies exact detached commit and rejects unrelated changes', async t => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'nlo-runtime-test-')));
+  t.after(() => fs.rm(root,{recursive:true,force:true}));
+  const runtimeRoot = path.join(root,'runtime'); const configuredRoot = path.join(root,'main');
+  await fs.mkdir(runtimeRoot); await fs.mkdir(configuredRoot);
+  const git = (...a) => execFileSync('git',a,{cwd:runtimeRoot,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+  git('init','-q'); git('config','user.email','fixture@example.invalid'); git('config','user.name','Fixture');
+  const rel = 'tools/novelight-commander/src/example.js'; await fs.mkdir(path.dirname(path.join(runtimeRoot,rel)),{recursive:true});
+  await fs.writeFile(path.join(runtimeRoot,rel),'export const a=1;\n'); git('add','.'); git('commit','-qm','base'); const base=git('rev-parse','HEAD');
+  await fs.writeFile(path.join(runtimeRoot,rel),'export const a=2;\n'); git('add','.'); git('commit','-qm','target'); const head=git('rev-parse','HEAD'); git('switch','--detach',base);
+  const opts={runtimeRoot,configuredRoot,expectedBase:base,expectedHead:head,expectedPaths:[rel]};
+  const plan=await planRuntimeUpdate(opts); assert.equal(plan.result,'RUNTIME_UPDATE_PLAN_VERIFIED'); assert.equal(plan.updateApplied,false); assert.equal(git('rev-parse','HEAD'),base);
+  await assert.rejects(planRuntimeUpdate({...opts,expectedPaths:['tests/nlo-example.test.mjs']}),/DENIED/);
+  await assert.rejects(planRuntimeUpdate({...opts,configuredRoot:runtimeRoot}),/DENIED/);
+  assert.throws(()=>validateUpdatePaths(['tools/novelight-commander/run-github-bridge.ps1']),/DENIED/);
+  await assert.rejects(applyRuntimeUpdate({...opts,confirmation:'LOCAL_OWNER_APPROVES_EXACT_RUNTIME_UPDATE',verifyMaintenance:async()=>false}),/DENIED/);
+  await fs.writeFile(path.join(runtimeRoot,rel),'dirty'); await assert.rejects(planRuntimeUpdate(opts),/DENIED/);
+  await fs.writeFile(path.join(runtimeRoot,rel),'export const a=1;\n');
+  const result=await applyRuntimeUpdate({...opts,confirmation:'LOCAL_OWNER_APPROVES_EXACT_RUNTIME_UPDATE',verifyMaintenance:async()=>true});
+  assert.equal(result.updateApplied,true); assert.equal(result.restartPerformed,false);
+  assert.equal(git('rev-parse','HEAD'),head); assert.equal(await fs.readFile(path.join(runtimeRoot,rel),'utf8'),'export const a=2;\n');
+});
+
+import { writePinnedWorktreeFile, validatePhysicalEditPath } from '../src/worktree-file-safe.mjs';
+test('safe file replacement preserves dirty data and rejects linked and reserved paths', async t => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'nlo-safe-file-')));
+  t.after(() => fs.rm(root,{recursive:true,force:true}));
+  const old = Buffer.from('old\n'), content = Buffer.from('new\n');
+  const blob = createHash('sha1').update('blob '+old.length+'\0').update(old).digest('hex');
+  const p = path.join(root,'source.js'); await fs.writeFile(p,old);
+  await writePinnedWorktreeFile({root,relative:'source.js',expectedBlobSha:blob,content});
+  assert.deepEqual(await fs.readFile(p),content);
+  await assert.rejects(writePinnedWorktreeFile({root,relative:'source.js',expectedBlobSha:blob,content:old}),/DENIED/);
+  assert.deepEqual(await fs.readFile(p),content);
+  await writePinnedWorktreeFile({root,relative:'new/fresh.js',expectedBlobSha:null,content});
+  await assert.rejects(writePinnedWorktreeFile({root,relative:'new/fresh.js',expectedBlobSha:null,content:old}),/DENIED/);
+  await fs.writeFile(path.join(root,'linked-source.js'),old);
+  await fs.link(path.join(root,'linked-source.js'),path.join(root,'hard.js'));
+  await assert.rejects(writePinnedWorktreeFile({root,relative:'hard.js',expectedBlobSha:blob,content}),/DENIED/);
+  for (const relative of ['../x','.GIT/config','x/.ENV.local','x/a:stream','CON.js','x/file.pem','x/.. ']) assert.throws(()=>validatePhysicalEditPath(relative),/DENIED/);
+});
+
+test('safe file writer refuses a directory link even when target is inside the fixture', async t => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'nlo-file-link-')));
+  t.after(() => fs.rm(root,{recursive:true,force:true}));
+  await fs.mkdir(path.join(root,'real'));
+  await fs.symlink(path.join(root,'real'),path.join(root,'alias'),process.platform === 'win32' ? 'junction' : 'dir');
+  await assert.rejects(writePinnedWorktreeFile({root,relative:'alias/new.js',expectedBlobSha:null,content:Buffer.from('data')}),/DENIED/);
+  assert.deepEqual(await fs.readdir(path.join(root,'real')),[]);
+});
