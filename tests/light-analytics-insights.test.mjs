@@ -68,3 +68,57 @@ test('insights reuse authenticated output without a new data surface', () => {
     /\.rpc\(|\.from\(|URLSearchParams|p_user_id|user_id/u
   );
 });
+
+test('retention comparison uses one cohort and percentage points', () => {
+  const row = {
+    current_first_episode_reads_10s: '100',
+    current_continued_to_episode_2: '40',
+    previous_first_episode_reads_10s: 100,
+    previous_continued_to_episode_2: 55
+  };
+  const before = JSON.stringify(row);
+  const comparison = insights.buildRetentionComparison(row);
+  assert.equal(comparison.current.rate, 40);
+  assert.equal(comparison.current.notYet, 60);
+  assert.equal(comparison.difference, -15);
+  const text = insights.retentionComparisonText(row, 30);
+  assert.match(text, /直近30日/u);
+  assert.match(text, /直前30日/u);
+  assert.match(text, /-15\.0ポイント/u);
+  assert.match(text, /離脱確定ではありません/u);
+  assert.equal(JSON.stringify(row), before);
+});
+
+test('retention never converts invalid or insufficient samples into loss rates', () => {
+  const row = {
+    current_first_episode_reads_10s: 49,
+    current_continued_to_episode_2: 20,
+    previous_first_episode_reads_10s: 100,
+    previous_continued_to_episode_2: 50
+  };
+  const comparison = insights.buildRetentionComparison(row);
+  assert.equal(comparison.current.rate, null);
+  assert.equal(comparison.difference, null);
+  assert.equal(insights.buildRetentionComparison(null), null);
+  for (const value of [null, '', -1, 50, 1.5, true]) {
+    const invalid = { ...row, current_continued_to_episode_2: value };
+    assert.equal(insights.buildRetentionComparison(invalid), null);
+  }
+  const text = insights.retentionComparisonText(row, 7);
+  assert.match(text, /データ蓄積中/u);
+  assert.match(text, /十分な比較データがありません/u);
+});
+
+test('per-work hints use existing plan-authorized counts only', () => {
+  const row = {
+    first_episode_reads_10s: 80,
+    continued_to_episode_2: 60
+  };
+  assert.match(insights.workRetentionText(row), /75\.0%/u);
+  assert.match(insights.workRetentionText(row), /20件/u);
+  assert.match(insights.workRetentionText({}), /取得できません/u);
+  assert.match(analyticsRuntime, /if \(plan === 'free'\) renderFreeScope\(\)/u);
+  assert.match(analyticsRuntime, /workRetentionText\(row\)/u);
+  assert.match(analyticsRuntime, /renderRetentionComparison\(null, days\)/u);
+  assert.match(source, /差は作品の改善・悪化を証明しません/u);
+});

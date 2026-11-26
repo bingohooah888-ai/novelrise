@@ -138,6 +138,7 @@
   }
 
   function clearSummary(message = '集計中...') {
+    window.NovelightAnalyticsInsights?.renderRetentionComparison(null, days);
     ['impressions', 'detail', 'first', 'second', 'favorites'].forEach((id) => {
       byId(id).textContent = '—';
     });
@@ -296,6 +297,10 @@
 
   function renderTrend(rows) {
     trendRows = rows || [];
+    window.NovelightAnalyticsInsights?.renderRetentionComparison(
+      trendRows[0] ?? null,
+      days
+    );
     renderComparisons(trendRows);
     renderSparklines(trendRows);
     renderTrendChart();
@@ -303,6 +308,7 @@
 
   function renderTrendUnavailable() {
     trendRows = [];
+    window.NovelightAnalyticsInsights?.renderRetentionComparison(null, days);
     renderComparisons([]);
     renderSparklines([]);
     renderTrendChart();
@@ -396,7 +402,13 @@
           row.favorites,
           impressions,
           row.impressions
-        )}</div><div class="paid">プランによる追加露出：表示 ${num(
+        )}</div>${
+          window.NovelightAnalyticsInsights
+            ? '<p class="notice">第1話→第2話の確認：' +
+              esc(window.NovelightAnalyticsInsights.workRetentionText(row)) +
+              '</p>'
+            : ''
+        }<div class="paid">プランによる追加露出：表示 ${num(
           paid
         )} / 作品ページ ${num(row.plan_extra_detail_opens)} / 本文10秒 ${num(
           row.plan_extra_body_reads_10s
