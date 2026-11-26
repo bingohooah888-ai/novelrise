@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   create020705IndependentCensusReader,
+  create020705PreventiveCensusReader,
   probe020705CensusAccess,
   validate020705CensusToken
 } from '../.github/ai-02-07-05-app-composition/gatea-independent-census.mjs';
@@ -12,6 +13,7 @@ import {
 
 import {
   create020705IndependentSessionRevoker,
+  create020705PreventiveStopRpc,
   validate020705StopUrl
 } from '../.github/ai-02-07-05-app-composition/gatea-independent-stop-ports.mjs';
 
@@ -239,4 +241,63 @@ test('session revoker checks synthetic identity and session readback before succ
   assert.equal(await revoke(scope.actorId), true);
   assert.deepEqual(calls, ['session', 'logout', 'session']);
   await assert.rejects(revoke(scope.actorId), /STOP_PORT_NO_GO/u);
+});
+
+
+// Mock JWTs are local routing fixtures only; no credential issuance or I/O.
+// prettier-ignore
+test('preventive Data API ports use only fixed RPCs and distinct scoped roles', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const stopId = '33333333-3333-4333-8333-333333333333';
+  const censusId = '44444444-4444-4444-8444-444444444444';
+  const makeToken = (role, sub) => 'e30.' + Buffer.from(JSON.stringify({
+    iss: 'https://' + scope.stagingProjectRef + '.supabase.co/auth/v1',
+    role, sub, exp: now + 600
+  })).toString('base64url') + '.fixture';
+  const stopToken = makeToken('novelight_gatea_stop', stopId);
+  const censusToken = makeToken('novelight_gatea_census', censusId);
+  const publishableKey = 'sb_publishable_fixture_only_not_real';
+  const calls = [];
+  const runtime = { singleton: 1, enabled: false, user_day_cap_micros: 0,
+    user_month_cap_micros: 0, global_day_cap_micros: 0, global_month_cap_micros: 0 };
+  const { readOnlyVerified, ...report } = row;
+  assert.equal(readOnlyVerified, true);
+  const candidateScope = { ...scope, candidateSha: 'b'.repeat(40) };
+  const censusRow = { ...report, scopeMain: candidateScope.candidateSha,
+    refreshTokens: 0, storageObjects: 0 };
+  const fakeFetch = async (url, options) => {
+    calls.push(url);
+    assert.equal(options.body, '{}');
+    assert.equal(options.redirect, 'error');
+    assert.equal(options.headers.apikey, publishableKey);
+    if (url.endsWith('/novelight_gatea_stop_v1')) {
+      assert.equal(options.headers.authorization, 'Bearer ' + stopToken);
+      return json({ count: 1, data: runtime }, 200);
+    }
+    assert.ok(url.endsWith('/novelight_gatea_census_v1'));
+    assert.equal(options.headers.authorization, 'Bearer ' + censusToken);
+    return json(censusRow, 200);
+  };
+  const stopOptions = { principalId: stopId, accessToken: stopToken,
+    publishableKey, fetchImpl: fakeFetch };
+  const censusOptions = { principalId: censusId, accessToken: censusToken,
+    publishableKey, fetchImpl: fakeFetch, scope: candidateScope };
+  assert.throws(() => create020705PreventiveStopRpc({ ...stopOptions, accessToken: censusToken }));
+  assert.throws(() => create020705PreventiveStopRpc({ ...stopOptions, publishableKey: 'sb_secret_fixture' }));
+  assert.throws(() => create020705PreventiveCensusReader({ ...censusOptions, accessToken: stopToken }));
+  const stop = create020705PreventiveStopRpc(stopOptions);
+  const read = create020705PreventiveCensusReader(censusOptions);
+  assert.deepEqual(await stop(), { count: 1, data: runtime, error: null });
+  await assert.rejects(stop(), /STOP_PORT_NO_GO/u);
+  assert.equal((await read(target)).approvalTombstoneCount, 1);
+  await assert.rejects(read({ ...target, novelId: 999 }), /CENSUS_NO_GO/u);
+  for (const patch of [{ scopeMain: scope.mainSha }, { refreshTokens: 1 }, { storageObjects: 1 }]) {
+    const bad = create020705PreventiveCensusReader({ ...censusOptions,
+      fetchImpl: async () => json({ ...censusRow, ...patch }, 200) });
+    await assert.rejects(bad(target), /CENSUS_NO_GO/u);
+  }
+  const ackOnly = create020705PreventiveStopRpc({ ...stopOptions,
+    fetchImpl: async () => json(true, 200) });
+  await assert.rejects(ackOnly(), /STOP_PORT_NO_GO/u);
+  assert.equal(calls.length, 2);
 });

@@ -1,3 +1,4 @@
+import { create020705PreventiveRpc } from './gatea-independent-stop-ports.mjs';
 // OFFLINE CANDIDATE ONLY: the live role can read Vault/auth secrets.
 // Never provision or use a real PAT for this transport until independently
 // reviewed isolation is available. Retained for fixed-query regression tests.
@@ -139,6 +140,43 @@ export function create020705IndependentCensusReader({ token, scope, fetchImpl = 
     return Object.freeze({
       ...Object.fromEntries(COUNTS.map((key) => [key, row[key]])),
       runtimeDisabledZero: row.runtimeDisabledZero,
+      projectRef: PROJECT, userId: pinned.actorId, novelId: pinned.novelId,
+      approvalCommentId: pinned.approvalCommentId,
+      sourceKind: 'SEPARATE_STAGING_READONLY_CENSUS'
+    });
+  };
+}
+
+
+// Fixed-scope Data API reader; server-side signature/role verification and
+// hosted negative permission probes remain mandatory. Never certify a PAT
+// or a caller-supplied readOnlyVerified flag from this new transport.
+// prettier-ignore
+export function create020705PreventiveCensusReader({ scope, ...credentials } = {}) {
+  if (scope?.stagingProjectRef !== PROJECT || !UUID.test(scope.actorId ?? '') ||
+      ![scope.novelId, scope.episodeId, scope.approvalCommentId].every(positive) ||
+      !/^[a-f0-9]{40}$/u.test(scope.candidateSha ?? '') ||
+      !/^dpl_[A-Za-z0-9]+$/u.test(scope.previewDeploymentId ?? '') ||
+      credentials.principalId === scope.actorId) deny();
+  const pinned = Object.freeze({ ...scope });
+  const call = create020705PreventiveRpc({ ...credentials, purpose: 'census' });
+  return async function independentCensus(target) {
+    if (target?.projectRef !== PROJECT || target.userId !== pinned.actorId ||
+        target.novelId !== pinned.novelId ||
+        target.approvalCommentId !== pinned.approvalCommentId) deny();
+    const report = await call();
+    const fields = [...COUNTS, 'refreshTokens', 'storageObjects'];
+    const echoes = ['scopeActor', 'scopeNovel', 'scopeApproval', 'scopeEpisode', 'scopeMain', 'scopePreview'];
+    const expected = [pinned.actorId, pinned.novelId, pinned.approvalCommentId,
+      pinned.episodeId, pinned.candidateSha, pinned.previewDeploymentId];
+    if (Object.keys(report ?? {}).length !== fields.length + echoes.length + 1 ||
+        echoes.some((key, i) => report[key] !== String(expected[i])) ||
+        typeof report.runtimeDisabledZero !== 'boolean' ||
+        fields.some((key) => !Number.isSafeInteger(report[key]) || report[key] < 0) ||
+        report.refreshTokens !== 0 || report.storageObjects !== 0) deny();
+    return Object.freeze({
+      ...Object.fromEntries(fields.map((key) => [key, report[key]])),
+      runtimeDisabledZero: report.runtimeDisabledZero,
       projectRef: PROJECT, userId: pinned.actorId, novelId: pinned.novelId,
       approvalCommentId: pinned.approvalCommentId,
       sourceKind: 'SEPARATE_STAGING_READONLY_CENSUS'

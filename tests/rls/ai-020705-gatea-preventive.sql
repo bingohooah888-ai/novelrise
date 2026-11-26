@@ -143,19 +143,20 @@ SELECT (public.novelight_gatea_census_v1()->>'users')::int=1 AS ok \gset
 \endif
 RESET ROLE;
 SET ROLE novelight_gatea_stop;
-SELECT public.novelight_gatea_stop_v1() AS ok \gset
+SELECT (public.novelight_gatea_stop_v1()->'data'->>'enabled')::boolean IS FALSE AS ok \gset
 \if :ok
 \else
  SELECT 1/0;
 \endif
-SELECT public.novelight_gatea_stop_v1() AS ok \gset
+SELECT (public.novelight_gatea_stop_v1()->'data'->>'enabled')::boolean IS FALSE AS ok \gset
 \if :ok
 \else
  SELECT 1/0;
 \endif
 RESET ROLE;
 SET ROLE service_role;
-SELECT NOT public.novelight_ai_owner_session_exists_v1('33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444') AS ok \gset
+-- STOP alone does not delete the physical Auth session.
+SELECT public.novelight_ai_owner_session_exists_v1('33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444') AS ok \gset
 \if :ok
 \else
  SELECT 1/0;
@@ -190,6 +191,13 @@ SELECT NOT gatea_stop_private.cleanup_due() AS ok \gset
  SELECT 1/0;
 \endif
 SET SESSION AUTHORIZATION authenticator;
+SET ROLE service_role;
+SELECT NOT public.novelight_ai_owner_session_exists_v1('33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444') AS ok \gset
+\if :ok
+\else
+ SELECT 1/0;
+\endif
+RESET ROLE;
 SET ROLE novelight_gatea_census;
 SELECT public.novelight_gatea_census_v1() AS report \gset
 SELECT (:'report'::jsonb->>'runtimeDisabledZero')::boolean

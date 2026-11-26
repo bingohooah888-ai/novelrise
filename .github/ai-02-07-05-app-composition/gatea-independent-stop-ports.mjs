@@ -128,3 +128,76 @@ export function create020705IndependentSessionRevoker({ scope, serviceClient, au
     } catch { deny(); }
   };
 }
+
+
+// Fixed Data API transport for the preventive SQL proposal. The JWT payload
+// check only rejects wrong credentials locally; Supabase MUST verify the
+// signature/role. No PAT, service key, raw SQL, redirects or fallback.
+// prettier-ignore
+export function create020705PreventiveRpc({
+  purpose, publishableKey, accessToken, principalId, fetchImpl = globalThis.fetch
+} = {}) {
+  const operations = Object.freeze({
+    stop: ['novelight_gatea_stop', 'novelight_gatea_stop_v1'],
+    census: ['novelight_gatea_census', 'novelight_gatea_census_v1']
+  });
+  const operation = Object.hasOwn(operations, purpose) ? operations[purpose] : null;
+  if (!operation || !UUID.test(principalId ?? '') ||
+      typeof publishableKey !== 'string' ||
+      !/^sb_publishable_[A-Za-z0-9_-]{16,512}$/u.test(publishableKey) ||
+      typeof accessToken !== 'string' || accessToken.length > 8192 ||
+      !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/u.test(accessToken) ||
+      typeof fetchImpl !== 'function') deny();
+  function validateClaims() {
+    try {
+      const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64url').toString('utf8'));
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.iss !== URL + '/auth/v1' || payload.role !== operation[0] ||
+          payload.sub !== principalId || !Number.isSafeInteger(payload.exp) ||
+          payload.exp <= now || payload.exp > now + 3600) deny();
+    } catch { deny(); }
+  }
+  validateClaims();
+  return async function fixedRpc() {
+    validateClaims();
+    try {
+      const response = await fetchImpl(URL + '/rest/v1/rpc/' + operation[1], {
+        method: 'POST',
+        redirect: 'error',
+        signal: AbortSignal.timeout(10000),
+        headers: {
+          apikey: publishableKey,
+          authorization: 'Bearer ' + accessToken,
+          'content-type': 'application/json',
+          accept: 'application/json'
+        },
+        body: '{}'
+      });
+      if (response?.status !== 200 ||
+          !/^application\/json(?:\s*;|$)/iu.test(response.headers?.get('content-type') ?? '')) deny();
+      const raw = await response.text();
+      if (raw.length > 8192) deny();
+      return JSON.parse(raw);
+    } catch { deny(); }
+  };
+}
+
+// This is an explicit alternative port, not a replacement for live authority
+// checks. The independently credentialed census must still verify the result.
+// prettier-ignore
+export function create020705PreventiveStopRpc(options = {}) {
+  const call = create020705PreventiveRpc({ ...options, purpose: 'stop' });
+  let attempted = false;
+  return async function stopRuntime() {
+    if (attempted) deny();
+    attempted = true;
+    const result = await call();
+    const row = result?.data;
+    const caps = ['user_day_cap_micros', 'user_month_cap_micros',
+      'global_day_cap_micros', 'global_month_cap_micros'];
+    if (Object.keys(result ?? {}).length !== 2 || result.count !== 1 ||
+        Object.keys(row ?? {}).length !== 6 || row.singleton !== 1 ||
+        row.enabled !== false || caps.some((key) => row[key] !== 0)) deny();
+    return { count: result.count, data: row, error: null };
+  };
+}

@@ -169,16 +169,33 @@ BEGIN
   THEN RAISE EXCEPTION 'GATEA_STOP_VERIFY_NO_GO'; END IF;
 END
 $stop$;
-CREATE FUNCTION public.novelight_gatea_stop_v1() RETURNS boolean
-LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $stop_api$
+-- Preserve the existing void STOP signature. Return only the actual runtime
+-- row, never a fabricated success object; the independent census is separate.
+CREATE FUNCTION gatea_stop_private.stop_with_readback() RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $stop_readback$
+DECLARE result jsonb;
 BEGIN
+  IF session_user <> 'authenticator' OR current_setting('role',true)
+       IS DISTINCT FROM 'novelight_gatea_stop' THEN
+    RAISE EXCEPTION 'GATEA_STOP_CALLER_NO_GO' USING ERRCODE='42501';
+  END IF;
   PERFORM gatea_stop_private.stop_once();
-  RETURN true; -- acknowledgement only; independent census supplies readback
+  SELECT jsonb_build_object('count',1,'data',jsonb_build_object(
+    'singleton',singleton,'enabled',enabled,
+    'user_day_cap_micros',user_day_cap_micros,'user_month_cap_micros',user_month_cap_micros,
+    'global_day_cap_micros',global_day_cap_micros,'global_month_cap_micros',global_month_cap_micros))
+  INTO STRICT result FROM public.novelight_ai_runtime_settings WHERE singleton=1;
+  RETURN result;
 END
+$stop_readback$;
+CREATE FUNCTION public.novelight_gatea_stop_v1() RETURNS jsonb
+LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $stop_api$
+  SELECT gatea_stop_private.stop_with_readback();
 $stop_api$;
-REVOKE ALL ON FUNCTION gatea_stop_private.stop_once(),public.novelight_gatea_stop_v1()
+REVOKE ALL ON FUNCTION gatea_stop_private.stop_once(),gatea_stop_private.stop_with_readback(),
+  public.novelight_gatea_stop_v1()
   FROM PUBLIC,anon,authenticated,service_role,novelight_gatea_census;
-GRANT EXECUTE ON FUNCTION gatea_stop_private.stop_once(),public.novelight_gatea_stop_v1()
+GRANT EXECUTE ON FUNCTION gatea_stop_private.stop_with_readback(),public.novelight_gatea_stop_v1()
   TO novelight_gatea_stop;
 
 -- The exact existing 16-table census is reused, with owner-pinned scope and
@@ -235,7 +252,9 @@ GRANT EXECUTE ON FUNCTION gatea_stop_private.census(),public.novelight_gatea_cen
   TO novelight_gatea_census;
 
 -- Existing session-exists interface, scoped to the synthetic actor only.
--- Session revocation is not a claim that a stateless JWT is invalid everywhere.
+-- Physical session existence is independent of admission expiry/revocation.
+-- Never use an admission-denied result as evidence that a session was deleted.
+-- Claim rejects a revoked scope even while a physical session still exists.
 CREATE FUNCTION gatea_stop_private.session_exists(p_actor_id uuid,p_session_id uuid)
 RETURNS boolean LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = '' AS $session$
 BEGIN
@@ -246,7 +265,6 @@ BEGIN
   RETURN EXISTS (SELECT 1 FROM gatea_stop_private.trial_scope s
     JOIN auth.sessions a ON a.user_id=s.actor_id JOIN auth.users u ON u.id=a.user_id
     WHERE s.singleton=1 AND s.actor_id=p_actor_id AND a.id=p_session_id
-      AND s.revoked_at IS NULL AND s.expires_at>statement_timestamp()
       AND u.raw_app_meta_data->'internal_e2e'='true'::jsonb
       AND left(u.email,length('novelight-ai-020705-'))='novelight-ai-020705-');
 END
