@@ -67,6 +67,19 @@ test('placeholders, title limit, body limit and long paragraphs are bounded', ()
   );
 });
 
+test('adjacent repeated lines are advisory and bounded', () => {
+  const content = '同じ文章を繰り返しています。';
+  const result = analyze({
+    title: '章',
+    content: Array(8).fill(content).join('\n')
+  });
+  const repeats = result.findings.filter((f) => f.code === 'repeated-line');
+  assert.deepEqual(Array.from(repeats, (f) => f.line), [2, 3, 4]);
+  assert.ok(!JSON.stringify(repeats).includes(content));
+  const separate = analyze({ title: '章', content: content + '\n\n' + content });
+  assert.ok(!separate.findings.some((f) => f.code === 'repeated-line'));
+});
+
 class FakeNode {
   constructor(tag) {
     this.tag = tag;
@@ -138,6 +151,45 @@ test('the browser report uses textContent only and closes on Escape', () => {
   assert.equal(modal.removed, true);
   assert.equal(prior.focused, true);
   assert.equal(doc.listeners.has('keydown'), false);
+});
+
+test('line navigation selects the inspected line without changing the manuscript', () => {
+  const title = { value: '序章' };
+  const content = new FakeNode('textarea');
+  content.value = '😀第一行\r\n「未完';
+  let selected = null;
+  content.setSelectionRange = (start, end) => {
+    selected = [start, end];
+  };
+  const doc = {
+    body: new FakeNode('body'),
+    getElementById(id) {
+      if (id === 'title') return title;
+      if (id === 'content') return content;
+      return null;
+    },
+    createElement(tag) {
+      return new FakeNode(tag);
+    },
+    addEventListener() {},
+    removeEventListener() {}
+  };
+  assert.equal(openReport(doc), true);
+  const modal = doc.body.children[0];
+  const card = modal.children[0];
+  const button = card.children[5].children[0].children[0];
+  const original = content.value;
+  content.value += '変更';
+  button.fire('click');
+  assert.equal(selected, null);
+  assert.equal(modal.removed, false);
+  assert.match(card.children[4].textContent, /原稿が変更されました/);
+  content.value = original;
+  button.fire('click');
+  assert.equal(modal.removed, true);
+  assert.equal(content.focused, true);
+  assert.deepEqual(selected, [original.indexOf('\n') + 1, original.length]);
+  assert.equal(content.value, original);
 });
 
 test('both editors expose check without changing save/publish or sending story text', () => {

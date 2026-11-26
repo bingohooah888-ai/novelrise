@@ -84,6 +84,24 @@
       add('placeholder', '仮置きと思われる文言があります。', at);
     }
 
+    // Adjacent identical non-empty lines can be intentional repetition.
+    // Report only the location; never reproduce the manuscript in findings.
+    let previousLine = '';
+    let repeatedLines = 0;
+    const lines = body.split('\n');
+    for (let i = 0; i < lines.length && repeatedLines < 3; i += 1) {
+      const currentLine = lines[i].trim();
+      if (currentLine.length >= 8 && currentLine === previousLine) {
+        add(
+          'repeated-line',
+          '直前の行と同じ文章です。意図した繰り返しか確認してください。',
+          i + 1
+        );
+        repeatedLines += 1;
+      }
+      previousLine = currentLine;
+    }
+
     return Object.freeze({
       titleLength: title.length,
       contentLength: content.length,
@@ -103,7 +121,9 @@
     ) {
       return false;
     }
-    const report = analyze({ title: title.value, content: content.value });
+    const inspectedTitle = title.value;
+    const inspectedContent = content.value;
+    const report = analyze({ title: inspectedTitle, content: inspectedContent });
     if (!report) return false;
 
     const previousFocus = doc.activeElement;
@@ -152,15 +172,50 @@
         finding.line === null
           ? finding.message
           : finding.line + '行目：' + finding.message;
+      if (
+        finding.line !== null &&
+        typeof content.setSelectionRange === 'function'
+      ) {
+        const locate = doc.createElement('button');
+        locate.type = 'button';
+        locate.textContent = '該当行へ移動';
+        locate.setAttribute('aria-label', finding.line + '行目へ移動');
+        locate.addEventListener('click', () => {
+          // A changed manuscript or replaced editor invalidates line positions.
+          if (
+            doc.getElementById('content') !== content ||
+            doc.getElementById('title') !== title ||
+            title.value !== inspectedTitle ||
+            content.value !== inspectedContent
+          ) {
+            summary.textContent =
+              '原稿が変更されました。閉じて文章チェックをやり直してください。';
+            return;
+          }
+          let start = 0;
+          for (let i = 1; i < finding.line; i += 1) {
+            const newline = inspectedContent.indexOf('\n', start);
+            if (newline < 0) return;
+            start = newline + 1;
+          }
+          const newline = inspectedContent.indexOf('\n', start);
+          let end = newline < 0 ? inspectedContent.length : newline;
+          if (end > start && inspectedContent[end - 1] === '\r') end -= 1;
+          dismiss(false);
+          content.focus?.();
+          content.setSelectionRange(start, end);
+        });
+        item.appendChild(locate);
+      }
       list.appendChild(item);
     }
 
     card.append(close, heading, explanation, counts, summary, list);
     modal.appendChild(card);
-    const dismiss = () => {
+    const dismiss = (restoreFocus = true) => {
       doc.removeEventListener('keydown', keydown);
       modal.remove();
-      previousFocus?.focus?.();
+      if (restoreFocus) previousFocus?.focus?.();
     };
     const keydown = (event) => {
       if (event.key === 'Escape') dismiss();
