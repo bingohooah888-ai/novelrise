@@ -876,6 +876,70 @@ test('character dossiers combine exact registry names, aliases and author notes'
   assert.equal(JSON.stringify(payload), before);
 });
 
+test('shared aliases never assign a record to two character profiles', () => {
+  const payload = fixture();
+  payload.characters.push({
+    name: '蒼',
+    aliases: ['青い鍵の持ち主']
+  });
+  payload.characters[0].aliases.push('青い鍵の持ち主');
+  payload.notes.push({
+    type: 'character',
+    title: '青い鍵の持ち主',
+    body: '未分類の人物ノート'
+  });
+  payload.facts.push(
+    {
+      kind: 'character',
+      key: '凛',
+      confirmed: [{ payload: { summary: '一人称は私', evidence: '' } }],
+      suggestions: []
+    },
+    {
+      kind: 'character',
+      key: '青い鍵の持ち主',
+      confirmed: [],
+      suggestions: [
+        { payload: { summary: '鍵を持っていた', evidence: '手に鍵' } }
+      ]
+    }
+  );
+  const before = JSON.stringify(payload);
+  const target = new FakeElement('div', doc);
+  assert.equal(render({ target, payload }), true);
+  const profiles = nodes(target, 'div').find(
+    (item) => item.className === 'novelight-ai-workspace-character-profiles'
+  );
+  assert.match(profiles.textContent, /凛／作者確定 1件・AI未確定 0件/);
+  assert.match(profiles.textContent, /蒼／作者確定 0件・AI未確定 0件/);
+  assert.match(profiles.textContent, /人物を一意に特定できない設定（1項目）/);
+  assert.doesNotMatch(profiles.textContent, /鍵を持っていた/);
+  assert.doesNotMatch(
+    profiles.textContent,
+    /作者の創作ノート（非公開）：青い鍵の持ち主/
+  );
+  const choose = nodes(profiles, 'button').find(
+    (item) => item.className === 'novelight-ai-workspace-character-focus'
+  );
+  choose.listeners.get('click')();
+  assert.ok(
+    nodes(target, 'article').filter((item) => !item.hidden).every(
+      (item) => !item.textContent.includes('鍵を持っていた')
+    )
+  );
+  const jump = nodes(profiles, 'button').find(
+    (item) =>
+      item.className === 'novelight-ai-workspace-character-unmatched-focus'
+  );
+  jump.listeners.get('click')();
+  assert.ok(
+    nodes(target, 'article').filter((item) => !item.hidden).some(
+      (item) => item.textContent.includes('鍵を持っていた')
+    )
+  );
+  assert.equal(JSON.stringify(payload), before);
+});
+
 test('unmatched character headings remain visible without invented identity', () => {
   const payload = fixture();
   payload.facts.push({

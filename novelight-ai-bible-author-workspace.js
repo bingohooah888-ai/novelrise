@@ -318,6 +318,32 @@
     };
   }
 
+  // An exact heading may identify at most one registry entry. Duplicate
+  // aliases within one entry do not make that entry ambiguous.
+  function characterNameIndex(characters, normalizeName) {
+    const namesByCharacter = characters.map(
+      (character) =>
+        new Set(
+          [character.name, ...(character.aliases ?? [])]
+            .map(normalizeName)
+            .filter(Boolean)
+        )
+    );
+    const counts = new Map();
+    for (const names of namesByCharacter) {
+      for (const name of names) {
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+      }
+    }
+    const sharedNames = new Set(
+      [...counts].filter(([, count]) => count > 1).map(([name]) => name)
+    );
+    for (const names of namesByCharacter) {
+      for (const name of sharedNames) names.delete(name);
+    }
+    return { namesByCharacter, sharedNames };
+  }
+
   // A deterministic checklist, not semantic contradiction detection.
   // No data is transmitted, and no author-confirmed record is modified.
   function localReviewSummary(payload) {
@@ -750,12 +776,12 @@
     // Reuse the existing character registry as the only profile identity source.
     // A matching heading is a display aid, not AI identity recognition.
     const normalizeName = (value) => value.trim().toLocaleLowerCase('ja-JP');
+    const { namesByCharacter, sharedNames } = characterNameIndex(
+      payload.characters,
+      normalizeName
+    );
     const characterProfiles = payload.characters.map((character, index) => {
-      const names = new Set(
-        [character.name, ...(character.aliases ?? [])]
-          .map(normalizeName)
-          .filter(Boolean)
-      );
+      const names = namesByCharacter[index];
       const facts = payload.facts.filter(
         (group) =>
           group.kind === 'character' && names.has(normalizeName(group.key))
@@ -811,6 +837,17 @@
           '既存の人物名・別名と見出しが一致する設定だけを整理します。同一人物の推定や登場頻度の判定はしません。'
         )
       );
+      if (sharedNames.size) {
+        characterPanel.appendChild(
+          create(
+            'p',
+            '',
+            '複数の人物で共有される名称（' +
+              sharedNames.size +
+              '件）は人物別に分類しません。設定一覧・ノートから個別に確認してください。'
+          )
+        );
+      }
       for (const profile of characterProfiles) {
         const detail = create(
           'details',
@@ -929,7 +966,11 @@
           create(
             'summary',
             '',
-            '人物名・別名と見出しが一致しない設定（' +
+            (unmatched.some((group) =>
+              sharedNames.has(normalizeName(group.key))
+            )
+              ? '人物を一意に特定できない設定（'
+              : '人物名・別名と見出しが一致しない設定（') +
               unmatched.length +
               '項目）'
           )
@@ -938,7 +979,7 @@
           create(
             'p',
             '',
-            '設定が誤りとは限りません。名称の表記が一致しないため人物別には分類していません。'
+            '設定が誤りとは限りません。名称が一致しない場合や複数の人物に一致する場合は、人物別には分類していません。'
           )
         );
         for (const group of unmatched) {
