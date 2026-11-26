@@ -258,7 +258,7 @@
     },
     {
       "id": "nlo.github.isolated-worktree-create",
-      "description": "Default-off, exact-commit isolation creation via the existing OWNER-only Issue #1837 Bridge. No arbitrary commands or test execution; the configured repository and permitted root must agree before any local mutation.",
+      "description": "Default-deny, exact-commit isolation creation via an expiring one-use local permit and the existing OWNER-only Issue #1837 Bridge. No arbitrary commands or test execution; the configured repository and permitted root must agree before any local mutation.",
       "intents": [
         "create approved isolated worktree",
         "承認済みコミットの隔離作業環境作成"
@@ -270,7 +270,7 @@
       "executionRisk": "C",
       "requiredPermissions": [
         "existing_nlo_owner_github_auth",
-        "explicit_local_NLO_WORKTREE_CREATE_ENABLED",
+        "explicit_local_single_use_permit",
         "fresh_immutable_owner_approval_bound_to_branch_sha_and_request",
         "single_use_durable_claim",
         "configured_repository_and_security_root_match",
@@ -280,7 +280,8 @@
       ],
       "testCommands": [
         "node --test tests/nlo-worktree-create.test.mjs",
-        "node --test tests/nlo-worktree-root-binding.test.mjs"
+        "node --test tests/nlo-worktree-root-binding.test.mjs",
+        "node --test tests/nlo-worktree-local-permit.test.mjs"
       ],
       "version": "0.1.0",
       "status": "testing",
