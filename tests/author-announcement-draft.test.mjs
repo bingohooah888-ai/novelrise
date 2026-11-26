@@ -62,3 +62,19 @@ test('existing owner note form remains the only publishing path', () => {
   assert.doesNotMatch(runtime, /\b(fetch|XMLHttpRequest|localStorage|sendBeacon)\s*\(/u);
   assert.doesNotMatch(runtime, /\.submit\(|\.rpc\(|innerHTML/u);
 });
+
+// TEMPORARY_FORMAT_DIAGNOSTIC_20261126
+test('report installed formatter output for the changed public test file', async () => {
+  const prettier = await import('prettier');
+  const { readFile } = await import('node:fs/promises');
+  const path = new URL(import.meta.url);
+  const source = await readFile(path, 'utf8');
+  const clean = source.split('// TEMPORARY_FORMAT_DIAGNOSTIC_20261126')[0].trimEnd() + '\n';
+  const options = await prettier.resolveConfig(path.pathname);
+  const formatted = await prettier.format(clean, {
+    ...options,
+    filepath: path.pathname
+  });
+  console.log('NOVELIGHT_FORMAT_VERSION ' + prettier.version);
+  console.log('NOVELIGHT_FORMAT_FULL ' + JSON.stringify(formatted));
+});
