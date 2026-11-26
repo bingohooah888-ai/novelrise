@@ -43,7 +43,7 @@ async function fixedGit(root, args) {
 
 // The operator supplies the exact approved base, target and full change list.
 // This checks the existing checkout; it never fetches or updates it.
-export async function planRuntimeUpdate({ runtimeRoot, configuredRoot, expectedBase, expectedHead, expectedPaths, git = fixedGit }) {
+async function inspectRuntimeUpdate({ runtimeRoot, configuredRoot, expectedBase, expectedHead, expectedPaths, git = fixedGit }, restoring = false) {
   try {
     if (!SHA.test(expectedBase) || !SHA.test(expectedHead) || expectedBase === expectedHead) deny();
     const approved = validateUpdatePaths(expectedPaths);
@@ -54,7 +54,7 @@ export async function planRuntimeUpdate({ runtimeRoot, configuredRoot, expectedB
     if (!outside(relative) || !outside(reverse)) deny();
     if (norm((await git(runtimeRoot, ['rev-parse','--show-toplevel'])).trim()) !== norm(runtimeRoot)) deny();
     if ((await git(runtimeRoot, ['rev-parse','--abbrev-ref','HEAD'])).trim() !== 'HEAD') deny();
-    if ((await git(runtimeRoot, ['rev-parse','HEAD'])).trim() !== expectedBase) deny();
+    if ((await git(runtimeRoot, ['rev-parse','HEAD'])).trim() !== (restoring ? expectedHead : expectedBase)) deny();
     const configKeys = (await git(runtimeRoot, ['config','--local','--no-includes','--name-only','--list'])).split(/\r?\n/u);
     if (configKeys.some(key => /^(?:filter\.|include\.|includeif\.|remote\..*\.promisor$|extensions\.partialclone$|core\.worktree$)/iu.test(key))) deny();
     if ((await git(runtimeRoot, ['status','--porcelain=v1','--untracked-files=no'])).trim()) deny();
@@ -76,6 +76,10 @@ export async function planRuntimeUpdate({ runtimeRoot, configuredRoot, expectedB
       changedFileCount: changed.length, updateApplied: false, restartPerformed: false,
       rollbackHead: expectedBase, pathsOrSecretsExposed: false };
   } catch { deny(); }
+}
+
+export async function planRuntimeUpdate(options) {
+  return inspectRuntimeUpdate(options);
 }
 
 // Local-only transaction. The caller must independently establish maintenance
@@ -107,5 +111,28 @@ export async function applyRuntimeUpdate({ confirmation, verifyMaintenance, ...o
     }
     return { ...plan, result: 'RUNTIME_UPDATE_APPLIED', updateApplied: true,
       restartPerformed: false };
+  } finally { await fs.rmdir(hooks).catch(() => {}); }
+}
+
+// Local-only recovery after a separately observed failed cutover. No force,
+// fetch, restart, or public Bridge action. The original forward delta is
+// revalidated from the clean, detached candidate before restoring the base.
+export async function restoreRuntimeUpdate({ confirmation, verifyMaintenance, ...options }) {
+  if (confirmation !== 'LOCAL_OWNER_APPROVES_EXACT_RUNTIME_RESTORE' ||
+      typeof verifyMaintenance !== 'function' || await verifyMaintenance() !== true) deny();
+  const plan = await inspectRuntimeUpdate(options, true);
+  const { runtimeRoot, expectedBase, expectedHead, git = fixedGit } = options;
+  const clean = async sha => (await git(runtimeRoot, ['rev-parse','HEAD'])).trim() === sha &&
+    !(await git(runtimeRoot, ['status','--porcelain=v1','--untracked-files=no'])).trim();
+  const hooks = await fs.mkdtemp(path.join(os.tmpdir(), 'nlo-runtime-empty-hooks-'));
+  try {
+    await plainDirectory(hooks);
+    if (await verifyMaintenance() !== true || !(await clean(expectedHead))) deny();
+    await git(runtimeRoot, ['-c','core.hooksPath=' + hooks,'switch','--detach','--no-overwrite-ignore','--no-guess',expectedBase]);
+    if (!(await clean(expectedBase))) deny();
+    return { ...plan, result: 'RUNTIME_UPDATE_RESTORED', updateApplied: false,
+      restartPerformed: false, restoredHead: expectedBase };
+  } catch {
+    throw new Error('NLO_RUNTIME_RESTORE_MANUAL_REVIEW');
   } finally { await fs.rmdir(hooks).catch(() => {}); }
 }
