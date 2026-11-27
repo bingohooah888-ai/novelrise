@@ -116,6 +116,10 @@ test('result delivery rejects stale, cross-feature and invalid-scope data', () =
   assert.equal(root.childNodes.length, 0);
   screen.fail();
   assert.equal(root.childNodes.length, 1);
+  screen.fail('AI_BUDGET_DENIED');
+  assert.match(root.childNodes[0].textContent, /利用上限/u);
+  screen.fail('private token or provider diagnostic');
+  assert.doesNotMatch(root.childNodes[0].textContent, /private token/u);
   screen.clear();
   assert.equal(root.childNodes.length, 0);
 });
@@ -176,4 +180,38 @@ test('all ten intended screens have only a hidden review host', async () => {
         : html;
     assert.ok(caller.includes("page:'" + page + "'"));
   }
+});
+
+test('all existing placements build typed locked forms without source data', () => {
+  const { root, doc, client } = fixture();
+  assert.equal(
+    api.mountDormantPage({ document: doc, client, page: 'search.html' }),
+    true
+  );
+  const sections = root.childNodes.filter((node) => node.tag === 'section');
+  assert.equal(sections.length, 2);
+  const controls = sections.flatMap((node) =>
+    node.childNodes.flatMap((child) => child.childNodes)
+  );
+  assert.ok(controls.some((control) => control.tag === 'textarea'));
+  assert.ok(controls.some((control) => control.tag === 'select'));
+  assert.ok(controls.every((control) => control.disabled === true));
+  assert.equal(root.hidden, true);
+});
+
+test('analysis plan gating and privacy review remain fail closed', () => {
+  const { doc } = fixture();
+  const free = doc.createElement('section');
+  const denied = api.buildSelectionForm(
+    free,
+    'analytics-copilot',
+    { plan: 'free' },
+    false
+  );
+  assert.equal(denied.read(), null);
+  assert.equal(free.childNodes.at(-2).disabled, true);
+  const admin = doc.createElement('section');
+  const missing = api.buildSelectionForm(admin, 'inquiry-assistant', {}, false);
+  assert.equal(missing.read(), null);
+  assert.equal(admin.childNodes.at(-1).disabled, true);
 });

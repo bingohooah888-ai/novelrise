@@ -735,3 +735,81 @@ test('episode commenter avatar uses the same public RPC as author profile', asyn
     'Founding Author #096'
   );
 });
+
+test('AI typed review inputs are operable offline on desktop and mobile', async ({
+  page,
+  request
+}) => {
+  const response = await request.get('/novelight-ai-review-result.js');
+  const script = await response.text();
+  await page.setContent(
+    '<meta name="viewport" content="width=device-width, initial-scale=1"><main id="review"></main>'
+  );
+  await page.addScriptTag({ content: script });
+  await page.evaluate(() => {
+    const root = globalThis.document.querySelector('#review');
+    const api = globalThis.NovelightAiReviewResult;
+    const catalog = {
+      plan: 'premium',
+      novels: [{ id: '1', label: '架空作品' }],
+      episodes: [{ id: '11', label: '第1話' }],
+      genres: [{ id: 'その他', label: 'その他' }],
+      tags: [{ id: 'adventure', label: '冒険' }]
+    };
+    const section = globalThis.document.createElement('section');
+    root.appendChild(section);
+    const author = api.buildSelectionForm(
+      section,
+      'promotion-assistant',
+      catalog,
+      false
+    );
+    const search = globalThis.document.createElement('section');
+    root.appendChild(search);
+    const reader = api.buildSelectionForm(
+      search,
+      'natural-search-ai',
+      catalog,
+      false
+    );
+    globalThis.reviewFormProbe = { author, reader };
+  });
+  const author = page.locator('[data-novelight-ai-form="promotion-assistant"]');
+  await author.getByLabel('作品ID').selectOption('1');
+  await author.getByLabel('対象話ID').selectOption(['11']);
+  await author.getByLabel('宣伝文の形式').selectOption('intro50');
+  await author.getByRole('button', { name: '入力内容を確認' }).click();
+  await expect(author.getByRole('status')).toContainText(
+    'AIは実行していません'
+  );
+  const reader = page.locator('[data-novelight-ai-form="natural-search-ai"]');
+  await reader.getByRole('button', { name: '入力内容を確認' }).click();
+  await expect(reader.getByRole('status')).toContainText('入力内容を確認');
+  await reader.getByLabel('検索文').fill('冒険');
+  await reader.getByLabel('指定ジャンル').selectOption('その他');
+  await reader.getByLabel('指定公式タグID').selectOption(['adventure']);
+  const selections = await page.evaluate(() => ({
+    author: globalThis.reviewFormProbe.author.read(),
+    reader: globalThis.reviewFormProbe.reader.read()
+  }));
+  expect(selections.author).toEqual({
+    novelId: '1',
+    episodeIds: ['11'],
+    format: 'intro50'
+  });
+  expect(selections.reader).toEqual({
+    query: '冒険',
+    genre: 'その他',
+    tagIds: ['adventure']
+  });
+  const stopped = page.getByRole('button', { name: 'AI実行停止中' });
+  for (const button of await stopped.all()) {
+    await expect(button).toBeDisabled();
+  }
+  expect(
+    await page.evaluate(
+      () =>
+        globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth
+    )
+  ).toBe(true);
+});
