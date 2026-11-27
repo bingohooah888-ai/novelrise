@@ -16,6 +16,45 @@
   });
   const CLOSE = new Set(Object.values(OPEN));
 
+  // Mechanical reading aid, not linguistic sentence analysis. Ignore whitespace;
+  // split on line breaks and Japanese/ASCII terminal punctuation, not decimal dots.
+  // The same bounded manuscript prefix is used for counts and source positions.
+  function measureSegments(body) {
+    let line = 1;
+    let size = 0;
+    let count = 0;
+    let total = 0;
+    let max = 0;
+    const longLines = [];
+    const finish = () => {
+      if (size === 0) return;
+      count += 1;
+      total += size;
+      max = Math.max(max, size);
+      if (size >= 120 && longLines.length < 3 && !longLines.includes(line)) {
+        longLines.push(line);
+      }
+      size = 0;
+    };
+    for (const char of body) {
+      if (char === '\n') {
+        finish();
+        line += 1;
+      } else if (/[。！？!?]/u.test(char)) {
+        finish();
+      } else if (!/\s/u.test(char)) {
+        size += 1;
+      }
+    }
+    finish();
+    return {
+      count,
+      average: count ? Math.round(total / count) : 0,
+      max,
+      longLines
+    };
+  }
+
   function analyze({ title, content } = {}) {
     if (typeof title !== 'string' || typeof content !== 'string') return null;
     const findings = [];
@@ -132,7 +171,22 @@
       add('empty-ruby', 'ルビの読みが空欄です。意図した記法か確認してください。', emptyRuby + 1);
     }
 
+    const segments = measureSegments(body);
+    for (const at of segments.longLines) {
+      add(
+        'long-segment',
+        '120文字以上の区間があります。文の区切りや読みやすさを確認してください。',
+        at
+      );
+    }
+
     return Object.freeze({
+      segmentMetrics: Object.freeze({
+        count: segments.count,
+        average: segments.average,
+        max: segments.max,
+        limited: content.length > MAX_CONTENT
+      }),
       titleLength: title.length,
       contentLength: content.length,
       omitted,
@@ -187,6 +241,15 @@
       report.titleLength.toLocaleString('ja-JP') +
       '文字 ／ 本文 ' +
       report.contentLength.toLocaleString('ja-JP') +
+      '文字' +
+      ' ／ 文章の目安（改行・句点等で区切り' +
+      (report.segmentMetrics.limited ? '・先頭100,000文字のみ' : '') +
+      '）：' +
+      report.segmentMetrics.count.toLocaleString('ja-JP') +
+      '区間、平均 ' +
+      report.segmentMetrics.average.toLocaleString('ja-JP') +
+      '文字、最長 ' +
+      report.segmentMetrics.max.toLocaleString('ja-JP') +
       '文字';
     const summary = doc.createElement('p');
     summary.className = 'nl-textcheck-summary';
