@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import {
   projectTargetReaderAggregates,
   reviewTargetReaderComparison,
   projectIncidentCounts,
-  reviewIncidentSummary
+  reviewIncidentSummary,
+  projectWorkRetention,
+  reviewAnalyticsCopilot,
+  reviewDropoffCandidates,
+  reviewAuthorGrowth
 } from '../api/_lib/ai/offline-aggregate-review.js';
 
 const input = {
@@ -92,4 +97,95 @@ test('incident projection rejects raw logs and secret-bearing fields', () => {
   );
   const modelText = JSON.stringify({ keys: [], cause: 'guessed' });
   assert.throws(() => reviewIncidentSummary({ ...incident, modelText }));
+});
+
+const episode = {
+  id: 11,
+  novel_id: 1,
+  episode_number: 1,
+  order_index: 1,
+  title: '門',
+  content: '王都の門'
+};
+const secondEpisode = {
+  ...episode,
+  id: 12,
+  episode_number: 2,
+  order_index: 2
+};
+const sourceHash = createHash('sha256')
+  .update(JSON.stringify([episode.title, episode.content]))
+  .digest('hex');
+const finding = {
+  kind: 'pacing',
+  episodeId: '11',
+  offset: 0,
+  quote: '王都の門',
+  observation: '確認候補'
+};
+const analytics = {
+  principal: input.principal,
+  novel: input.novel,
+  plan: 'standard',
+  snapshot: {
+    novelId: 1,
+    days: 30,
+    first_episode_reads_10s: 100,
+    continued_to_episode_2: 60
+  },
+  episodes: [episode, secondEpisode],
+  expectedRevisions: { 11: sourceHash, 12: sourceHash },
+  modelText: JSON.stringify({ items: [finding] })
+};
+
+test('analytics separates observed counts and manuscript hypotheses', () => {
+  const result = reviewAnalyticsCopilot(analytics);
+  assert.equal(result.observed.cohort.rate, 60);
+  assert.equal(result.hypotheses.length, 1);
+  assert.equal(result.causalRelationshipVerified, false);
+  assert.throws(() => projectWorkRetention({ ...analytics, plan: 'free' }));
+  const snapshot = { ...analytics.snapshot, novelId: 2 };
+  assert.throws(() => projectWorkRetention({ ...analytics, snapshot }));
+  const small = {
+    ...analytics.snapshot,
+    continued_to_episode_2: 9
+  };
+  assert.equal(
+    projectWorkRetention({ ...analytics, snapshot: small }).cohort,
+    null
+  );
+});
+
+test('dropoff hypotheses are limited to the known first episode', () => {
+  const result = reviewDropoffCandidates(analytics);
+  assert.equal(result.dropoffLocationVerified, false);
+  assert.equal(result.observed.cohort.withoutRecordedContinuation, 40);
+  const modelText = JSON.stringify({
+    items: [{ ...finding, episodeId: '12' }]
+  });
+  assert.throws(() => reviewDropoffCandidates({ ...analytics, modelText }));
+});
+
+test('growth compares author periods without claiming improvement', () => {
+  const snapshot = {
+    authorId: 'owner',
+    days: 30,
+    current_first_episode_reads_10s: 100,
+    current_continued_to_episode_2: 70,
+    previous_first_episode_reads_10s: 100,
+    previous_continued_to_episode_2: 60
+  };
+  const modelText = JSON.stringify({ metric: 'first_to_second_continuation' });
+  const request = { principal: input.principal, snapshot, modelText };
+  const result = reviewAuthorGrowth(request);
+  assert.equal(result.differencePoints, 10);
+  assert.equal(result.unequalFollowup, true);
+  assert.equal(result.improvementVerified, false);
+  const small = { ...snapshot, previous_continued_to_episode_2: 99 };
+  const suppressed = reviewAuthorGrowth({ ...request, snapshot: small });
+  assert.equal(suppressed.current, null);
+  assert.equal(suppressed.previous, null);
+  assert.throws(() =>
+    reviewAuthorGrowth({ ...request, principal: { id: 'other' } })
+  );
 });
