@@ -62,8 +62,9 @@ function inputSelection(selection) {
 function inputFromForm(feature, selection) {
   const input = inputSelection(selection);
   const root = testContainer();
+  const novelId = input.novelId;
   const choices = (values) =>
-    values.map((id) => ({ id, label: '架空対象 ' + id, novelId: input.novelId }));
+    values.map((id) => ({ id, label: '架空対象 ' + id, novelId }));
   const catalog = {
     plan: 'premium',
     novels: choices(input.novelId ? [input.novelId] : []),

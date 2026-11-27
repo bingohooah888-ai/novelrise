@@ -241,12 +241,9 @@ test('work choices are isolated and invalidation purges the previous scope', () 
     false
   );
   const fields = root.childNodes.flatMap((row) => row.childNodes);
-  const work = fields.find(
-    (row) => row.attributes['data-ai-field'] === 'novelId'
-  );
-  const episode = fields.find(
-    (row) => row.attributes['data-ai-field'] === 'episodeIds'
-  );
+  const fieldName = (row) => row.attributes['data-ai-field'];
+  const work = fields.find((row) => fieldName(row) === 'novelId');
+  const episode = fields.find((row) => fieldName(row) === 'episodeIds');
   work.value = '1';
   work.events.get('change')();
   assert.deepEqual(episode.childNodes.map((row) => row.value), ['11']);
@@ -274,13 +271,8 @@ test('locked catalog is never inspected; search reuses only public choices', () 
       }
     }
   );
-  assert.ok(
-    api.buildSelectionForm(
-      doc.createElement('section'),
-      'work-analysis',
-      inaccessible
-    )
-  );
+  const section = doc.createElement('section');
+  assert.ok(api.buildSelectionForm(section, 'work-analysis', inaccessible));
   assert.equal(
     api.mountDormantPage({
       document: doc,
@@ -295,9 +287,7 @@ test('locked catalog is never inspected; search reuses only public choices', () 
   );
   const first = root.childNodes[1];
   const fields = first.childNodes.flatMap((row) => row.childNodes);
-  const tags = fields.find(
-    (row) => row.attributes['data-ai-field'] === 'tagIds'
-  );
+  const tags = fields.find((row) => row.attributes['data-ai-field'] === 'tagIds');
   assert.deepEqual(tags.childNodes.map((row) => row.value), ['adventure']);
   assert.equal(tags.disabled, true);
   events.get('auth')();
