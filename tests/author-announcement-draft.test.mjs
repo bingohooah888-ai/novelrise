@@ -107,3 +107,18 @@ test('short introduction uses only the supplied facts and counts code points', (
   assert.match(page, /id="introPreview" class="btn" type="button"/u);
   assert.match(page, /id="introOutput" rows="3" readonly/u);
 });
+
+test('synopsis combines only the three author-supplied fields', () => {
+  const api = browser.window.NovelightAuthorAnnouncementDraft;
+  const input = {
+    novelId: '1',
+    novelTitle: '作品',
+    setting: '主人公',
+    goal: '目的',
+    conflict: '障害'
+  };
+  const draft = api.buildSynopsis(input);
+  assert.equal(draft.text, '『作品』\n\n主人公\n\n目的\n\n障害');
+  assert.equal(api.buildSynopsis({ ...input, conflict: '' }), null);
+  assert.equal(api.buildSynopsis({ ...input, goal: 'x'.repeat(181) }), null);
+});
