@@ -669,3 +669,156 @@ export function reviewOfflineEvidenceResponse(featureKey, input, response) {
     modelText: response.modelText
   });
 }
+
+// Unmounted owner-only composition. Reuse the existing owner author-client
+// factory and session observer. Dependencies are server capabilities, never
+// request fields. No client, credentials, transport or provider is created.
+export function createOfflineOwnerEvidenceReader({
+  verifyUser,
+  createAuthorClient,
+  checkSession,
+  nowEpochSeconds
+} = {}) {
+  async function load(featureKey, selection, token) {
+    if (requireAiFeature(featureKey).audience !== 'author') invalid();
+    const metadataOnly = featureKey === 'title-synopsis-ab';
+    if (!metadataOnly && !Object.hasOwn(TASKS, featureKey)) invalid();
+    const fields = ['novelId'];
+    if (!metadataOnly) fields.push('episodeIds');
+    if (featureKey === 'promotion-assistant') fields.push('format');
+    exactFields(selection, fields);
+    const novelId = positiveId(selection.novelId);
+    if (!Number.isSafeInteger(Number(novelId))) invalid();
+    const ids = metadataOnly ? [] : selection.episodeIds;
+    if (!Array.isArray(ids) || ids.length > 12) invalid();
+    if (!metadataOnly && !ids.length) invalid();
+    if (TASKS[featureKey]?.single && ids.length !== 1) invalid();
+    const episodeIds = ids.map(positiveId);
+    if (new Set(episodeIds).size !== ids.length) invalid();
+    if (episodeIds.some((id) => !Number.isSafeInteger(Number(id)))) {
+      invalid();
+    }
+    if (featureKey === 'promotion-assistant') {
+      if (!Object.hasOwn(PROMOTION_LIMITS, selection.format)) invalid();
+    }
+    if (typeof token !== 'string' || !/^\S{16,4096}$/u.test(token)) invalid();
+    const identity = await verifyUser(token);
+    const actorId = identity?.data?.user?.id;
+    if (identity?.error) invalid();
+    if (typeof actorId !== 'string' || !actorId) invalid();
+    const sessionArgs = { bearerToken: token, actorId, novelId };
+    const session = await checkSession(sessionArgs);
+    if (session?.active !== true || !session.binding) invalid();
+    const client = await createAuthorClient({ token, actorId });
+    if (typeof client?.from !== 'function') invalid();
+    const columns = metadataOnly
+      ? 'id,user_id,title,description'
+      : 'id,user_id';
+
+    async function readNovel() {
+      const result = await client
+        .from('novels')
+        .select(columns)
+        .eq('id', novelId)
+        .eq('user_id', actorId)
+        .maybeSingle();
+      const row = result?.data;
+      if (result?.error || !row || positiveId(row.id) !== novelId) invalid();
+      assertAiWorkAccess({
+        principal: { id: actorId },
+        novel: row,
+        audience: 'author'
+      });
+      return metadataOnly
+        ? {
+            id: row.id,
+            user_id: row.user_id,
+            title: row.title,
+            description: row.description
+          }
+        : { id: row.id, user_id: row.user_id };
+    }
+
+    const novel = await readNovel();
+    const input = { principal: { id: actorId }, novel };
+    if (metadataOnly) {
+      input.metadata = {
+        novelId: novel.id,
+        title: novel.title,
+        description: novel.description
+      };
+    } else {
+      const result = await client
+        .from('episodes')
+        .select('id,novel_id,user_id,episode_number,status,title,content')
+        .eq('novel_id', novelId)
+        .eq('user_id', actorId)
+        .in('id', episodeIds)
+        .limit(episodeIds.length + 1);
+      if (result?.error || !Array.isArray(result?.data)) invalid();
+      if (result.data.length !== episodeIds.length) invalid();
+      const rows = new Map();
+      for (const row of result.data) {
+        const id = positiveId(row?.id);
+        if (!episodeIds.includes(id) || rows.has(id)) invalid();
+        if (positiveId(row.novel_id) !== novelId) invalid();
+        if (row.user_id !== actorId) invalid();
+        if (!['draft', 'published'].includes(row.status)) invalid();
+        const order = Number(positiveId(row.episode_number));
+        if (!Number.isSafeInteger(order)) invalid();
+        rows.set(id, {
+          id: row.id,
+          novel_id: row.novel_id,
+          order_index: order,
+          status: row.status,
+          title: row.title,
+          content: row.content
+        });
+      }
+      input.episodes = episodeIds.map((id) => rows.get(id));
+      input.episodeIds = episodeIds;
+      if (featureKey === 'promotion-assistant') {
+        input.format = selection.format;
+      }
+    }
+    // Recheck owner and the same observed session before releasing a prompt.
+    // This is not an atomic DB snapshot or a proof of live revocation.
+    const current = await readNovel();
+    if (sourceDigest(novel) !== sourceDigest(current)) invalid();
+    const last = await verifyUser(token);
+    if (last?.error || last?.data?.user?.id !== actorId) invalid();
+    const after = await checkSession(sessionArgs);
+    if (after?.active !== true || after.binding !== session.binding) invalid();
+    const epoch = nowEpochSeconds();
+    if (!Number.isSafeInteger(epoch) || epoch <= 0) invalid();
+    input.now = new Date(epoch * 1000);
+    const prepared = prepareOfflineEvidencePrompt(featureKey, input);
+    const requestHash = sourceDigest([prepared.requestHash, session.binding]);
+    return { input, prepared, requestHash };
+  }
+
+  return Object.freeze({
+    async prepare(featureKey, selection, token) {
+      try {
+        const value = await load(featureKey, selection, token);
+        const { prepared, requestHash } = value;
+        return { prompt: prepared.prompt, requestHash };
+      } catch {
+        invalid();
+      }
+    },
+    async review(featureKey, selection, token, response) {
+      try {
+        exactFields(response, ['requestHash', 'modelText']);
+        const current = await load(featureKey, selection, token);
+        if (current.requestHash !== response.requestHash) invalid();
+        return reviewOfflineEvidenceResponse(featureKey, current.input, {
+          requestHash: current.prepared.requestHash,
+          modelText: response.modelText
+        });
+      } catch {
+        invalid();
+      }
+    }
+  });
+}
