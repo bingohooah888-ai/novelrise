@@ -6,7 +6,14 @@ import {
   reviewGlossaryEvidence,
   reviewVirtualBetaReader,
   reviewWritingEdits,
-  reviewPrepublishIssues
+  reviewPrepublishIssues,
+  reviewWorkAnalysis,
+  reviewCharacterConsistency,
+  reviewTimelineForeshadowing,
+  reviewCharacterRecall,
+  reviewPublishingOutline,
+  reviewPromotionDraft,
+  reviewMetadataVariants
 } from '../api/_lib/ai/offline-evidence-review.js';
 
 const novel = { id: 1, user_id: 'author', publiclyVisible: true };
@@ -180,5 +187,122 @@ test('prepublish observations are candidates and cannot block publication', () =
       expectedRevisions: {},
       modelText
     })
+  );
+});
+
+test('work analysis is evidence-bound and cannot submit a score', () => {
+  const item = { ...quote, kind: 'strength', observation: '確認候補' };
+  const modelText = model([item]);
+  const result = reviewWorkAnalysis({ ...authorInput, modelText });
+  assert.equal(result.requiresAuthorReview, true);
+  assert.equal(result.items[0].sourceHash, authorInput.expectedRevisions[11]);
+  const forged = model([{ ...item, score: 100 }]);
+  assert.throws(() =>
+    reviewWorkAnalysis({ ...authorInput, modelText: forged })
+  );
+});
+
+test('character and timeline reviews require two real distinct passages', () => {
+  const pair = {
+    first: quote,
+    second: { ...quote, offset: 4, quote: 'で鍵' },
+    observation: '確認候補'
+  };
+  for (const [review, kind] of [
+    [reviewCharacterConsistency, 'name'],
+    [reviewTimelineForeshadowing, 'possible_payoff']
+  ]) {
+    const item = { ...pair, kind };
+    const result = review({ ...authorInput, modelText: model([item]) });
+    assert.equal(result.items[0].passages.length, 2);
+    assert.equal(result.requiresAuthorReview, true);
+    const duplicate = { ...item, second: quote };
+    assert.throws(() =>
+      review({ ...authorInput, modelText: model([duplicate]) })
+    );
+    const falseQuote = { ...item, second: { ...quote, quote: '未来' } };
+    assert.throws(() =>
+      review({ ...authorInput, modelText: model([falseQuote]) })
+    );
+    assert.throws(() => review({ ...input, modelText: model([item]) }));
+  }
+});
+
+test('character recall returns read source text only', () => {
+  const request = { ...input, characterName: '王都' };
+  const result = reviewCharacterRecall({
+    ...request,
+    modelText: model([quote])
+  });
+  assert.equal(result.items[0].quote, quote.quote);
+  assert.throws(() =>
+    reviewCharacterRecall({
+      ...request,
+      characterName: '未登場',
+      modelText: model([quote])
+    })
+  );
+  const futureQuote = { episodeId: '12', offset: 0, quote: '秘密' };
+  assert.throws(() =>
+    reviewCharacterRecall({
+      ...request,
+      characterName: '秘密',
+      modelText: model([futureQuote])
+    })
+  );
+});
+
+test('publication outline cannot invent evidence or statistics', () => {
+  const item = { ...quote, kind: 'setting' };
+  const result = reviewPublishingOutline({
+    ...authorInput,
+    modelText: model([item])
+  });
+  assert.equal(result.items[0].kind, 'setting');
+  const forged = model([{ ...item, sales: 1000 }]);
+  assert.throws(() =>
+    reviewPublishingOutline({ ...authorInput, modelText: forged })
+  );
+});
+
+test('promotion drafts obey selected length and never auto-publish', () => {
+  const item = { ...quote, draft: '王都の物語' };
+  const request = { ...authorInput, format: 'intro50' };
+  const result = reviewPromotionDraft({
+    ...request,
+    modelText: model([item])
+  });
+  assert.equal(result.requiresAuthorReview, true);
+  const long = model([{ ...item, draft: 'あ'.repeat(51) }]);
+  assert.throws(() => reviewPromotionDraft({ ...request, modelText: long }));
+  const forged = model([{ ...item, publish: true }]);
+  assert.throws(() => reviewPromotionDraft({ ...request, modelText: forged }));
+});
+
+test('metadata drafts reject stale metadata and duplicate variants', () => {
+  const metadata = { novelId: 1, title: '門', description: '旅' };
+  const expectedMetadataHash = createHash('sha256')
+    .update(JSON.stringify(metadata))
+    .digest('hex');
+  const item = { title: '王都', description: '新しい旅' };
+  const request = {
+    principal: authorInput.principal,
+    novel,
+    metadata,
+    expectedMetadataHash
+  };
+  const modelText = model([item]);
+  const result = reviewMetadataVariants({ ...request, modelText });
+  assert.equal(result.experimentStarted, false);
+  assert.deepEqual(result.items, [item]);
+  assert.throws(() =>
+    reviewMetadataVariants({
+      ...request,
+      metadata: { ...metadata, title: '改訂' },
+      modelText
+    })
+  );
+  assert.throws(() =>
+    reviewMetadataVariants({ ...request, modelText: model([item, item]) })
   );
 });

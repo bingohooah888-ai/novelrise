@@ -1,6 +1,7 @@
 // Offline contracts only. No provider, route, database, or log ingestion.
 // Callers must establish the principal and scope from trusted server records.
 import { assertAiWorkAccess } from './context.js';
+import { reviewWorkAnalysis } from './offline-evidence-review.js';
 
 const GROUPS = ['new_to_work', 'returning_to_work'];
 const MIN_SAMPLE = 50;
@@ -133,5 +134,115 @@ export function reviewIncidentSummary(input) {
     days: projection.days,
     items: selected,
     rootCauseVerified: false
+  };
+}
+
+// Use the existing trusted exposure-conversion cohort, not all reads.
+// Author plan and ownership must be resolved independently by the caller.
+// Missing/small cells are never represented as zero or passed to the model.
+function retentionCohort(startedValue, continuedValue) {
+  const started = count(startedValue);
+  const continued = count(continuedValue);
+  if (continued > started) invalid();
+  if (started < MIN_SAMPLE || continued < MIN_CELL) return null;
+  if (started - continued < MIN_CELL) return null;
+  return {
+    started,
+    continued,
+    withoutRecordedContinuation: started - continued,
+    rate: Math.round((continued / started) * 1000) / 10
+  };
+}
+
+export function projectWorkRetention({ principal, novel, snapshot, plan }) {
+  assertAiWorkAccess({ principal, novel, audience: 'author' });
+  if (!['standard', 'premium'].includes(plan)) invalid();
+  exactFields(snapshot, [
+    'novelId',
+    'days',
+    'first_episode_reads_10s',
+    'continued_to_episode_2'
+  ]);
+  if (String(snapshot.novelId) !== String(novel.id)) invalid();
+  if (![7, 30, 90].includes(snapshot.days)) invalid();
+  return {
+    days: snapshot.days,
+    cohort: retentionCohort(
+      snapshot.first_episode_reads_10s,
+      snapshot.continued_to_episode_2
+    ),
+    scope: 'exposure_conversion_first_to_second'
+  };
+}
+
+// Keep source-backed AI hypotheses separate from measured behavior.
+// No automatic cause, ranking, or improvement conclusion is admitted.
+export function reviewAnalyticsCopilot(input) {
+  const observed = projectWorkRetention(input);
+  const hypotheses = reviewWorkAnalysis(input);
+  return {
+    kind: 'analytics_review',
+    observed,
+    hypotheses: hypotheses.items,
+    requiresAuthorReview: true,
+    causalRelationshipVerified: false
+  };
+}
+
+// Current existing data supports only episode 1 -> episode 2. A future
+// caller must provide the trusted episode_number from the same work.
+export function reviewDropoffCandidates(input) {
+  const observed = projectWorkRetention(input);
+  const hypotheses = reviewWorkAnalysis(input);
+  const first = input.episodes.filter((row) => row.episode_number === 1);
+  if (first.length !== 1) invalid();
+  const firstId = String(first[0].id);
+  if (hypotheses.items.some((item) => item.episodeId !== firstId)) invalid();
+  return {
+    kind: 'continuation_review_candidates',
+    observed,
+    hypotheses: hypotheses.items,
+    requiresAuthorReview: true,
+    dropoffLocationVerified: false
+  };
+}
+
+// The existing author timeseries is author-wide, not per-work. The
+// previous cohort has longer follow-up, so differences are not proof
+// of improvement. Never accept arbitrary dates or claimed statistics.
+export function reviewAuthorGrowth(input) {
+  const { principal, snapshot } = input;
+  exactFields(snapshot, [
+    'authorId',
+    'days',
+    'current_first_episode_reads_10s',
+    'current_continued_to_episode_2',
+    'previous_first_episode_reads_10s',
+    'previous_continued_to_episode_2'
+  ]);
+  if (!principal?.id || principal.id !== snapshot.authorId) invalid();
+  if (![7, 30, 90].includes(snapshot.days)) invalid();
+  const current = retentionCohort(
+    snapshot.current_first_episode_reads_10s,
+    snapshot.current_continued_to_episode_2
+  );
+  const previous = retentionCohort(
+    snapshot.previous_first_episode_reads_10s,
+    snapshot.previous_continued_to_episode_2
+  );
+  const output = parseOutput(input.modelText, ['metric']);
+  if (output.metric !== 'first_to_second_continuation') invalid();
+  const comparable = current !== null && previous !== null;
+  return {
+    kind: 'author_period_observations',
+    days: snapshot.days,
+    scope: 'author_all_works',
+    current: comparable ? current : null,
+    previous: comparable ? previous : null,
+    differencePoints: comparable
+      ? Math.round((current.rate - previous.rate) * 10) / 10
+      : null,
+    unequalFollowup: true,
+    improvementVerified: false
   };
 }

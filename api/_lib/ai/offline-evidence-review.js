@@ -2,7 +2,7 @@
 // A future server caller MUST establish work ownership, visibility, and
 // completed-episode membership from trusted data before calling this module.
 import { createHash } from 'node:crypto';
-import { projectAiWorkContext } from './context.js';
+import { assertAiWorkAccess, projectAiWorkContext } from './context.js';
 
 const INVALID = 'AI_OFFLINE_EVIDENCE_INVALID';
 const PERSPECTIVES = ['pacing', 'character', 'clarity'];
@@ -226,6 +226,197 @@ export function reviewPrepublishIssues(input) {
     kind: 'prepublish_review_candidates',
     requiresAuthorReview: true,
     blocksPublication: false,
+    items
+  };
+}
+
+// Analysis candidates are tied to the original manuscript, not to a score.
+// No generated assertion is considered a confirmed literary fact.
+export function reviewWorkAnalysis(input) {
+  const context = projected(input, 'author');
+  const kinds = ['strength', 'pacing', 'structure', 'readability', 'viewpoint'];
+  const seen = new Set();
+  const items = parseItems(input.modelText, 8).map((item) => {
+    exactFields(item, ['kind', 'episodeId', 'offset', 'quote', 'observation']);
+    if (!kinds.includes(item.kind)) invalid();
+    const source = evidence(context, item);
+    const key = JSON.stringify([item.kind, source.episodeId, source.offset]);
+    if (seen.has(key)) invalid();
+    seen.add(key);
+    return {
+      kind: item.kind,
+      observation: boundedText(item.observation, 320),
+      ...source,
+      sourceHash: revision(input, source)
+    };
+  });
+  return {
+    kind: 'work_analysis_candidates',
+    requiresAuthorReview: true,
+    items
+  };
+}
+
+// Both passages must be present in the same authorized work and revision.
+// The relationship is a hypothesis; chronology in the text is not story time.
+function compareEvidence(input, kinds, resultKind) {
+  const context = projected(input, 'author');
+  const seen = new Set();
+  const items = parseItems(input.modelText, 6).map((item) => {
+    exactFields(item, ['kind', 'first', 'second', 'observation']);
+    if (!kinds.includes(item.kind)) invalid();
+    const pair = [item.first, item.second].map((entry) => {
+      exactFields(entry, ['episodeId', 'offset', 'quote']);
+      const source = evidence(context, entry);
+      return { ...source, sourceHash: revision(input, source) };
+    });
+    const keys = pair.map((entry) =>
+      JSON.stringify([entry.episodeId, entry.offset])
+    );
+    if (keys[0] === keys[1]) invalid();
+    const [a, b] = pair;
+    if (a.episodeId === b.episodeId) {
+      const overlap =
+        a.offset < b.offset + b.quote.length &&
+        b.offset < a.offset + a.quote.length;
+      if (overlap) invalid();
+    }
+    const identity = JSON.stringify([item.kind, ...keys.sort()]);
+    if (seen.has(identity)) invalid();
+    seen.add(identity);
+    return {
+      kind: item.kind,
+      observation: boundedText(item.observation, 320),
+      passages: pair
+    };
+  });
+  return { kind: resultKind, requiresAuthorReview: true, items };
+}
+
+export function reviewCharacterConsistency(input) {
+  return compareEvidence(
+    input,
+    ['name', 'voice', 'ability', 'age', 'relationship'],
+    'character_consistency_candidates'
+  );
+}
+
+export function reviewTimelineForeshadowing(input) {
+  return compareEvidence(
+    input,
+    ['chronology', 'location', 'time_span', 'possible_payoff'],
+    'timeline_foreshadowing_candidates'
+  );
+}
+
+// Only exact, already-read passages containing the explicitly requested name.
+// Never copy a model's invented role, relationship or character biography.
+export function reviewCharacterRecall(input) {
+  const context = projected(input, 'reader');
+  const name = boundedText(input.characterName, 80);
+  const seen = new Set();
+  const items = parseItems(input.modelText, 5).map((item) => {
+    exactFields(item, ['episodeId', 'offset', 'quote']);
+    const source = evidence(context, item);
+    if (!source.quote.includes(name)) invalid();
+    const key = JSON.stringify([source.episodeId, source.offset]);
+    if (seen.has(key)) invalid();
+    seen.add(key);
+    return source;
+  });
+  items.sort((a, b) => a.order - b.order || a.offset - b.offset);
+  return { kind: 'character_source_excerpts', name, items };
+}
+
+// A publisher-facing outline uses selected source excerpts only. No invented
+// credentials, audience statistics, rights or claims about publication.
+export function reviewPublishingOutline(input) {
+  const context = projected(input, 'author');
+  const kinds = ['plot', 'character', 'setting', 'theme'];
+  const seen = new Set();
+  const items = parseItems(input.modelText, 12).map((item) => {
+    exactFields(item, ['kind', 'episodeId', 'offset', 'quote']);
+    if (!kinds.includes(item.kind)) invalid();
+    const source = evidence(context, item);
+    const key = JSON.stringify([item.kind, source.episodeId, source.offset]);
+    if (seen.has(key)) invalid();
+    seen.add(key);
+    return {
+      kind: item.kind,
+      ...source,
+      sourceHash: revision(input, source)
+    };
+  });
+  return {
+    kind: 'publishing_source_outline',
+    requiresAuthorReview: true,
+    items
+  };
+}
+
+const PROMOTION_LIMITS = Object.freeze({
+  intro50: 50,
+  intro150: 150,
+  synopsis: 2000,
+  social: 140
+});
+
+// Draft only. Character limits are local Unicode code-point limits, not a
+// promise that a social platform will accept the text.
+export function reviewPromotionDraft(input) {
+  const context = projected(input, 'author');
+  if (!Object.hasOwn(PROMOTION_LIMITS, input.format)) invalid();
+  const items = parseItems(input.modelText, 3).map((item) => {
+    exactFields(item, ['draft', 'episodeId', 'offset', 'quote']);
+    const source = evidence(context, item);
+    const draft = boundedText(item.draft, 4000);
+    if (Array.from(draft).length > PROMOTION_LIMITS[input.format]) {
+      invalid();
+    }
+    return { draft, ...source, sourceHash: revision(input, source) };
+  });
+  const unique = new Set(items.map((item) => item.draft));
+  if (unique.size !== items.length) invalid();
+  return {
+    kind: 'promotion_drafts',
+    format: input.format,
+    requiresAuthorReview: true,
+    items
+  };
+}
+
+// Candidate B is bound to the original work metadata, never an active
+// experiment, publication operation or measured conversion claim.
+export function reviewMetadataVariants(input) {
+  const { principal, novel } = input;
+  assertAiWorkAccess({ principal, novel, audience: 'author' });
+  const metadata = input.metadata;
+  exactFields(metadata, ['novelId', 'title', 'description']);
+  if (positiveId(metadata.novelId) !== positiveId(novel.id)) invalid();
+  boundedText(metadata.title, 100);
+  if (typeof metadata.description !== 'string') invalid();
+  if (metadata.description.length > 2000) invalid();
+  const sourceHash = createHash('sha256')
+    .update(JSON.stringify(metadata))
+    .digest('hex');
+  if (input.expectedMetadataHash !== sourceHash) invalid();
+  const seen = new Set([
+    JSON.stringify([metadata.title.trim(), metadata.description.trim()])
+  ]);
+  const items = parseItems(input.modelText, 3).map((item) => {
+    exactFields(item, ['title', 'description']);
+    const title = boundedText(item.title, 100).trim();
+    const description = boundedText(item.description, 2000).trim();
+    const key = JSON.stringify([title, description]);
+    if (seen.has(key)) invalid();
+    seen.add(key);
+    return { title, description };
+  });
+  return {
+    kind: 'metadata_drafts',
+    sourceHash,
+    requiresAuthorReview: true,
+    experimentStarted: false,
     items
   };
 }
