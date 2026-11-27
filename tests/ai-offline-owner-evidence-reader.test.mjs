@@ -130,9 +130,8 @@ function fixture() {
               assert.equal(table, 'episodes');
               call.limit = value;
               const selected = (row) => call.ids.includes(String(row.id));
-              const rows = state.bypassFilters
-                ? state.episodes
-                : state.episodes.filter(selected);
+              let rows = state.episodes;
+              if (!state.bypassFilters) rows = rows.filter(selected);
               if (state.revokeAfterRead) state.active = false;
               const data = rows.map((row) => ({ ...row }));
               return { data, error: state.error };
@@ -223,7 +222,7 @@ async function mockTrial(reader, feature, selection, mock) {
 }
 
 for (const { feature, selection, output, kind } of cases) {
-  test('owner source to prompt to mock to fresh review: ' + feature, async () => {
+  test('owner source flow: ' + feature, async () => {
     const { state, reader } = fixture();
     const mock = async (prompt) => {
       assert.match(prompt.system, /untrusted/u);
@@ -252,18 +251,14 @@ for (const { feature, selection, output, kind } of cases) {
     assert.equal(novelCalls.length, 4);
     assert.equal(episodeCalls.length, selection.episodeIds ? 2 : 0);
     for (const call of novelCalls) {
-      const filters = [
-        ['id', '1'],
-        ['user_id', OWNER]
-      ];
-      assert.deepEqual(call.filters, filters);
+      assert.equal(call.filters.length, 2);
+      assert.deepEqual(call.filters[0], ['id', '1']);
+      assert.deepEqual(call.filters[1], ['user_id', OWNER]);
     }
     for (const call of episodeCalls) {
-      const filters = [
-        ['novel_id', '1'],
-        ['user_id', OWNER]
-      ];
-      assert.deepEqual(call.filters, filters);
+      assert.equal(call.filters.length, 2);
+      assert.deepEqual(call.filters[0], ['novel_id', '1']);
+      assert.deepEqual(call.filters[1], ['user_id', OWNER]);
       assert.deepEqual(call.ids, selection.episodeIds.map(String));
       assert.equal(call.limit, selection.episodeIds.length + 1);
     }
@@ -286,7 +281,7 @@ test('invalid selections fail before any source read', async () => {
   assert.equal(state.calls.length, 0);
 });
 
-test('owner and session loss prevent prompts before manuscript read', async () => {
+test('denies missing ownership or session before read', async () => {
   const changes = [
     (state) => {
       state.actor = OTHER;
@@ -309,7 +304,7 @@ test('owner and session loss prevent prompts before manuscript read', async () =
   }
 });
 
-test('bad episode rows and mid-read revocation prevent prompts', async () => {
+test('denies bad episode rows and mid-read revocation', async () => {
   const changes = [
     (state) => {
       state.episodes[0].novel_id = 2;
@@ -369,10 +364,8 @@ test('rejects stale responses and sanitizes failures', async () => {
     const { requestHash } = await reader.prepare(feature, one, TOKEN);
     change(state);
     const response = { requestHash, modelText };
-    await assert.rejects(
-      reader.review(feature, one, TOKEN, response),
-      { message: 'AI_OFFLINE_EVIDENCE_INVALID' }
-    );
+    const pending = reader.review(feature, one, TOKEN, response);
+    await assert.rejects(pending, { message: 'AI_OFFLINE_EVIDENCE_INVALID' });
   }
 });
 
