@@ -183,3 +183,106 @@ export function reviewDiscoverySelection({ rows, expectedHash, modelText }) {
     }));
   return { kind: 'public_metadata_matches', items };
 }
+
+// Natural search must not silently relax an explicit genre or tag filter.
+// The trusted adapter supplies the original query and already eligible rows.
+// Hash the whole request rather than only the result catalog.
+export function reviewNaturalSearch({ snapshot, expectedHash, modelText }) {
+  exactFields(snapshot, ['query', 'genre', 'tags', 'rows']);
+  text(snapshot.query, 160);
+  if (typeof snapshot.genre !== 'string') invalid();
+  if (snapshot.genre.length > 100) invalid();
+  if (!Array.isArray(snapshot.tags) || snapshot.tags.length > 10) invalid();
+  for (const tag of snapshot.tags) text(tag, 80);
+  if (new Set(snapshot.tags).size !== snapshot.tags.length) invalid();
+  requireDigest(snapshot, expectedHash);
+  const rows = snapshot.rows;
+  if (!Array.isArray(rows)) invalid();
+  for (const row of rows) {
+    if (snapshot.genre && row?.genre !== snapshot.genre) invalid();
+    if (!Array.isArray(row?.tags)) invalid();
+    if (!snapshot.tags.every((tag) => row.tags.includes(tag))) invalid();
+  }
+  const result = reviewDiscoverySelection({
+    rows,
+    expectedHash: createHash('sha256')
+      .update(JSON.stringify(rows))
+      .digest('hex'),
+    modelText
+  });
+  return { ...result, kind: 'natural_search_evidence', rankingChanged: false };
+}
+
+// The approved category catalog is supplied from the existing classification
+// rules, not invented by the model. Only metadata excerpts may be cited.
+export function reviewClassificationCandidate({
+  snapshot,
+  expectedHash,
+  modelText
+}) {
+  exactFields(snapshot, ['novelId', 'title', 'description', 'genre', 'genres']);
+  if (!/^[1-9][0-9]{0,19}$/u.test(text(snapshot.novelId, 20))) invalid();
+  text(snapshot.title, 200);
+  text(snapshot.description, 2000);
+  if (!Array.isArray(snapshot.genres)) invalid();
+  if (snapshot.genres.length > 50) invalid();
+  for (const genre of snapshot.genres) text(genre, 100);
+  if (new Set(snapshot.genres).size !== snapshot.genres.length) invalid();
+  if (!snapshot.genres.includes(snapshot.genre)) invalid();
+  requireDigest(snapshot, expectedHash);
+  const result = parse(modelText, ['items']);
+  if (!Array.isArray(result.items) || result.items.length > 3) invalid();
+  const seen = new Set();
+  const items = result.items.map((item) => {
+    exactFields(item, ['genre', 'field', 'quote']);
+    if (!snapshot.genres.includes(item.genre)) invalid();
+    if (item.genre === snapshot.genre || seen.has(item.genre)) invalid();
+    if (!['title', 'description'].includes(item.field)) invalid();
+    const quote = text(item.quote, 160);
+    if (!snapshot[item.field].includes(quote)) invalid();
+    seen.add(item.genre);
+    return { genre: item.genre, field: item.field, quote };
+  });
+  return {
+    kind: 'classification_review_candidates',
+    novelId: snapshot.novelId,
+    currentGenre: snapshot.genre,
+    sourceHash: expectedHash,
+    requiresHumanReview: true,
+    items
+  };
+}
+
+// The operator independently removes private data and selects the current
+// official help catalog. Only a proposed category and approved excerpts are
+// returned; no raw inquiry, recipient, generated promise or send command.
+export function reviewInquirySupport({
+  snapshot,
+  expectedHash,
+  topics,
+  expectedTopicsHash,
+  modelText
+}) {
+  exactFields(snapshot, ['id', 'redactedBody', 'categories']);
+  key(snapshot.id);
+  text(snapshot.redactedBody, 2000);
+  if (!Array.isArray(snapshot.categories)) invalid();
+  if (snapshot.categories.length > 30) invalid();
+  for (const category of snapshot.categories) key(category);
+  requireDigest(snapshot, expectedHash);
+  const output = parse(modelText, ['category', 'items']);
+  if (!snapshot.categories.includes(output.category)) invalid();
+  const faq = reviewFaqSelection({
+    topics,
+    expectedHash: expectedTopicsHash,
+    modelText: JSON.stringify({ items: output.items })
+  });
+  return {
+    kind: 'inquiry_review_draft',
+    inquiryId: snapshot.id,
+    sourceHash: expectedHash,
+    category: output.category,
+    excerpts: faq.items,
+    requiresHumanReview: true
+  };
+}

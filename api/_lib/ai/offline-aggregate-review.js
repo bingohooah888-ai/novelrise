@@ -1,5 +1,6 @@
 // Offline contracts only. No provider, route, database, or log ingestion.
 // Callers must establish the principal and scope from trusted server records.
+import { createHash } from 'node:crypto';
 import { assertAiWorkAccess } from './context.js';
 import { reviewWorkAnalysis } from './offline-evidence-review.js';
 
@@ -244,5 +245,144 @@ export function reviewAuthorGrowth(input) {
       : null,
     unequalFollowup: true,
     improvementVerified: false
+  };
+}
+
+// Only pre-authorized, minimized operational snapshots are accepted.
+// Digests bind a result to the exact snapshot inspected, not to an action.
+function requireSnapshot(snapshot, expectedHash) {
+  if (typeof expectedHash !== 'string') invalid();
+  const actual = createHash('sha256')
+    .update(JSON.stringify(snapshot))
+    .digest('hex');
+  if (actual !== expectedHash) invalid();
+}
+
+function handle(value) {
+  if (typeof value !== 'string') invalid();
+  if (!/^[A-Za-z0-9_-]{1,100}$/u.test(value)) invalid();
+  return value;
+}
+
+// Existing reports endpoint exposes category and status, not the reported
+// text. Triage may organize cases but cannot determine the actual violation.
+export function reviewReportTriage({ snapshot, expectedHash, modelText }) {
+  if (!Array.isArray(snapshot) || snapshot.length > 100) invalid();
+  const rows = new Map();
+  for (const row of snapshot) {
+    exactFields(row, ['id', 'category', 'status']);
+    const id = handle(row.id);
+    if (rows.has(id)) invalid();
+    if (!['new', 'reviewing'].includes(row.status)) invalid();
+    handle(row.category);
+    rows.set(id, row);
+  }
+  requireSnapshot(snapshot, expectedHash);
+  const output = parseOutput(modelText, ['ids']);
+  if (!Array.isArray(output.ids) || output.ids.length > 12) invalid();
+  if (new Set(output.ids).size !== output.ids.length) invalid();
+  const selected = output.ids.map((id) => {
+    if (!rows.has(id)) invalid();
+    return rows.get(id);
+  });
+  return {
+    kind: 'report_review_selection',
+    sourceHash: expectedHash,
+    receivedCount: rows.size,
+    items: selected.map(({ id, category, status }) => ({
+      id,
+      category,
+      status
+    })),
+    requiresHumanReview: true,
+    violationVerified: false
+  };
+}
+
+// The trusted admin adapter supplies only opaque signal handles, a fixed
+// observed signal type, and recorded state. No identities or raw evidence.
+const REVIEW_SIGNAL_TYPES = [
+  'robotic_valid_read_burst',
+  'robotic_valid_read_timing',
+  'scout_xp_integrity'
+];
+export function reviewAbuseSignals({ snapshot, expectedHash, modelText }) {
+  if (!Array.isArray(snapshot) || snapshot.length > 200) invalid();
+  const rows = new Map();
+  for (const row of snapshot) {
+    exactFields(row, ['id', 'status', 'signalType']);
+    if (!REVIEW_SIGNAL_TYPES.includes(row.signalType)) invalid();
+    const id = handle(row.id);
+    if (rows.has(id)) invalid();
+    if (!['active', 'confirmed', 'dismissed', 'expired'].includes(row.status)) {
+      invalid();
+    }
+    rows.set(id, row);
+  }
+  requireSnapshot(snapshot, expectedHash);
+  const output = parseOutput(modelText, ['ids']);
+  if (!Array.isArray(output.ids) || output.ids.length > 12) invalid();
+  if (new Set(output.ids).size !== output.ids.length) invalid();
+  const items = output.ids.map((id) => {
+    const row = rows.get(id);
+    if (!row || !['active', 'confirmed'].includes(row.status)) invalid();
+    return { id, status: row.status, signalType: row.signalType };
+  });
+  return {
+    kind: 'abuse_signal_review',
+    sourceHash: expectedHash,
+    items,
+    requiresHumanReview: true,
+    abuseVerified: false
+  };
+}
+
+const KPI_COUNTS = [
+  'uniqueVisitors',
+  'readingUsers',
+  'newUsers',
+  'episodePageviews'
+];
+
+// Compare trusted equally sized windows of the same existing metrics.
+// Missing values and small samples are withheld; no model-supplied
+// threshold, percentage or root cause is accepted. This is not a
+// statistical anomaly detector; it flags observed changes for review.
+export function reviewKpiChanges({ snapshot, expectedHash, modelText }) {
+  exactFields(snapshot, ['days', 'rows']);
+  if (![7, 30, 90].includes(snapshot.days)) invalid();
+  if (!Array.isArray(snapshot.rows)) invalid();
+  if (snapshot.rows.length > KPI_COUNTS.length) invalid();
+  const rows = new Map();
+  for (const row of snapshot.rows) {
+    exactFields(row, ['metric', 'current', 'previous']);
+    if (!KPI_COUNTS.includes(row.metric) || rows.has(row.metric)) invalid();
+    for (const value of [row.current, row.previous]) {
+      if (value !== null) count(value);
+    }
+    rows.set(row.metric, row);
+  }
+  requireSnapshot(snapshot, expectedHash);
+  const output = parseOutput(modelText, ['metrics']);
+  if (!Array.isArray(output.metrics)) invalid();
+  if (output.metrics.length > KPI_COUNTS.length) invalid();
+  if (new Set(output.metrics).size !== output.metrics.length) invalid();
+  const items = output.metrics.map((metric) => {
+    const row = rows.get(metric);
+    if (!row || row.current === null || row.previous === null) invalid();
+    if (row.current < MIN_SAMPLE || row.previous < MIN_SAMPLE) invalid();
+    return {
+      metric,
+      current: row.current,
+      previous: row.previous,
+      difference: row.current - row.previous
+    };
+  });
+  return {
+    kind: 'kpi_change_review',
+    days: snapshot.days,
+    items,
+    statisticalAnomalyVerified: false,
+    rootCauseVerified: false
   };
 }
