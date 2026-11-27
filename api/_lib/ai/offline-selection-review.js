@@ -3,6 +3,7 @@
 // No provider, API route, network, publication, exposure or scoring changes.
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { URL } from 'node:url';
 import { requireAdmin } from '../admin-auth.js';
 import {
   normalizeCoverQuad,
@@ -517,7 +518,8 @@ export async function loadOfflineOfficialThumbnail(client, templateKey) {
     ['top_left', 'top_right', 'bottom_right', 'bottom_left'].map((name) => {
       const x = row['cover_' + name + '_x'];
       const y = row['cover_' + name + '_y'];
-      if (x == null || y == null) invalid();
+      if (x === null || x === undefined) invalid();
+      if (y === null || y === undefined) invalid();
       return [name, { x, y }];
     })
   );
