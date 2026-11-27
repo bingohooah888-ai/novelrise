@@ -287,12 +287,8 @@ export function projectAdminReviewedExcerpt(body, selection) {
   });
   const projected = excerpts.join('\n[省略]\n');
   // Additional conservative checks are not proof of anonymization.
-  if (
-    /@|https?:\/\/|[0-9０-９]{5,}/iu.test(projected) ||
-    /(?:[0-9０-９][\s().\-－ー]*){7}/u.test(projected)
-  ) {
-    invalid();
-  }
+  if (/@|https?:\/\/|[0-9０-９]{5,}/iu.test(projected)) invalid();
+  if (/(?:[0-9０-９][\s().\-－ー]*){7}/u.test(projected)) invalid();
   return text(projected, 2000);
 }
 
@@ -303,19 +299,15 @@ async function loadPolicySections() {
     new URL('../../../content-guidelines.html', import.meta.url),
     'utf8'
   );
-  const sectionPattern = /<section class="legal-card">([\s\S]*?)<\/section>/gu;
-  const cards = [...html.matchAll(sectionPattern)];
+  const pattern = /<section class="legal-card">([\s\S]*?)<\/section>/gu;
+  const cards = [...html.matchAll(pattern)];
   if (cards.length !== SECTIONS.length) invalid();
   return cards.map((card, index) => {
     const heading = card[1].match(/^\s*<h2>([1-9])\. [^<>]+<\/h2>/u);
     if (!heading || heading[1] !== SECTIONS[index]) invalid();
-    const body = card[1]
-      .replace(
-        /<\/?(?:h2|p|ul|li|tbody|tr|th|td|strong|a|div|table)(?: class="legal-(?:table|warning)"| href="contact\.html")?>/gu,
-        ' '
-      )
-      .replace(/\s+/gu, ' ')
-      .trim();
+    const tags =
+      /<\/?(?:h2|p|ul|li|tbody|tr|th|td|strong|a|div|table)(?: class="legal-(?:table|warning)"| href="contact\.html")?>/gu;
+    const body = card[1].replace(tags, ' ').replace(/\s+/gu, ' ').trim();
     if (/[<>&]/u.test(body)) invalid();
     return { section: heading[1], body: text(body, 12000) };
   });
@@ -331,7 +323,8 @@ export function createOfflineAdminPolicyReader({ supabase, env } = {}) {
     exactFields(selection, [comment ? 'commentId' : 'episodeId', ...common]);
     const id = comment ? selection.commentId : selection.episodeId;
     if (typeof id !== 'string') invalid();
-    const validId = comment ? UUID.test(id) : /^[1-9][0-9]{0,19}$/u.test(id);
+    const numericId = /^[1-9][0-9]{0,19}$/u.test(id);
+    const validId = comment ? UUID.test(id) : numericId;
     if (!validId) invalid();
     const result = await supabase
       .from(comment ? 'novel_comments' : 'episodes')
