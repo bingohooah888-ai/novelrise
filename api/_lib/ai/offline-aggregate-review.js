@@ -571,31 +571,57 @@ export function reviewOfflineAggregateResponse(feature, input, response) {
 // Unmounted read-only report composition. The existing admin guard and
 // summary loader use the same injected server client as the current GET API.
 // No handler, client creation, credentials, model call or writes are added.
-export function createOfflineAdminReportReader({ supabase, env } = {}) {
+function createOfflineAdminReadReview({ supabase, env }, feature) {
   async function load(req, res) {
     const user = await requireAdmin({ req, res, supabase, env });
     if (typeof user?.id !== 'string' || !user.id) invalid();
-    const rows = await loadReportSummaries(supabase);
-    if (!Array.isArray(rows) || rows.length > 200) invalid();
-    // The existing feed is ordered newest first and capped at 200.
-    // The AI contract accepts at most the newest 100, never reported text.
-    const snapshot = rows.slice(0, 100).map((row) => {
-      if (typeof row?.id !== 'string' && !Number.isSafeInteger(row?.id)) {
-        invalid();
-      }
-      return {
-        id: String(row.id),
-        category: row.category,
-        status: row.status
-      };
-    });
+    let snapshot;
+    if (feature === 'report-triage') {
+      const rows = await loadReportSummaries(supabase);
+      if (!Array.isArray(rows) || rows.length > 200) invalid();
+      // The existing feed is ordered newest first and capped at 200.
+      // The AI contract accepts at most the newest 100, never reported text.
+      snapshot = rows.slice(0, 100).map((row) => {
+        if (typeof row?.id !== 'string' && !Number.isSafeInteger(row?.id)) {
+          invalid();
+        }
+        return {
+          id: String(row.id),
+          category: row.category,
+          status: row.status
+        };
+      });
+    } else if (feature === 'abuse-analysis') {
+      // Reuse the existing trust dashboard signal table and ordering,
+      // but never load profiles, email addresses, links or raw evidence.
+      const result = await supabase
+        .from('trust_risk_signals')
+        .select('id,status,signal_type')
+        .in('signal_type', REVIEW_SIGNAL_TYPES)
+        .in('status', ['active', 'confirmed'])
+        .order('observed_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(200);
+      if (result?.error || !Array.isArray(result?.data)) invalid();
+      if (result.data.length > 200) invalid();
+      snapshot = result.data.map((row) => {
+        if (!['active', 'confirmed'].includes(row?.status)) invalid();
+        return {
+          id: row.id,
+          status: row.status,
+          signalType: row.signal_type
+        };
+      });
+    } else {
+      invalid();
+    }
     const current = await requireAdmin({ req, res, supabase, env });
     if (current?.id !== user.id) invalid();
     const input = {
       principal: { id: user.id, isAdmin: true },
       snapshot
     };
-    const prepared = prepareOfflineAggregatePrompt('report-triage', input);
+    const prepared = prepareOfflineAggregatePrompt(feature, input);
     return { input, prepared };
   }
 
@@ -611,10 +637,18 @@ export function createOfflineAdminReportReader({ supabase, env } = {}) {
     async review(req, res, response) {
       try {
         const { input } = await load(req, res);
-        return reviewOfflineAggregateResponse('report-triage', input, response);
+        return reviewOfflineAggregateResponse(feature, input, response);
       } catch {
         invalid();
       }
     }
   });
+}
+
+export function createOfflineAdminReportReader(dependencies = {}) {
+  return createOfflineAdminReadReview(dependencies, 'report-triage');
+}
+
+export function createOfflineAdminAbuseReader(dependencies = {}) {
+  return createOfflineAdminReadReview(dependencies, 'abuse-analysis');
 }
