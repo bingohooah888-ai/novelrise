@@ -116,10 +116,7 @@ const signal = {
 };
 const abuse = {
   ...operator,
-  snapshot: [
-    signal,
-    { ...signal, id: 'DISMISSED_SIGNAL', status: 'dismissed' }
-  ]
+  snapshot: [signal, { ...signal, id: 'DISMISSED_SIGNAL', status: 'dismissed' }]
 };
 const classification = {
   ...operator,
