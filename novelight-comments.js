@@ -393,9 +393,100 @@
     );
   }
 
+  // This is a status count of the already returned author-capable rows.
+  // Never inspect comment bodies or infer sentiment, spoilers or reply intent.
+  function summarizeAuthorComments(comments) {
+    const summary = { total: 0, visible: 0, unreplied: 0, spoilers: 0 };
+    if (!Array.isArray(comments)) return Object.freeze(summary);
+    for (const comment of comments.slice(0, FEED_LIMIT)) {
+      if (comment?.can_moderate !== true) continue;
+      summary.total += 1;
+      if (comment.is_hidden !== false) continue;
+      summary.visible += 1;
+      if (comment.is_spoiler === true) summary.spoilers += 1;
+      if (
+        comment.author_reply_body == null ||
+        (typeof comment.author_reply_body === 'string' &&
+          !comment.author_reply_body.trim())
+      ) summary.unreplied += 1;
+    }
+    return Object.freeze(summary);
+  }
+
+  const REPLY_EXAMPLES = Object.freeze({
+    thanks: 'お読みいただき、ありがとうございます。コメントも嬉しく拝見しました。',
+    question: 'ご質問ありがとうございます。内容を確認してからお答えします。',
+    feedback: 'ご意見ありがとうございます。今後の執筆の参考にさせていただきます。'
+  });
+
+  function replyExample(kind) {
+    return typeof kind === 'string' && Object.hasOwn(REPLY_EXAMPLES, kind)
+      ? REPLY_EXAMPLES[kind]
+      : null;
+  }
+
+  function renderAuthorCommentTools(state, comments) {
+    const panel = state.authorTools;
+    panel.replaceChildren();
+    panel.hidden = true;
+    if (!state.isAuthor) return;
+    const summary = summarizeAuthorComments(comments);
+    if (!summary.total) return;
+
+    panel.append(
+      createElement('summary', '', '作者用コメント整理・返信例（非AI）'),
+      createElement(
+        'p',
+        '',
+        '取得した最大' + FEED_LIMIT + '件のうち作者操作対象：' +
+          summary.total + '件／表示中：' + summary.visible +
+          '件／表示中で返信未登録：' + summary.unreplied +
+          '件／表示中でネタバレ指定：' + summary.spoilers + '件'
+      ),
+      createElement(
+        'p',
+        '',
+        '取得範囲だけの状態集計です。返信の必要性や感想の傾向は判定しません。'
+      )
+    );
+    const select = createElement('select', '');
+    select.setAttribute('aria-label', '返信例の種類');
+    for (const [value, label] of [
+      ['thanks', '感想へのお礼'],
+      ['question', '質問を受け取ったとき'],
+      ['feedback', '意見へのお礼']
+    ]) {
+      const option = createElement('option', '', label);
+      option.value = value;
+      select.append(option);
+    }
+    const output = createElement('textarea', '');
+    output.readOnly = true;
+    output.rows = 3;
+    output.setAttribute('aria-label', 'コピー用返信例');
+    output.value = replyExample('thanks');
+    select.addEventListener('change', () => {
+      output.value = replyExample(select.value) || '';
+    });
+    const copy = createElement('button', 'novelight-comment-moderation', '返信例を選択');
+    copy.type = 'button';
+    copy.addEventListener('click', () => {
+      output.focus();
+      output.select();
+    });
+    panel.append(
+      createElement('p', '', '定型文はコピー用です。実際に読んだ内容に合わせて編集し、既存の作者返信からご自身で送信してください。'),
+      select,
+      output,
+      copy
+    );
+    panel.hidden = false;
+  }
+
   function renderFeed(state, comments) {
     state.list.replaceChildren();
     state.count.textContent = `${comments.length}件`;
+    renderAuthorCommentTools(state, comments);
 
     if (!comments.length) {
       state.list.append(
@@ -589,6 +680,7 @@
     } catch (error) {
       console.error('comment feed failed', error);
       state.count.textContent = '';
+      renderAuthorCommentTools(state, []);
       state.list.replaceChildren(
         createElement(
           'p',
@@ -772,7 +864,9 @@
     const status = createElement('div', 'novelight-comments-status', '');
     status.setAttribute('aria-live', 'polite');
     const list = createElement('div', 'novelight-comments-list');
-    section.append(status, list);
+    const authorTools = createElement('details', 'novelight-comments-status');
+    authorTools.hidden = true;
+    section.append(status, authorTools, list);
 
     const state = {
       client,
@@ -781,6 +875,7 @@
       count,
       status,
       list,
+      authorTools,
       isAuthor: isAuthor === true
     };
     const reception = await loadReceptionState(client, novel.id);
@@ -789,5 +884,9 @@
     await refresh(state);
   }
 
-  global.NovelightComments = Object.freeze({ mount });
+  global.NovelightComments = Object.freeze({
+    mount,
+    summarizeAuthorComments,
+    replyExample
+  });
 })(window);
