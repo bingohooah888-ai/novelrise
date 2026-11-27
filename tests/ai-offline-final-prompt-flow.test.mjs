@@ -114,10 +114,8 @@ const signal = {
   status: 'active',
   signalType: 'robotic_valid_read_burst'
 };
-const abuse = {
-  ...operator,
-  snapshot: [signal, { ...signal, id: 'DISMISSED_SIGNAL', status: 'dismissed' }]
-};
+const dismissed = { ...signal, id: 'DISMISSED_SIGNAL', status: 'dismissed' };
+const abuse = { ...operator, snapshot: [signal, dismissed] };
 const classification = {
   ...operator,
   snapshot: {
@@ -158,113 +156,125 @@ const kpi = {
   }
 };
 
-const evidenceFlow = [
-  prepareOfflineEvidencePrompt,
-  reviewOfflineEvidenceResponse
-];
-const selectionFlow = [
-  prepareOfflineSelectionPrompt,
-  reviewOfflineSelectionResponse
-];
-const policyFlow = [prepareOfflinePolicyPrompt, reviewOfflinePolicyResponse];
-const commentFlow = [prepareOfflineCommentPrompt, reviewOfflineCommentResponse];
-const aggregateFlow = [
-  prepareOfflineAggregatePrompt,
-  reviewOfflineAggregateResponse
-];
+const evidenceFlow = {
+  prepare: prepareOfflineEvidencePrompt,
+  review: reviewOfflineEvidenceResponse
+};
+const selectionFlow = {
+  prepare: prepareOfflineSelectionPrompt,
+  review: reviewOfflineSelectionResponse
+};
+const policyFlow = {
+  prepare: prepareOfflinePolicyPrompt,
+  review: reviewOfflinePolicyResponse
+};
+const commentFlow = {
+  prepare: prepareOfflineCommentPrompt,
+  review: reviewOfflineCommentResponse
+};
+const aggregateFlow = {
+  prepare: prepareOfflineAggregatePrompt,
+  review: reviewOfflineAggregateResponse
+};
+
+const publicationItem = {
+  kind: 'setting',
+  episodeId: '11',
+  offset: 0,
+  quote: '王都'
+};
+const publicationOutput = { items: [publicationItem] };
 
 const cases = [
-  [
-    selectionFlow,
-    'thumbnail-coordinator',
-    thumbnail,
-    thumbnailOutput,
-    'official_material_candidates'
-  ],
-  [
-    evidenceFlow,
-    'title-synopsis-ab',
-    metadata,
-    { items: [{ title: '王都の門', description: '凛の旅' }] },
-    'metadata_drafts'
-  ],
-  [
-    commentFlow,
-    'spoiler-comment-detection',
-    spoiler,
-    { items: [{ commentId: '1', referenceId: '3' }] },
-    'spoiler_warning_candidates'
-  ],
-  [
-    evidenceFlow,
-    'publishing-preparation',
-    publication,
-    {
-      items: [{ kind: 'setting', episodeId: '11', offset: 0, quote: '王都' }]
-    },
-    'publishing_source_outline'
-  ],
-  [
-    policyFlow,
-    'comment-moderation',
-    moderation,
-    { items: [evidence] },
-    'comment_moderation_candidates'
-  ],
-  [
-    aggregateFlow,
-    'abuse-analysis',
-    abuse,
-    { ids: ['signal-1'] },
-    'abuse_signal_review'
-  ],
-  [
-    selectionFlow,
-    'classification-anomaly',
-    classification,
-    { items: [{ genre: '冒険', field: 'description', quote: '旅' }] },
-    'classification_review_candidates'
-  ],
-  [
-    policyFlow,
-    'policy-risk-review',
-    policyReview,
-    { items: [evidence] },
-    'policy_review_candidates'
-  ],
-  [
-    selectionFlow,
-    'inquiry-assistant',
-    inquiry,
-    { category: 'publishing', items: [faqItem] },
-    'inquiry_review_draft'
-  ],
-  [
-    selectionFlow,
-    'official-faq-assistant',
-    faq,
-    { items: [faqItem] },
-    'official_help_excerpts'
-  ],
-  [
-    aggregateFlow,
-    'kpi-anomaly',
-    kpi,
-    { metrics: ['newUsers'] },
-    'kpi_change_review'
-  ]
+  {
+    flow: selectionFlow,
+    feature: 'thumbnail-coordinator',
+    input: thumbnail,
+    output: thumbnailOutput,
+    kind: 'official_material_candidates'
+  },
+  {
+    flow: evidenceFlow,
+    feature: 'title-synopsis-ab',
+    input: metadata,
+    output: { items: [{ title: '王都の門', description: '凛の旅' }] },
+    kind: 'metadata_drafts'
+  },
+  {
+    flow: commentFlow,
+    feature: 'spoiler-comment-detection',
+    input: spoiler,
+    output: { items: [{ commentId: '1', referenceId: '3' }] },
+    kind: 'spoiler_warning_candidates'
+  },
+  {
+    flow: evidenceFlow,
+    feature: 'publishing-preparation',
+    input: publication,
+    output: publicationOutput,
+    kind: 'publishing_source_outline'
+  },
+  {
+    flow: policyFlow,
+    feature: 'comment-moderation',
+    input: moderation,
+    output: { items: [evidence] },
+    kind: 'comment_moderation_candidates'
+  },
+  {
+    flow: aggregateFlow,
+    feature: 'abuse-analysis',
+    input: abuse,
+    output: { ids: ['signal-1'] },
+    kind: 'abuse_signal_review'
+  },
+  {
+    flow: selectionFlow,
+    feature: 'classification-anomaly',
+    input: classification,
+    output: { items: [{ genre: '冒険', field: 'description', quote: '旅' }] },
+    kind: 'classification_review_candidates'
+  },
+  {
+    flow: policyFlow,
+    feature: 'policy-risk-review',
+    input: policyReview,
+    output: { items: [evidence] },
+    kind: 'policy_review_candidates'
+  },
+  {
+    flow: selectionFlow,
+    feature: 'inquiry-assistant',
+    input: inquiry,
+    output: { category: 'publishing', items: [faqItem] },
+    kind: 'inquiry_review_draft'
+  },
+  {
+    flow: selectionFlow,
+    feature: 'official-faq-assistant',
+    input: faq,
+    output: { items: [faqItem] },
+    kind: 'official_help_excerpts'
+  },
+  {
+    flow: aggregateFlow,
+    feature: 'kpi-anomaly',
+    input: kpi,
+    output: { metrics: ['newUsers'] },
+    kind: 'kpi_change_review'
+  }
 ];
 
 async function mockTrial(flow, feature, input, mockGenerate, current = input) {
   assert.equal(input.synthetic, true);
   assert.equal(current.synthetic, true);
-  const [prepare, review] = flow;
+  const { prepare, review } = flow;
   const { prompt, requestHash } = prepare(feature, input);
   const modelText = await mockGenerate(prompt);
   return review(feature, current, { requestHash, modelText });
 }
 
-for (const [flow, feature, input, output, kind] of cases) {
+for (const { flow, feature, input, output, kind } of cases) {
   test('offline flow: ' + feature, async () => {
     const before = JSON.stringify(input);
     let calls = 0;
@@ -295,7 +305,7 @@ for (const [flow, feature, input, output, kind] of cases) {
 }
 
 test('access and stale inputs fail closed', async () => {
-  for (const [flow, feature, input, output] of cases) {
+  for (const { flow, feature, input, output } of cases) {
     const denied = { ...input, principal: { id: 'OTHER' } };
     const mock = async () => JSON.stringify(output);
     // A public reader is permitted, but changing identity invalidates a reply.
@@ -343,13 +353,12 @@ test('reader progress and revoked moderation scope invalidate responses', async 
   );
   const revoked = { ...moderation, comment: { ...subject, visible: false } };
   const reviewMock = async () => JSON.stringify({ items: [evidence] });
-  await assert.rejects(
-    mockTrial(
-      policyFlow,
-      'comment-moderation',
-      moderation,
-      reviewMock,
-      revoked
-    )
+  const pending = mockTrial(
+    policyFlow,
+    'comment-moderation',
+    moderation,
+    reviewMock,
+    revoked
   );
+  await assert.rejects(pending);
 });
