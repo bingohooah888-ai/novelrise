@@ -190,7 +190,8 @@ export function reviewWritingEdits(input) {
       if (
         a.offset < b.offset + b.quote.length &&
         b.offset < a.offset + a.quote.length
-      ) invalid();
+      )
+        invalid();
     }
   }
   return { kind: 'proposed_edits', requiresAuthorReview: true, items };
