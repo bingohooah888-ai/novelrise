@@ -752,7 +752,7 @@ test('AI typed review inputs are operable offline on desktop and mobile', async 
     const catalog = {
       plan: 'premium',
       novels: [{ id: '1', label: '架空作品' }],
-      episodes: [{ id: '11', label: '第1話' }],
+      episodes: [{ id: '11', label: '第1話', novelId: '1' }],
       genres: [{ id: 'その他', label: 'その他' }],
       tags: [{ id: 'adventure', label: '冒険' }]
     };

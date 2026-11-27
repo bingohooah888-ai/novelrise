@@ -21,6 +21,10 @@ function testContainer() {
         textContent: '',
         childNodes: [],
         attributes: {},
+        events: new Map(),
+        addEventListener(name, fn) {
+          this.events.set(name, fn);
+        },
         setAttribute(name, value) {
           this.attributes[name] = value;
         },
@@ -59,7 +63,7 @@ function inputFromForm(feature, selection) {
   const input = inputSelection(selection);
   const root = testContainer();
   const choices = (values) =>
-    values.map((id) => ({ id, label: '架空対象 ' + id }));
+    values.map((id) => ({ id, label: '架空対象 ' + id, novelId: input.novelId }));
   const catalog = {
     plan: 'premium',
     novels: choices(input.novelId ? [input.novelId] : []),
@@ -99,6 +103,7 @@ function inputFromForm(feature, selection) {
       field.checked = value;
     } else {
       field.value = String(value);
+      if (key === 'novelId') field.events.get('change')?.();
       if (field.tag === 'select') {
         assert.ok(field.childNodes.some((row) => row.value === field.value));
       }
