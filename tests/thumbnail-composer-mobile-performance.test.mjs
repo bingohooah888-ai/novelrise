@@ -179,3 +179,31 @@ test('options load on accordion open and export stays isolated', () => {
   assert.match(source, /canvas: document\.createElement\('canvas'\)/u);
   assert.match(source, /const IMAGE_CACHE_LIMIT = 8/u);
 });
+
+test('material suggestions use active official visible layers', () => {
+  const { composer } = createRuntime();
+  const asset = (id, layer, label, status = 'active', template = 'fixed') => ({
+    id,
+    layer_type: layer,
+    label,
+    availability_status: status,
+    template_key: template
+  });
+  const library = {
+    assets: [
+      asset('gold', 'background', '金の光'),
+      asset('moon', 'symbol', '月'),
+      asset('hidden', 'cover', '金 月'),
+      asset('disabled', 'frame', '月', 'emergency_disabled'),
+      asset('other', 'frame', '月', 'active', 'other')
+    ]
+  };
+  const before = JSON.stringify(library);
+  const picks = composer.suggestMaterials(library, 'fixed', '金 月');
+  assert.deepEqual({ ...picks }, { background: 'gold', symbol: 'moon' });
+  assert.equal(JSON.stringify(library), before);
+  assert.equal(
+    Object.keys(composer.suggestMaterials(library, 'fixed', '未知')).length,
+    0
+  );
+});

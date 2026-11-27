@@ -138,6 +138,65 @@
     );
   }
 
+  // Ratios of the existing aggregate counts, not individual reader journeys.
+  // Do not infer causality or treat inconsistent aggregate counts as conversions.
+  function conversionPeriodText(row, days) {
+    if (!row || ![7, 30, 90].includes(days)) return '比較データを取得できませんでした。';
+    const pairs = [
+      ['表示→作品ページ', 'impressions', 'detail_opens'],
+      ['作品ページ→第1話10秒', 'detail_opens', 'first_episode_reads_10s']
+    ];
+    const rate = (prefix, denominator, numerator) => {
+      const d = readCohortCount(row[prefix + denominator]);
+      const n = readCohortCount(row[prefix + numerator]);
+      return d !== null && n !== null && d >= MIN_SAMPLE && n <= d
+        ? (n / d) * 100
+        : null;
+    };
+    return pairs.map(([label, denominator, numerator]) => {
+      const current = rate('current_', denominator, numerator);
+      const previous = rate('previous_', denominator, numerator);
+      if (current === null || previous === null) {
+        return label + '：十分な比較データがありません。';
+      }
+      const change = current - previous;
+      return label + '：直近' + days + '日 ' + current.toFixed(1) +
+        '%／直前' + days + '日 ' + previous.toFixed(1) + '%（差 ' +
+        (change > 0 ? '+' : '') + change.toFixed(1) + 'ポイント）';
+    }).join('\n');
+  }
+
+  // Copyable text of the same existing comparison; no new read, identity,
+  // storage, file download or claim of author improvement.
+  function selectWorkRows(rows, query = '', order = 'default') {
+    if (!Array.isArray(rows) || typeof query !== 'string' ||
+        query.length > 120 || !['default', 'impressions',
+          'first_episode_reads_10s', 'continued_to_episode_2'].includes(order)) return [];
+    const normalize = (value) => typeof value === 'string'
+      ? value.normalize('NFKC').toLowerCase() : '';
+    const needle = normalize(query).trim();
+    const filtered = rows.filter((row) => row &&
+      (!needle || normalize(row.title).includes(needle)));
+    if (order === 'default') return filtered;
+    return filtered.sort((a, b) => {
+      const x = readCohortCount(a[order]);
+      const y = readCohortCount(b[order]);
+      if (x === null) return y === null ? 0 : 1;
+      if (y === null) return -1;
+      return y - x;
+    });
+  }
+
+  function buildComparisonReport(row, days) {
+    if (!buildRetentionComparison(row) || ![7, 30, 90].includes(days)) return '';
+    return [
+      '読者行動の比較（非AI・既存集計）',
+      retentionComparisonText(row, days),
+      conversionPeriodText(row, days),
+      '観測値の比較です。個々の読者の経路や作品の改善・悪化を証明するものではありません。'
+    ].join('\n\n');
+  }
+
   function renderRetentionComparison(row, days) {
     const sections = ensureSections();
     if (!sections) return;
@@ -154,6 +213,33 @@
       result.style.whiteSpace = 'pre-line';
       result.setAttribute('aria-live', 'polite');
       detail.appendChild(result);
+      const conversion = document.createElement('p');
+      conversion.id = 'analyticsConversionPeriodResult';
+      conversion.style.whiteSpace = 'pre-line';
+      conversion.setAttribute('aria-live', 'polite');
+      detail.appendChild(conversion);
+      const conversionNote = document.createElement('p');
+      conversionNote.textContent = '上流2区間は既存の集計件数の比率です。個々の読者の経路や改善原因を示すものではありません。';
+      detail.appendChild(conversionNote);
+      const report = document.createElement('textarea');
+      report.id = 'analyticsComparisonReport';
+      report.rows = 5;
+      report.readOnly = true;
+      report.hidden = true;
+      report.style.width = '100%';
+      report.setAttribute('aria-label', 'コピー用の期間比較レポート');
+      const copy = document.createElement('button');
+      copy.id = 'analyticsComparisonCopy';
+      copy.type = 'button';
+      copy.textContent = '比較レポートを選択';
+      copy.disabled = true;
+      copy.addEventListener('click', () => {
+        if (!report.value) return;
+        report.hidden = false;
+        report.focus();
+        report.select();
+      });
+      detail.append(copy, report);
       const note = document.createElement('p');
       note.textContent =
         '作品ごとの読書記録を集計した観測値です。直前期間の読者は継続する時間が長いため、差は作品の改善・悪化を証明しません。原因や第3話以降の離脱は判定できません。';
@@ -163,6 +249,13 @@
     document.getElementById('analyticsRetentionResult').textContent = row
       ? retentionComparisonText(row, days)
       : '比較データを読み込み中、または取得できませんでした。';
+    document.getElementById('analyticsConversionPeriodResult').textContent = row
+      ? conversionPeriodText(row, days)
+      : '';
+    const report = document.getElementById('analyticsComparisonReport');
+    report.value = buildComparisonReport(row, days);
+    report.hidden = true;
+    document.getElementById('analyticsComparisonCopy').disabled = !report.value;
   }
 
   function readDisplayedCount(id) {
@@ -264,6 +357,9 @@
     buildRetentionComparison,
     workRetentionText,
     retentionComparisonText,
+    conversionPeriodText,
+    selectWorkRows,
+    buildComparisonReport,
     renderRetentionComparison
   });
 });

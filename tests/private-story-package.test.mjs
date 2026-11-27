@@ -67,3 +67,61 @@ test('export requires the same authenticated session and explicit choice', () =>
   assert.match(page, /URL\.revokeObjectURL\(url\)/u);
   assert.doesNotMatch(source, /fetch\(|\.rpc\(|innerHTML|localStorage/u);
 });
+
+test('saved notes can be searched by title, text or person without mutation', () => {
+  const notes = [
+    { note_type: 'plot', title: 'ＡＢＣ', body: '伏線' },
+    { note_type: 'world', title: '地名', body: '王都' },
+    {
+      note_type: 'character',
+      title: '設定',
+      body: '王都',
+      character_name: '蒼真',
+      character_id: 1
+    }
+  ];
+  const before = JSON.stringify(notes);
+  const filter = (query, type = 'all') =>
+    Array.from(api.filterNotes({ notes, query, type }));
+  assert.deepEqual(filter('abc'), [notes[0]]);
+  assert.deepEqual(filter('王都'), [notes[1], notes[2]]);
+  assert.deepEqual(filter('蒼真'), [notes[2]]);
+  assert.deepEqual(filter('王都', 'world'), [notes[1]]);
+  assert.equal(filter('x'.repeat(121)).length, 0);
+  assert.equal(JSON.stringify(notes), before);
+});
+
+test('person filtering uses existing IDs and keeps detached character notes', () => {
+  const notes = [
+    { note_type: 'character', character_id: 1, title: '同名' },
+    { note_type: 'character', character_id: 2, title: '同名' },
+    { note_type: 'character', character_id: null, title: '旧設定' },
+    { note_type: 'world', title: '世界' }
+  ];
+  const filter = (character) =>
+    Array.from(api.filterNotes({ notes, type: 'character', character }));
+  assert.deepEqual(filter('1'), [notes[0]]);
+  assert.deepEqual(filter('2'), [notes[1]]);
+  assert.deepEqual(filter('unassigned'), [notes[2]]);
+  assert.deepEqual(filter('all'), notes.slice(0, 3));
+  assert.deepEqual(filter('invalid'), []);
+  assert.match(page, /id="noteSearch"/u);
+  assert.match(page, /id="noteCharacterFilter"/u);
+  assert.match(page, /NovelightPrivateStoryPackage\.filterNotes\(/u);
+});
+
+test('duplicate headings respect category and character identity', () => {
+  const notes = [
+    { note_type: 'plot', title: 'ＡＢＣ' },
+    { note_type: 'plot', title: 'abc' },
+    { note_type: 'world', title: 'abc' },
+    { note_type: 'character', title: '設定', character_id: 1 },
+    { note_type: 'character', title: '設定', character_id: 2 },
+    { note_type: 'character', title: '設定', character_id: null }
+  ];
+  const before = JSON.stringify(notes);
+  const result = Array.from(api.duplicateHeadingNotes(notes));
+  assert.deepEqual(result, notes.slice(0, 2));
+  assert.equal(JSON.stringify(notes), before);
+  assert.match(page, /id="noteDuplicateOnly"/u);
+});

@@ -274,3 +274,26 @@ test('local segment lengths handle whitespace and bounded inspection', () => {
     .map((f) => f.line);
   assert.deepEqual(Array.from(lines), [1, 2, 3]);
 });
+
+test('line metrics count full-line quotation shapes', () => {
+  const report = analyze({
+    title: '章',
+    content: '「こんにちは」\n地の文\n\n『またね』\n「台詞」地の文'
+  });
+  assert.equal(report.lineMetrics.nonemptyLines, 4);
+  assert.equal(report.lineMetrics.quotedLines, 2);
+});
+
+test('distant exact repeats report only line positions', () => {
+  const line = 'これは意図的にも使用される長い文章です。確認してください。';
+  const report = analyze({
+    title: '章',
+    content: line + '\n別の行\n' + line
+  });
+  const found = report.findings.find((f) => f.code === 'distant-repeat');
+  assert.equal(found.line, 3);
+  assert.match(found.message, /1行目/u);
+  assert.ok(!JSON.stringify(found).includes(line));
+  const adjacent = analyze({ title: '章', content: line + '\n' + line });
+  assert.ok(!adjacent.findings.some((f) => f.code === 'distant-repeat'));
+});

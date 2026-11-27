@@ -344,6 +344,33 @@
     );
   }
 
+  // Literal metadata match on active official assets only. No AI, image
+  // inference, arbitrary URL, hidden compatibility layers or automatic save.
+  function suggestMaterials(library, templateKey, query) {
+    if (!Array.isArray(library?.assets) || typeof query !== 'string' ||
+        query.length > 80) return {};
+    const normalize = (value) => typeof value === 'string'
+      ? value.normalize('NFKC').toLowerCase() : '';
+    const terms = normalize(query).trim().split(/\s+/u).filter(Boolean);
+    if (!terms.length || terms.length > 5) return {};
+    const picks = {};
+    for (const type of AUTHOR_LAYER_TYPES) {
+      let best = null;
+      let bestScore = 0;
+      for (const asset of assetsFor(library, templateKey, type)) {
+        const label = [asset.label, asset.display_name_ja, asset.material_ja]
+          .map(normalize).join(' ');
+        const score = terms.filter((term) => label.includes(term)).length;
+        if (score > bestScore && asset.id) {
+          best = asset;
+          bestScore = score;
+        }
+      }
+      if (best) picks[type] = String(best.id);
+    }
+    return picks;
+  }
+
   function usableTemplate(library, template) {
     const sourceSpace = template.cover_quad_space === 'base_book_source';
     const quadWidth = sourceSpace
@@ -725,6 +752,8 @@
       selected: {},
       dirty: !current,
       renderSerial: 0,
+      materialQuery: '',
+      materialHint: '',
       openLayerType: ''
     };
     const currentKeys = Object.freeze({
@@ -906,6 +935,44 @@
       });
       randomizeBar.append(randomizeButton, randomizeHelp);
       controls.appendChild(randomizeBar);
+      const recommendBar = document.createElement('div');
+      recommendBar.className = 'nl-thumb-randomize';
+      const keyword = document.createElement('input');
+      keyword.type = 'search';
+      keyword.maxLength = 80;
+      keyword.value = state.materialQuery;
+      keyword.placeholder = '例：金 月 薔薇';
+      keyword.setAttribute('aria-label', '公式素材名のキーワード');
+      const recommend = document.createElement('button');
+      recommend.type = 'button';
+      recommend.className = 'nl-thumb-randomize-button';
+      recommend.textContent = '素材名から組み合わせる';
+      const note = document.createElement('span');
+      note.className = 'nl-thumb-randomize-help';
+      note.setAttribute('aria-live', 'polite');
+      note.textContent = state.materialHint ||
+        '非AIの素材名一致です。未一致のレイヤーは現在の選択を維持します。保存は手動です。';
+      keyword.addEventListener('input', () => {
+        state.materialQuery = keyword.value;
+        state.materialHint = '';
+        note.textContent = '公式素材名を空白区切りで最大5語入力できます。';
+      });
+      recommend.addEventListener('click', () => {
+        const picks = suggestMaterials(library, state.templateKey, keyword.value);
+        const count = Object.keys(picks).length;
+        state.materialHint = count ? count + '種類の一致素材を選択しました。保存前に確認してください。'
+          : '一致する素材がありません。現在の選択は維持しました。';
+        if (!count) {
+          note.textContent = state.materialHint;
+          return;
+        }
+        Object.assign(state.selected, picks);
+        state.dirty = true;
+        renderControls();
+        void updatePreview();
+      });
+      recommendBar.append(keyword, recommend, note);
+      controls.appendChild(recommendBar);
       if (library.templates.length > 1) {
         const templateField = document.createElement('label');
         templateField.className = 'nl-thumb-template-field';
@@ -1092,6 +1159,7 @@
     mount,
     loadLibrary,
     renderSelectionToCanvas,
+    suggestMaterials,
     geometry
   });
 })();

@@ -393,9 +393,155 @@
     );
   }
 
+  // This is a status count of the already returned author-capable rows.
+  // Never inspect comment bodies or infer sentiment, spoilers or reply intent.
+  function summarizeAuthorComments(comments) {
+    const summary = { total: 0, visible: 0, unreplied: 0, spoilers: 0 };
+    if (!Array.isArray(comments)) return Object.freeze(summary);
+    for (const comment of comments.slice(0, FEED_LIMIT)) {
+      if (comment?.can_moderate !== true) continue;
+      summary.total += 1;
+      if (comment.is_hidden !== false) continue;
+      summary.visible += 1;
+      if (comment.is_spoiler === true) summary.spoilers += 1;
+      if (
+        comment.author_reply_body == null ||
+        (typeof comment.author_reply_body === 'string' &&
+          !comment.author_reply_body.trim())
+      ) summary.unreplied += 1;
+    }
+    return Object.freeze(summary);
+  }
+
+  const REPLY_EXAMPLES = Object.freeze({
+    thanks: 'お読みいただき、ありがとうございます。コメントも嬉しく拝見しました。',
+    question: 'ご質問ありがとうございます。内容を確認してからお答えします。',
+    feedback: 'ご意見ありがとうございます。今後の執筆の参考にさせていただきます。'
+  });
+
+  function replyExample(kind) {
+    return typeof kind === 'string' && Object.hasOwn(REPLY_EXAMPLES, kind)
+      ? REPLY_EXAMPLES[kind]
+      : null;
+  }
+
+  // Exact author-supplied terms are only local review cues, not spoiler
+  // classification. No future episode retrieval, automatic flags or actions.
+  function spoilerTermMatches(comments, input) {
+    if (!Array.isArray(comments) || typeof input !== 'string' || input.length > 800) return [];
+    const terms = [...new Set(input.split(/\r?\n/u).map((term) => term.trim()).filter(Boolean))];
+    if (!terms.length || terms.length > 10 || terms.some((term) => term.length > 80)) return [];
+    const ids = new Set();
+    for (const comment of comments.slice(0, FEED_LIMIT)) {
+      if (comment?.can_moderate !== true || comment.is_hidden !== false ||
+          comment.is_spoiler === true || typeof comment.body !== 'string' ||
+          comment.id == null) continue;
+      if (terms.some((term) => comment.body.includes(term))) ids.add(String(comment.id));
+    }
+    return [...ids];
+  }
+
+  function appendSpoilerReviewTools(state, panel, comments) {
+    const details = createElement('details', '');
+    details.append(
+      createElement('summary', '', '作者入力のネタバレ注意語を確認'),
+      createElement('p', '', '公開中・未指定の操作対象コメントだけを完全一致で確認します。注意語は1行1語、最大10語です。入力は送信・保存しません。')
+    );
+    const input = createElement('textarea', '');
+    input.rows = 3;
+    input.maxLength = 800;
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', '作者専用のネタバレ注意語');
+    const button = createElement('button', 'novelight-comment-moderation', '確認候補を表示');
+    button.type = 'button';
+    const status = createElement('p', '');
+    status.setAttribute('aria-live', 'polite');
+    const clear = () => {
+      for (const mark of state.list.querySelectorAll('[data-local-spoiler-review]')) mark.remove();
+      status.textContent = '';
+    };
+    input.addEventListener('input', clear);
+    button.addEventListener('click', () => {
+      clear();
+      if (!state.isAuthor) return;
+      const ids = new Set(spoilerTermMatches(comments, input.value));
+      let count = 0;
+      for (const item of state.list.querySelectorAll('[data-author-review-comment-id]')) {
+        if (!ids.has(item.dataset.authorReviewCommentId)) continue;
+        const mark = createElement('p', 'novelight-comment-hidden-note', '作者入力語と一致：確認候補（非AI・未判定）');
+        mark.dataset.localSpoilerReview = 'true';
+        item.prepend(mark);
+        count += 1;
+      }
+      status.textContent = count + '件の一致候補。違反判定・非表示・ネタバレ指定は行っていません。';
+    });
+    details.append(input, button, status);
+    panel.append(details);
+  }
+
+  function renderAuthorCommentTools(state, comments) {
+    const panel = state.authorTools;
+    panel.replaceChildren();
+    panel.hidden = true;
+    if (!state.isAuthor) return;
+    const summary = summarizeAuthorComments(comments);
+    if (!summary.total) return;
+
+    panel.append(
+      createElement('summary', '', '作者用コメント整理・返信例（非AI）'),
+      createElement(
+        'p',
+        '',
+        '取得した最大' + FEED_LIMIT + '件のうち作者操作対象：' +
+          summary.total + '件／表示中：' + summary.visible +
+          '件／表示中で返信未登録：' + summary.unreplied +
+          '件／表示中でネタバレ指定：' + summary.spoilers + '件'
+      ),
+      createElement(
+        'p',
+        '',
+        '取得範囲だけの状態集計です。返信の必要性や感想の傾向は判定しません。'
+      )
+    );
+    const select = createElement('select', '');
+    select.setAttribute('aria-label', '返信例の種類');
+    for (const [value, label] of [
+      ['thanks', '感想へのお礼'],
+      ['question', '質問を受け取ったとき'],
+      ['feedback', '意見へのお礼']
+    ]) {
+      const option = createElement('option', '', label);
+      option.value = value;
+      select.append(option);
+    }
+    const output = createElement('textarea', '');
+    output.readOnly = true;
+    output.rows = 3;
+    output.setAttribute('aria-label', 'コピー用返信例');
+    output.value = replyExample('thanks');
+    select.addEventListener('change', () => {
+      output.value = replyExample(select.value) || '';
+    });
+    const copy = createElement('button', 'novelight-comment-moderation', '返信例を選択');
+    copy.type = 'button';
+    copy.addEventListener('click', () => {
+      output.focus();
+      output.select();
+    });
+    panel.append(
+      createElement('p', '', '定型文はコピー用です。実際に読んだ内容に合わせて編集し、既存の作者返信からご自身で送信してください。'),
+      select,
+      output,
+      copy
+    );
+    appendSpoilerReviewTools(state, panel, comments);
+    panel.hidden = false;
+  }
+
   function renderFeed(state, comments) {
     state.list.replaceChildren();
     state.count.textContent = `${comments.length}件`;
+    renderAuthorCommentTools(state, comments);
 
     if (!comments.length) {
       state.list.append(
@@ -413,6 +559,9 @@
         'article',
         `novelight-comment${comment.is_hidden === true ? ' is-hidden' : ''}`
       );
+      if (state.isAuthor && comment.can_moderate === true && comment.is_hidden === false && comment.id != null) {
+        item.dataset.authorReviewCommentId = String(comment.id);
+      }
       const header = createElement('div', 'novelight-comment-header');
       const identity = createElement('div', 'novelight-comment-identity');
       const author = createElement(
@@ -589,6 +738,7 @@
     } catch (error) {
       console.error('comment feed failed', error);
       state.count.textContent = '';
+      renderAuthorCommentTools(state, []);
       state.list.replaceChildren(
         createElement(
           'p',
@@ -772,7 +922,9 @@
     const status = createElement('div', 'novelight-comments-status', '');
     status.setAttribute('aria-live', 'polite');
     const list = createElement('div', 'novelight-comments-list');
-    section.append(status, list);
+    const authorTools = createElement('details', 'novelight-comments-status');
+    authorTools.hidden = true;
+    section.append(status, authorTools, list);
 
     const state = {
       client,
@@ -781,6 +933,7 @@
       count,
       status,
       list,
+      authorTools,
       isAuthor: isAuthor === true
     };
     const reception = await loadReceptionState(client, novel.id);
@@ -789,5 +942,10 @@
     await refresh(state);
   }
 
-  global.NovelightComments = Object.freeze({ mount });
+  global.NovelightComments = Object.freeze({
+    mount,
+    summarizeAuthorComments,
+    replyExample,
+    spoilerTermMatches
+  });
 })(window);

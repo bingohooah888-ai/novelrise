@@ -122,3 +122,51 @@ test('per-work hints use existing plan-authorized counts only', () => {
   assert.match(analyticsRuntime, /renderRetentionComparison\(null, days\)/u);
   assert.match(source, /差は作品の改善・悪化を証明しません/u);
 });
+
+test('upstream comparisons use aggregate ratios and percentage points', () => {
+  const row = {
+    current_impressions: 200,
+    current_detail_opens: 100,
+    current_first_episode_reads_10s: 60,
+    previous_impressions: 200,
+    previous_detail_opens: 80,
+    previous_first_episode_reads_10s: 60
+  };
+  const before = JSON.stringify(row);
+  const text = insights.conversionPeriodText(row, 30);
+  assert.match(text, /50\.0%／直前30日 40\.0%（差 \+10\.0ポイント）/u);
+  assert.match(text, /60\.0%／直前30日 75\.0%（差 -15\.0ポイント）/u);
+  assert.equal(JSON.stringify(row), before);
+});
+
+test('upstream comparisons suppress invalid or small counts independently', () => {
+  const row = {
+    current_impressions: 200,
+    current_detail_opens: 100,
+    current_first_episode_reads_10s: 101,
+    previous_impressions: 49,
+    previous_detail_opens: 40,
+    previous_first_episode_reads_10s: 20
+  };
+  const text = insights.conversionPeriodText(row, 7);
+  assert.equal(text.match(/十分な比較データ/g).length, 2);
+  assert.doesNotMatch(text, /%/u);
+  assert.match(insights.conversionPeriodText(null, 7), /取得できません/u);
+  assert.match(insights.conversionPeriodText(row, 1), /取得できません/u);
+});
+
+test('comparison reports preserve aggregate semantics', () => {
+  const row = {
+    current_first_episode_reads_10s: 100,
+    current_continued_to_episode_2: 40,
+    previous_first_episode_reads_10s: 100,
+    previous_continued_to_episode_2: 55
+  };
+  const before = JSON.stringify(row);
+  const report = insights.buildComparisonReport(row, 30);
+  assert.match(report, /-15\.0ポイント/u);
+  assert.match(report, /改善・悪化を証明するものではありません/u);
+  assert.equal(insights.buildComparisonReport(null, 30), '');
+  assert.equal(insights.buildComparisonReport(row, 1), '');
+  assert.equal(JSON.stringify(row), before);
+});

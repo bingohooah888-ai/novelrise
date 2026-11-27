@@ -153,6 +153,27 @@
       previousLine = currentLine;
     }
 
+    // Distant exact repetitions are a copy/paste check, not a style verdict.
+    // Exclude adjacent repeats (already covered) and bound retained candidates.
+    const seenLines = new Map();
+    let distant = 0;
+    let nonemptyLines = 0;
+    let quotedLines = 0;
+    for (let i = 0; i < lines.length; i += 1) {
+      const value = lines[i].trim();
+      if (!value) continue;
+      nonemptyLines += 1;
+      if (/^(?:「[^\n]+」|『[^\n]+』)$/u.test(value)) quotedLines += 1;
+      if (value.length < 20 || distant >= 3) continue;
+      const first = seenLines.get(value);
+      if (first !== undefined && i - first > 1 && value !== lines[i - 1]?.trim()) {
+        add('distant-repeat', '離れた行に同じ文章があります（' +
+          (first + 1) + '行目と一致）。意図した繰り返しか確認してください。', i + 1);
+        distant += 1;
+      }
+      if (first === undefined) seenLines.set(value, i);
+    }
+
     // Literal conventions only: do not infer linguistic errors, author
     // intent, or rewrite text. Each extra category reports at most one line.
     const conventions = [
@@ -181,6 +202,7 @@
     }
 
     return Object.freeze({
+      lineMetrics: Object.freeze({ nonemptyLines, quotedLines }),
       segmentMetrics: Object.freeze({
         count: segments.count,
         average: segments.average,
@@ -250,7 +272,9 @@
       report.segmentMetrics.average.toLocaleString('ja-JP') +
       '文字、最長 ' +
       report.segmentMetrics.max.toLocaleString('ja-JP') +
-      '文字';
+      '文字 ／ 空白以外の行 ' + report.lineMetrics.nonemptyLines +
+      '行、かぎ括弧で始まり終わる行 ' + report.lineMetrics.quotedLines +
+      '行（会話量の判定ではありません）';
     const summary = doc.createElement('p');
     summary.className = 'nl-textcheck-summary';
     summary.textContent = report.findings.length

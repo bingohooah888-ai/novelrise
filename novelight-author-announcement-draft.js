@@ -40,6 +40,30 @@
     return Object.freeze({ title, body, social });
   }
 
+  // No generated plot claims or silent truncation. Reuse the same validation
+  // as the public-work announcement, and count Unicode code points, not X weights.
+  function buildIntro({ novelId, novelTitle, detail, target } = {}) {
+    if (target !== 50 && target !== 150) return null;
+    if (typeof detail !== 'string' || !detail.trim()) return null;
+    const draft = buildDraft({ kind: 'introduce', novelId, novelTitle, detail });
+    if (!draft) return null;
+    const text = '『' + novelTitle.trim() + '』\n' + detail.trim();
+    const length = Array.from(text).length;
+    return Object.freeze({ text, length, target, remaining: target - length });
+  }
+
+  // Author-supplied story facts only; no inference or automatic publication.
+  function buildSynopsis({ novelId, novelTitle, setting, goal, conflict } = {}) {
+    const fields = [setting, goal, conflict];
+    if (fields.some((value) =>
+      typeof value !== 'string' || !value.trim() || value.length > 180
+    )) return null;
+    if (!buildDraft({ kind: 'introduce', novelId, novelTitle })) return null;
+    const text = '『' + novelTitle.trim() + '』\n\n' +
+      fields.map((value) => value.trim()).join('\n\n');
+    return Object.freeze({ text, length: Array.from(text).length });
+  }
+
   function canInsert({ ready, busy, noteId, title, body } = {}) {
     return (
       ready === true &&
@@ -52,6 +76,8 @@
 
   root.NovelightAuthorAnnouncementDraft = Object.freeze({
     buildDraft,
+    buildIntro,
+    buildSynopsis,
     canInsert
   });
 })(typeof window === 'object' ? window : globalThis);
