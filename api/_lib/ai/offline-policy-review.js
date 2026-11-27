@@ -7,8 +7,7 @@ import { requireAdmin } from '../admin-auth.js';
 import { requireAiFeature } from './registry.js';
 
 const SECTIONS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
 function invalid() {
   throw new Error('AI_OFFLINE_POLICY_INVALID');

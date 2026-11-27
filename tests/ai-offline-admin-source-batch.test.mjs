@@ -307,31 +307,3 @@ test('KPI uses adjacent complete JST windows', async () => {
   value = 1;
   await assert.rejects(reader.prepare(selection, req, res));
 });
-
-test('temporary formatter diagnostic for the changed policy source', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const { format, resolveConfig } = await import('prettier');
-  const path = 'api/_lib/ai/offline-policy-review.js';
-  const source = await readFile(path, 'utf8');
-  const config = await resolveConfig(path);
-  const formatted = await format(source, { ...config, filepath: path });
-  if (source !== formatted) {
-    const original = source.split('\n');
-    const expected = formatted.split('\n');
-    let start = 0;
-    while (original[start] === expected[start]) start++;
-    let end = 0;
-    while (
-      original[original.length - 1 - end] ===
-      expected[expected.length - 1 - end]
-    ) {
-      end++;
-    }
-    const diff = {
-      start,
-      remove: original.length - start - end,
-      insert: expected.slice(start, expected.length - end)
-    };
-    process.stdout.write('AI_FORMAT_DIAGNOSTIC ' + JSON.stringify(diff) + '\n');
-  }
-});
