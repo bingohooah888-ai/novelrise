@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { prepareScreenFlow } from './helpers/ai-offline-screen-flow.mjs';
 import { createOfflineReaderSelectionReader } from '../api/_lib/ai/offline-selection-review.js';
 
 const TOKEN = 'synthetic-reader-token-not-a-real-jwt';
@@ -88,7 +89,13 @@ for (const feature of ['natural-search-ai', 'discovery-assistant']) {
     const { state, reader } = fixture();
     const request =
       feature === 'natural-search-ai' ? selection : { query: '冒険' };
-    const prepared = await reader.prepare(feature, request, TOKEN);
+    const prepared = await prepareScreenFlow(
+      'reader',
+      reader,
+      feature,
+      request,
+      { token: TOKEN }
+    );
     const data = JSON.parse(prepared.prompt.user).untrusted_data;
     assert.deepEqual(
       data.rows.map((row) => row.novelId),
@@ -106,7 +113,7 @@ for (const feature of ['natural-search-ai', 'discovery-assistant']) {
         ]
       })
     };
-    const result = await reader.review(feature, request, TOKEN, response);
+    const result = await prepared.review(response, '作品2');
     assert.deepEqual(
       result.items.map((row) => row.novelId),
       ['2', '1']

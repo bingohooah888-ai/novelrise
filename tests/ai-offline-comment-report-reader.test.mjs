@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { prepareScreenFlow } from './helpers/ai-offline-screen-flow.mjs';
 import { createOfflineOwnerEvidenceReader } from '../api/_lib/ai/offline-evidence-review.js';
 import { createOfflineAdminReportReader } from '../api/_lib/ai/offline-aggregate-review.js';
 
@@ -88,7 +89,13 @@ function commentFixture() {
 test('comment source flow uses real UUID shape and selected text only', async () => {
   const { state, reader } = commentFixture();
   const feature = 'comment-summary';
-  const prepared = await reader.prepare(feature, summary, TOKEN);
+  const prepared = await prepareScreenFlow(
+    'owner',
+    reader,
+    feature,
+    summary,
+    { token: TOKEN }
+  );
   assert.match(prepared.prompt.user, /架空の感想/u);
   assert.doesNotMatch(
     prepared.prompt.user,
@@ -97,10 +104,10 @@ test('comment source flow uses real UUID shape and selected text only', async ()
   const modelText = JSON.stringify({
     items: [{ kind: 'positive', commentId: COMMENT, offset: 0, quote: '架空' }]
   });
-  const result = await reader.review(feature, summary, TOKEN, {
-    requestHash: prepared.requestHash,
-    modelText
-  });
+  const result = await prepared.review(
+    { requestHash: prepared.requestHash, modelText },
+    '架空'
+  );
   assert.equal(result.items[0].commentId, COMMENT);
   assert.equal(result.requiresAuthorReview, true);
   assert.equal(state.calls, 2);
@@ -109,12 +116,18 @@ test('comment source flow uses real UUID shape and selected text only', async ()
 test('comment reply is draft only; edits and revoked sessions fail closed', async () => {
   const { state, reader } = commentFixture();
   const feature = 'comment-reply-assistant';
-  const prepared = await reader.prepare(feature, reply, TOKEN);
+  const prepared = await prepareScreenFlow(
+    'owner',
+    reader,
+    feature,
+    reply,
+    { token: TOKEN }
+  );
   const response = {
     requestHash: prepared.requestHash,
     modelText: '{"reply":"ありがとうございます"}'
   };
-  const result = await reader.review(feature, reply, TOKEN, response);
+  const result = await prepared.review(response, 'ありがとうございます');
   assert.equal(result.kind, 'reply_draft');
   assert.equal(result.requiresAuthorReview, true);
   state.body = '変更後';
@@ -204,13 +217,19 @@ function reportFixture() {
 
 test('admin report source is allowlisted and minimized, not a verdict', async () => {
   const { reader, req, res, state } = reportFixture();
-  const prepared = await reader.prepare(req, res);
+  const prepared = await prepareScreenFlow(
+    'report',
+    reader,
+    'report-triage',
+    {},
+    { req, res }
+  );
   assert.doesNotMatch(prepared.prompt.user, /PRIVATE_WORK|PRIVATE_DATE/u);
   const response = {
     requestHash: prepared.requestHash,
     modelText: JSON.stringify({ ids: [COMMENT] })
   };
-  const result = await reader.review(req, res, response);
+  const result = await prepared.review(response, 'spam');
   assert.equal(result.violationVerified, false);
   assert.equal(result.items[0].id, COMMENT);
   state.status = 'reviewing';

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { prepareScreenFlow } from './helpers/ai-offline-screen-flow.mjs';
 import { createOfflineOwnerEvidenceReader } from '../api/_lib/ai/offline-evidence-review.js';
 import { createOwnerNovelBibleAuthorClientFactory } from '../api/_lib/ai/owner-novel-bible-author-client.js';
 import { createOfflineOwnerSessionCheck } from '../api/_lib/ai/owner-session-evidence.js';
@@ -215,10 +216,18 @@ const cases = [
 ];
 
 async function mockTrial(reader, feature, selection, mock) {
-  const prepared = await reader.prepare(feature, selection, TOKEN);
+  const prepared = await prepareScreenFlow(
+    'owner',
+    reader,
+    feature,
+    selection,
+    { token: TOKEN }
+  );
   const { prompt, requestHash } = prepared;
   const modelText = await mock(prompt);
-  return reader.review(feature, selection, TOKEN, { requestHash, modelText });
+  const item = JSON.parse(modelText).items[0];
+  const expected = item.quote ?? item.first?.quote ?? item.title;
+  return prepared.review({ requestHash, modelText }, expected);
 }
 
 for (const { feature, selection, output, kind } of cases) {
