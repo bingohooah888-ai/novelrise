@@ -9,6 +9,10 @@ import {
 } from './context.js';
 import { requireAiFeature } from './registry.js';
 import {
+  prepareOfflineAggregatePrompt,
+  reviewOfflineAggregateResponse
+} from './offline-aggregate-review.js';
+import {
   prepareOfflineCommentPrompt,
   reviewOfflineCommentResponse
 } from './offline-comment-review.js';
@@ -689,14 +693,26 @@ export function createOfflineOwnerEvidenceReader({
     const summary = featureKey === 'comment-summary';
     const reply = featureKey === 'comment-reply-assistant';
     const commentOnly = summary || reply;
-    const manuscript = !metadataOnly && !commentOnly;
-    if (manuscript && !Object.hasOwn(TASKS, featureKey)) invalid();
+    const workAnalytics = [
+      'analytics-copilot',
+      'reader-dropoff-analysis'
+    ].includes(featureKey);
+    const growth = featureKey === 'author-growth-report';
+    const analytics = workAnalytics || growth;
+    const manuscript = !metadataOnly && !commentOnly && !growth;
+    if (manuscript && !workAnalytics && !Object.hasOwn(TASKS, featureKey)) {
+      invalid();
+    }
+    // Growth uses an owned work as the existing session-check anchor only.
+    // Its actual analytics scope is explicitly author-wide.
     const fields = ['novelId'];
+    if (analytics) fields.push('days');
     if (manuscript) fields.push('episodeIds');
     if (summary) fields.push('commentIds');
     if (reply) fields.push('commentId');
     if (featureKey === 'promotion-assistant') fields.push('format');
     exactFields(selection, fields);
+    if (analytics && ![7, 30, 90].includes(selection.days)) invalid();
     const novelId = positiveId(selection.novelId);
     if (!Number.isSafeInteger(Number(novelId))) invalid();
     const ids = manuscript ? selection.episodeIds : [];
@@ -717,7 +733,12 @@ export function createOfflineOwnerEvidenceReader({
         invalid();
       }
     }
-    if (TASKS[featureKey]?.single && ids.length !== 1) invalid();
+    if (
+      (TASKS[featureKey]?.single || featureKey === 'reader-dropoff-analysis') &&
+      ids.length !== 1
+    ) {
+      invalid();
+    }
     const episodeIds = ids.map(positiveId);
     if (new Set(episodeIds).size !== ids.length) invalid();
     if (episodeIds.some((id) => !Number.isSafeInteger(Number(id)))) {
@@ -772,6 +793,69 @@ export function createOfflineOwnerEvidenceReader({
 
     const novel = await readNovel();
     const input = { principal: { id: actorId }, novel };
+
+    async function readPlan() {
+      const result = await client
+        .from('profiles')
+        .select('id,plan')
+        .eq('id', actorId)
+        .maybeSingle();
+      if (result?.error || result?.data?.id !== actorId) invalid();
+      const plan = result.data.plan;
+      if (!['standard', 'premium'].includes(plan)) invalid();
+      return plan;
+    }
+
+    if (analytics) {
+      // Reuse the author-scoped RPCs used by LIGHT ANALYTICS. They count
+      // exposure conversion cohorts, not unique readers or completed reads.
+      input.plan = await readPlan();
+      const days = selection.days;
+      const result = await client.rpc(
+        growth
+          ? 'novelight_author_analytics_timeseries'
+          : 'novelight_author_exposure_funnel_v2',
+        { p_days: days }
+      );
+      if (result?.error || !Array.isArray(result?.data)) invalid();
+      const rows = result.data;
+      if (growth) {
+        if (rows.length !== days) invalid();
+        const keys = [
+          'current_first_episode_reads_10s',
+          'current_continued_to_episode_2',
+          'previous_first_episode_reads_10s',
+          'previous_continued_to_episode_2'
+        ];
+        const totals = Object.fromEntries(
+          keys.map((key) => [key, rows[0]?.[key]])
+        );
+        const dates = new Set();
+        for (const row of rows) {
+          const date = row?.bucket_date;
+          if (typeof date !== 'string') invalid();
+          if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/u.test(date)) {
+            invalid();
+          }
+          if (dates.has(row.bucket_date)) invalid();
+          dates.add(row.bucket_date);
+          if (keys.some((key) => row[key] !== totals[key])) invalid();
+        }
+        // The RPC repeats the same period totals on every daily row.
+        // Never sum these duplicated totals.
+        input.snapshot = { authorId: actorId, days, ...totals };
+      } else {
+        const selected = rows.filter((row) => row?.novel_id === novelId);
+        if (selected.length !== 1) invalid();
+        const row = selected[0];
+        input.snapshot = {
+          novelId: novel.id,
+          days,
+          first_episode_reads_10s: row.first_episode_reads_10s,
+          continued_to_episode_2: row.continued_to_episode_2
+        };
+      }
+    }
     if (commentOnly) {
       const result = await client.rpc('novelight_comment_feed', {
         p_novel_id: novelId,
@@ -809,7 +893,7 @@ export function createOfflineOwnerEvidenceReader({
         title: novel.title,
         description: novel.description
       };
-    } else {
+    } else if (manuscript) {
       const result = await client
         .from('episodes')
         .select('id,novel_id,user_id,episode_number,status,title,content')
@@ -826,12 +910,14 @@ export function createOfflineOwnerEvidenceReader({
         if (positiveId(row.novel_id) !== novelId) invalid();
         if (row.user_id !== actorId) invalid();
         if (!['draft', 'published'].includes(row.status)) invalid();
+        if (workAnalytics && row.status !== 'published') invalid();
         const order = Number(positiveId(row.episode_number));
         if (!Number.isSafeInteger(order)) invalid();
         rows.set(id, {
           id: row.id,
           novel_id: row.novel_id,
           order_index: order,
+          ...(workAnalytics ? { episode_number: order } : {}),
           status: row.status,
           title: row.title,
           content: row.content
@@ -847,6 +933,7 @@ export function createOfflineOwnerEvidenceReader({
     // This is not an atomic DB snapshot or a proof of live revocation.
     const current = await readNovel();
     if (sourceDigest(novel) !== sourceDigest(current)) invalid();
+    if (analytics && (await readPlan()) !== input.plan) invalid();
     const last = await verifyUser(token);
     if (last?.error || last?.data?.user?.id !== actorId) invalid();
     const after = await checkSession(sessionArgs);
@@ -854,14 +941,20 @@ export function createOfflineOwnerEvidenceReader({
     const epoch = nowEpochSeconds();
     if (!Number.isSafeInteger(epoch) || epoch <= 0) invalid();
     input.now = new Date(epoch * 1000);
-    const prepare = commentOnly
-      ? prepareOfflineCommentPrompt
-      : prepareOfflineEvidencePrompt;
-    const review = commentOnly
-      ? reviewOfflineCommentResponse
-      : reviewOfflineEvidenceResponse;
+    const prepare = analytics
+      ? prepareOfflineAggregatePrompt
+      : commentOnly
+        ? prepareOfflineCommentPrompt
+        : prepareOfflineEvidencePrompt;
+    const review = analytics
+      ? reviewOfflineAggregateResponse
+      : commentOnly
+        ? reviewOfflineCommentResponse
+        : reviewOfflineEvidenceResponse;
     const prepared = prepare(featureKey, input);
-    const requestHash = sourceDigest([prepared.requestHash, session.binding]);
+    const binding = [prepared.requestHash, session.binding];
+    if (analytics) binding.push(novelId, input.plan);
+    const requestHash = sourceDigest(binding);
     return { input, prepared, requestHash, review };
   }
 
