@@ -9,6 +9,11 @@ import {
 } from './context.js';
 import { requireAiFeature } from './registry.js';
 import {
+  loadOfflineOfficialThumbnail,
+  prepareOfflineSelectionPrompt,
+  reviewOfflineSelectionResponse
+} from './offline-selection-review.js';
+import {
   prepareOfflineAggregatePrompt,
   reviewOfflineAggregateResponse
 } from './offline-aggregate-review.js';
@@ -699,7 +704,8 @@ export function createOfflineOwnerEvidenceReader({
     ].includes(featureKey);
     const growth = featureKey === 'author-growth-report';
     const analytics = workAnalytics || growth;
-    const manuscript = !metadataOnly && !commentOnly && !growth;
+    const thumbnail = featureKey === 'thumbnail-coordinator';
+    const manuscript = !metadataOnly && !commentOnly && !growth && !thumbnail;
     if (manuscript && !workAnalytics && !Object.hasOwn(TASKS, featureKey)) {
       invalid();
     }
@@ -707,6 +713,7 @@ export function createOfflineOwnerEvidenceReader({
     // Its actual analytics scope is explicitly author-wide.
     const fields = ['novelId'];
     if (analytics) fields.push('days');
+    if (thumbnail) fields.push('templateKey', 'theme');
     if (manuscript) fields.push('episodeIds');
     if (summary) fields.push('commentIds');
     if (reply) fields.push('commentId');
@@ -856,7 +863,17 @@ export function createOfflineOwnerEvidenceReader({
         };
       }
     }
-    if (commentOnly) {
+    let thumbnailBinding;
+    if (thumbnail) {
+      const source = await loadOfflineOfficialThumbnail(
+        client,
+        selection.templateKey
+      );
+      input.theme = selection.theme;
+      input.snapshot = source.snapshot;
+      input.assetHints = source.assetHints;
+      thumbnailBinding = source.sourceBinding;
+    } else if (commentOnly) {
       const result = await client.rpc('novelight_comment_feed', {
         p_novel_id: novelId,
         p_limit: 50
@@ -941,19 +958,24 @@ export function createOfflineOwnerEvidenceReader({
     const epoch = nowEpochSeconds();
     if (!Number.isSafeInteger(epoch) || epoch <= 0) invalid();
     input.now = new Date(epoch * 1000);
-    const prepare = analytics
-      ? prepareOfflineAggregatePrompt
-      : commentOnly
-        ? prepareOfflineCommentPrompt
-        : prepareOfflineEvidencePrompt;
-    const review = analytics
-      ? reviewOfflineAggregateResponse
-      : commentOnly
-        ? reviewOfflineCommentResponse
-        : reviewOfflineEvidenceResponse;
+    const prepare = thumbnail
+      ? prepareOfflineSelectionPrompt
+      : analytics
+        ? prepareOfflineAggregatePrompt
+        : commentOnly
+          ? prepareOfflineCommentPrompt
+          : prepareOfflineEvidencePrompt;
+    const review = thumbnail
+      ? reviewOfflineSelectionResponse
+      : analytics
+        ? reviewOfflineAggregateResponse
+        : commentOnly
+          ? reviewOfflineCommentResponse
+          : reviewOfflineEvidenceResponse;
     const prepared = prepare(featureKey, input);
     const binding = [prepared.requestHash, session.binding];
     if (analytics) binding.push(novelId, input.plan);
+    if (thumbnail) binding.push(thumbnailBinding);
     const requestHash = sourceDigest(binding);
     return { input, prepared, requestHash, review };
   }
