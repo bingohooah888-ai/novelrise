@@ -287,7 +287,7 @@ test('locked catalog is never inspected; search reuses only public choices', () 
   );
   const first = root.childNodes[1];
   const fields = first.childNodes.flatMap((row) => row.childNodes);
-  const tags = fields.find((row) => row.attributes['data-ai-field'] === 'tagIds');
+  const tags = fields.find((x) => x.attributes['data-ai-field'] === 'tagIds');
   assert.deepEqual(tags.childNodes.map((row) => row.value), ['adventure']);
   assert.equal(tags.disabled, true);
   events.get('auth')();
