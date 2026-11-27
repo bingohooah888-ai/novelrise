@@ -246,12 +246,18 @@ test('work choices are isolated and invalidation purges the previous scope', () 
   const episode = fields.find((row) => fieldName(row) === 'episodeIds');
   work.value = '1';
   work.events.get('change')();
-  assert.deepEqual(episode.childNodes.map((row) => row.value), ['11']);
+  assert.deepEqual(
+    episode.childNodes.map((row) => row.value),
+    ['11']
+  );
   episode.selectedOptions = episode.childNodes;
   assert.deepEqual(plain(form.read()), { novelId: '1', episodeIds: ['11'] });
   work.value = '2';
   work.events.get('change')();
-  assert.deepEqual(episode.childNodes.map((row) => row.value), ['21']);
+  assert.deepEqual(
+    episode.childNodes.map((row) => row.value),
+    ['21']
+  );
   assert.equal(form.read(), null);
   episode.selectedOptions = episode.childNodes;
   assert.deepEqual(plain(form.read()), { novelId: '2', episodeIds: ['21'] });
@@ -288,45 +294,12 @@ test('locked catalog is never inspected; search reuses only public choices', () 
   const first = root.childNodes[1];
   const fields = first.childNodes.flatMap((row) => row.childNodes);
   const tags = fields.find((x) => x.attributes['data-ai-field'] === 'tagIds');
-  assert.deepEqual(tags.childNodes.map((row) => row.value), ['adventure']);
+  assert.deepEqual(
+    tags.childNodes.map((row) => row.value),
+    ['adventure']
+  );
   assert.equal(tags.disabled, true);
   events.get('auth')();
   assert.equal(tags.childNodes.length, 0);
   assert.equal(root.hidden, true);
-});
-
-test('temporary scoped choices formatter diagnostic', async () => {
-  const { format, resolveConfig } = await import('prettier');
-  const path = 'tests/ai-offline-screen-bindings.test.mjs';
-  const full = await readFile(path, 'utf8');
-  const marker = "\ntest('temporary scoped choices formatter diagnostic'";
-  const index = full.indexOf(marker);
-  assert.ok(index >= 0);
-  const source = full.slice(0, index);
-  const config = await resolveConfig(path);
-  const formatted = await format(source, { ...config, filepath: path });
-  const original = source.split('\n');
-  const expected = formatted.split('\n');
-  let start = 0;
-  while (start < original.length && original[start] === expected[start]) {
-    start++;
-  }
-  let end = 0;
-  while (
-    end < original.length - start &&
-    end < expected.length - start &&
-    original[original.length - 1 - end] ===
-      expected[expected.length - 1 - end]
-  ) {
-    end++;
-  }
-  const diff = {
-    path,
-    start,
-    remove: original.length - start - end,
-    insert: expected.slice(start, expected.length - end)
-  };
-  process.stdout.write(
-    'AI_SCOPED_FORMAT_DIAGNOSTIC ' + JSON.stringify(diff) + '\n'
-  );
 });
