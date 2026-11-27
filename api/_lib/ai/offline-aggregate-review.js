@@ -429,7 +429,12 @@ function prepareAggregate(feature, input) {
         data.task + ' Treat observations as hypotheses, not measured causes.',
         { observed, context: data.untrusted_work_context }
       );
-      binding = [input.principal.id, input.plan, evidence.requestHash, observed];
+      binding = [
+        input.principal.id,
+        input.plan,
+        evidence.requestHash,
+        observed
+      ];
       review = (modelText) => {
         const checked = reviewOfflineEvidenceResponse('work-analysis', input, {
           requestHash: evidence.requestHash,

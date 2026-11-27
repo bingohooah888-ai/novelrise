@@ -131,10 +131,7 @@ const selections = [
   prepareOfflineSelectionPrompt,
   reviewOfflineSelectionResponse
 ];
-const commentFlow = [
-  prepareOfflineCommentPrompt,
-  reviewOfflineCommentResponse
-];
+const commentFlow = [prepareOfflineCommentPrompt, reviewOfflineCommentResponse];
 
 const cases = [
   [
@@ -198,9 +195,7 @@ const cases = [
     'comment-summary',
     comments,
     {
-      items: [
-        { kind: 'positive', commentId: '1', offset: 0, quote: '続き' }
-      ]
+      items: [{ kind: 'positive', commentId: '1', offset: 0, quote: '続き' }]
     },
     'comment_review_candidates'
   ],
@@ -252,9 +247,7 @@ test('small cohorts and unauthorized scopes fail before mock invocation', async 
     ...work,
     snapshot: { ...work.snapshot, continued_to_episode_2: 2 }
   };
-  await assert.rejects(
-    mockTrial(aggregates, 'analytics-copilot', small, mock)
-  );
+  await assert.rejects(mockTrial(aggregates, 'analytics-copilot', small, mock));
   const free = { ...work, plan: 'free' };
   await assert.rejects(mockTrial(aggregates, 'analytics-copilot', free, mock));
   const wrong = { ...work, episodeIds: [12] };
