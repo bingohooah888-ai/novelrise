@@ -58,9 +58,8 @@ export function reviewPolicyEvidence({
   }
   exactFields(subject, ['id', 'body']);
   if (typeof subject.id !== 'string') invalid();
-  if (!/^[1-9][0-9]{0,19}$/u.test(subject.id) && !UUID.test(subject.id)) {
-    invalid();
-  }
+  const numericId = /^[1-9][0-9]{0,19}$/u.test(subject.id);
+  if (!numericId && !UUID.test(subject.id)) invalid();
   const body = text(subject.body, 24000);
   requireDigest(policy, expectedPolicyHash);
   requireDigest(subject, expectedSubjectHash);
@@ -268,9 +267,8 @@ export function projectAdminReviewedExcerpt(body, selection) {
   if (selection.privacyReviewed !== true) invalid();
   requireDigest(body, selection.reviewedBodyHash);
   const ranges = selection.ranges;
-  if (!Array.isArray(ranges) || !ranges.length || ranges.length > 8) {
-    invalid();
-  }
+  if (!Array.isArray(ranges) || !ranges.length) invalid();
+  if (ranges.length > 8) invalid();
   let end = 0;
   let total = 0;
   const excerpts = ranges.map((range) => {
@@ -305,9 +303,8 @@ async function loadPolicySections() {
     new URL('../../../content-guidelines.html', import.meta.url),
     'utf8'
   );
-  const cards = [
-    ...html.matchAll(/<section class="legal-card">([\s\S]*?)<\/section>/gu)
-  ];
+  const sectionPattern = /<section class="legal-card">([\s\S]*?)<\/section>/gu;
+  const cards = [...html.matchAll(sectionPattern)];
   if (cards.length !== SECTIONS.length) invalid();
   return cards.map((card, index) => {
     const heading = card[1].match(/^\s*<h2>([1-9])\. [^<>]+<\/h2>/u);
@@ -334,9 +331,8 @@ export function createOfflineAdminPolicyReader({ supabase, env } = {}) {
     exactFields(selection, [comment ? 'commentId' : 'episodeId', ...common]);
     const id = comment ? selection.commentId : selection.episodeId;
     if (typeof id !== 'string') invalid();
-    if (comment ? !UUID.test(id) : !/^[1-9][0-9]{0,19}$/u.test(id)) {
-      invalid();
-    }
+    const validId = comment ? UUID.test(id) : /^[1-9][0-9]{0,19}$/u.test(id);
+    if (!validId) invalid();
     const result = await supabase
       .from(comment ? 'novel_comments' : 'episodes')
       .select(

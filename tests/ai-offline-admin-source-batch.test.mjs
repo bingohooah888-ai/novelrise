@@ -122,7 +122,7 @@ function fixture() {
   };
 }
 
-test('human reviewed source excludes unselected content and fails on drift', () => {
+test('reviewed source excludes private text and fails on drift', () => {
   assert.equal(projectAdminReviewedExcerpt(body, reviewed), safe);
   assert.throws(() =>
     projectAdminReviewedExcerpt(body, { ...reviewed, privacyReviewed: false })
@@ -137,7 +137,7 @@ test('human reviewed source excludes unselected content and fails on drift', () 
 });
 
 for (const feature of ['comment-moderation', 'policy-risk-review']) {
-  test('policy source is canonical, scoped and advisory: ' + feature, async () => {
+  test('canonical scoped policy: ' + feature, async () => {
     const { state, policy } = fixture();
     const selection =
       feature === 'comment-moderation'
@@ -180,7 +180,7 @@ for (const feature of ['comment-moderation', 'policy-risk-review']) {
   });
 }
 
-test('inquiry support reads only human-reviewed ordinary support passages', async () => {
+test('inquiry support uses reviewed ordinary passages', async () => {
   const { state, inquiry } = fixture();
   const feature = 'inquiry-assistant';
   const selection = { inquiryId: '3', ...reviewed };
@@ -206,7 +206,7 @@ test('inquiry support reads only human-reviewed ordinary support passages', asyn
   await assert.rejects(inquiry.prepare(feature, selection, req, res));
 });
 
-test('incident reader counts only recorded thumbnail failure rows', async () => {
+test('incident counts recorded thumbnail failures', async () => {
   const { state, incident } = fixture();
   const selection = { days: 7 };
   const prepared = await incident.prepare(selection, req, res);
@@ -230,7 +230,7 @@ test('incident reader counts only recorded thumbnail failure rows', async () => 
   await assert.rejects(incident.prepare(selection, req, res));
 });
 
-test('KPI uses exact adjacent complete JST windows and no distinct-count estimates', async () => {
+test('KPI uses adjacent complete JST windows', async () => {
   let value = 60;
   const calls = [];
   const reader = createOfflineAdminKpiReader({
