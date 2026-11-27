@@ -8,6 +8,10 @@ import {
   projectAiWorkContext
 } from './context.js';
 import { requireAiFeature } from './registry.js';
+import {
+  prepareOfflineCommentPrompt,
+  reviewOfflineCommentResponse
+} from './offline-comment-review.js';
 
 const INVALID = 'AI_OFFLINE_EVIDENCE_INVALID';
 const PERSPECTIVES = ['pacing', 'character', 'clarity'];
@@ -682,16 +686,37 @@ export function createOfflineOwnerEvidenceReader({
   async function load(featureKey, selection, token) {
     if (requireAiFeature(featureKey).audience !== 'author') invalid();
     const metadataOnly = featureKey === 'title-synopsis-ab';
-    if (!metadataOnly && !Object.hasOwn(TASKS, featureKey)) invalid();
+    const summary = featureKey === 'comment-summary';
+    const reply = featureKey === 'comment-reply-assistant';
+    const commentOnly = summary || reply;
+    const manuscript = !metadataOnly && !commentOnly;
+    if (manuscript && !Object.hasOwn(TASKS, featureKey)) invalid();
     const fields = ['novelId'];
-    if (!metadataOnly) fields.push('episodeIds');
+    if (manuscript) fields.push('episodeIds');
+    if (summary) fields.push('commentIds');
+    if (reply) fields.push('commentId');
     if (featureKey === 'promotion-assistant') fields.push('format');
     exactFields(selection, fields);
     const novelId = positiveId(selection.novelId);
     if (!Number.isSafeInteger(Number(novelId))) invalid();
-    const ids = metadataOnly ? [] : selection.episodeIds;
+    const ids = manuscript ? selection.episodeIds : [];
     if (!Array.isArray(ids) || ids.length > 12) invalid();
-    if (!metadataOnly && !ids.length) invalid();
+    if (manuscript && !ids.length) invalid();
+    const commentIds = summary
+      ? selection.commentIds
+      : reply
+        ? [selection.commentId]
+        : [];
+    const uuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+    if (commentOnly) {
+      if (!Array.isArray(commentIds)) invalid();
+      if (!commentIds.length || commentIds.length > 12) invalid();
+      if (new Set(commentIds).size !== commentIds.length) invalid();
+      if (commentIds.some((x) => typeof x !== 'string' || !uuid.test(x))) {
+        invalid();
+      }
+    }
     if (TASKS[featureKey]?.single && ids.length !== 1) invalid();
     const episodeIds = ids.map(positiveId);
     if (new Set(episodeIds).size !== ids.length) invalid();
@@ -713,7 +738,9 @@ export function createOfflineOwnerEvidenceReader({
     if (typeof client?.from !== 'function') invalid();
     const columns = metadataOnly
       ? 'id,user_id,title,description'
-      : 'id,user_id';
+      : commentOnly
+        ? 'id,user_id,status'
+        : 'id,user_id';
 
     async function readNovel() {
       const result = await client
@@ -729,6 +756,10 @@ export function createOfflineOwnerEvidenceReader({
         novel: row,
         audience: 'author'
       });
+      if (commentOnly) {
+        if (row.status !== 'published') invalid();
+        return { id: row.id, user_id: row.user_id, status: row.status };
+      }
       return metadataOnly
         ? {
             id: row.id,
@@ -741,7 +772,38 @@ export function createOfflineOwnerEvidenceReader({
 
     const novel = await readNovel();
     const input = { principal: { id: actorId }, novel };
-    if (metadataOnly) {
+    if (commentOnly) {
+      const result = await client.rpc('novelight_comment_feed', {
+        p_novel_id: novelId,
+        p_limit: 50
+      });
+      if (result?.error || !Array.isArray(result?.data)) invalid();
+      if (result.data.length > 50) invalid();
+      const rows = new Map();
+      for (const row of result.data) {
+        const id = row?.id;
+        if (typeof id !== 'string' || !uuid.test(id)) invalid();
+        if (rows.has(id)) invalid();
+        rows.set(id, row);
+      }
+      // The existing RPC scopes the feed by novel and auth.uid(). It does
+      // not return novel_id. Never accept a caller-supplied feed or body.
+      input.comments = commentIds.map((id) => {
+        const row = rows.get(id);
+        if (row?.can_moderate !== true) invalid();
+        if (row.is_hidden !== false || row.is_spoiler !== false) invalid();
+        return {
+          id,
+          novel_id: novel.id,
+          body: row.body,
+          can_moderate: true,
+          is_hidden: false,
+          is_spoiler: false
+        };
+      });
+      if (summary) input.commentIds = commentIds.slice();
+      else input.commentId = commentIds[0];
+    } else if (metadataOnly) {
       input.metadata = {
         novelId: novel.id,
         title: novel.title,
@@ -792,9 +854,15 @@ export function createOfflineOwnerEvidenceReader({
     const epoch = nowEpochSeconds();
     if (!Number.isSafeInteger(epoch) || epoch <= 0) invalid();
     input.now = new Date(epoch * 1000);
-    const prepared = prepareOfflineEvidencePrompt(featureKey, input);
+    const prepare = commentOnly
+      ? prepareOfflineCommentPrompt
+      : prepareOfflineEvidencePrompt;
+    const review = commentOnly
+      ? reviewOfflineCommentResponse
+      : reviewOfflineEvidenceResponse;
+    const prepared = prepare(featureKey, input);
     const requestHash = sourceDigest([prepared.requestHash, session.binding]);
-    return { input, prepared, requestHash };
+    return { input, prepared, requestHash, review };
   }
 
   return Object.freeze({
@@ -812,7 +880,7 @@ export function createOfflineOwnerEvidenceReader({
         exactFields(response, ['requestHash', 'modelText']);
         const current = await load(featureKey, selection, token);
         if (current.requestHash !== response.requestHash) invalid();
-        return reviewOfflineEvidenceResponse(featureKey, current.input, {
+        return current.review(featureKey, current.input, {
           requestHash: current.prepared.requestHash,
           modelText: response.modelText
         });
