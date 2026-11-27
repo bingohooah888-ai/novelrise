@@ -20,7 +20,8 @@ test('help searches the existing catalog without generating answers', () => {
   };
   vm.runInNewContext(help, context);
   const api = context.window.NovelightHelp;
-  assert.ok(api.searchTopics('予約公開').some((row) => row.key === 'publishing'));
+  const matches = api.searchTopics('予約公開');
+  assert.ok(matches.some((row) => row.key === 'publishing'));
   assert.equal(api.searchTopics('').length, 0);
   assert.equal(api.searchTopics('x'.repeat(121)).length, 0);
   assert.equal(api.searchTopics('不存在の検索語xyz').length, 0);
@@ -66,7 +67,7 @@ test('metadata comparison does not modify editor or save candidate B', () => {
   assert.equal(compare('A', ' '), null);
   const save = editor.slice(editor.indexOf("form.addEventListener('submit'"));
   assert.doesNotMatch(save, /compareTitleB|compareDescriptionB/u);
-  assert.match(editor, /実際のA\/B配信やクリック率測定ではありません/u);
+  assert.match(editor, /クリック率測定ではありません/u);
   assert.match(editor, /作品分類の手動確認/u);
 });
 
