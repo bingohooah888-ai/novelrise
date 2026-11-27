@@ -132,13 +132,9 @@ for (const [feature, kind] of [
 ]) {
   test('scoped work analytics: ' + feature, async () => {
     const { reader, state } = fixture();
-    const prepared = await prepareScreenFlow(
-      'owner',
-      reader,
-      feature,
-      work,
-      { token: TOKEN }
-    );
+    const prepared = await prepareScreenFlow('owner', reader, feature, work, {
+      token: TOKEN
+    });
     assert.doesNotMatch(prepared.prompt.user, /UNSELECTED_WORK/u);
     const response = { requestHash: prepared.requestHash, modelText };
     const result = await prepared.review(response, '架空の改善候補');
@@ -177,13 +173,9 @@ test('work analytics reject missing scope, draft and small cells', async () => {
 test('growth uses author-wide period totals once, not daily sums', async () => {
   const { reader, state } = fixture();
   const feature = 'author-growth-report';
-  const prepared = await prepareScreenFlow(
-    'owner',
-    reader,
-    feature,
-    growth,
-    { token: TOKEN }
-  );
+  const prepared = await prepareScreenFlow('owner', reader, feature, growth, {
+    token: TOKEN
+  });
   const response = {
     requestHash: prepared.requestHash,
     modelText: '{"metric":"first_to_second_continuation"}'

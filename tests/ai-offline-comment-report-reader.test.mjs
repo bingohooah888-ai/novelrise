@@ -89,13 +89,9 @@ function commentFixture() {
 test('comment source flow uses real UUID shape and selected text only', async () => {
   const { state, reader } = commentFixture();
   const feature = 'comment-summary';
-  const prepared = await prepareScreenFlow(
-    'owner',
-    reader,
-    feature,
-    summary,
-    { token: TOKEN }
-  );
+  const prepared = await prepareScreenFlow('owner', reader, feature, summary, {
+    token: TOKEN
+  });
   assert.match(prepared.prompt.user, /架空の感想/u);
   assert.doesNotMatch(
     prepared.prompt.user,
@@ -116,13 +112,9 @@ test('comment source flow uses real UUID shape and selected text only', async ()
 test('comment reply is draft only; edits and revoked sessions fail closed', async () => {
   const { state, reader } = commentFixture();
   const feature = 'comment-reply-assistant';
-  const prepared = await prepareScreenFlow(
-    'owner',
-    reader,
-    feature,
-    reply,
-    { token: TOKEN }
-  );
+  const prepared = await prepareScreenFlow('owner', reader, feature, reply, {
+    token: TOKEN
+  });
   const response = {
     requestHash: prepared.requestHash,
     modelText: '{"reply":"ありがとうございます"}'
