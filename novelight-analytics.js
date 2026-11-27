@@ -595,6 +595,7 @@
       return;
     }
     userId = auth.data.session.user.id;
+    window.NovelightAiReviewResult?.mountDormantPage({document,client,page:'analytics.html'});
     void NovelightClient.claimAcquisition(client);
     const profile = await client
       .from('profiles')
