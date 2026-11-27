@@ -202,6 +202,49 @@
     return list;
   }
 
+  function filterEpisodeCharacters(rows, query = '', currentOnly = false) {
+    if (!Array.isArray(rows) || typeof query !== 'string' || query.length > 80) return [];
+    const normalize = (value) => typeof value === 'string'
+      ? value.normalize('NFKC').toLowerCase() : '';
+    const needle = normalize(query).trim();
+    return rows.filter((row) => row &&
+      (!currentOnly || row.appears_current_episode === true) &&
+      (!needle || normalize(row.name).includes(needle)));
+  }
+
+  // Use only the already spoiler-bounded episode feed, not the work-wide list.
+  function makeEpisodeCharacterTools(rows) {
+    const root = document.createElement('div');
+    const search = document.createElement('input');
+    search.type = 'search';
+    search.maxLength = 80;
+    search.autocomplete = 'off';
+    search.placeholder = '登場人物名を検索';
+    search.setAttribute('aria-label', 'この話までの登場人物名を検索');
+    search.style.maxWidth = '100%';
+    const label = document.createElement('label');
+    const only = document.createElement('input');
+    only.type = 'checkbox';
+    label.append(only, document.createTextNode(' この話に登場した人物のみ'));
+    const status = document.createElement('p');
+    status.setAttribute('aria-live', 'polite');
+    const result = document.createElement('div');
+    const redraw = () => {
+      const filtered = filterEpisodeCharacters(rows, search.value, only.checked);
+      status.textContent = 'この話までの公開人物 ' + rows.length + '人中 ' + filtered.length + '人';
+      if (!filtered.length && rows.length) {
+        result.textContent = '条件に一致する登場人物はいません。';
+      } else {
+        result.replaceChildren(makeCharacterList(filtered, { episode: true }));
+      }
+    };
+    search.addEventListener('input', redraw);
+    only.addEventListener('change', redraw);
+    root.append(search, label, status, result);
+    redraw();
+    return root;
+  }
+
   function panel(title, body) {
     const section = document.createElement('section');
     section.className = 'nl-worknav-panel';
@@ -255,14 +298,14 @@
       mobile.className = 'nl-worknav-mobile';
       mobile.append(
         mobileDetails('話数', makeEpisodeList(rows, episode.id)),
-        mobileDetails('登場人物', makeCharacterList(characters, { episode: true }))
+        mobileDetails('登場人物', makeEpisodeCharacterTools(characters))
       );
       const aside = document.createElement('aside');
       aside.className = 'nl-worknav-support';
       aside.setAttribute('aria-label', '作品内ナビゲーション');
       aside.append(
         panel('話数一覧', makeEpisodeList(rows, episode.id)),
-        panel('登場人物', makeCharacterList(characters, { episode: true }))
+        panel('登場人物', makeEpisodeCharacterTools(characters))
       );
 
       card.before(layout);
@@ -353,5 +396,5 @@
     }
   }
 
-  window.NovelightWorkNavigation = Object.freeze({ mountEpisode, mountNovel, publicEpisodes });
+  window.NovelightWorkNavigation = Object.freeze({ mountEpisode, mountNovel, publicEpisodes, filterEpisodeCharacters });
 })();

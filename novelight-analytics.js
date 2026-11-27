@@ -341,6 +341,7 @@
   }
 
   function renderFreeScope() {
+    clearWorkTools();
     const section = byId('workAnalyticsSection');
     section.hidden = false;
     section.querySelector('h2').classList.add('hidden');
@@ -361,17 +362,69 @@
     ).toFixed(2)}%"></span></div><small>${esc(conversion)}</small></div>`;
   }
 
-  function renderWorks(rows) {
+  let workRows = [];
+  let workFilter = '';
+  let workOrder = 'default';
+
+  function clearWorkTools() {
+    workRows = [];
+    workFilter = '';
+    workOrder = 'default';
+    byId('workLocalTools')?.remove();
+  }
+
+  function renderWorks(rows, preserveTools = false) {
+    if (plan === 'free') return;
+    if (!preserveTools) {
+      clearWorkTools();
+      workRows = Array.isArray(rows) ? rows : [];
+    }
+    const snapshot = window.NovelightAnalyticsInsights?.selectWorkRows(
+      workRows, workFilter, workOrder
+    ) ?? workRows;
+
     const section = byId('workAnalyticsSection');
     const heading = section.querySelector('h2');
     const element = byId('works');
     section.hidden = false;
     heading.classList.remove('hidden');
-    if (!rows.length) {
+    if (!workRows.length) {
       element.innerHTML = '<div class="notice">この期間にはまだ露出データがありません。</div>';
       return;
     }
-    element.innerHTML = rows
+    if (!byId('workLocalTools')) {
+      const tools = document.createElement('div');
+      tools.id = 'workLocalTools';
+      const input = document.createElement('input');
+      input.type = 'search';
+      input.maxLength = 120;
+      input.placeholder = '作品名で検索';
+      input.setAttribute('aria-label', '作品別分析を作品名で検索');
+      const order = document.createElement('select');
+      order.setAttribute('aria-label', '作品別分析の表示順');
+      for (const [value, label] of [
+        ['default', '既定順'],
+        ['impressions', '表示回数が多い順'],
+        ['first_episode_reads_10s', '第1話10秒が多い順'],
+        ['continued_to_episode_2', '第2話継続件数が多い順']
+      ]) order.append(new Option(label, value));
+      const count = document.createElement('p');
+      count.id = 'workLocalCount';
+      count.setAttribute('aria-live', 'polite');
+      input.addEventListener('input', () => {
+        workFilter = input.value;
+        renderWorks(workRows, true);
+      });
+      order.addEventListener('change', () => {
+        workOrder = order.value;
+        renderWorks(workRows, true);
+      });
+      tools.append(input, order, count);
+      element.before(tools);
+    }
+    byId('workLocalCount').textContent = '取得済み ' + workRows.length +
+      '作品中 ' + snapshot.length + '作品（件数順は作品評価ではありません）';
+    element.innerHTML = snapshot.length ? snapshot
       .map((row) => {
         const impressions = Number(row.impressions || 0);
         const paid = Number(row.plan_extra_impressions || 0);
@@ -430,10 +483,11 @@
             : ''
         }</article>`;
       })
-      .join('');
+      .join('') : '<div class="notice">条件に一致する作品がありません。</div>';
   }
 
   function renderFunnelFailure() {
+    clearWorkTools();
     const section = byId('workAnalyticsSection');
     section.hidden = false;
     section.querySelector('h2').classList.remove('hidden');
@@ -443,6 +497,7 @@
 
   async function loadAnalytics() {
     const requestId = ++analyticsRequestId;
+    clearWorkTools();
     const status = byId('status');
     clearSummary();
     byId('works').innerHTML = '';
