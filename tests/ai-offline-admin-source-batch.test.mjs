@@ -6,7 +6,10 @@ import {
   projectAdminReviewedExcerpt
 } from '../api/_lib/ai/offline-policy-review.js';
 import { createOfflineAdminSelectionReader } from '../api/_lib/ai/offline-selection-review.js';
-import { createOfflineAdminIncidentReader } from '../api/_lib/ai/offline-aggregate-review.js';
+import {
+  createOfflineAdminIncidentReader,
+  createOfflineAdminKpiReader
+} from '../api/_lib/ai/offline-aggregate-review.js';
 
 const ADMIN = '11111111-1111-4111-8111-111111111111';
 const COMMENT = '33333333-3333-4333-8333-333333333333';
@@ -225,4 +228,82 @@ test('incident reader counts only recorded thumbnail failure rows', async () => 
   state.count = 5;
   state.admin = COMMENT;
   await assert.rejects(incident.prepare(selection, req, res));
+});
+
+test('KPI uses exact adjacent complete JST windows and no distinct-count estimates', async () => {
+  let value = 60;
+  const calls = [];
+  const reader = createOfflineAdminKpiReader({
+    env: { NOVELIGHT_ADMIN_USER_IDS: ADMIN },
+    nowEpochSeconds: () => 1800000000,
+    supabase: {
+      auth: {
+        async getUser() {
+          return { data: { user: { id: ADMIN } } };
+        }
+      },
+      from(table) {
+        let column;
+        let start;
+        const query = {
+          select(field, options) {
+            column = field;
+            assert.deepEqual(options, { count: 'exact', head: true });
+            assert.equal(
+              field,
+              table === 'user_lifecycle' ? 'registered_at' : 'counted_at'
+            );
+            return query;
+          },
+          gte(field, date) {
+            assert.equal(field, column);
+            start = date;
+            return query;
+          },
+          async lt(field, date) {
+            assert.equal(field, column);
+            calls.push({ table, start, end: date });
+            return { count: value };
+          }
+        };
+        return query;
+      }
+    }
+  });
+  const selection = { days: 7 };
+  const prepared = await reader.prepare(selection, req, res);
+  const data = JSON.parse(prepared.prompt.user).untrusted_data;
+  assert.deepEqual(data.rows, [
+    { metric: 'newUsers', current: 60, previous: 60 },
+    { metric: 'episodePageviews', current: 60, previous: 60 }
+  ]);
+  assert.equal(calls.length, 4);
+  for (const table of ['user_lifecycle', 'episode_pv_events']) {
+    const [previous, current] = calls
+      .filter((row) => row.table === table)
+      .sort((a, b) => a.start.localeCompare(b.start));
+    assert.equal(previous.end, current.start);
+    assert.equal(
+      Date.parse(current.end) - Date.parse(current.start),
+      7 * 86400000
+    );
+    assert.match(current.end, /T15:00:00\.000Z$/u);
+  }
+  const response = {
+    requestHash: prepared.requestHash,
+    modelText: '{"metrics":["newUsers"]}'
+  };
+  const checked = await reader.review(selection, req, res, response);
+  assert.equal(checked.statisticalAnomalyVerified, false);
+  assert.equal(checked.scope, 'registrations_and_episode_pageviews_only');
+  await assert.rejects(
+    reader.review(selection, req, res, {
+      ...response,
+      modelText: '{"metrics":["uniqueVisitors"]}'
+    })
+  );
+  value = 61;
+  await assert.rejects(reader.review(selection, req, res, response));
+  value = 1;
+  await assert.rejects(reader.prepare(selection, req, res));
 });
