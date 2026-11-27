@@ -605,7 +605,10 @@ test('private chapter navigation joins real episode ordinals and offers focus ac
   assert.match(target.textContent, /最後の参照話数：第2話/);
   assert.match(target.textContent, /最後の参照話数：第7話/);
   assert.match(target.textContent, /最初の参照話数：第2話/);
-  assert.match(target.textContent, /参照話数：1件（回収・経過話数の判定ではありません）/);
+  assert.match(
+    target.textContent,
+    /参照話数：1件（回収・経過話数の判定ではありません）/
+  );
   order.value = 'oldest-last-reference';
   order.listeners.get('change')();
   order.value = 'episode-number';
