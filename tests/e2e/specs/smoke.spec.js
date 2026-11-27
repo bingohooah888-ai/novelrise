@@ -779,7 +779,9 @@ test('AI typed review inputs are operable offline on desktop and mobile', async 
   await author.getByLabel('対象話ID').selectOption(['11']);
   await author.getByLabel('宣伝文の形式').selectOption('intro50');
   await author.getByRole('button', { name: '入力内容を確認' }).click();
-  await expect(author.getByRole('status')).toContainText('AIは実行していません');
+  await expect(author.getByRole('status')).toContainText(
+    'AIは実行していません'
+  );
   const reader = page.locator('[data-novelight-ai-form="natural-search-ai"]');
   await reader.getByRole('button', { name: '入力内容を確認' }).click();
   await expect(reader.getByRole('status')).toContainText('入力内容を確認');
