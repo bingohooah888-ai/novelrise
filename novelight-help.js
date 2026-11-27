@@ -343,12 +343,50 @@
       case 'favorites': case 'reading-history': case 'history': case 'account-settings': installReaderGuide(); break; default: break;
     }
   }
+  // Search the existing published help catalog only. No private data,
+  // generated answer, request, query storage or policy reinterpretation.
+  function searchTopics(query) {
+    if (typeof query !== 'string' || query.length > 120) return [];
+    const normalize = (value) => String(value || '').normalize('NFKC').toLowerCase();
+    const terms = normalize(query).trim().split(/\s+/u).filter(Boolean);
+    if (!terms.length || terms.length > 6) return [];
+    return Object.entries(topics).filter(([, topic]) => {
+      const text = normalize([topic.title, topic.summary, ...topic.points].join(' '));
+      return terms.every((term) => text.includes(term));
+    }).map(([key, topic]) => ({ key, title: topic.title }));
+  }
   function renderHelpCenter() {
     const root = document.getElementById('novelightHelpCenter'); if (!root || root.dataset.rendered === 'true') return; root.dataset.rendered = 'true';
     const grid = document.createElement('section'); grid.className = 'nl-help-category-grid'; grid.setAttribute('aria-label', 'ヘルプカテゴリ'); categories.forEach(([title, description, key]) => { const link = document.createElement('a'); link.className = 'nl-help-category-card'; link.href = `#${key}`; link.innerHTML = '<strong></strong><span></span><b aria-hidden="true">→</b>'; link.querySelector('strong').textContent = title; link.querySelector('span').textContent = description; grid.appendChild(link); });
     const extra = document.createElement('section'); extra.className = 'nl-help-extra-links'; extra.innerHTML = '<h2>さらに確認する</h2>'; [['アクセス計測と不正対策','access-measurement'],['外部流入・X流入','traffic-sources'],['一括移行','bulk-import'],['自然言語検索','natural-search'],['おすすめリスト','curation-lists'],['近況ノート','author-notes'],['交流タイムライン','community-timeline']].forEach(([label,key]) => { const link = document.createElement('a'); link.href = `#${key}`; link.textContent = label; extra.appendChild(link); });
     const detail = document.createElement('section'); detail.id = 'novelightHelpDetail'; detail.className = 'nl-help-detail'; detail.hidden = true; root.append(grid, extra, detail);
-    const renderDetail = () => { const key = decodeURIComponent(location.hash.replace(/^#/u, '')); const topic = topics[key]; if (!topic) { detail.hidden = true; return; } detail.hidden = false; detail.replaceChildren(); const kicker = document.createElement('div'); kicker.className = 'nl-help-detail-kicker'; kicker.textContent = 'NOVELIGHT HELP'; const title = document.createElement('h2'); title.textContent = topic.title; const summary = document.createElement('p'); summary.className = 'nl-help-detail-summary'; summary.textContent = topic.summary; const list = document.createElement('ul'); topic.points.forEach((point) => { const item = document.createElement('li'); item.textContent = point; list.appendChild(item); }); const back = document.createElement('a'); back.className = 'nl-help-detail-back'; back.href = '#top'; back.textContent = 'ヘルプTOPへ戻る'; detail.append(kicker, title, summary, list, back); requestAnimationFrame(() => detail.scrollIntoView({ block: 'start' })); };
+    const lookup = document.createElement('section');
+    lookup.className = 'nl-help-lookup';
+    const heading = document.createElement('h2'); heading.textContent = 'ヘルプ内検索';
+    const input = document.createElement('input');
+    input.type = 'search'; input.maxLength = 120; input.autocomplete = 'off';
+    input.placeholder = '例：予約公開、読書履歴'; input.setAttribute('aria-label', 'ヘルプのキーワード');
+    const status = document.createElement('p'); status.setAttribute('aria-live', 'polite');
+    const results = document.createElement('ul');
+    const redraw = () => {
+      results.replaceChildren();
+      if (!input.value.trim()) { status.textContent = '既存の説明を検索します。AIによる回答は生成しません。'; return; }
+      const matches = searchTopics(input.value);
+      status.textContent = matches.length + '件の関連ヘルプ（単語の一致）';
+      for (const item of matches) {
+        const li = document.createElement('li');
+        const link = document.createElement('a'); link.href = topicHref(item.key);
+        link.textContent = item.title; li.append(link); results.append(li);
+      }
+      if (!matches.length) {
+        const li = document.createElement('li');
+        const link = document.createElement('a'); link.href = 'contact.html';
+        link.textContent = '見つからない場合はお問い合わせへ'; li.append(link); results.append(li);
+      }
+    };
+    input.addEventListener('input', redraw);
+    lookup.append(heading, input, status, results); root.prepend(lookup); redraw();
+    const renderDetail = () => { let key; try { key = decodeURIComponent(location.hash.replace(/^#/u, '')); } catch { detail.hidden = true; return; } const topic = Object.hasOwn(topics, key) ? topics[key] : null; if (!topic) { detail.hidden = true; return; } detail.hidden = false; detail.replaceChildren(); const kicker = document.createElement('div'); kicker.className = 'nl-help-detail-kicker'; kicker.textContent = 'NOVELIGHT HELP'; const title = document.createElement('h2'); title.textContent = topic.title; const summary = document.createElement('p'); summary.className = 'nl-help-detail-summary'; summary.textContent = topic.summary; const list = document.createElement('ul'); topic.points.forEach((point) => { const item = document.createElement('li'); item.textContent = point; list.appendChild(item); }); const back = document.createElement('a'); back.className = 'nl-help-detail-back'; back.href = '#top'; back.textContent = 'ヘルプTOPへ戻る'; detail.append(kicker, title, summary, list, back); requestAnimationFrame(() => detail.scrollIntoView({ block: 'start' })); };
     window.addEventListener('hashchange', renderDetail); renderDetail();
   }
   let observer = null, scheduled = false;
@@ -357,5 +395,5 @@
     ensureStyles(); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scheduleInstall, { once: true }); else scheduleInstall();
     if (!observer && typeof MutationObserver === 'function') { observer = new MutationObserver(scheduleInstall); const startObserver = () => { if (document.body) observer.observe(document.body, { childList: true, subtree: true }); }; if (document.body) startObserver(); else document.addEventListener('DOMContentLoaded', startObserver, { once: true }); }
   }
-  window.NovelightHelp = Object.freeze({ version: VERSION, topics, categories, open: openTopic, install }); install();
+  window.NovelightHelp = Object.freeze({ version: VERSION, topics, categories, searchTopics, open: openTopic, install }); install();
 })();

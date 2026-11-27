@@ -95,6 +95,23 @@
     return notes.filter((note) => duplicates.has(note));
   }
 
+  // Author's own saved world notes, not inferred terms or a public glossary.
+  function glossaryEntries(notes) {
+    if (!Array.isArray(notes)) return [];
+    return notes.filter((note) => note?.note_type === 'world' &&
+      typeof note.title === 'string' && note.title.trim() &&
+      typeof note.body === 'string').map((note) => ({
+      title: note.title, body: note.body
+    })).sort((a, b) => a.title.localeCompare(b.title, 'ja'));
+  }
+
+  function packageCounts(notes) {
+    if (!Array.isArray(notes)) return [];
+    return categories.map(([key, label]) => ({
+      key, label, count: notes.filter((note) => note?.note_type === key).length
+    }));
+  }
+
   function sameOwner(initial, current) {
     return Boolean(
       initial?.user?.id &&
@@ -108,6 +125,8 @@
     buildPackage,
     filterNotes,
     duplicateHeadingNotes,
+    glossaryEntries,
+    packageCounts,
     sameOwner
   });
 })(typeof window === 'object' ? window : globalThis);
