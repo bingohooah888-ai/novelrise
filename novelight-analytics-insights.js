@@ -168,6 +168,25 @@
 
   // Copyable text of the same existing comparison; no new read, identity,
   // storage, file download or claim of author improvement.
+  function selectWorkRows(rows, query = '', order = 'default') {
+    if (!Array.isArray(rows) || typeof query !== 'string' ||
+        query.length > 120 || !['default', 'impressions',
+          'first_episode_reads_10s', 'continued_to_episode_2'].includes(order)) return [];
+    const normalize = (value) => typeof value === 'string'
+      ? value.normalize('NFKC').toLowerCase() : '';
+    const needle = normalize(query).trim();
+    const filtered = rows.filter((row) => row &&
+      (!needle || normalize(row.title).includes(needle)));
+    if (order === 'default') return filtered;
+    return filtered.sort((a, b) => {
+      const x = readCohortCount(a[order]);
+      const y = readCohortCount(b[order]);
+      if (x === null) return y === null ? 0 : 1;
+      if (y === null) return -1;
+      return y - x;
+    });
+  }
+
   function buildComparisonReport(row, days) {
     if (!buildRetentionComparison(row) || ![7, 30, 90].includes(days)) return '';
     return [
@@ -339,6 +358,7 @@
     workRetentionText,
     retentionComparisonText,
     conversionPeriodText,
+    selectWorkRows,
     buildComparisonReport,
     renderRetentionComparison
   });
