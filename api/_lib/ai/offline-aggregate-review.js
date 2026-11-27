@@ -652,3 +652,184 @@ export function createOfflineAdminReportReader(dependencies = {}) {
 export function createOfflineAdminAbuseReader(dependencies = {}) {
   return createOfflineAdminReadReview(dependencies, 'abuse-analysis');
 }
+
+// Only existing recorded thumbnail failures are counted. No raw messages,
+// user identifiers, request logs or unobserved services are loaded.
+// Fixed complete UTC day windows avoid a sliding cutoff on response review.
+export function createOfflineAdminIncidentReader({
+  supabase,
+  env,
+  nowEpochSeconds = () => Math.floor(Date.now() / 1000)
+} = {}) {
+  async function load(selection, req, res) {
+    const user = await requireAdmin({ req, res, supabase, env });
+    if (typeof user?.id !== 'string' || !user.id) invalid();
+    exactFields(selection, ['days']);
+    const { days } = selection;
+    if (![1, 7, 30].includes(days)) invalid();
+    const epoch = nowEpochSeconds();
+    if (!Number.isSafeInteger(epoch) || epoch <= 0) invalid();
+    const end = Math.floor(epoch / 86400) * 86400;
+    const start = new Date((end - days * 86400) * 1000).toISOString();
+    const until = new Date(end * 1000).toISOString();
+    const result = await supabase
+      .from('thumbnail_render_failures')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', start)
+      .lt('created_at', until);
+    if (result?.error) invalid();
+    const input = {
+      principal: { id: user.id, isAdmin: true },
+      days,
+      rows: [
+        {
+          service: 'thumbnail-render',
+          failureClass: 'render_failed',
+          count: count(result?.count)
+        }
+      ]
+    };
+    const current = await requireAdmin({ req, res, supabase, env });
+    if (current?.id !== user.id) invalid();
+    const prepared = prepareOfflineAggregatePrompt('error-log-summary', input);
+    const requestHash = aggregateDigest([prepared.requestHash, start, until]);
+    return { input, prepared, requestHash, start, until };
+  }
+
+  return Object.freeze({
+    async prepare(selection, req, res) {
+      try {
+        const value = await load(selection, req, res);
+        return {
+          prompt: value.prepared.prompt,
+          requestHash: value.requestHash
+        };
+      } catch {
+        invalid();
+      }
+    },
+    async review(selection, req, res, response) {
+      try {
+        exactFields(response, ['requestHash', 'modelText']);
+        const value = await load(selection, req, res);
+        if (value.requestHash !== response.requestHash) invalid();
+        const result = reviewOfflineAggregateResponse(
+          'error-log-summary',
+          value.input,
+          {
+            requestHash: value.prepared.requestHash,
+            modelText: response.modelText
+          }
+        );
+        return {
+          ...result,
+          scope: 'recorded_thumbnail_failures_only',
+          from: value.start,
+          until: value.until
+        };
+      } catch {
+        invalid();
+      }
+    }
+  });
+}
+
+// The existing analytics snapshot counts registration and episode PV rows.
+// Count those same sources in adjacent complete JST windows. Do not infer
+// distinct visitors/readers from summed daily counts or unavailable records.
+export function createOfflineAdminKpiReader({
+  supabase,
+  env,
+  nowEpochSeconds = () => Math.floor(Date.now() / 1000)
+} = {}) {
+  async function load(selection, req, res) {
+    const user = await requireAdmin({ req, res, supabase, env });
+    if (typeof user?.id !== 'string' || !user.id) invalid();
+    exactFields(selection, ['days']);
+    const { days } = selection;
+    if (![7, 30, 90].includes(days)) invalid();
+    const epoch = nowEpochSeconds();
+    if (!Number.isSafeInteger(epoch) || epoch <= 0) invalid();
+    const jstOffset = 9 * 3600;
+    const end = Math.floor((epoch + jstOffset) / 86400) * 86400 - jstOffset;
+    const boundary = (offset) =>
+      new Date((end - offset * 86400) * 1000).toISOString();
+    const until = boundary(0);
+    const start = boundary(days);
+    const previousStart = boundary(days * 2);
+    async function readCount(table, column, from, to) {
+      const result = await supabase
+        .from(table)
+        .select(column, { count: 'exact', head: true })
+        .gte(column, from)
+        .lt(column, to);
+      if (result?.error) invalid();
+      return count(result?.count);
+    }
+    const metrics = [
+      ['newUsers', 'user_lifecycle', 'registered_at'],
+      ['episodePageviews', 'episode_pv_events', 'counted_at']
+    ];
+    const rows = await Promise.all(
+      metrics.map(async ([metric, table, column]) => {
+        const [current, previous] = await Promise.all([
+          readCount(table, column, start, until),
+          readCount(table, column, previousStart, start)
+        ]);
+        return { metric, current, previous };
+      })
+    );
+    const after = await requireAdmin({ req, res, supabase, env });
+    if (after?.id !== user.id) invalid();
+    const input = {
+      principal: { id: user.id, isAdmin: true },
+      snapshot: { days, rows }
+    };
+    const prepared = prepareOfflineAggregatePrompt('kpi-anomaly', input);
+    const requestHash = aggregateDigest([
+      prepared.requestHash,
+      previousStart,
+      start,
+      until
+    ]);
+    return { input, prepared, requestHash, previousStart, start, until };
+  }
+
+  return Object.freeze({
+    async prepare(selection, req, res) {
+      try {
+        const value = await load(selection, req, res);
+        return {
+          prompt: value.prepared.prompt,
+          requestHash: value.requestHash
+        };
+      } catch {
+        invalid();
+      }
+    },
+    async review(selection, req, res, response) {
+      try {
+        exactFields(response, ['requestHash', 'modelText']);
+        const value = await load(selection, req, res);
+        if (value.requestHash !== response.requestHash) invalid();
+        const result = reviewOfflineAggregateResponse(
+          'kpi-anomaly',
+          value.input,
+          {
+            requestHash: value.prepared.requestHash,
+            modelText: response.modelText
+          }
+        );
+        return {
+          ...result,
+          scope: 'registrations_and_episode_pageviews_only',
+          previousFrom: value.previousStart,
+          from: value.start,
+          until: value.until
+        };
+      } catch {
+        invalid();
+      }
+    }
+  });
+}
