@@ -94,7 +94,11 @@ test('short introduction uses only the supplied facts and counts code points', (
   assert.equal(intro.length, Array.from(intro.text).length);
   assert.equal(intro.remaining, 50 - intro.length);
   assert.ok(Object.isFrozen(intro));
-  const long = buildIntro({ ...fixture, detail: 'あ'.repeat(150), target: 150 });
+  const long = buildIntro({
+    ...fixture,
+    detail: 'あ'.repeat(150),
+    target: 150
+  });
   assert.ok(long.remaining < 0);
   assert.match(long.text, /あ{150}$/u);
   assert.equal(buildIntro({ ...fixture, target: 100 }), null);
