@@ -64,12 +64,15 @@ export async function prepareScreenFlow(
   const pending = begin();
   assert.ok(pending, feature + ': UI rejected fixture input');
   const api = createOfflineConnectedReview({ [adapter]: reader });
-  const prepared = await api.prepare(pending.request, auth);
+  // Simulate the JSON boundary between browser and server, rather than
+  // sharing VM-realm prototypes with the Node fixture.
+  const request = JSON.parse(JSON.stringify(pending.request));
+  const prepared = await api.prepare(request, auth);
 
   return {
     ...prepared,
     async review(candidate, expectedText) {
-      const envelope = await api.review(pending.request, auth, candidate);
+      const envelope = await api.review(request, auth, candidate);
       assert.equal(envelope.featureKey, feature);
       assert.deepEqual(Object.keys(envelope).sort(), ['featureKey', 'result']);
       assert.equal(controller.present(pending.ticket, envelope), true);

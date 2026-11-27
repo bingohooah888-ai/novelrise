@@ -388,3 +388,39 @@ test('rejects metadata revisions without manuscript reads', async () => {
   await assert.rejects(reader.review(feature, selection, TOKEN, response));
   assert.ok(state.calls.every((call) => call.table === 'novels'));
 });
+
+test('temporary connected flow formatter diagnostic', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { format, resolveConfig } = await import('prettier');
+  const paths = [
+    'tests/ai-offline-analytics-abuse-reader.test.mjs',
+    'tests/ai-offline-comment-report-reader.test.mjs'
+  ];
+  for (const path of paths) {
+    const source = await readFile(path, 'utf8');
+    const config = await resolveConfig(path);
+    const formatted = await format(source, { ...config, filepath: path });
+    const original = source.split('\n');
+    const expected = formatted.split('\n');
+    let start = 0;
+    while (start < original.length && original[start] === expected[start]) {
+      start++;
+    }
+    let end = 0;
+    while (
+      end < original.length - start &&
+      end < expected.length - start &&
+      original[original.length - 1 - end] ===
+        expected[expected.length - 1 - end]
+    ) {
+      end++;
+    }
+    const diff = {
+      path,
+      start,
+      remove: original.length - start - end,
+      insert: expected.slice(start, expected.length - end)
+    };
+    process.stdout.write('AI_FLOW_FORMAT_DIAGNOSTIC ' + JSON.stringify(diff) + '\n');
+  }
+});
