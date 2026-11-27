@@ -48,6 +48,8 @@
     novelId: '作品ID',
     episodeId: '話ID',
     commentId: 'コメントID',
+    inquiryId: '問い合わせID',
+    subjectId: '確認対象ID',
     offset: '引用位置',
     order: '話順',
     category: '種別',
@@ -171,6 +173,7 @@
       const heading = doc.createElement('h4');
       heading.textContent = '既存の第1話から第2話への継続記録';
       container.appendChild(heading);
+      addRecord(container, result.observed);
       addRecord(container, result.observed.cohort);
     }
     let displayedItems = 0;
@@ -678,6 +681,8 @@
   // In the actual page mount, no catalog is supplied and controls are locked.
   function buildSelectionForm(section, feature, catalog = {}, locked = true) {
     if (!Object.hasOwn(inputSpecs, feature)) return null;
+    // Locked forms never inspect private catalogs.
+    catalog = locked ? {} : catalog;
     const doc = section.ownerDocument;
     section.setAttribute('data-novelight-ai-form', feature);
     if (section.style) {
@@ -690,7 +695,11 @@
     section.appendChild(description);
     const inputs = new Map();
     const privateReview = keys.includes('reviewedBodyHash');
-    const review = privateReview ? catalog.reviewedExcerpt : null;
+    let review = privateReview ? catalog.reviewedExcerpt : null;
+    let invalidated = false;
+    const allowed = new Map();
+    const dependent = new Set(['episodeId', 'episodeIds', 'commentId', 'commentIds']);
+    const workScoped = keys.includes('novelId');
     const planRestricted = [
       'analytics-copilot',
       'reader-dropoff-analysis',
@@ -703,6 +712,29 @@
       const plan = doc.createElement('p');
       plan.textContent = '既存プラン条件：Standard / Premium。サーバーで再確認します。';
       section.appendChild(plan);
+    }
+
+    function populate(control, key, rows) {
+      control.replaceChildren();
+      if (!control.multiple) {
+        option(doc, control, '', key === 'genre' ? '指定なし' : '選択してください');
+      }
+      const seen = new Set();
+      if (Array.isArray(rows)) {
+        for (const row of rows.slice(0, 2000)) {
+          if (typeof row?.id !== 'string' || !row.id || row.id.length > 100) continue;
+          if (typeof row.label !== 'string' || !row.label.trim() || seen.has(row.id)) continue;
+          if (privateReview && ['commentId', 'episodeId', 'inquiryId'].includes(key) && row.id !== review?.targetId) continue;
+          if (workScoped && dependent.has(key)) {
+            const work = inputs.get('novelId')?.value;
+            if (!work || row.novelId !== work) continue;
+          }
+          seen.add(row.id);
+          option(doc, control, row.id, row.label.slice(0, 200));
+        }
+      }
+      allowed.set(key, seen);
+      control.value = '';
     }
 
     for (const key of keys) {
@@ -720,8 +752,6 @@
         control.multiple = multi;
         if (multi) {
           control.size = 4;
-        } else {
-          option(doc, control, '', key === 'genre' ? '指定なし' : '選択してください');
         }
         let rows = catalog[catalogNames[key]];
         if (key === 'days') {
@@ -735,16 +765,7 @@
             { id: 'social', label: 'SNS用宣伝文' }
           ];
         }
-        const seen = new Set();
-        if (Array.isArray(rows)) {
-          for (const row of rows.slice(0, 2000)) {
-            if (typeof row?.id !== 'string' || !row.id || row.id.length > 100) continue;
-            if (typeof row.label !== 'string' || !row.label.trim() || seen.has(row.id)) continue;
-            if (privateReview && ['commentId', 'episodeId', 'inquiryId'].includes(key) && row.id !== review?.targetId) continue;
-            seen.add(row.id);
-            option(doc, control, row.id, row.label.slice(0, 200));
-          }
-        }
+        populate(control, key, rows);
       } else if (key === 'privacyReviewed') {
         control = doc.createElement('input');
         control.type = 'checkbox';
@@ -765,6 +786,18 @@
       section.appendChild(label);
     }
 
+    let selectedWork = '';
+    function refreshWork() {
+      const work = inputs.get('novelId')?.value || '';
+      if (work === selectedWork) return;
+      selectedWork = work;
+      for (const key of dependent) {
+        const control = inputs.get(key);
+        if (control) populate(control, key, catalog[catalogNames[key]]);
+      }
+    }
+    inputs.get('novelId')?.addEventListener?.('change', refreshWork);
+
     if (privateReview) {
       const note = doc.createElement('p');
       note.textContent = '確認済み抜粋の範囲と照合値は既存の管理者確認処理から受け取ります。原文はここに入力しません。';
@@ -782,7 +815,11 @@
     section.appendChild(status);
 
     function read() {
-      if (blocked) return null;
+      if (blocked || invalidated) return null;
+      if (workScoped && inputs.get('novelId')?.value !== selectedWork) {
+        refreshWork();
+        return null;
+      }
       const selection = {};
       for (const [key, control] of inputs) {
         if (control.disabled) return null;
@@ -794,6 +831,12 @@
           selection[key] = control.checked;
         } else {
           selection[key] = control.value;
+        }
+        if (allowed.has(key)) {
+          const values = Array.isArray(selection[key])
+            ? selection[key]
+            : [String(selection[key])];
+          if (!values.every((value) => (key === 'genre' && value === '') || allowed.get(key).has(value))) return null;
         }
       }
       if (privateReview) {
@@ -831,10 +874,34 @@
     execute.textContent = 'AI実行停止中';
     styleControl(execute);
     section.appendChild(execute);
-    return Object.freeze({ read });
+    function invalidate() {
+      invalidated = true;
+      catalog = {};
+      review = null;
+      selectedWork = '';
+      allowed.clear();
+      for (const control of inputs.values()) {
+        control.disabled = true;
+        if (control.type === 'checkbox') control.checked = false;
+        else control.value = '';
+        if (control.tagName === 'SELECT' || control.tag === 'select') control.replaceChildren();
+      }
+      validate.disabled = true;
+      status.textContent = '対象または認証状態が変更されました。';
+    }
+
+    // The existing search page already loads these public choices.
+    // Never accept private work information or query text here.
+    function updatePublicSearchChoices(publicChoices) {
+      if (feature !== 'natural-search-ai' || !locked) return false;
+      populate(inputs.get('genre'), 'genre', publicChoices?.genres);
+      populate(inputs.get('tagIds'), 'tagIds', publicChoices?.tags);
+      return true;
+    }
+    return Object.freeze({ read, invalidate, updatePublicSearchChoices });
   }
 
-  const mounted = new WeakSet();
+  const mounted = new WeakMap();
 
   // All production placements are permanently hidden while Gate A is frozen.
   // The existing page code invokes this only from its current access/load
@@ -849,22 +916,37 @@
     }
   }
 
-  function mountHiddenScreen({ document, client, page }) {
+  function mountHiddenScreen({ document, client, page, publicChoices }) {
     const keys = pageFeatures[page];
     if (!keys || !document || !client?.auth?.onAuthStateChange) return false;
     const root = document.querySelector('[data-novelight-ai-review-host]');
-    if (!root || mounted.has(root)) return false;
+    if (!root) return false;
+    const previous = mounted.get(root);
+    if (previous) {
+      previous.clear();
+      if (page === 'search.html' && publicChoices) {
+        previous.searchForm?.updatePublicSearchChoices(publicChoices);
+      }
+      return false;
+    }
     root.hidden = true;
     root.replaceChildren();
     const heading = document.createElement('h2');
     heading.textContent = 'AI支援（開発中・利用不可）';
     root.appendChild(heading);
+    const forms = [];
+    let searchForm = null;
     for (const feature of keys) {
       const section = document.createElement('section');
       const title = document.createElement('h3');
       title.textContent = inputSpecs[feature][0];
       section.appendChild(title);
-      buildSelectionForm(section, feature);
+      const form = buildSelectionForm(section, feature);
+      forms.push(form);
+      if (page === 'search.html' && feature === 'natural-search-ai') {
+        searchForm = form;
+        if (publicChoices) form.updatePublicSearchChoices(publicChoices);
+      }
       root.appendChild(section);
     }
     const result = document.createElement('div');
@@ -874,6 +956,7 @@
     const controller = createScreenController(result, keys, () => false);
     const clear = () => {
       controller.clear();
+      for (const form of forms) form.invalidate();
       root.hidden = true;
     };
     const win = document.defaultView;
@@ -881,10 +964,10 @@
     win?.addEventListener('pageshow', clear);
     win?.addEventListener('popstate', clear);
     document.addEventListener('visibilitychange', clear);
-    document.addEventListener('input', clear, true);
-    document.addEventListener('change', clear, true);
+    document.addEventListener('input', controller.clear, true);
+    document.addEventListener('change', controller.clear, true);
     client.auth.onAuthStateChange(clear);
-    mounted.add(root);
+    mounted.set(root, { clear, searchForm });
     return true;
   }
 

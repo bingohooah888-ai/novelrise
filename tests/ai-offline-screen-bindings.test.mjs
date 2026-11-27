@@ -57,13 +57,20 @@ function fixture() {
         childNodes: [],
         textContent: '',
         hidden: false,
+        attributes: {},
+        events: new Map(),
+        addEventListener(name, fn) {
+          this.events.set(name, fn);
+        },
         appendChild(node) {
           this.childNodes.push(node);
         },
         replaceChildren() {
           this.childNodes = [];
         },
-        setAttribute() {}
+        setAttribute(name, value) {
+          this.attributes[name] = value;
+        }
       };
     },
     querySelector() {
@@ -214,4 +221,85 @@ test('analysis plan gating and privacy review remain fail closed', () => {
   const missing = api.buildSelectionForm(admin, 'inquiry-assistant', {}, false);
   assert.equal(missing.read(), null);
   assert.equal(admin.childNodes.at(-1).disabled, true);
+});
+
+test('work choices are isolated and invalidation purges the previous scope', () => {
+  const { root } = fixture();
+  const form = api.buildSelectionForm(
+    root,
+    'writing-assistant',
+    {
+      novels: [
+        { id: '1', label: '架空作品1' },
+        { id: '2', label: '架空作品2' }
+      ],
+      episodes: [
+        { id: '11', label: '第1話', novelId: '1' },
+        { id: '21', label: '別作品', novelId: '2' }
+      ]
+    },
+    false
+  );
+  const fields = root.childNodes.flatMap((row) => row.childNodes);
+  const fieldName = (row) => row.attributes['data-ai-field'];
+  const work = fields.find((row) => fieldName(row) === 'novelId');
+  const episode = fields.find((row) => fieldName(row) === 'episodeIds');
+  work.value = '1';
+  work.events.get('change')();
+  assert.deepEqual(
+    episode.childNodes.map((row) => row.value),
+    ['11']
+  );
+  episode.selectedOptions = episode.childNodes;
+  assert.deepEqual(plain(form.read()), { novelId: '1', episodeIds: ['11'] });
+  work.value = '2';
+  work.events.get('change')();
+  assert.deepEqual(
+    episode.childNodes.map((row) => row.value),
+    ['21']
+  );
+  assert.equal(form.read(), null);
+  episode.selectedOptions = episode.childNodes;
+  assert.deepEqual(plain(form.read()), { novelId: '2', episodeIds: ['21'] });
+  form.invalidate();
+  assert.equal(form.read(), null);
+  assert.equal(episode.childNodes.length, 0);
+  assert.equal(work.childNodes.length, 0);
+});
+
+test('locked catalog is never inspected; search reuses only public choices', () => {
+  const { root, doc, client, events } = fixture();
+  const inaccessible = new Proxy(
+    {},
+    {
+      get() {
+        throw new Error('private catalog must never be read');
+      }
+    }
+  );
+  const section = doc.createElement('section');
+  assert.ok(api.buildSelectionForm(section, 'work-analysis', inaccessible));
+  assert.equal(
+    api.mountDormantPage({
+      document: doc,
+      client,
+      page: 'search.html',
+      publicChoices: {
+        genres: [{ id: 'その他', label: 'その他' }],
+        tags: [{ id: 'adventure', label: '冒険' }]
+      }
+    }),
+    true
+  );
+  const first = root.childNodes[1];
+  const fields = first.childNodes.flatMap((row) => row.childNodes);
+  const tags = fields.find((x) => x.attributes['data-ai-field'] === 'tagIds');
+  assert.deepEqual(
+    tags.childNodes.map((row) => row.value),
+    ['adventure']
+  );
+  assert.equal(tags.disabled, true);
+  events.get('auth')();
+  assert.equal(tags.childNodes.length, 0);
+  assert.equal(root.hidden, true);
 });
