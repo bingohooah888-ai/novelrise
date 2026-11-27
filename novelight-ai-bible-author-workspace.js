@@ -266,6 +266,11 @@
         const bNumber = b.lastEpisodeNumber ?? Number.NEGATIVE_INFINITY;
         if (aNumber !== bNumber) return bNumber - aNumber;
       }
+      if (sortBy === 'oldest-last-reference') {
+        const aNumber = a.lastEpisodeNumber ?? Number.POSITIVE_INFINITY;
+        const bNumber = b.lastEpisodeNumber ?? Number.POSITIVE_INFINITY;
+        if (aNumber !== bNumber) return aNumber - bNumber;
+      }
       if (sortBy === 'source-id') {
         const aId = a.sourceEpisodeIds[0] ?? Number.POSITIVE_INFINITY;
         const bId = b.sourceEpisodeIds[0] ?? Number.POSITIVE_INFINITY;
@@ -1187,7 +1192,8 @@
     if (projected) {
       sortOptions.push(
         ['episode-number', '実際の話数順（物語内の時系列ではありません）'],
-        ['last-episode-number', '最後の参照話数が新しい順']
+        ['last-episode-number', '最後の参照話数が新しい順'],
+        ['oldest-last-reference', '最後の参照話数が古い順（回収判定なし）']
       );
     }
     for (const [value, title] of sortOptions) {
@@ -1297,6 +1303,13 @@
             references +
             (projected && entry.lastEpisodeNumber != null
               ? '／最後の参照話数：第' + entry.lastEpisodeNumber + '話'
+              : '') +
+            (projected && entry.firstEpisodeNumber != null
+              ? '／最初の参照話数：第' +
+                entry.firstEpisodeNumber +
+                '話／参照話数：' +
+                entry.references.length +
+                '件（回収・経過話数の判定ではありません）'
               : '') +
             (entry.missingReferenceCount
               ? '／参照元未登録：' + entry.missingReferenceCount + '件'

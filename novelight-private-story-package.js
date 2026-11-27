@@ -45,6 +45,35 @@
     return Object.freeze({ count, text: sections.join('\n\n') + '\n' });
   }
 
+  // Search only the existing in-memory owner note snapshot. No new retrieval,
+  // persistent search history, AI inference, or modification of the source list.
+  function filterNotes({ notes, type = 'all', query = '', character = 'all' } = {}) {
+    if (
+      !Array.isArray(notes) ||
+      !['all', 'plot', 'world', 'character'].includes(type) ||
+      typeof query !== 'string' ||
+      query.length > 120 ||
+      typeof character !== 'string' ||
+      !/^(?:all|unassigned|[1-9][0-9]{0,15})$/u.test(character)
+    ) return [];
+    const normalize = (value) =>
+      typeof value === 'string' ? value.normalize('NFKC').toLowerCase() : '';
+    const needle = normalize(query).trim();
+    return notes.filter((note) => {
+      if (!note || typeof note !== 'object') return false;
+      if (type !== 'all' && note.note_type !== type) return false;
+      if (type === 'character' && character !== 'all') {
+        if (character === 'unassigned') {
+          if (note.character_id != null) return false;
+        } else if (String(note.character_id) !== character) {
+          return false;
+        }
+      }
+      return !needle || [note.title, note.body, note.character_name]
+        .some((value) => normalize(value).includes(needle));
+    });
+  }
+
   function sameOwner(initial, current) {
     return Boolean(
       initial?.user?.id &&
@@ -56,6 +85,7 @@
 
   root.NovelightPrivateStoryPackage = Object.freeze({
     buildPackage,
+    filterNotes,
     sameOwner
   });
 })(typeof window === 'object' ? window : globalThis);

@@ -43,6 +43,12 @@
           <label for="announcementOutput">X用下書き（コピー後に編集できます）</label>
           <textarea id="announcementOutput" rows="5" readonly></textarea>
           <p>投稿は自動では行いません。X側で文字数と内容を確認してください。</p>
+          <label for="introTarget">作品紹介の文字数目安</label>
+          <select id="introTarget"><option value="50">50文字</option><option value="150">150文字</option></select>
+          <button id="introPreview" class="btn" type="button">短い作品紹介を確認</button>
+          <label for="introOutput">作品紹介の下書き（作者の入力を使用・AIなし）</label>
+          <textarea id="introOutput" rows="3" readonly></textarea>
+          <p id="introStatus" class="status" aria-live="polite"></p>
           <p id="announcementStatus" class="status" aria-live="polite"></p>
         </details>
         <div class="field" id="noteTimelineSetting" hidden><label for="noteTimelineShare"><input type="checkbox" id="noteTimelineShare"> タイムラインにも表示する</label><label for="notePublicSafety"><input type="checkbox" id="notePublicSafety"> 一般公開に適した内容であることを確認しました</label><p style="font-size:0.82rem;opacity:.8;margin-top:6px">チェックした公開ノートだけが交流広場にも表示されます。後から変更できます。</p></div>
@@ -69,9 +75,13 @@
   function updateCounts(){document.getElementById('titleCount').textContent=`${document.getElementById('title').value.length} / 80`;document.getElementById('bodyCount').textContent=`${document.getElementById('body').value.length} / 1000`}
   const announcementOutput=document.getElementById('announcementOutput'),announcementStatus=document.getElementById('announcementStatus');
   function getAnnouncementDraft(){if(!ready||busy)return null;const select=document.getElementById('novel'),option=select.selectedOptions[0];return window.NovelightAuthorAnnouncementDraft?.buildDraft({kind:document.getElementById('announcementKind').value,novelId:select.value,novelTitle:option?.textContent||'',detail:document.getElementById('announcementDetail').value})||null}
-  function clearAnnouncement(){announcementOutput.value='';announcementStatus.textContent=''}
+  const introOutput=document.getElementById('introOutput'),introStatus=document.getElementById('introStatus');
+  function clearIntro(){introOutput.value='';introStatus.textContent=''}
+  function clearAnnouncement(){announcementOutput.value='';announcementStatus.textContent='';clearIntro()}
   document.getElementById('announcementInsert').onclick=()=>{const title=document.getElementById('title'),body=document.getElementById('body');if(!window.NovelightAuthorAnnouncementDraft?.canInsert({ready,busy,noteId:document.getElementById('noteId').value,title:title.value,body:body.value})){announcementStatus.textContent='入力済み・編集中のノートは上書きしません。空欄の新規ノートでお試しください。';return}const draft=getAnnouncementDraft();if(!draft){announcementStatus.textContent='公開作品と告知の種類を確認してください。';return}title.value=draft.title;body.value=draft.body;updateCounts();announcementStatus.textContent='下書きを入れました。内容を確認・編集してから公開してください。'};
   document.getElementById('announcementSocial').onclick=()=>{clearAnnouncement();const draft=getAnnouncementDraft();if(!draft){announcementStatus.textContent='公開作品と告知の種類を確認してください。';return}announcementOutput.value=draft.social;announcementOutput.focus();announcementOutput.select();announcementStatus.textContent='コピー用の下書きです。Xへは投稿していません。'};
+  document.getElementById('introTarget').addEventListener('change',clearIntro);
+  document.getElementById('introPreview').onclick=()=>{clearIntro();if(!ready||busy)return;const select=document.getElementById('novel'),option=select.selectedOptions[0];const intro=window.NovelightAuthorAnnouncementDraft?.buildIntro({novelId:select.value,novelTitle:option?.textContent||'',detail:document.getElementById('announcementDetail').value,target:Number(document.getElementById('introTarget').value)});if(!intro){introStatus.textContent='公開作品を選択し、伝えたいことを入力してください。';return}introOutput.value=intro.text;introStatus.textContent=intro.length+'文字 / 目安'+intro.target+'文字（改行も1文字として計算）'+(intro.remaining<0?'。'+(-intro.remaining)+'文字超過しています。上の入力を短くしてください。':'。目安以内です。内容を確認してコピーできます。');introOutput.focus();introOutput.select()};
   for(const id of ['novel','announcementKind','announcementDetail']){document.getElementById(id).addEventListener('input',clearAnnouncement);document.getElementById(id).addEventListener('change',clearAnnouncement)}
   function resetForm(){form.reset();clearAnnouncement();document.getElementById('noteId').value='';document.getElementById('formTitle').textContent='新しいノート';save.textContent='公開する';document.getElementById('cancel').hidden=true;updateCounts()}
   function editNote(note){clearAnnouncement();document.getElementById('noteId').value=note.id;document.getElementById('title').value=note.title;document.getElementById('body').value=note.body;document.getElementById('novel').value=note.linked_novel_id==null?'':String(note.linked_novel_id);document.getElementById('noteTimelineShare').checked=note.show_in_timeline===true;document.getElementById('notePublicSafety').checked=false;document.getElementById('formTitle').textContent='ノートを編集';save.textContent='変更を保存';document.getElementById('cancel').hidden=false;updateCounts();if(window.matchMedia('(max-width:820px)').matches){form.scrollIntoView({behavior:'smooth',block:'start'})}else{form.scrollTo({top:0,behavior:'smooth'})}}

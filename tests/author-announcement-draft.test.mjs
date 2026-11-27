@@ -7,7 +7,7 @@ const runtime = readFileSync('novelight-author-announcement-draft.js', 'utf8');
 const page = readFileSync('author-notes.html', 'utf8');
 const browser = { window: {} };
 vm.runInNewContext(runtime, browser);
-const { buildDraft, canInsert } =
+const { buildDraft, buildIntro, canInsert } =
   browser.window.NovelightAuthorAnnouncementDraft;
 const fixture = {
   novelId: '42',
@@ -82,4 +82,28 @@ test('existing owner note form remains the only publishing path', () => {
     /\b(fetch|XMLHttpRequest|localStorage|sendBeacon)\s*\(/u
   );
   assert.doesNotMatch(runtime, /\.submit\(|\.rpc\(|innerHTML/u);
+});
+
+test('short introduction uses only the supplied facts and counts code points', () => {
+  const intro = buildIntro({
+    ...fixture,
+    detail: '旅の物語😀',
+    target: 50
+  });
+  assert.equal(intro.text, '『月夜の旅』\n旅の物語😀');
+  assert.equal(intro.length, Array.from(intro.text).length);
+  assert.equal(intro.remaining, 50 - intro.length);
+  assert.ok(Object.isFrozen(intro));
+  const long = buildIntro({
+    ...fixture,
+    detail: 'あ'.repeat(150),
+    target: 150
+  });
+  assert.ok(long.remaining < 0);
+  assert.match(long.text, /あ{150}$/u);
+  assert.equal(buildIntro({ ...fixture, target: 100 }), null);
+  assert.equal(buildIntro({ ...fixture, detail: ' ', target: 50 }), null);
+  assert.equal(buildIntro({ ...fixture, novelId: '', target: 50 }), null);
+  assert.match(page, /id="introPreview" class="btn" type="button"/u);
+  assert.match(page, /id="introOutput" rows="3" readonly/u);
 });
