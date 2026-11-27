@@ -747,8 +747,8 @@ test('AI typed review inputs are operable offline on desktop and mobile', async 
   );
   await page.addScriptTag({ content: script });
   await page.evaluate(() => {
-    const root = document.querySelector('#review');
-    const api = window.NovelightAiReviewResult;
+    const root = globalThis.document.querySelector('#review');
+    const api = globalThis.NovelightAiReviewResult;
     const catalog = {
       plan: 'premium',
       novels: [{ id: '1', label: '架空作品' }],
@@ -756,7 +756,7 @@ test('AI typed review inputs are operable offline on desktop and mobile', async 
       genres: [{ id: 'その他', label: 'その他' }],
       tags: [{ id: 'adventure', label: '冒険' }]
     };
-    const section = document.createElement('section');
+    const section = globalThis.document.createElement('section');
     root.appendChild(section);
     const author = api.buildSelectionForm(
       section,
@@ -764,7 +764,7 @@ test('AI typed review inputs are operable offline on desktop and mobile', async 
       catalog,
       false
     );
-    const search = document.createElement('section');
+    const search = globalThis.document.createElement('section');
     root.appendChild(search);
     const reader = api.buildSelectionForm(
       search,
@@ -772,7 +772,7 @@ test('AI typed review inputs are operable offline on desktop and mobile', async 
       catalog,
       false
     );
-    window.reviewFormProbe = { author, reader };
+    globalThis.reviewFormProbe = { author, reader };
   });
   const author = page.locator('[data-novelight-ai-form="promotion-assistant"]');
   await author.getByLabel('作品ID').selectOption('1');
@@ -789,8 +789,8 @@ test('AI typed review inputs are operable offline on desktop and mobile', async 
   await reader.getByLabel('指定ジャンル').selectOption('その他');
   await reader.getByLabel('指定公式タグID').selectOption(['adventure']);
   const selections = await page.evaluate(() => ({
-    author: window.reviewFormProbe.author.read(),
-    reader: window.reviewFormProbe.reader.read()
+    author: globalThis.reviewFormProbe.author.read(),
+    reader: globalThis.reviewFormProbe.reader.read()
   }));
   expect(selections.author).toEqual({
     novelId: '1',
@@ -808,7 +808,8 @@ test('AI typed review inputs are operable offline on desktop and mobile', async 
   }
   expect(
     await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth
+      () =>
+        globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth
     )
   ).toBe(true);
 });
