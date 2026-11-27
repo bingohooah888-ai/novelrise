@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { prepareScreenFlow } from './helpers/ai-offline-screen-flow.mjs';
 import {
   createOfflineAdminSelectionReader,
   loadOfflineOfficialThumbnail
@@ -131,7 +132,13 @@ test('FAQ reads canonical bundled help and rejects unauthorized queries', async 
   const { state, admin } = fixture();
   const feature = 'official-faq-assistant';
   const selection = { query: '予約公開' };
-  const prepared = await admin.prepare(feature, selection, req, res);
+  const prepared = await prepareScreenFlow(
+    'selection',
+    admin,
+    feature,
+    selection,
+    { req, res }
+  );
   const catalog = JSON.parse(prepared.prompt.user).untrusted_data.topics;
   const publishing = catalog.find((row) => row.key === 'publishing');
   assert.ok(publishing);
@@ -141,7 +148,7 @@ test('FAQ reads canonical bundled help and rejects unauthorized queries', async 
       items: [{ key: 'publishing', part: 'summary', index: 0 }]
     })
   };
-  const reviewed = await admin.review(feature, selection, req, res, response);
+  const reviewed = await prepared.review(response, publishing.summary);
   assert.equal(reviewed.items[0].quote, publishing.summary);
   assert.equal(reviewed.items[0].href, 'help.html#publishing');
   await assert.rejects(
@@ -155,7 +162,13 @@ test('classification only uses current published general metadata and editor gen
   const { state, admin } = fixture();
   const feature = 'classification-anomaly';
   const selection = { novelId: '1' };
-  const prepared = await admin.prepare(feature, selection, req, res);
+  const prepared = await prepareScreenFlow(
+    'selection',
+    admin,
+    feature,
+    selection,
+    { req, res }
+  );
   const data = JSON.parse(prepared.prompt.user).untrusted_data;
   assert.ok(data.genres.includes('異世界ファンタジー'));
   assert.equal(data.genres.length, 10);
@@ -171,7 +184,7 @@ test('classification only uses current published general metadata and editor gen
       ]
     })
   };
-  const result = await admin.review(feature, selection, req, res, response);
+  const result = await prepared.review(response, '異世界ファンタジー');
   assert.equal(result.requiresHumanReview, true);
   state.description = '別の説明';
   await assert.rejects(admin.review(feature, selection, req, res, response));
@@ -186,7 +199,13 @@ test('official thumbnail reuses geometry, binds owner and current assets', async
   const { state, client, author } = fixture();
   const feature = 'thumbnail-coordinator';
   const selection = { novelId: 1, templateKey: 'book-v1', theme: '黄金' };
-  const prepared = await author.prepare(feature, selection, TOKEN);
+  const prepared = await prepareScreenFlow(
+    'owner',
+    author,
+    feature,
+    selection,
+    { token: TOKEN }
+  );
   assert.match(prepared.prompt.user, /黄金 background/u);
   assert.doesNotMatch(prepared.prompt.user, /PRIVATE_MASK_URL|INTERNAL_COVER/u);
   const response = {
@@ -199,7 +218,7 @@ test('official thumbnail reuses geometry, binds owner and current assets', async
       ]
     })
   };
-  const result = await author.review(feature, selection, TOKEN, response);
+  const result = await prepared.review(response, 'asset-0');
   assert.equal(result.selections.length, 2);
   state.templateRevision++;
   await assert.rejects(author.review(feature, selection, TOKEN, response));

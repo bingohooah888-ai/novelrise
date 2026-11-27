@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
+import { prepareScreenFlow } from './helpers/ai-offline-screen-flow.mjs';
 import {
   createOfflineAdminPolicyReader,
   projectAdminReviewedExcerpt
@@ -143,7 +144,13 @@ for (const feature of ['comment-moderation', 'policy-risk-review']) {
       feature === 'comment-moderation'
         ? { commentId: COMMENT, ...reviewed }
         : { episodeId: '2', ...reviewed };
-    const prepared = await policy.prepare(feature, selection, req, res);
+    const prepared = await prepareScreenFlow(
+      'policy',
+      policy,
+      feature,
+      selection,
+      { req, res }
+    );
     const data = JSON.parse(prepared.prompt.user).untrusted_data;
     assert.equal(data.body, safe);
     assert.equal(data.policy.length, 9);
@@ -163,7 +170,7 @@ for (const feature of ['comment-moderation', 'policy-risk-review']) {
         ]
       })
     };
-    const checked = await policy.review(feature, selection, req, res, response);
+    const checked = await prepared.review(response, policyQuote);
     assert.equal(checked.requiresHumanReview, true);
     assert.equal(checked.violationVerified, false);
     assert.equal(checked.scope, 'human_reviewed_excerpt');
@@ -184,7 +191,13 @@ test('inquiry support uses reviewed ordinary passages', async () => {
   const { state, inquiry } = fixture();
   const feature = 'inquiry-assistant';
   const selection = { inquiryId: '3', ...reviewed };
-  const prepared = await inquiry.prepare(feature, selection, req, res);
+  const prepared = await prepareScreenFlow(
+    'selection',
+    inquiry,
+    feature,
+    selection,
+    { req, res }
+  );
   const data = JSON.parse(prepared.prompt.user).untrusted_data;
   assert.equal(data.redactedBody, safe);
   assert.ok(data.categories.includes('posting'));
@@ -196,7 +209,7 @@ test('inquiry support uses reviewed ordinary passages', async () => {
       items: [{ key: 'publishing', part: 'summary', index: 0 }]
     })
   };
-  const result = await inquiry.review(feature, selection, req, res, response);
+  const result = await prepared.review(response, 'posting');
   assert.equal(result.requiresHumanReview, true);
   assert.equal(result.category, 'posting');
   state.category = '個人情報の開示・利用目的通知';
@@ -209,7 +222,13 @@ test('inquiry support uses reviewed ordinary passages', async () => {
 test('incident counts recorded thumbnail failures', async () => {
   const { state, incident } = fixture();
   const selection = { days: 7 };
-  const prepared = await incident.prepare(selection, req, res);
+  const prepared = await prepareScreenFlow(
+    'incident',
+    incident,
+    'error-log-summary',
+    selection,
+    { req, res }
+  );
   const data = JSON.parse(prepared.prompt.user).untrusted_data;
   assert.deepEqual(data.counts, [
     { key: 'thumbnail-render:render_failed', count: 5 }
@@ -218,7 +237,10 @@ test('incident counts recorded thumbnail failures', async () => {
     requestHash: prepared.requestHash,
     modelText: '{"keys":["thumbnail-render:render_failed"]}'
   };
-  const result = await incident.review(selection, req, res, response);
+  const result = await prepared.review(
+    response,
+    'thumbnail-render:render_failed'
+  );
   assert.equal(result.scope, 'recorded_thumbnail_failures_only');
   assert.equal(result.rootCauseVerified, false);
   state.count++;
@@ -271,7 +293,13 @@ test('KPI uses adjacent complete JST windows', async () => {
     }
   });
   const selection = { days: 7 };
-  const prepared = await reader.prepare(selection, req, res);
+  const prepared = await prepareScreenFlow(
+    'kpi',
+    reader,
+    'kpi-anomaly',
+    selection,
+    { req, res }
+  );
   const data = JSON.parse(prepared.prompt.user).untrusted_data;
   assert.deepEqual(data.rows, [
     { metric: 'newUsers', current: 60, previous: 60 },
@@ -293,7 +321,7 @@ test('KPI uses adjacent complete JST windows', async () => {
     requestHash: prepared.requestHash,
     modelText: '{"metrics":["newUsers"]}'
   };
-  const checked = await reader.review(selection, req, res, response);
+  const checked = await prepared.review(response, 'newUsers');
   assert.equal(checked.statisticalAnomalyVerified, false);
   assert.equal(checked.scope, 'registrations_and_episode_pageviews_only');
   await assert.rejects(

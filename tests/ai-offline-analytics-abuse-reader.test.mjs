@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { prepareScreenFlow } from './helpers/ai-offline-screen-flow.mjs';
 import { createOfflineOwnerEvidenceReader } from '../api/_lib/ai/offline-evidence-review.js';
 import { createOfflineAdminAbuseReader } from '../api/_lib/ai/offline-aggregate-review.js';
 
@@ -131,10 +132,12 @@ for (const [feature, kind] of [
 ]) {
   test('scoped work analytics: ' + feature, async () => {
     const { reader, state } = fixture();
-    const prepared = await reader.prepare(feature, work, TOKEN);
+    const prepared = await prepareScreenFlow('owner', reader, feature, work, {
+      token: TOKEN
+    });
     assert.doesNotMatch(prepared.prompt.user, /UNSELECTED_WORK/u);
     const response = { requestHash: prepared.requestHash, modelText };
-    const result = await reader.review(feature, work, TOKEN, response);
+    const result = await prepared.review(response, '架空の改善候補');
     assert.equal(result.kind, kind);
     assert.equal(result.observed.cohort.started, 80);
     assert.equal(result.observed.cohort.continued, 30);
@@ -170,12 +173,14 @@ test('work analytics reject missing scope, draft and small cells', async () => {
 test('growth uses author-wide period totals once, not daily sums', async () => {
   const { reader, state } = fixture();
   const feature = 'author-growth-report';
-  const prepared = await reader.prepare(feature, growth, TOKEN);
+  const prepared = await prepareScreenFlow('owner', reader, feature, growth, {
+    token: TOKEN
+  });
   const response = {
     requestHash: prepared.requestHash,
     modelText: '{"metric":"first_to_second_continuation"}'
   };
-  const result = await reader.review(feature, growth, TOKEN, response);
+  const result = await prepared.review(response, '80');
   assert.equal(result.scope, 'author_all_works');
   assert.equal(result.current.started, 80);
   assert.equal(result.previous.started, 100);
@@ -249,13 +254,19 @@ test('abuse reader uses admin allowlist and only bounded signal columns', async 
     },
     json() {}
   };
-  const prepared = await reader.prepare(req, res);
+  const prepared = await prepareScreenFlow(
+    'abuse',
+    reader,
+    'abuse-analysis',
+    {},
+    { req, res }
+  );
   assert.doesNotMatch(prepared.prompt.user, /PRIVATE_USER|PRIVATE_EVIDENCE/u);
   const response = {
     requestHash: prepared.requestHash,
     modelText: JSON.stringify({ ids: [signal] })
   };
-  const result = await reader.review(req, res, response);
+  const result = await prepared.review(response, 'robotic_valid_read_burst');
   assert.equal(result.abuseVerified, false);
   assert.equal(result.items[0].id, signal);
   status = 'confirmed';
