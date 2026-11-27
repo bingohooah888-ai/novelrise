@@ -4,7 +4,10 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { requireAdmin } from '../admin-auth.js';
-import { normalizeCoverQuad, resolveSourceCoverQuad } from '../cover-mask-png.js';
+import {
+  normalizeCoverQuad,
+  resolveSourceCoverQuad
+} from '../cover-mask-png.js';
 import { assertAiWorkAccess } from './context.js';
 import { requireAiFeature } from './registry.js';
 
@@ -576,8 +579,8 @@ export async function loadOfflineOfficialThumbnail(client, templateKey) {
   };
 }
 
-// The existing classic browser script contains a JSON-compatible literal.
-// Parse that exact bundled source as data, never execute source code.
+// Read the existing classic browser script's restricted object literal.
+// Convert only quoted strings and bare keys to JSON; never execute code.
 // A format change fails closed rather than falling back to stale FAQ copy.
 async function loadOfficialHelpTopics() {
   const source = await readFile(
@@ -589,7 +592,13 @@ async function loadOfficialHelpTopics() {
   if (parts.length !== 2) invalid();
   const end = parts[1].indexOf('\n  });');
   if (end < 0) invalid();
-  const catalog = JSON.parse(parts[1].slice(0, end + 4));
+  const literal = parts[1].slice(0, end + 4);
+  if (literal.includes('"') || literal.includes('\\')) invalid();
+  const json = literal.replace(
+    /'([^']*)'|([A-Za-z][A-Za-z0-9_]*)(?=\s*:)/gu,
+    (_, quoted, bare) => JSON.stringify(quoted ?? bare)
+  );
+  const catalog = JSON.parse(json);
   if (!catalog || typeof catalog !== 'object' || Array.isArray(catalog)) {
     invalid();
   }
@@ -612,10 +621,7 @@ async function loadOfficialGenres() {
   if (end < 0) invalid();
   const options = parts[1].slice(0, end);
   const matches = [...options.matchAll(/<option>([^<>]+)<\/option>/gu)];
-  if (
-    !matches.length ||
-    matches.map((match) => match[0]).join('') !== options
-  ) {
+  if (!matches.length || matches.map((match) => match[0]).join('') !== options) {
     invalid();
   }
   return matches.map((match) => match[1]);
