@@ -172,3 +172,36 @@ test('all ten intended screens have only a hidden review host', async () => {
     assert.ok(caller.includes("page:'" + page + "'"));
   }
 });
+
+test('temporary screen test formatter diagnostic', async () => {
+  const { format, resolveConfig } = await import('prettier');
+  const path = 'tests/ai-offline-screen-bindings.test.mjs';
+  const full = await readFile(path, 'utf8');
+  const marker = "\ntest('temporary screen test formatter diagnostic'";
+  const index = full.indexOf(marker);
+  assert.ok(index > 0);
+  const source = full.slice(0, index);
+  const config = await resolveConfig(path);
+  const formatted = await format(source, { ...config, filepath: path });
+  const original = source.split('\n');
+  const expected = formatted.split('\n');
+  let start = 0;
+  while (start < original.length && original[start] === expected[start]) {
+    start++;
+  }
+  let end = 0;
+  while (
+    end < original.length - start &&
+    end < expected.length - start &&
+    original[original.length - 1 - end] ===
+      expected[expected.length - 1 - end]
+  ) {
+    end++;
+  }
+  const diff = {
+    start,
+    remove: original.length - start - end,
+    insert: expected.slice(start, expected.length - end)
+  };
+  process.stdout.write('AI_SCREEN_FORMAT_DIAGNOSTIC ' + JSON.stringify(diff) + '\n');
+});

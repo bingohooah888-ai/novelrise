@@ -566,7 +566,16 @@
   // The existing page code invokes this only from its current access/load
   // path. There is no URL switch, environment switch, or browser-side enable.
   // No private value is read from the page, collected, transmitted or stored.
-  function mountDormantPage({ document, client, page }) {
+  function mountDormantPage(options) {
+    try {
+      return mountHiddenScreen(options);
+    } catch {
+      // An unavailable dormant UI must never break the existing page.
+      return false;
+    }
+  }
+
+  function mountHiddenScreen({ document, client, page }) {
     const keys = pageFeatures[page];
     if (!keys || !document || !client?.auth?.onAuthStateChange) return false;
     const root = document.querySelector('[data-novelight-ai-review-host]');
