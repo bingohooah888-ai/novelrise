@@ -693,3 +693,170 @@ export function createOfflineAdminSelectionReader({ supabase, env } = {}) {
     }
   });
 }
+
+// Server-only offline adapter. createReaderClient must use the existing
+// project publishable key and the current reader bearer, never a service key.
+// No public route, AI provider, tracking, impression or scoring writes.
+export function createOfflineReaderSelectionReader({
+  createReaderClient
+} = {}) {
+  async function load(feature, selection, token) {
+    const natural = feature === 'natural-search-ai';
+    if (!natural && feature !== 'discovery-assistant') invalid();
+    exactFields(selection, natural ? ['query', 'genre', 'tagIds'] : ['query']);
+    const query = text(selection.query, 160);
+    const genre = natural ? selection.genre : '';
+    if (typeof genre !== 'string' || genre.length > 100) invalid();
+    if (genre && !(await loadOfficialGenres()).includes(genre)) invalid();
+    const tagIds = natural ? selection.tagIds : [];
+    if (!Array.isArray(tagIds) || tagIds.length > 10) invalid();
+    for (const tagId of tagIds) key(tagId);
+    if (new Set(tagIds).size !== tagIds.length) invalid();
+    if (typeof token !== 'string' || !/^\S{16,4096}$/u.test(token)) invalid();
+    const client = await createReaderClient({ token });
+    const identity = await client.auth.getUser(token);
+    const actor = identity?.data?.user;
+    if (identity?.error || actor?.is_anonymous === true) invalid();
+    if (typeof actor?.id !== 'string' || !actor.id) invalid();
+
+    // Neutral search is the existing bounded candidate source. Discovery
+    // uses the recent neutral list. AI only selects evidence in source order.
+    const result = await client.rpc('novelight_neutral_search_v2', {
+      p_keyword: natural ? query : null,
+      p_genre: genre || null,
+      p_official_tag_ids: tagIds,
+      p_sort: 'new',
+      p_limit: 24,
+      p_offset: 0
+    });
+    if (result?.error || !Array.isArray(result?.data)) invalid();
+    if (result.data.length > 24) invalid();
+    const candidateIds = result.data.map((row) => {
+      const id = text(row?.novel_id, 20);
+      if (!/^[1-9][0-9]{0,19}$/u.test(id)) invalid();
+      return id;
+    });
+    if (new Set(candidateIds).size !== candidateIds.length) invalid();
+    if (!candidateIds.length) invalid();
+
+    const metadata = await client.rpc('novelight_search_card_metadata', {
+      p_novel_ids: candidateIds
+    });
+    if (metadata?.error || !Array.isArray(metadata?.data)) invalid();
+    if (metadata.data.length > candidateIds.length) invalid();
+    const currentRows = new Map();
+    for (const row of metadata.data) {
+      if (!candidateIds.includes(row?.novel_id)) invalid();
+      if (currentRows.has(row.novel_id)) invalid();
+      currentRows.set(row.novel_id, row);
+    }
+
+    const hidden = await client.rpc('novelight_hidden_novel_ids', {
+      p_novel_ids: candidateIds
+    });
+    if (hidden?.error || !Array.isArray(hidden?.data)) invalid();
+    if (hidden.data.some((id) => !candidateIds.includes(id))) invalid();
+    const excluded = new Set(hidden.data);
+
+    const rows = [];
+    const requestedTags = new Map();
+    for (const row of result.data) {
+      const id = row.novel_id;
+      const current = currentRows.get(id);
+      // Missing card metadata also excludes works unpublished since search.
+      if (excluded.has(id) || current?.content_rating !== 'general') {
+        continue;
+      }
+      if (genre && row.genre !== genre) invalid();
+      const ids = row.official_tag_ids;
+      const names = row.official_tag_names;
+      const custom = row.custom_tag_names;
+      if (!Array.isArray(ids) || !Array.isArray(names)) invalid();
+      if (ids.length !== names.length || ids.length > 10) invalid();
+      if (new Set(ids).size !== ids.length) invalid();
+      if (!Array.isArray(custom) || custom.length > 5) invalid();
+      // Do not use stale tag labels when the second source disagrees.
+      if (
+        selectionDigest(names) !== selectionDigest(current.official_tag_names)
+      ) {
+        invalid();
+      }
+      if (
+        selectionDigest(custom) !== selectionDigest(current.custom_tag_names)
+      ) {
+        invalid();
+      }
+      for (const tagId of tagIds) {
+        const index = ids.indexOf(tagId);
+        if (index < 0) invalid();
+        const name = text(names[index], 80);
+        if (requestedTags.has(tagId) && requestedTags.get(tagId) !== name) {
+          invalid();
+        }
+        requestedTags.set(tagId, name);
+      }
+      rows.push({
+        novelId: id,
+        title: row.title,
+        description: row.description,
+        genre: row.genre,
+        tags: [...new Set([...names, ...custom])]
+      });
+      if (rows.length === 12) break;
+    }
+    // Do not prompt a model with an empty or unverified candidate set.
+    if (!rows.length) invalid();
+    const after = await client.auth.getUser(token);
+    if (after?.error || after?.data?.user?.id !== actor.id) invalid();
+    if (after.data.user.is_anonymous === true) invalid();
+
+    const principal = { id: actor.id };
+    const input = natural
+      ? {
+          principal,
+          snapshot: {
+            query,
+            genre,
+            tags: [...new Set(tagIds.map((id) => requestedTags.get(id)))],
+            rows
+          }
+        }
+      : { principal, query, rows };
+    const prepared = prepareOfflineSelectionPrompt(feature, input);
+    // Bind the explicit tag IDs as well as the projected tag names, actor,
+    // and bearer digest. Never send credentials to the model.
+    const requestHash = selectionDigest([
+      prepared.requestHash,
+      tagIds,
+      selectionDigest(token)
+    ]);
+    return { input, prepared, requestHash };
+  }
+
+  return Object.freeze({
+    async prepare(feature, selection, token) {
+      try {
+        const value = await load(feature, selection, token);
+        return {
+          prompt: value.prepared.prompt,
+          requestHash: value.requestHash
+        };
+      } catch {
+        invalid();
+      }
+    },
+    async review(feature, selection, token, response) {
+      try {
+        exactFields(response, ['requestHash', 'modelText']);
+        const value = await load(feature, selection, token);
+        if (value.requestHash !== response.requestHash) invalid();
+        return reviewOfflineSelectionResponse(feature, value.input, {
+          requestHash: value.prepared.requestHash,
+          modelText: response.modelText
+        });
+      } catch {
+        invalid();
+      }
+    }
+  });
+}
