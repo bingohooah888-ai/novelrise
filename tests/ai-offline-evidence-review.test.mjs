@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import {
   reviewRecapEvidence,
   reviewGlossaryEvidence,
-  reviewVirtualBetaReader
+  reviewVirtualBetaReader,
+  reviewWritingEdits,
+  reviewPrepublishIssues
 } from '../api/_lib/ai/offline-evidence-review.js';
 
 const novel = { id: 1, user_id: 'author', publiclyVisible: true };
@@ -122,5 +125,60 @@ test('bounded evidence rejects duplicate and oversized model results', () => {
   assert.deepEqual(
     reviewRecapEvidence({ ...input, progress: null, modelText: model([]) }),
     { kind: 'source_excerpts_only', items: [] }
+  );
+});
+
+const authorInput = {
+  ...input,
+  principal: { id: 'author' },
+  expectedRevisions: {
+    11: createHash('sha256')
+      .update(JSON.stringify([row.title, row.content]))
+      .digest('hex')
+  }
+};
+
+test('writing edits are bound to the exact revision and never applied', () => {
+  const item = { ...quote, replacement: '王城の門' };
+  const modelText = model([item]);
+  const before = JSON.stringify(authorInput);
+  const result = reviewWritingEdits({ ...authorInput, modelText });
+  assert.equal(result.requiresAuthorReview, true);
+  assert.equal(result.items[0].replacement, item.replacement);
+  assert.equal(result.items[0].sourceHash, authorInput.expectedRevisions[11]);
+  assert.equal(JSON.stringify(authorInput), before);
+  assert.throws(() => reviewWritingEdits({ ...input, modelText }));
+  assert.throws(() =>
+    reviewWritingEdits({
+      ...authorInput,
+      episodes: [{ ...row, content: body + '改訂' }],
+      modelText
+    })
+  );
+  assert.throws(() =>
+    reviewWritingEdits({ ...authorInput, modelText: model([item, item]) })
+  );
+});
+
+test('prepublish observations are candidates and cannot block publication', () => {
+  const item = {
+    ...quote,
+    kind: 'continuity',
+    observation: '確認候補'
+  };
+  const modelText = model([item]);
+  const result = reviewPrepublishIssues({ ...authorInput, modelText });
+  assert.equal(result.blocksPublication, false);
+  assert.equal(result.items[0].kind, 'continuity');
+  const forged = model([{ ...item, block: true }]);
+  assert.throws(() =>
+    reviewPrepublishIssues({ ...authorInput, modelText: forged })
+  );
+  assert.throws(() =>
+    reviewPrepublishIssues({
+      ...authorInput,
+      expectedRevisions: {},
+      modelText
+    })
   );
 });

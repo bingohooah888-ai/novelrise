@@ -1,6 +1,7 @@
 // Offline only. No routes, provider calls, storage, or authorization changes.
 // A future server caller MUST establish work ownership, visibility, and
 // completed-episode membership from trusted data before calling this module.
+import { createHash } from 'node:crypto';
 import { projectAiWorkContext } from './context.js';
 
 const INVALID = 'AI_OFFLINE_EVIDENCE_INVALID';
@@ -148,6 +149,83 @@ export function reviewVirtualBetaReader(input) {
   return {
     kind: 'hypothetical_ai_review',
     requiresAuthorReview: true,
+    items
+  };
+}
+
+// Bound suggestions to the full original episode revision, not just to
+// matching words that may reappear after an edit. The expected revisions
+// must have been captured at request creation by the trusted caller.
+function revision(input, source) {
+  const row = input.episodes.find(
+    (episode) => String(episode.id) === source.episodeId
+  );
+  const expected = input.expectedRevisions;
+  if (!expected || typeof expected !== 'object') invalid();
+  if (!Object.hasOwn(expected, source.episodeId)) invalid();
+  if (typeof row.title !== 'string') invalid();
+  if (Buffer.byteLength(row.content, 'utf8') > 1000000) invalid();
+  const actual = createHash('sha256')
+    .update(JSON.stringify([row.title, row.content]))
+    .digest('hex');
+  if (expected[source.episodeId] !== actual) invalid();
+  return actual;
+}
+
+export function reviewWritingEdits(input) {
+  const context = projected(input, 'author');
+  const items = parseItems(input.modelText, 8).map((item) => {
+    exactFields(item, ['episodeId', 'offset', 'quote', 'replacement']);
+    const source = evidence(context, item);
+    const replacement = boundedText(item.replacement, 600);
+    if (replacement === source.quote) invalid();
+    return { ...source, sourceHash: revision(input, source), replacement };
+  });
+  // Reject ambiguous or overlapping suggestions, instead of making edits.
+  for (let i = 0; i < items.length; i += 1) {
+    for (let j = 0; j < i; j += 1) {
+      const a = items[i];
+      const b = items[j];
+      if (a.episodeId !== b.episodeId) continue;
+      if (
+        a.offset < b.offset + b.quote.length &&
+        b.offset < a.offset + a.quote.length
+      )
+        invalid();
+    }
+  }
+  return { kind: 'proposed_edits', requiresAuthorReview: true, items };
+}
+
+const CHECK_KINDS = [
+  'spelling',
+  'format',
+  'repetition',
+  'point_of_view',
+  'continuity'
+];
+
+export function reviewPrepublishIssues(input) {
+  const context = projected(input, 'author');
+  const seen = new Set();
+  const items = parseItems(input.modelText, 12).map((item) => {
+    exactFields(item, ['kind', 'episodeId', 'offset', 'quote', 'observation']);
+    if (!CHECK_KINDS.includes(item.kind)) invalid();
+    const source = evidence(context, item);
+    const key = JSON.stringify([item.kind, source.episodeId, source.offset]);
+    if (seen.has(key)) invalid();
+    seen.add(key);
+    return {
+      ...source,
+      sourceHash: revision(input, source),
+      kind: item.kind,
+      observation: boundedText(item.observation, 320)
+    };
+  });
+  return {
+    kind: 'prepublish_review_candidates',
+    requiresAuthorReview: true,
+    blocksPublication: false,
     items
   };
 }
