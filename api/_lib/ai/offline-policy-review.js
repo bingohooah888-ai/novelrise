@@ -99,3 +99,85 @@ export function reviewPolicyEvidence({
     items
   };
 }
+
+// The authorized administrator must supply the current visible comment
+// snapshot, not a model-selected target. No moderation action is returned.
+export function reviewCommentModeration(input) {
+  const { comment, expectedCommentHash } = input;
+  exactFields(comment, ['id', 'body', 'visible']);
+  if (comment.visible !== true) invalid();
+  requireDigest(comment, expectedCommentHash);
+  const subject = { id: comment.id, body: comment.body };
+  const result = reviewPolicyEvidence({
+    policy: input.policy,
+    subject,
+    expectedPolicyHash: input.expectedPolicyHash,
+    expectedSubjectHash: hash(subject),
+    modelText: input.modelText
+  });
+  return {
+    ...result,
+    kind: 'comment_moderation_candidates',
+    commentHash: expectedCommentHash,
+    automaticAction: false
+  };
+}
+
+// Both excerpts must be supplied with permission by the trusted caller.
+// Exact matches are evidence candidates, never proof of authorship or copying.
+export function reviewSimilarityEvidence({
+  snapshot,
+  expectedHash,
+  modelText
+}) {
+  exactFields(snapshot, ['first', 'second']);
+  for (const row of [snapshot.first, snapshot.second]) {
+    exactFields(row, ['id', 'body']);
+    if (typeof row.id !== 'string') invalid();
+    if (!/^[1-9][0-9]{0,19}$/u.test(row.id)) invalid();
+    text(row.body, 24000);
+  }
+  if (snapshot.first.id === snapshot.second.id) invalid();
+  requireDigest(snapshot, expectedHash);
+  if (typeof modelText !== 'string') invalid();
+  if (Buffer.byteLength(modelText, 'utf8') > 10000) invalid();
+  let parsed;
+  try {
+    parsed = JSON.parse(modelText);
+  } catch {
+    invalid();
+  }
+  exactFields(parsed, ['items']);
+  if (!Array.isArray(parsed.items) || parsed.items.length > 8) invalid();
+  const seen = new Set();
+  const items = parsed.items.map((item) => {
+    exactFields(item, ['firstOffset', 'secondOffset', 'quote']);
+    const quote = text(item.quote, 240);
+    if (Array.from(quote.replace(/\s/gu, '')).length < 20) invalid();
+    for (const [row, offset] of [
+      [snapshot.first, item.firstOffset],
+      [snapshot.second, item.secondOffset]
+    ]) {
+      if (!Number.isSafeInteger(offset) || offset < 0) invalid();
+      if (row.body.slice(offset, offset + quote.length) !== quote) invalid();
+    }
+    const key = JSON.stringify([item.firstOffset, item.secondOffset]);
+    if (seen.has(key)) invalid();
+    seen.add(key);
+    // Return source positions only; do not duplicate the submitted passages.
+    return {
+      firstOffset: item.firstOffset,
+      secondOffset: item.secondOffset,
+      length: quote.length
+    };
+  });
+  return {
+    kind: 'exact_overlap_candidates',
+    firstId: snapshot.first.id,
+    secondId: snapshot.second.id,
+    sourceHash: expectedHash,
+    requiresHumanReview: true,
+    plagiarismVerified: false,
+    items
+  };
+}
