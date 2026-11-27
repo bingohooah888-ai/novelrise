@@ -63,12 +63,15 @@ test('inquiry support uses fixed text and current page counts', () => {
     { status: 'resolved' },
     { status: 'unknown' }
   ]);
-  assert.deepEqual({ ...counts }, {
-    new: 1,
-    reviewing: 1,
-    resolved: 1,
-    other: 1
-  });
+  assert.deepEqual(
+    { ...counts },
+    {
+      new: 1,
+      reviewing: 1,
+      resolved: 1,
+      other: 1
+    }
+  );
   assert.match(inquiries, /preview\.readOnly=true/u);
   assert.match(inquiries, /このページのみ/u);
 });
