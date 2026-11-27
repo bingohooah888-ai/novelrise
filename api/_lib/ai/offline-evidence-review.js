@@ -503,6 +503,13 @@ const TASKS = Object.freeze({
       'Select up to 5 exact excerpts from the supplied read episodes only. No generated summary or future information. Each item: ' +
       QUOTE_FIELDS
   },
+  'publishing-preparation': {
+    review: reviewPublishingOutline,
+    task:
+      'Select up to 12 excerpts for a publishing outline. ' +
+      'kind: plot, character, setting, theme. Each item: kind, ' +
+      QUOTE_FIELDS
+  },
   'spoiler-safe-glossary': {
     review: reviewGlossaryEvidence,
     task:
@@ -521,6 +528,36 @@ function sourceDigest(value) {
 // the prompt, and the validator sees exactly the same projected source.
 function prepareEvidenceRequest(featureKey, input) {
   const feature = requireAiFeature(featureKey);
+  if (featureKey === 'title-synopsis-ab') {
+    const { principal, novel, metadata } = input;
+    const expectedMetadataHash = sourceDigest(metadata);
+    const request = { principal, novel, metadata, expectedMetadataHash };
+    reviewMetadataVariants({ ...request, modelText: '{"items":[]}' });
+    const prompt = makeAiPrompt({
+      context: {
+        audience: 'author',
+        title: metadata.title,
+        description: metadata.description
+      },
+      instruction:
+        'Draft up to 3 distinct title and synopsis alternatives. ' +
+        'Return only JSON {"items":[{"title":"...","description":"..."}]}. ' +
+        'Do not invent performance statistics or start an experiment.'
+    });
+    const requestHash = sourceDigest([
+      featureKey,
+      principal.id,
+      novel.id,
+      expectedMetadataHash,
+      prompt
+    ]);
+    return {
+      task: { review: reviewMetadataVariants },
+      request,
+      prompt,
+      requestHash
+    };
+  }
   if (!Object.hasOwn(TASKS, featureKey)) invalid();
   const task = TASKS[featureKey];
   assertAiWorkAccess({

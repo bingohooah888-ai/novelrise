@@ -509,6 +509,41 @@ function prepareAggregate(feature, input) {
         reviewReportTriage({ ...input, expectedHash, modelText });
       break;
     }
+    case 'abuse-analysis': {
+      if (input.principal?.isAdmin !== true || !input.principal.id) invalid();
+      const expectedHash = aggregateDigest(input.snapshot);
+      review = (modelText) =>
+        reviewAbuseSignals({ ...input, expectedHash, modelText });
+      review('{"ids":[]}');
+      const eligible = input.snapshot.filter((row) =>
+        ['active', 'confirmed'].includes(row.status)
+      );
+      prompt = aggregatePrompt(
+        'Select up to 12 existing signal IDs for review: {"ids":[...]}. ' +
+          'Do not confirm abuse or impose penalties.',
+        eligible
+      );
+      binding = [input.principal.id, expectedHash];
+      break;
+    }
+    case 'kpi-anomaly': {
+      if (input.principal?.isAdmin !== true || !input.principal.id) invalid();
+      const expectedHash = aggregateDigest(input.snapshot);
+      review = (modelText) =>
+        reviewKpiChanges({ ...input, expectedHash, modelText });
+      review('{"metrics":[]}');
+      const rows = input.snapshot.rows.filter(
+        (row) => row.current >= MIN_SAMPLE && row.previous >= MIN_SAMPLE
+      );
+      if (!rows.length) invalid();
+      prompt = aggregatePrompt(
+        'Select metrics for human review: {"metrics":[...]}. ' +
+          'No statistical anomaly or root cause verdict.',
+        { days: input.snapshot.days, rows }
+      );
+      binding = [input.principal.id, expectedHash];
+      break;
+    }
     default:
       invalid();
   }
