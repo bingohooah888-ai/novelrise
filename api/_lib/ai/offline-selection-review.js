@@ -11,6 +11,7 @@ import {
 } from '../cover-mask-png.js';
 import { assertAiWorkAccess } from './context.js';
 import { requireAiFeature } from './registry.js';
+import { projectAdminReviewedExcerpt } from './offline-policy-review.js';
 
 const REQUIRED = ['background', 'base_book'];
 const LAYERS = [...REQUIRED, 'pattern', 'symbol', 'frame'];
@@ -472,6 +473,7 @@ function prepareSelection(feature, input) {
       input.principal.id,
       input.novel?.id ?? null,
       input.snapshot ?? null,
+      ...(input.sourceBinding ? [input.sourceBinding] : []),
       prompt
     ]),
     review
@@ -639,6 +641,44 @@ export function createOfflineAdminSelectionReader({ supabase, env } = {}) {
       exactFields(selection, ['query']);
       input.query = text(selection.query, 160);
       input.topics = await loadOfficialHelpTopics();
+    } else if (feature === 'inquiry-assistant') {
+      exactFields(selection, [
+        'inquiryId',
+        'reviewedBodyHash',
+        'ranges',
+        'privacyReviewed'
+      ]);
+      const id = text(selection.inquiryId, 20);
+      if (!/^[1-9][0-9]{0,19}$/u.test(id)) invalid();
+      const result = await supabase
+        .from('contact_inquiries')
+        .select('id,message,status,category')
+        .eq('id', id)
+        .maybeSingle();
+      const row = result?.data;
+      if (result?.error || String(row?.id) !== id) invalid();
+      if (!['new', 'reviewing'].includes(row.status)) invalid();
+      // Privacy, account deletion and legal disclosure requests remain
+      // human-only. The ordinary contact categories use stable output keys.
+      const allowed = {
+        '課金・解約': 'billing',
+        '投稿・作品': 'posting',
+        '不具合・技術的な問題': 'technical',
+        その他: 'other'
+      };
+      if (!Object.hasOwn(allowed, row.category)) invalid();
+      input.snapshot = {
+        id,
+        redactedBody: projectAdminReviewedExcerpt(row.message, selection),
+        categories: Object.values(allowed)
+      };
+      input.topics = await loadOfficialHelpTopics();
+      input.sourceBinding = selectionDigest([
+        selection.reviewedBodyHash,
+        selection.ranges,
+        row.category,
+        row.status
+      ]);
     } else if (feature === 'classification-anomaly') {
       exactFields(selection, ['novelId']);
       const novelId = text(selection.novelId, 20);
