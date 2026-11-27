@@ -37,7 +37,10 @@ test('passage comparison is bounded and reports line locations only', () => {
   assert.equal(api.comparePassages('short', passage), null);
   assert.equal(api.comparePassages('x'.repeat(12001), passage), null);
   assert.equal(api.comparePassages(passage, 'z'.repeat(20)).shared, 0);
-  assert.match(notes, /sameOwner\(packageOwnerSession,current.data\?\.session\)/u);
+  assert.match(
+    notes,
+    /sameOwner\(packageOwnerSession,current.data\?\.session\)/u
+  );
 });
 
 test('translation checks are literal counts and reject ambiguous input', () => {
@@ -87,7 +90,7 @@ test('genre discovery uses an explicit choice and neutral search', () => {
   assert.match(search, /NovelightUserSafety\.filterNovelRows/u);
 });
 
-test('evidence inventory excludes inactive rows without making decisions', () => {
+test('evidence inventory excludes inactive rows', () => {
   const api = extract(
     trust,
     'function reviewEvidenceInventory(',
@@ -106,7 +109,8 @@ test('evidence inventory excludes inactive rows without making decisions', () =>
   assert.equal(result.confirmed, 1);
   assert.deepEqual(Array.from(result.types), ['a']);
   assert.equal(result.activeLinks, 1);
-  assert.match(api.reviewEvidenceText(user), /不正の確定・処分は行いません/u);
+  const message = api.reviewEvidenceText(user);
+  assert.match(message, /不正の確定・処分は行いません/u);
 });
 
 test('community groups do not merge different post keys', () => {
