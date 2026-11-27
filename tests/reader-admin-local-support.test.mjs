@@ -10,6 +10,10 @@ const inquiries = await readFile('admin-inquiries.html', 'utf8');
 const search = await readFile('search.html', 'utf8');
 const analytics = await readFile('novelight-analytics.js', 'utf8');
 const browser = { window: {} };
+vm.runInNewContext(
+  await readFile('novelight-episode-title-display.js', 'utf8'),
+  browser
+);
 vm.runInNewContext(nav, browser);
 vm.runInNewContext(insights, browser);
 
