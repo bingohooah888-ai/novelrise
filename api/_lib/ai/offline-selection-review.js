@@ -2,6 +2,8 @@
 // operation and capture the current official/public, eligible source set.
 // No provider, API route, network, publication, exposure or scoring changes.
 import { createHash } from 'node:crypto';
+import { assertAiWorkAccess } from './context.js';
+import { requireAiFeature } from './registry.js';
 
 const REQUIRED = ['background', 'base_book'];
 const LAYERS = [...REQUIRED, 'pattern', 'symbol', 'frame'];
@@ -295,8 +297,16 @@ function selectionDigest(value) {
 
 function prepareSelection(feature, input) {
   if (!input.principal?.id) invalid();
+  const definition = requireAiFeature(feature);
+  if (definition.audience === 'admin' && input.principal.isAdmin !== true) {
+    invalid();
+  }
   let data;
   let review;
+  let task =
+    'Select up to 12 relevant works using the query and supplied metadata. ' +
+    'Return {"items":[{"novelId":"...","field":"title|description|genre|tag","quote":"..."}]}. ' +
+    'Quote exact metadata only; preserve eligibility and order.';
   if (feature === 'natural-search-ai') {
     const expectedHash = selectionDigest(input.snapshot);
     review = (modelText) =>
@@ -310,14 +320,125 @@ function prepareSelection(feature, input) {
       reviewDiscoverySelection({ ...input, expectedHash, modelText });
     review('{"items":[]}');
     data = { query, rows: input.rows };
+  } else if (feature === 'thumbnail-coordinator') {
+    assertAiWorkAccess({
+      principal: input.principal,
+      novel: input.novel,
+      audience: 'author'
+    });
+    const theme = text(input.theme, 160);
+    exactFields(input.snapshot, ['templateKey', 'assets']);
+    const templateKey = key(input.snapshot.templateKey);
+    const assets = input.snapshot.assets;
+    if (!Array.isArray(assets) || assets.length > 3000) invalid();
+    const seen = new Set();
+    for (const row of assets) {
+      exactFields(row, [
+        'id',
+        'template_key',
+        'layer_type',
+        'availability_status'
+      ]);
+      const assetId = key(row.id);
+      if (seen.has(assetId)) invalid();
+      seen.add(assetId);
+    }
+    const eligible = assets.filter(
+      (row) =>
+        row.template_key === templateKey &&
+        row.availability_status === 'active' &&
+        LAYERS.includes(row.layer_type)
+    );
+    const snapshot = { templateKey, assets: eligible };
+    const expectedHash = selectionDigest(snapshot);
+    const selections = REQUIRED.map((layer) => {
+      const row = eligible.find((asset) => asset.layer_type === layer);
+      if (!row) invalid();
+      return { layer, assetId: row.id };
+    });
+    review = (modelText) =>
+      reviewOfficialThumbnail({ snapshot, expectedHash, modelText });
+    review(JSON.stringify({ templateKey, selections }));
+    data = {
+      theme,
+      templateKey,
+      assets: eligible.map((row) => ({
+        id: row.id,
+        layer: row.layer_type
+      }))
+    };
+    task =
+      'Choose supplied official asset IDs, one per layer. ' +
+      'Background and base_book are mandatory. ' +
+      'Return {"templateKey":"...","selections":[{"layer":"...","assetId":"..."}]}.';
+  } else if (feature === 'classification-anomaly') {
+    const snapshot = input.snapshot;
+    const expectedHash = selectionDigest(snapshot);
+    review = (modelText) =>
+      reviewClassificationCandidate({ snapshot, expectedHash, modelText });
+    review('{"items":[]}');
+    data = {
+      title: snapshot.title,
+      description: snapshot.description,
+      genre: snapshot.genre,
+      genres: snapshot.genres
+    };
+    task =
+      'Select up to 3 alternative allowed genres as review candidates. ' +
+      'Return {"items":[{"genre":"...","field":"title|description","quote":"..."}]}. ' +
+      'Quote exact supplied metadata; never change classification.';
+  } else if (
+    feature === 'official-faq-assistant' ||
+    feature === 'inquiry-assistant'
+  ) {
+    const topics = input.topics;
+    const expectedTopicsHash = selectionDigest(topics);
+    reviewFaqSelection({
+      topics,
+      expectedHash: expectedTopicsHash,
+      modelText: '{"items":[]}'
+    });
+    if (feature === 'official-faq-assistant') {
+      const query = text(input.query, 160);
+      review = (modelText) =>
+        reviewFaqSelection({
+          topics,
+          expectedHash: expectedTopicsHash,
+          modelText
+        });
+      data = { query, topics };
+      task =
+        'Select up to 5 official passages. Return ' +
+        '{"items":[{"key":"...","part":"summary|point","index":0}]}. ' +
+        'Never invent an answer, price or promise.';
+    } else {
+      const snapshot = input.snapshot;
+      const expectedHash = selectionDigest(snapshot);
+      if (!Array.isArray(snapshot?.categories)) invalid();
+      review = (modelText) =>
+        reviewInquirySupport({
+          snapshot,
+          expectedHash,
+          topics,
+          expectedTopicsHash,
+          modelText
+        });
+      review(JSON.stringify({ category: snapshot.categories[0], items: [] }));
+      data = {
+        redactedBody: snapshot.redactedBody,
+        categories: snapshot.categories,
+        topics
+      };
+      task =
+        'Choose an allowed category and up to 5 official passages. Return ' +
+        '{"category":"...","items":[{"key":"...","part":"summary|point","index":0}]}. ' +
+        'No promise or send command.';
+    }
   } else {
     invalid();
   }
   const user = JSON.stringify({
-    task:
-      'Select up to 12 relevant works using the query and supplied metadata. ' +
-      'Return {"items":[{"novelId":"...","field":"title|description|genre|tag","quote":"..."}]}. ' +
-      'Quote exact metadata only; preserve eligibility and order.',
+    task,
     untrusted_data: data
   });
   if (user.length > 35000) invalid();
@@ -329,7 +450,13 @@ function prepareSelection(feature, input) {
   };
   return {
     prompt,
-    requestHash: selectionDigest([feature, input.principal.id, prompt]),
+    requestHash: selectionDigest([
+      feature,
+      input.principal.id,
+      input.novel?.id ?? null,
+      input.snapshot ?? null,
+      prompt
+    ]),
     review
   };
 }
