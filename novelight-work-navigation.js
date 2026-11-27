@@ -245,6 +245,38 @@
     return root;
   }
 
+  // Only earlier public episode rows already returned for this work.
+  // Current episode ID must be present exactly once with a valid ordinal.
+  function priorEpisodeLinks(rows, currentId) {
+    if (!Array.isArray(rows) || !/^[1-9][0-9]*$/u.test(String(currentId))) return [];
+    const current = rows.filter((row) => String(row?.id) === String(currentId));
+    if (current.length !== 1 || !Number.isSafeInteger(current[0].number) ||
+        current[0].number < 1) return [];
+    return rows.filter((row) => row &&
+      /^[1-9][0-9]*$/u.test(String(row.id)) &&
+      Number.isSafeInteger(row.number) && row.number >= 1 &&
+      row.number < current[0].number
+    ).sort((a, b) => b.number - a.number).slice(0, 3);
+  }
+
+  function makePriorEpisodeReview(rows, currentId) {
+    const root = document.createElement('div');
+    const note = document.createElement('p');
+    note.className = 'nl-worknav-empty';
+    note.textContent = '現在の話より前の公開話へのリンクです。読了履歴やあらすじの自動生成ではありません。';
+    root.append(note);
+    const prior = priorEpisodeLinks(rows, currentId);
+    if (!prior.length) {
+      const empty = document.createElement('p');
+      empty.className = 'nl-worknav-empty';
+      empty.textContent = '確認できる前の話はありません。';
+      root.append(empty);
+      return root;
+    }
+    for (const row of prior) root.append(makeEpisodeLink(row, null));
+    return root;
+  }
+
   function panel(title, body) {
     const section = document.createElement('section');
     section.className = 'nl-worknav-panel';
@@ -298,14 +330,16 @@
       mobile.className = 'nl-worknav-mobile';
       mobile.append(
         mobileDetails('話数', makeEpisodeList(rows, episode.id)),
-        mobileDetails('登場人物', makeEpisodeCharacterTools(characters))
+        mobileDetails('登場人物', makeEpisodeCharacterTools(characters)),
+        mobileDetails('前の話を振り返る', makePriorEpisodeReview(rows, episode.id))
       );
       const aside = document.createElement('aside');
       aside.className = 'nl-worknav-support';
       aside.setAttribute('aria-label', '作品内ナビゲーション');
       aside.append(
         panel('話数一覧', makeEpisodeList(rows, episode.id)),
-        panel('登場人物', makeEpisodeCharacterTools(characters))
+        panel('登場人物', makeEpisodeCharacterTools(characters)),
+        panel('前の話を振り返る', makePriorEpisodeReview(rows, episode.id))
       );
 
       card.before(layout);
@@ -396,5 +430,5 @@
     }
   }
 
-  window.NovelightWorkNavigation = Object.freeze({ mountEpisode, mountNovel, publicEpisodes, filterEpisodeCharacters });
+  window.NovelightWorkNavigation = Object.freeze({ mountEpisode, mountNovel, publicEpisodes, filterEpisodeCharacters, priorEpisodeLinks });
 })();

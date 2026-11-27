@@ -65,6 +65,14 @@
     root.append(cards);
   }
 
+  function genreSearchHref(genre) {
+    if (typeof genre !== 'string' || ![
+      '異世界ファンタジー', '現代ファンタジー', '恋愛', 'ラブコメ', 'SF',
+      'ミステリー', 'ホラー', '歴史', '現代ドラマ', 'その他'
+    ].includes(genre)) return null;
+    return 'search.html?sort=new&genre=' + encodeURIComponent(genre);
+  }
+
   function renderGenres(root, genres) {
     const section = createElement('section', 'reading-history-panel');
     section.append(createElement('h2', '', 'よく読んでいるジャンル'));
@@ -105,6 +113,12 @@
         )}%`;
         track.append(bar);
         row.append(head, track);
+        const href = genreSearchHref(item.genre);
+        if (href) {
+          const link = createElement('a', '', 'このジャンルの新着作品を探す');
+          link.href = href;
+          row.append(link);
+        }
         list.append(row);
       }
     }
@@ -319,6 +333,6 @@
   }
 
   globalThis.NovelightReadingHistory = Object.freeze({
-    mount, isMissingRpc, filterHistory, groupHistory
+    mount, isMissingRpc, filterHistory, groupHistory, genreSearchHref
   });
 })();

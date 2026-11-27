@@ -112,6 +112,73 @@
     }));
   }
 
+  // Bounded, exact local comparison of two texts explicitly supplied by the
+  // author. Shared windows are not a plagiarism, originality or quality score.
+  function comparePassages(reference, candidate) {
+    const limit = 12000;
+    const windowSize = 20;
+    if ([reference, candidate].some((value) =>
+      typeof value !== 'string' || value.length > limit)) return null;
+    const windows = (value) => {
+      const chars = Array.from(value.replace(/\s+/gu, ''));
+      const result = new Set();
+      for (let i = 0; i + windowSize <= chars.length; i += 1) {
+        result.add(chars.slice(i, i + windowSize).join(''));
+      }
+      return result;
+    };
+    const ref = windows(reference);
+    const target = windows(candidate);
+    if (!ref.size || !target.size) return null;
+    let shared = 0;
+    for (const part of target) if (ref.has(part)) shared += 1;
+    // Report at most five candidate line locations for review, not text.
+    const lines = candidate.split(/\r?\n/u);
+    const lineCandidates = [];
+    for (let i = 0; i < lines.length && lineCandidates.length < 5; i += 1) {
+      const parts = windows(lines[i]);
+      if ([...parts].some((part) => ref.has(part))) lineCandidates.push(i + 1);
+    }
+    return Object.freeze({
+      windowSize, referenceWindows: ref.size, candidateWindows: target.size, shared,
+      lineCandidates: Object.freeze(lineCandidates)
+    });
+  }
+
+  // User-entered source/target pairs, separated by a literal tab. No automatic
+  // translation or inference. A missing spelling is only a review cue.
+  function checkTranslationTerms(source, target, mapping) {
+    if ([source, target].some((value) =>
+      typeof value !== 'string' || !value.trim() || value.length > 12000) ||
+      typeof mapping !== 'string' || mapping.length > 6000) return null;
+    const lines = mapping.split(/\r?\n/u).filter((line) => line.trim());
+    if (!lines.length || lines.length > 50) return null;
+    const seen = new Set();
+    const result = [];
+    const count = (text, term) => {
+      let total = 0;
+      let offset = 0;
+      while ((offset = text.indexOf(term, offset)) !== -1) {
+        total += 1;
+        offset += term.length;
+      }
+      return total;
+    };
+    for (const line of lines) {
+      const pair = line.split('\t').map((value) => value.trim());
+      if (pair.length !== 2 || pair.some((value) => !value || value.length > 100) ||
+          seen.has(pair[0])) return null;
+      seen.add(pair[0]);
+      const sourceCount = count(source, pair[0]);
+      const targetCount = count(target, pair[1]);
+      result.push(Object.freeze({
+        sourceTerm: pair[0], targetTerm: pair[1], sourceCount, targetCount,
+        review: sourceCount > 0 && targetCount !== sourceCount
+      }));
+    }
+    return Object.freeze(result);
+  }
+
   function sameOwner(initial, current) {
     return Boolean(
       initial?.user?.id &&
@@ -127,6 +194,8 @@
     duplicateHeadingNotes,
     glossaryEntries,
     packageCounts,
+    comparePassages,
+    checkTranslationTerms,
     sameOwner
   });
 })(typeof window === 'object' ? window : globalThis);
