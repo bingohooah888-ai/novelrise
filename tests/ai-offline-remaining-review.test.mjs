@@ -165,11 +165,8 @@ test('similarity evidence verifies both passages and returns offsets', () => {
       request(snapshot, items({ ...item, secondOffset: 0 }))
     )
   );
-  assert.throws(() =>
-    reviewSimilarityEvidence(
-      request(snapshot, items({ ...item, quote: 'abc' }))
-    )
-  );
+  const short = items({ ...item, quote: 'abc' });
+  assert.throws(() => reviewSimilarityEvidence(request(snapshot, short)));
 });
 
 test('spoiler review returns comment IDs without future story text', () => {
@@ -182,13 +179,10 @@ test('spoiler review returns comment IDs without future story text', () => {
     title: '門',
     content: '王都'
   };
-  const episodes = [
-    row,
-    { ...row, id: 2, order_index: 2, content: '秘密の鍵' }
-  ];
-  const comments = [
-    { id: '11', novelId: 1, visible: true, body: '秘密の鍵' }
-  ];
+  const later = { ...row, id: 2, order_index: 2, content: '秘密の鍵' };
+  const episodes = [row, later];
+  const comment = { id: '11', novelId: 1, visible: true, body: '秘密の鍵' };
+  const comments = [comment];
   const references = [{ id: '1', episodeId: '2', term: '秘密の鍵' }];
   const input = {
     principal: { id: 'reader' },
@@ -199,9 +193,7 @@ test('spoiler review returns comment IDs without future story text', () => {
     comments,
     references,
     expectedHash: digest({ comments, references }),
-    modelText: JSON.stringify(
-      items({ commentId: '11', referenceId: '1' })
-    )
+    modelText: JSON.stringify(items({ commentId: '11', referenceId: '1' }))
   };
   const result = reviewSpoilerCommentCandidates(input);
   assert.deepEqual(result.items, [{ commentId: '11' }]);
