@@ -621,7 +621,8 @@ async function loadOfficialGenres() {
   if (end < 0) invalid();
   const options = parts[1].slice(0, end);
   const matches = [...options.matchAll(/<option>([^<>]+)<\/option>/gu)];
-  if (!matches.length || matches.map((match) => match[0]).join('') !== options) {
+  const matchedOptions = matches.map((match) => match[0]).join('');
+  if (!matches.length || matchedOptions !== options) {
     invalid();
   }
   return matches.map((match) => match[1]);
