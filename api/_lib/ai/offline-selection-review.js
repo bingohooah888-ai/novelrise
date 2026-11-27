@@ -2,6 +2,13 @@
 // operation and capture the current official/public, eligible source set.
 // No provider, API route, network, publication, exposure or scoring changes.
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { URL } from 'node:url';
+import { requireAdmin } from '../admin-auth.js';
+import {
+  normalizeCoverQuad,
+  resolveSourceCoverQuad
+} from '../cover-mask-png.js';
 import { assertAiWorkAccess } from './context.js';
 import { requireAiFeature } from './registry.js';
 
@@ -359,12 +366,22 @@ function prepareSelection(feature, input) {
     review = (modelText) =>
       reviewOfficialThumbnail({ snapshot, expectedHash, modelText });
     review(JSON.stringify({ templateKey, selections }));
+    const hints = input.assetHints;
+    if (hints !== undefined) {
+      if (!Array.isArray(hints) || hints.length !== eligible.length) invalid();
+      for (let index = 0; index < hints.length; index++) {
+        exactFields(hints[index], ['id', 'label']);
+        if (hints[index].id !== eligible[index].id) invalid();
+        text(hints[index].label, 160);
+      }
+    }
     data = {
       theme,
       templateKey,
-      assets: eligible.map((row) => ({
+      assets: eligible.map((row, index) => ({
         id: row.id,
-        layer: row.layer_type
+        layer: row.layer_type,
+        ...(hints ? { label: hints[index].label } : {})
       }))
     };
     task =
@@ -471,4 +488,208 @@ export function reviewOfflineSelectionResponse(feature, input, response) {
   const prepared = prepareSelection(feature, input);
   if (prepared.requestHash !== response.requestHash) invalid();
   return prepared.review(response.modelText);
+}
+
+/** Load only active official layers, using the existing server geometry checks. */
+export async function loadOfflineOfficialThumbnail(client, templateKey) {
+  key(templateKey);
+  const result = await client
+    .from('novel_thumbnail_templates')
+    .select(
+      'template_key,availability_status,canvas_width,canvas_height,cover_mask_source,cover_mask_url,cover_mask_revision,cover_quad_space,base_book_source_width,base_book_source_height,cover_top_left_x,cover_top_left_y,cover_top_right_x,cover_top_right_y,cover_bottom_right_x,cover_bottom_right_y,cover_bottom_left_x,cover_bottom_left_y'
+    )
+    .eq('template_key', templateKey)
+    .eq('availability_status', 'active')
+    .maybeSingle();
+  const row = result?.data;
+  if (result?.error || row?.template_key !== templateKey) invalid();
+  if (
+    row.availability_status !== 'active' ||
+    Number(row.canvas_width) !== 1086 ||
+    Number(row.canvas_height) !== 1448 ||
+    row.cover_mask_source !== 'cover_quad' ||
+    typeof row.cover_mask_url !== 'string' ||
+    !row.cover_mask_url ||
+    !['canvas', 'base_book_source'].includes(row.cover_quad_space)
+  ) {
+    invalid();
+  }
+  const quad = Object.fromEntries(
+    ['top_left', 'top_right', 'bottom_right', 'bottom_left'].map((name) => {
+      const x = row['cover_' + name + '_x'];
+      const y = row['cover_' + name + '_y'];
+      if (x === null || x === undefined) invalid();
+      if (y === null || y === undefined) invalid();
+      return [name, { x, y }];
+    })
+  );
+  if (row.cover_quad_space === 'base_book_source') {
+    resolveSourceCoverQuad(
+      quad,
+      Number(row.base_book_source_width),
+      Number(row.base_book_source_height)
+    );
+  } else {
+    normalizeCoverQuad(quad);
+  }
+  const source = await client
+    .from('novel_thumbnail_assets')
+    .select('id,template_key,layer_type,availability_status,label')
+    .eq('template_key', templateKey)
+    .eq('availability_status', 'active')
+    .in('layer_type', [...LAYERS, 'cover'])
+    .order('sort_order', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(301);
+  if (source?.error || !Array.isArray(source?.data)) invalid();
+  // Never silently treat a truncated catalog as the complete source.
+  if (source.data.length > 300) invalid();
+  const seen = new Set();
+  const assets = [];
+  const assetHints = [];
+  let cover = false;
+  for (const asset of source.data) {
+    if (
+      asset.template_key !== templateKey ||
+      asset.availability_status !== 'active'
+    ) {
+      invalid();
+    }
+    const id = key(asset.id);
+    if (seen.has(id)) invalid();
+    seen.add(id);
+    if (asset.layer_type === 'cover') {
+      cover = true;
+      continue;
+    }
+    if (!LAYERS.includes(asset.layer_type)) invalid();
+    assets.push({
+      id,
+      template_key: templateKey,
+      layer_type: asset.layer_type,
+      availability_status: 'active'
+    });
+    assetHints.push({ id, label: text(asset.label, 160) });
+  }
+  if (!cover) invalid();
+  return {
+    snapshot: { templateKey, assets },
+    assetHints,
+    // Bind template geometry and internal cover availability without
+    // sending image URLs or hidden layers to the model.
+    sourceBinding: selectionDigest([row, source.data])
+  };
+}
+
+// Read the existing classic browser script's restricted object literal.
+// Convert only quoted strings and bare keys to JSON; never execute code.
+// A format change fails closed rather than falling back to stale FAQ copy.
+async function loadOfficialHelpTopics() {
+  const source = await readFile(
+    new URL('../../../novelight-help.js', import.meta.url),
+    'utf8'
+  );
+  const prefix = 'const topics = Object.freeze(';
+  const parts = source.split(prefix);
+  if (parts.length !== 2) invalid();
+  const end = parts[1].indexOf('\n  });');
+  if (end < 0) invalid();
+  const literal = parts[1].slice(0, end + 4);
+  if (literal.includes('"') || literal.includes('\\')) invalid();
+  const json = literal.replace(
+    /'([^']*)'|([A-Za-z][A-Za-z0-9_]*)(?=\s*:)/gu,
+    (_, quoted, bare) => JSON.stringify(quoted ?? bare)
+  );
+  const catalog = JSON.parse(json);
+  if (!catalog || typeof catalog !== 'object' || Array.isArray(catalog)) {
+    invalid();
+  }
+  return Object.entries(catalog).map(([topicKey, topic]) => {
+    exactFields(topic, ['title', 'summary', 'points']);
+    return { key: topicKey, ...topic };
+  });
+}
+
+// Use the exact existing author editor genre choices, not AI-proposed genres.
+async function loadOfficialGenres() {
+  const source = await readFile(
+    new URL('../../../novel-edit.html', import.meta.url),
+    'utf8'
+  );
+  const marker = '<select id="genre" required>';
+  const parts = source.split(marker);
+  if (parts.length !== 2) invalid();
+  const end = parts[1].indexOf('</select>');
+  if (end < 0) invalid();
+  const options = parts[1].slice(0, end);
+  const matches = [...options.matchAll(/<option>([^<>]+)<\/option>/gu)];
+  const matchedOptions = matches.map((match) => match[0]).join('');
+  if (!matches.length || matchedOptions !== options) {
+    invalid();
+  }
+  return matches.map((match) => match[1]);
+}
+
+export function createOfflineAdminSelectionReader({ supabase, env } = {}) {
+  async function load(feature, selection, req, res) {
+    const actor = await requireAdmin({ req, res, supabase, env });
+    if (typeof actor?.id !== 'string' || !actor.id) invalid();
+    const input = { principal: { id: actor.id, isAdmin: true } };
+    if (feature === 'official-faq-assistant') {
+      exactFields(selection, ['query']);
+      input.query = text(selection.query, 160);
+      input.topics = await loadOfficialHelpTopics();
+    } else if (feature === 'classification-anomaly') {
+      exactFields(selection, ['novelId']);
+      const novelId = text(selection.novelId, 20);
+      if (!/^[1-9][0-9]{0,19}$/u.test(novelId)) invalid();
+      const result = await supabase
+        .from('novels')
+        .select('id,title,description,genre,status,content_rating')
+        .eq('id', novelId)
+        .eq('status', 'published')
+        .eq('content_rating', 'general')
+        .maybeSingle();
+      const row = result?.data;
+      if (
+        result?.error ||
+        String(row?.id) !== novelId ||
+        row.status !== 'published' ||
+        row.content_rating !== 'general'
+      ) {
+        invalid();
+      }
+      input.snapshot = {
+        novelId,
+        title: row.title,
+        description: row.description,
+        genre: row.genre,
+        genres: await loadOfficialGenres()
+      };
+    } else {
+      invalid();
+    }
+    const current = await requireAdmin({ req, res, supabase, env });
+    if (current?.id !== actor.id) invalid();
+    return input;
+  }
+
+  return Object.freeze({
+    async prepare(feature, selection, req, res) {
+      try {
+        const input = await load(feature, selection, req, res);
+        return prepareOfflineSelectionPrompt(feature, input);
+      } catch {
+        invalid();
+      }
+    },
+    async review(feature, selection, req, res, response) {
+      try {
+        const input = await load(feature, selection, req, res);
+        return reviewOfflineSelectionResponse(feature, input, response);
+      } catch {
+        invalid();
+      }
+    }
+  });
 }
