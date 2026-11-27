@@ -1,5 +1,5 @@
 // Staging-only formal reader credential provisioning. OFF until separately approved.
-// Run only inside the OWNER-dispatched trusted-main GitHub staging Environment.
+// Run only inside the OWNER-dispatched trusted main or attested Draft #2935 staging Environment.
 // Password, database URLs, bearer tokens and verifier values must never be logged.
 import { createHash, createHmac, pbkdf2Sync, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -24,6 +24,8 @@ const ENV_KEY = 'STAGING_FORMAL_RO_DATABASE_URL';
 const SCOPE = 'scout-formal-reader-credential-staging-v1';
 const WORKFLOW =
   REPO + '/.github/workflows/scout-formal-staging-ro-provision.yml@refs/heads/main';
+const DRAFT_WORKFLOW =
+  REPO + '/.github/workflows/scout-formal-staging-ro-provision.yml@refs/heads/' + BRANCH;
 const HEX40 = /^[a-f0-9]{40}$/u;
 const SOURCE_TABLES = Object.freeze([
   ['public', 'scout_xp_ledger', 'user_id'],
@@ -56,7 +58,8 @@ const SAFE_PROVISION_STAGES = new Set([
   'VERIFY_VERCEL_PREVIEW_SECRET',
   'ENABLE_STAGING_RO_LOGIN',
   'STAGING_RO_CONNECT',
-  'VERIFY_STAGING_RO_LOGIN'
+  'VERIFY_STAGING_RO_LOGIN',
+  'VERIFY_STAGING_READ_ONLY'
 ]);
 
 const SAFE_PROVISION_CODES = new Set([
@@ -73,6 +76,7 @@ const SAFE_PROVISION_CODES = new Set([
   'POOLER_UPSTREAM_SSL_UNVERIFIED',
   'DATABASE_BACKEND_SSL_NOT_VERIFIED',
   'ROLE_NOT_DORMANT_OR_UNSAFE',
+  'ROLE_PASSWORD_ALREADY_SET',
   'STAGING_READER_ACL_DRIFT',
   'INVALID_RELATION',
   'VERCEL_INVENTORY_UNAVAILABLE',
@@ -84,7 +88,9 @@ const SAFE_PROVISION_CODES = new Set([
   'PRIVILEGED_STAGING_ROLE_UNVERIFIED',
   'VERCEL_POSTWRITE_METADATA_UNVERIFIED',
   'ROLE_DISABLE_UNVERIFIED',
-  'PROVISION_FAILED_SAFE_REVIEW_REQUIRED'
+  'PROVISION_FAILED_SAFE_REVIEW_REQUIRED',
+  'PROBE_READ_ONLY_NOT_VERIFIED',
+  'PROBE_DATABASE_IDENTITY_MISMATCH'
 ]);
 
 export function formatFormalRoProvisionFailure(error, stage) {
@@ -96,12 +102,16 @@ export function formatFormalRoProvisionFailure(error, stage) {
 }
 
 export function verifyFormalReaderProvisionContext(env) {
+  const trustedMain =
+    env.GITHUB_REF === 'refs/heads/main' && env.GITHUB_WORKFLOW_REF === WORKFLOW;
+  const trustedDraft =
+    env.GITHUB_REF === 'refs/heads/' + BRANCH &&
+    env.GITHUB_WORKFLOW_REF === DRAFT_WORKFLOW;
   if (
     env.GITHUB_ACTIONS !== 'true' ||
     env.GITHUB_EVENT_NAME !== 'workflow_dispatch' ||
     env.GITHUB_REPOSITORY !== REPO ||
-    env.GITHUB_REF !== 'refs/heads/main' ||
-    env.GITHUB_WORKFLOW_REF !== WORKFLOW ||
+    (!trustedMain && !trustedDraft) ||
     env.GITHUB_ACTOR !== 'bingohooah888-ai' ||
     env.GITHUB_TRIGGERING_ACTOR !== 'bingohooah888-ai' ||
     env.GITHUB_RUN_ATTEMPT !== '1' ||
@@ -130,6 +140,37 @@ export function verifyFormalReaderProvisionContext(env) {
     hold('STAGING_DATABASE_IDENTITY_UNVERIFIED');
   }
   return true;
+}
+
+// Derive an in-process direct route from the existing Staging Secret. Never
+// print, persist or replace that Secret; verify both routes before using it.
+export function deriveFormalStagingAdminDirectDatabaseUrl(sourceUrl) {
+  const target = {
+    STAGING_SUPABASE_URL: STAGING_URL,
+    STAGING_DATABASE_URL: sourceUrl,
+    PGSSLMODE: 'require'
+  };
+  try {
+    const source = verifyStagingMigrationTarget(target);
+    if (source.projectRef !== STAGING_REF) {
+      hold('STAGING_DATABASE_IDENTITY_UNVERIFIED');
+    }
+    const direct = new URL(sourceUrl);
+    direct.username = 'postgres';
+    direct.hostname = 'db.' + STAGING_REF + '.supabase.co';
+    direct.port = '5432';
+    const databaseUrl = direct.toString();
+    const verified = verifyStagingMigrationTarget({
+      ...target,
+      STAGING_DATABASE_URL: databaseUrl
+    });
+    if (verified.projectRef !== STAGING_REF || verified.connectionMode !== 'direct') {
+      hold('STAGING_DATABASE_IDENTITY_UNVERIFIED');
+    }
+    return databaseUrl;
+  } catch {
+    hold('STAGING_DATABASE_IDENTITY_UNVERIFIED');
+  }
 }
 
 export function deriveFormalReaderDatabaseUrl(privilegedUrl, password) {
@@ -252,6 +293,17 @@ async function verifyDormantRole(client) {
   ) {
     hold('ROLE_NOT_DORMANT_OR_UNSAFE');
   }
+  // Never overwrite an existing password; read only the absence boolean.
+  const credential = await client.query(
+    'select rolpassword is null as password_unset from pg_catalog.pg_authid where rolname=$1',
+    [ROLE]
+  );
+  if (
+    credential.rows.length !== 1 ||
+    credential.rows[0].password_unset !== true
+  ) {
+    hold('ROLE_PASSWORD_ALREADY_SET');
+  }
   for (const [schema, table, subjectColumn] of SOURCE_TABLES) {
     const relation = schema + '.' + table;
     const meta = await client.query(
@@ -345,6 +397,116 @@ async function verifyNewRole(client, host) {
   }
 }
 
+// Draft PR #2935 only. The workflow's no-secret preflight independently
+// attests this exact PR HEAD via GitHub before the staging Environment is used.
+export function verifyFormalStagingTlsProbeContext(env) {
+  const expectedWorkflow =
+    REPO + '/.github/workflows/scout-formal-staging-ro-provision.yml@refs/heads/' +
+    BRANCH;
+  if (
+    env.GITHUB_ACTIONS !== 'true' ||
+    env.GITHUB_EVENT_NAME !== 'workflow_dispatch' ||
+    env.GITHUB_REPOSITORY !== REPO ||
+    env.GITHUB_REF !== 'refs/heads/' + BRANCH ||
+    env.GITHUB_WORKFLOW_REF !== expectedWorkflow ||
+    env.GITHUB_ACTOR !== 'bingohooah888-ai' ||
+    env.GITHUB_TRIGGERING_ACTOR !== 'bingohooah888-ai' ||
+    env.GITHUB_RUN_ATTEMPT !== '1' ||
+    !HEX40.test(env.EXPECTED_PROBE_SHA || '') ||
+    env.GITHUB_SHA !== env.EXPECTED_PROBE_SHA ||
+    env.FORMAL_STAGING_PR_NUMBER !== '2935' ||
+    env.FORMAL_STAGING_SCOPE !== 'scout-formal-reader-tls-staging-v1' ||
+    env.FORMAL_STAGING_CONFIRMATION !== 'STAGING FORMAL TLS READONLY APPROVED' ||
+    env.FORMAL_STAGING_REF !== STAGING_REF ||
+    env.FORMAL_STAGING_PREVIEW_BRANCH !== BRANCH ||
+    env.STAGING_SUPABASE_URL !== STAGING_URL
+  ) {
+    hold('UNTRUSTED_APPROVAL_CONTEXT');
+  }
+  if (!env.STAGING_DATABASE_URL) {
+    hold('EXISTING_STAGING_SECRETS_REQUIRED');
+  }
+  try {
+    const route = verifyStagingMigrationTarget({
+      STAGING_SUPABASE_URL: env.STAGING_SUPABASE_URL,
+      STAGING_DATABASE_URL: env.STAGING_DATABASE_URL,
+      PGSSLMODE: 'require'
+    });
+    if (route.projectRef !== STAGING_REF) {
+      hold('STAGING_DATABASE_IDENTITY_UNVERIFIED');
+    }
+  } catch {
+    hold('STAGING_DATABASE_IDENTITY_UNVERIFIED');
+  }
+  return true;
+}
+
+// Never calls credential provisioning, Vercel APIs, ROLE DDL or any writer.
+// A PostgreSQL read-only transaction is also enforced by the server session.
+export async function probeFormalStagingReadOnlyTls({
+  env = process.env,
+  ClientImpl = Client,
+  onSafeStage = () => {}
+} = {}) {
+  onSafeStage('VERIFY_CONTEXT');
+  verifyFormalStagingTlsProbeContext(env);
+  onSafeStage('VERIFY_PINNED_CA');
+  const ca = readFileSync(OFFICIAL_SUPABASE_CA_FILE_PATH, 'utf8');
+  verifyPinnedSupabaseRootCa(ca);
+  const directUrl = deriveFormalStagingAdminDirectDatabaseUrl(
+    env.STAGING_DATABASE_URL
+  );
+  const host = 'db.' + STAGING_REF + '.supabase.co';
+  const client = new ClientImpl({
+    ...connectionOptions(directUrl, ca),
+    options: '-c default_transaction_read_only=on',
+    application_name: 'novelight-staging-tls-readonly-probe'
+  });
+  let connected = false;
+  try {
+    onSafeStage('STAGING_ADMIN_CONNECT');
+    await client.connect();
+    connected = true;
+    await client.query('BEGIN READ ONLY');
+    onSafeStage('VERIFY_STAGING_READ_ONLY');
+    const readonly = await client.query(
+      "select current_setting('transaction_read_only') as read_only"
+    );
+    if (readonly.rows?.length !== 1 || readonly.rows[0].read_only !== 'on') {
+      hold('PROBE_READ_ONLY_NOT_VERIFIED');
+    }
+    onSafeStage('VERIFY_STAGING_ADMIN_TLS');
+    await verifyFormalReaderTls(client, host);
+    onSafeStage('VERIFY_STAGING_ADMIN_IDENTITY');
+    const identity = await client.query(
+      'select current_user as role, current_database() as database'
+    );
+    if (
+      identity.rows?.length !== 1 ||
+      identity.rows[0].role !== 'postgres' ||
+      identity.rows[0].database !== 'postgres'
+    ) {
+      hold('PROBE_DATABASE_IDENTITY_MISMATCH');
+    }
+    return Object.freeze({
+      status: 'staging_tls_readonly_verified',
+      projectRef: STAGING_REF
+    });
+  } finally {
+    if (connected) {
+      await client.query('ROLLBACK').catch(() => {});
+    }
+    await client.end().catch(() => {});
+  }
+}
+
+export function formatFormalStagingTlsProbeFailure(error, stage) {
+  return formatFormalRoProvisionFailure(error, stage).replace(
+    'FORMAL_RO_STAGING_PROVISION_STOPPED:',
+    'FORMAL_RO_STAGING_TLS_PROBE_STOPPED:'
+  );
+}
+
 export async function provisionFormalStagingReader({
   env = process.env,
   fetchImpl = globalThis.fetch,
@@ -371,8 +533,11 @@ export async function provisionFormalStagingReader({
     hold('VERCEL_EXISTING_SECRET_REFUSED');
   }
   onSafeStage('STAGING_ADMIN_CONNECT');
-  const adminHost = new URL(env.STAGING_DATABASE_URL).hostname;
-  const admin = new ClientImpl(connectionOptions(env.STAGING_DATABASE_URL, ca));
+  const adminDatabaseUrl = deriveFormalStagingAdminDirectDatabaseUrl(
+    env.STAGING_DATABASE_URL
+  );
+  const adminHost = new URL(adminDatabaseUrl).hostname;
+  const admin = new ClientImpl(connectionOptions(adminDatabaseUrl, ca));
   let loginActivated = false;
   try {
     onSafeStage('STAGING_ADMIN_CONNECT');
@@ -390,7 +555,7 @@ export async function provisionFormalStagingReader({
     const password = randomBytes(48).toString('base64url');
     const verifier = makeScramVerifier(password, randomBytes(16));
     const readerUrl = deriveFormalReaderDatabaseUrl(
-      env.STAGING_DATABASE_URL,
+      adminDatabaseUrl,
       password
     );
     // A password is set while the role remains NOLOGIN: a failed Vercel
@@ -451,11 +616,33 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  let safeStage = 'VERIFY_CONTEXT';
-  provisionFormalStagingReader({ onSafeStage: (stage) => { safeStage = stage; } })
-    .then(() => console.log('FORMAL_RO_STAGING_CREDENTIAL_READY'))
-    .catch((error) => {
-      console.error(formatFormalRoProvisionFailure(error, safeStage));
-      process.exitCode = 1;
-    });
+  if (
+    process.argv.length > 3 ||
+    (process.argv[2] && process.argv[2] !== '--tls-readonly-probe')
+  ) {
+    console.error('FORMAL_RO_INVALID_EXECUTION_MODE');
+    process.exitCode = 1;
+  } else {
+    const readonlyProbe = process.argv[2] === '--tls-readonly-probe';
+    let safeStage = 'VERIFY_CONTEXT';
+    const operation = readonlyProbe
+      ? probeFormalStagingReadOnlyTls
+      : provisionFormalStagingReader;
+    operation({ onSafeStage: (stage) => { safeStage = stage; } })
+      .then(() =>
+        console.log(
+          readonlyProbe
+            ? 'FORMAL_RO_STAGING_TLS_READONLY_PASS'
+            : 'FORMAL_RO_STAGING_CREDENTIAL_READY'
+        )
+      )
+      .catch((error) => {
+        console.error(
+          readonlyProbe
+            ? formatFormalStagingTlsProbeFailure(error, safeStage)
+            : formatFormalRoProvisionFailure(error, safeStage)
+        );
+        process.exitCode = 1;
+      });
+  }
 }

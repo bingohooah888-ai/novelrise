@@ -15,9 +15,11 @@
 --   not cryptographic authorization: theft of the DB role password can
 --   bypass this binding; limit/rotate and monitor credentials accordingly.
 --
--- Staging admin GET ?view=new_readers: DISABLED with 503. getUser() cannot
--- calculate reliable totalRegistered/initialized/partial cohort statistics.
--- Future admin aggregation requires separate trusted, OWNER-reviewed source.
+-- Staging admin GET ?view=new_readers: VERIFIED ADMIN SELF ONLY.
+-- Auth-verified, allowlisted admin sees counts for ONLY that same user
+-- through transaction-local RLS. Global totalRegistered/initialized/partial
+-- remain NULL. This is not cohort-wide registration analytics.
+-- Future cohort aggregation requires separate trusted, OWNER-reviewed source.
 -- Staging admin GET ?view=earning_source: admin allowlist + JWT only;
 -- source-event existence proof only, NEVER Point eligibility authorization.
 -- Pre-reference comment history may be incomplete due to limited RLS window.

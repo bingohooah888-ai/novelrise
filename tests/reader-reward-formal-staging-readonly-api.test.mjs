@@ -6,10 +6,19 @@ import { URL } from 'node:url';
 import {
   createFormalStagingReadOnlyHandler,
   createStagingReadOnlyFormalApplication,
+  createStagingFormalTlsOptions,
+  deriveStagingReadOnlySessionPoolerUrl,
+  verifyStagingFormalRootCa,
   withStagingVerifiedReaderQuery,
   stagingReadOnlyGate
 } from '../api/_lib/reader-reward/formal-staging-readonly-runtime.js';
 import { createUnregisteredFormalApplication } from '../api/_lib/reader-reward/formal-application-host.js';
+import {
+  classifyStagingReaderConnectionFailure,
+  classifyStagingReaderDatabaseRoute,
+  classifyStagingReaderReadFailure,
+  createFormalUsageHttpHandlers
+} from '../api/_lib/reader-reward/formal-usage-http.js';
 import readerEntry from '../api/scout-formal-reader.js';
 import adminEntry from '../api/scout-formal-admin.js';
 
@@ -162,6 +171,124 @@ test('read-only gate rejects every write and unrelated reward view before DB acc
   assert.equal(created, 0);
 });
 
+test('Staging Session Pooler TLS verifies the pinned Supabase CA and host', () => {
+  const original =
+    'postgresql://novelight_formal_reader_ro:unit-test-only@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres';
+  const env = {
+    ...ACTIVE,
+    PGSSLMODE: 'require',
+    STAGING_FORMAL_RO_DATABASE_URL: original
+  };
+  const tls = createStagingFormalTlsOptions(env);
+  assert.equal(tls.servername, 'aws-0-ap-northeast-1.pooler.supabase.com');
+  assert.equal(tls.rejectUnauthorized, true);
+  assert.equal(verifyStagingFormalRootCa(tls.ca), true);
+  assert.equal(env.STAGING_FORMAL_RO_DATABASE_URL, original);
+  assert.throws(
+    () => verifyStagingFormalRootCa(tls.ca + 'TAMPER'),
+    /FORMAL_STAGING_TLS_CA_UNVERIFIED/
+  );
+  assert.throws(
+    () => createStagingFormalTlsOptions({ ...env, VERCEL_ENV: 'production' }),
+    /FORMAL_STAGING_ROUTE_DISABLED/
+  );
+});
+
+test('Vercel includes the pinned CA only in both Staging formal API functions', () => {
+  const root = JSON.parse(
+    readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')
+  );
+  assert.equal(
+    root.functions['api/scout-formal-reader.js'].includeFiles,
+    'certificates/supabase-root-2021.crt'
+  );
+  assert.equal(
+    root.functions['api/scout-formal-admin.js'].includeFiles,
+    'certificates/supabase-root-2021.crt'
+  );
+});
+
+test('Staging read-only DIRECT route becomes official Session Pooler only in memory', () => {
+  const original =
+    'postgresql://novelight_formal_reader_ro:temporary-unit-password@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres';
+  const env = {
+    ...ACTIVE,
+    PGSSLMODE: 'require',
+    STAGING_FORMAL_RO_DATABASE_URL: original
+  };
+  const derived = deriveStagingReadOnlySessionPoolerUrl(env);
+  const source = new URL(original);
+  const target = new URL(derived);
+  assert.equal(target.hostname, 'aws-0-ap-northeast-1.pooler.supabase.com');
+  assert.equal(
+    target.username,
+    'novelight_formal_reader_ro.wmlzjgvxgoyrovdhbqbg'
+  );
+  assert.equal(target.password, source.password);
+  assert.equal(target.port, '5432');
+  assert.equal(target.pathname, source.pathname);
+  assert.equal(target.protocol, source.protocol);
+  assert.equal(target.search, '');
+  assert.equal(target.hash, '');
+  assert.equal(env.STAGING_FORMAL_RO_DATABASE_URL, original);
+  assert.equal(
+    verifyStagingReadOnlyDatabaseTarget({
+      ...env,
+      STAGING_FORMAL_RO_DATABASE_URL: derived
+    }),
+    derived
+  );
+  assert.equal(classifyStagingReaderDatabaseRoute(derived), 'POOLER');
+  assert.equal(classifyStagingReaderDatabaseRoute(original), 'DIRECT');
+});
+
+test('Staging Session Pooler derivation fails closed for unexpected routes', () => {
+  const valid =
+    'postgresql://novelight_formal_reader_ro:temporary-unit-password@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres';
+  const env = {
+    ...ACTIVE,
+    PGSSLMODE: 'require',
+    STAGING_FORMAL_RO_DATABASE_URL: valid
+  };
+  const invalid = [
+    { VERCEL_ENV: 'production' },
+    { STAGING_PROJECT_REF: 'fiepaguycecrredwrcwx' },
+    { PGSSLMODE: 'disable' },
+    { STAGING_FORMAL_RO_DATABASE_URL: valid.replace(':5432/', ':6543/') },
+    {
+      STAGING_FORMAL_RO_DATABASE_URL: valid.replace(
+        'novelight_formal_reader_ro:',
+        'postgres:'
+      )
+    },
+    {
+      STAGING_FORMAL_RO_DATABASE_URL: valid.replace(
+        'db.wmlzjgvxgoyrovdhbqbg.supabase.co',
+        'db.fiepaguycecrredwrcwx.supabase.co'
+      )
+    },
+    {
+      STAGING_FORMAL_RO_DATABASE_URL: valid.replace(
+        'db.wmlzjgvxgoyrovdhbqbg.supabase.co',
+        'aws-0-ap-northeast-1.pooler.supabase.com'
+      )
+    },
+    {
+      STAGING_FORMAL_RO_DATABASE_URL: valid.replace(
+        'temporary-unit-password',
+        ''
+      )
+    }
+  ];
+  for (const override of invalid) {
+    assert.throws(
+      () => deriveStagingReadOnlySessionPoolerUrl({ ...env, ...override }),
+      /FORMAL_STAGING_(?:ROUTE_DISABLED|READER_DB_INVALID)/
+    );
+  }
+  assert.equal(env.STAGING_FORMAL_RO_DATABASE_URL, valid);
+});
+
 test('Staging database connection refuses a Production Postgres target before open', () => {
   const bad = {
     ...ACTIVE,
@@ -243,7 +370,7 @@ test('verified Auth reader inspects only their canonical Point/XP and Level/Wall
     queries.some((q) => q.sql.includes('auth.users')),
     false
   );
-  assert.equal(application.getNewReaderSummary, undefined);
+  assert.equal(typeof application.getNewReaderSummary, 'function');
   const earnings = await application.drainDueEarnings();
   assert.equal(earnings.status, 'formal_worker_disabled');
   const write = response();
@@ -258,9 +385,32 @@ test('verified Auth reader inspects only their canonical Point/XP and Level/Wall
   });
   const summary = response();
   await admin(request('new_readers'), summary);
-  assert.equal(summary.code, 503);
-  assert.equal(summary.body.error, 'FORMAL_NEW_READER_UNAVAILABLE');
-  assert.equal(queries.length, 1);
+  assert.equal(summary.code, 200);
+  assert.equal(summary.body.status, 'staging_verified_admin_reader_only');
+  assert.equal(summary.body.scope, 'verified_admin_self_only');
+  assert.equal(
+    summary.body.readerStatus,
+    'new_reader_ready_for_initialization'
+  );
+  assert.deepEqual(summary.body.counts, {
+    pointRows: 0,
+    xpRows: 0,
+    levelRows: 0,
+    walletRows: 0
+  });
+  assert.equal(summary.body.totalRegistered, null);
+  assert.equal(summary.body.initialized, null);
+  assert.equal(summary.body.partial, null);
+  assert.equal(summary.body.readyForPublicRelease, false);
+  assert.equal(queries.length, 2);
+  assert.deepEqual(
+    queries.map((q) => q.args),
+    [[USER], [USER]]
+  );
+  assert.equal(
+    queries.some((q) => q.sql.includes('auth.users')),
+    false
+  );
 });
 
 test('missing Auth created_at fails closed without any DB read', async () => {
@@ -529,6 +679,177 @@ test('Staging RLS read scope uses transaction-local verified reader and post-ref
     activeRoleReviewSql,
     /\bFOR (?:INSERT|UPDATE|DELETE|ALL)\b/i
   );
-  assert.match(stagingRoleReviewSql, /admin GET \?view=new_readers: DISABLED/);
+  assert.match(
+    stagingRoleReviewSql,
+    /admin GET \?view=new_readers: VERIFIED ADMIN SELF ONLY/
+  );
   assert.match(stagingRoleReviewSql, /Custom GUC values are/);
+});
+
+test('Staging reader GET diagnostic maps safe fixed categories only', () => {
+  const cases = [
+    [{ code: 'CERT_HAS_EXPIRED' }, 'P1_TLS'],
+    [{ code: 'ERR_TLS_CERT_ALTNAME_INVALID' }, 'P1_TLS'],
+    [{ code: 'ETIMEDOUT' }, 'P1_TIMEOUT'],
+    [{ message: 'connection timeout' }, 'P1_TIMEOUT'],
+    [{ code: 'ECONNREFUSED' }, 'P1_CONNECT'],
+    [{ code: '28P01' }, 'P1_CONNECT'],
+    [{ code: '08006' }, 'P1_CONNECT'],
+    [{ code: '42501' }, 'P1_SQL'],
+    [{ code: '42P01' }, 'P1_SQL'],
+    [{ message: 'opaque exception with a secret' }, 'P1_OTHER']
+  ];
+  for (const [error, expected] of cases) {
+    assert.equal(classifyStagingReaderReadFailure(error), expected);
+  }
+});
+
+test('Staging DB route diagnostic reveals only a fixed connection type', () => {
+  const direct =
+    'postgresql://novelight_formal_reader_ro:dummy@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres';
+  const pooler =
+    'postgresql://novelight_formal_reader_ro.wmlzjgvxgoyrovdhbqbg:dummy@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres';
+  assert.equal(classifyStagingReaderDatabaseRoute(direct), 'DIRECT');
+  assert.equal(classifyStagingReaderDatabaseRoute(pooler), 'POOLER');
+  assert.equal(classifyStagingReaderDatabaseRoute('REDACTED'), 'UNKNOWN');
+  assert.equal(classifyStagingReaderDatabaseRoute(undefined), 'UNKNOWN');
+  assert.equal(
+    classifyStagingReaderDatabaseRoute(
+      direct.replace('wmlzjgvxgoyrovdhbqbg', 'productionotherref')
+    ),
+    'UNKNOWN'
+  );
+  assert.equal(
+    classifyStagingReaderDatabaseRoute(direct.replace(':dummy@', ':@')),
+    'UNKNOWN'
+  );
+});
+
+test('Staging DB connection diagnostics expose fixed subcodes only', () => {
+  const cases = [
+    [{ code: '28P01' }, 'P1_CONNECT_AUTH'],
+    [{ code: 'ENOTFOUND' }, 'P1_CONNECT_DNS'],
+    [{ code: 'EAI_AGAIN' }, 'P1_CONNECT_DNS'],
+    [{ code: 'ENETUNREACH' }, 'P1_CONNECT_NETWORK'],
+    [{ code: 'EHOSTUNREACH' }, 'P1_CONNECT_NETWORK'],
+    [{ code: 'ECONNREFUSED' }, 'P1_CONNECT_REFUSED'],
+    [{ code: 'ECONNRESET' }, 'P1_CONNECT_DROPPED'],
+    [{ code: '08006' }, 'P1_CONNECT_DROPPED'],
+    [{ code: '53300' }, 'P1_CONNECT_SERVER'],
+    [{ message: 'hidden private connection credential' }, 'P1_CONNECT_OTHER']
+  ];
+  for (const [error, expected] of cases) {
+    assert.equal(classifyStagingReaderConnectionFailure(error), expected);
+  }
+});
+
+test('only scoped Staging reader GET adds fixed failure header', async () => {
+  const failure = Object.assign(
+    new Error('private URL, password and bearer must not be returned'),
+    { code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' }
+  );
+  const service = Object.fromEntries(
+    [
+      'getReaderSnapshot',
+      'requestExchange',
+      'requestAiUse',
+      'listPendingExchanges',
+      'listRefundCandidates',
+      'resolveExchange',
+      'refundCommitted'
+    ].map((name) => [name, () => null])
+  );
+  const supabase = {
+    auth: { getUser: async () => ({ data: { user: { id: USER } } }) }
+  };
+  const args = {
+    supabase,
+    service,
+    inspectNewReader: async () => {
+      throw failure;
+    }
+  };
+  const staging = createFormalUsageHttpHandlers({
+    ...args,
+    env: {
+      ...ACTIVE,
+      STAGING_FORMAL_RO_DATABASE_URL:
+        'postgresql://novelight_formal_reader_ro:dummy@db.wmlzjgvxgoyrovdhbqbg.supabase.co:5432/postgres'
+    }
+  });
+  const stagingResult = response();
+  await staging.reader(request('new_reader'), stagingResult);
+  assert.equal(stagingResult.code, 503);
+  assert.deepEqual(stagingResult.body, {
+    ok: false,
+    error: 'FORMAL_REWARD_UNAVAILABLE'
+  });
+  assert.equal(stagingResult.headers['X-NOVELIGHT-P1-Read-Failure'], 'P1_TLS');
+  assert.equal(stagingResult.headers['X-NOVELIGHT-P1-DB-Route'], 'DIRECT');
+  assert.equal(
+    stagingResult.headers['X-NOVELIGHT-P1-Connect-Detail'],
+    undefined
+  );
+  assert.doesNotMatch(
+    JSON.stringify(stagingResult),
+    /private URL|password|bearer/
+  );
+
+  const production = createFormalUsageHttpHandlers({
+    ...args,
+    env: { ...ACTIVE, VERCEL_ENV: 'production' }
+  });
+  const productionResult = response();
+  await production.reader(request('new_reader'), productionResult);
+  assert.equal(productionResult.code, 503);
+  assert.equal(
+    productionResult.headers['X-NOVELIGHT-P1-Read-Failure'],
+    undefined
+  );
+  assert.equal(productionResult.headers['X-NOVELIGHT-P1-DB-Route'], undefined);
+  assert.equal(
+    productionResult.headers['X-NOVELIGHT-P1-Connect-Detail'],
+    undefined
+  );
+
+  const unauthorized = request('new_reader');
+  unauthorized.headers = { ...headers, authorization: '' };
+  const denied = response();
+  await staging.reader(unauthorized, denied);
+  assert.equal(denied.code, 401);
+  assert.equal(denied.headers['X-NOVELIGHT-P1-Read-Failure'], undefined);
+  assert.equal(denied.headers['X-NOVELIGHT-P1-DB-Route'], undefined);
+  assert.equal(denied.headers['X-NOVELIGHT-P1-Connect-Detail'], undefined);
+
+  const connectionFailure = Object.assign(
+    new Error('cannot reach private address'),
+    { code: 'ENETUNREACH' }
+  );
+  const scopedPooler = createFormalUsageHttpHandlers({
+    ...args,
+    inspectNewReader: async () => {
+      throw connectionFailure;
+    },
+    env: {
+      ...ACTIVE,
+      STAGING_FORMAL_RO_DATABASE_URL:
+        'postgresql://novelight_formal_reader_ro.wmlzjgvxgoyrovdhbqbg:dummy@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres'
+    }
+  });
+  const connectResult = response();
+  await scopedPooler.reader(request('new_reader'), connectResult);
+  assert.equal(connectResult.code, 503);
+  assert.equal(
+    connectResult.headers['X-NOVELIGHT-P1-Read-Failure'],
+    'P1_CONNECT'
+  );
+  assert.equal(connectResult.headers['X-NOVELIGHT-P1-DB-Route'], 'POOLER');
+  assert.equal(
+    connectResult.headers['X-NOVELIGHT-P1-Connect-Detail'],
+    'P1_CONNECT_NETWORK'
+  );
+  assert.deepEqual(connectResult.body, {
+    ok: false,
+    error: 'FORMAL_REWARD_UNAVAILABLE'
+  });
 });

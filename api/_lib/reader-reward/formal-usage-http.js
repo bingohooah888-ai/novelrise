@@ -7,6 +7,7 @@ import {
   isSameOriginRequest,
   requireAdmin
 } from '../admin-auth.js';
+import { URL } from 'node:url';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fieldsAre = (value, keys) =>
@@ -18,6 +19,137 @@ const bearer = (value) =>
   typeof value === 'string'
     ? (value.match(/^Bearer\s+(\S+)$/i)?.[1] ?? null)
     : null;
+
+const P1_STAGING_DB_HOST = 'db.wmlzjgvxgoyrovdhbqbg.supabase.co';
+const P1_STAGING_POOLER_HOST = /^aws-[0-9]+-[a-z0-9-]+\.pooler\.supabase\.com$/;
+
+export function classifyStagingReaderDatabaseRoute(value) {
+  if (typeof value !== 'string') return 'UNKNOWN';
+  try {
+    const target = new URL(value);
+    if (
+      !['postgres:', 'postgresql:'].includes(target.protocol) ||
+      !target.password ||
+      target.pathname !== '/postgres' ||
+      target.search ||
+      target.hash
+    ) {
+      return 'UNKNOWN';
+    }
+    const username = decodeURIComponent(target.username);
+    if (
+      target.hostname === P1_STAGING_DB_HOST &&
+      username === 'novelight_formal_reader_ro' &&
+      (!target.port || target.port === '5432')
+    ) {
+      return 'DIRECT';
+    }
+    if (
+      P1_STAGING_POOLER_HOST.test(target.hostname) &&
+      username === 'novelight_formal_reader_ro.wmlzjgvxgoyrovdhbqbg' &&
+      target.port === '5432'
+    ) {
+      return 'POOLER';
+    }
+  } catch {
+    // Invalid or unavailable connection values are never returned to clients.
+  }
+  return 'UNKNOWN';
+}
+
+export function classifyStagingReaderConnectionFailure(error) {
+  const code = typeof error?.code === 'string' ? error.code : '';
+  const message = typeof error?.message === 'string' ? error.message : '';
+  if (
+    code === '28P01' ||
+    code === '28000' ||
+    /\b(?:password authentication failed|invalid authorization specification)\b/i.test(
+      message
+    )
+  ) {
+    return 'P1_CONNECT_AUTH';
+  }
+  if (
+    code === 'ENOTFOUND' ||
+    code === 'EAI_AGAIN' ||
+    /\b(?:getaddrinfo|name resolution|dns lookup)\b/i.test(message)
+  ) {
+    return 'P1_CONNECT_DNS';
+  }
+  if (
+    code === 'ENETUNREACH' ||
+    code === 'EHOSTUNREACH' ||
+    /\b(?:network is unreachable|no route to host)\b/i.test(message)
+  ) {
+    return 'P1_CONNECT_NETWORK';
+  }
+  if (code === 'ECONNREFUSED') return 'P1_CONNECT_REFUSED';
+  if (
+    code === 'ECONNRESET' ||
+    code === 'EPIPE' ||
+    /^08[0-9A-Z]{3}$/.test(code) ||
+    /\b(?:connection terminated|connection reset)\b/i.test(message)
+  ) {
+    return 'P1_CONNECT_DROPPED';
+  }
+  if (['53300', '57P01', '57P03'].includes(code)) {
+    return 'P1_CONNECT_SERVER';
+  }
+  return 'P1_CONNECT_OTHER';
+}
+
+const P1_TLS_CODES = new Set([
+  'CERT_HAS_EXPIRED',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'UNABLE_TO_GET_ISSUER_CERT',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY'
+]);
+const P1_CONNECT_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'EPIPE',
+  '28P01',
+  '28000',
+  '53300',
+  '57P01',
+  '57P03'
+]);
+
+export function classifyStagingReaderReadFailure(error) {
+  const code = typeof error?.code === 'string' ? error.code : '';
+  const detail = typeof error?.message === 'string' ? error.message : '';
+  if (
+    code === 'ETIMEDOUT' ||
+    code === 'ETIME' ||
+    code === '57014' ||
+    /\b(?:timeout|timed?\s*out|deadline exceeded)\b/i.test(detail)
+  ) {
+    return 'P1_TIMEOUT';
+  }
+  if (
+    P1_TLS_CODES.has(code) ||
+    code.startsWith('ERR_TLS_') ||
+    code.startsWith('ERR_SSL_') ||
+    /\b(?:certificate|self[- ]signed|tls|ssl)\b/i.test(detail)
+  ) {
+    return 'P1_TLS';
+  }
+  if (
+    P1_CONNECT_CODES.has(code) ||
+    /^08[0-9A-Z]{3}$/.test(code) ||
+    /\b(?:connection terminated|connection refused|getaddrinfo)\b/i.test(detail)
+  ) {
+    return 'P1_CONNECT';
+  }
+  if (/^[0-9A-Z]{5}$/.test(code)) return 'P1_SQL';
+  return 'P1_OTHER';
+}
 
 function stop(res, code, error) {
   return res.status(code).json({ ok: false, error });
@@ -187,7 +319,30 @@ export function createFormalUsageHttpHandlers({
         );
       }
       return stop(res, 400, 'INVALID_REWARD_REQUEST');
-    } catch {
+    } catch (error) {
+      // Staging reader GET only. Never return raw error text or credentials.
+      if (
+        req.method === 'GET' &&
+        req.query?.view === 'new_reader' &&
+        env.VERCEL_ENV === 'preview' &&
+        env.NOVELIGHT_SCOUT_FORMAL_STAGING_PROBE === 'read-only' &&
+        env.STAGING_PROJECT_REF === 'wmlzjgvxgoyrovdhbqbg' &&
+        (env.STAGING_SUPABASE_URL ?? env.NOVELIGHT_STAGING_SUPABASE_URL) ===
+          'https://wmlzjgvxgoyrovdhbqbg.supabase.co'
+      ) {
+        const category = classifyStagingReaderReadFailure(error);
+        res.setHeader('X-NOVELIGHT-P1-Read-Failure', category);
+        res.setHeader(
+          'X-NOVELIGHT-P1-DB-Route',
+          classifyStagingReaderDatabaseRoute(env.STAGING_FORMAL_RO_DATABASE_URL)
+        );
+        if (category === 'P1_CONNECT') {
+          res.setHeader(
+            'X-NOVELIGHT-P1-Connect-Detail',
+            classifyStagingReaderConnectionFailure(error)
+          );
+        }
+      }
       return stop(res, 503, 'FORMAL_REWARD_UNAVAILABLE');
     }
   }
@@ -299,7 +454,7 @@ export function createFormalUsageHttpHandlers({
             return stop(res, 503, 'FORMAL_NEW_READER_UNAVAILABLE');
           return res.status(200).json({
             ok: true,
-            ...(await getNewReaderSummary())
+            ...(await getNewReaderSummary(reviewer))
           });
         }
         return req.query?.view === 'refunds'

@@ -8,6 +8,12 @@
     }
   },
   "functions": {
+    "api/scout-formal-reader.js": {
+      "includeFiles": "certificates/supabase-root-2021.crt"
+    },
+    "api/scout-formal-admin.js": {
+      "includeFiles": "certificates/supabase-root-2021.crt"
+    },
     "api/seo/novel.js": {
       "includeFiles": "api/seo/templates/novel.html"
     },

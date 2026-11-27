@@ -232,6 +232,56 @@
             );
             metricCards.append(card);
           }
+          // Optional XP/first-level metrics: old formal admin hosts return
+          // none of these fields and keep their original display unchanged.
+          const xpFields = [
+            'levelUpMonth',
+            'levelUpTotal',
+            'xpEventsMonth',
+            'xpEarnedMonth'
+          ];
+          if (
+            xpFields.every(
+              (key) =>
+                Number.isSafeInteger(overview[key]) && overview[key] >= 0
+            )
+          ) {
+            for (const [label, key, unit] of [
+              ['今月の初回Level到達報酬', 'levelUpMonth', 'pt'],
+              ['累計の初回Level到達報酬', 'levelUpTotal', 'pt'],
+              ['今月の適用済XPイベント', 'xpEventsMonth', '件'],
+              ['今月の獲得XP', 'xpEarnedMonth', 'XP']
+            ]) {
+              const card = node('article', 'rr-admin-request');
+              card.append(
+                node('strong', '', label),
+                node(
+                  'p',
+                  'rr-admin-muted',
+                  fmt(overview[key]) + ' ' + unit
+                )
+              );
+              metricCards.append(card);
+            }
+          }
+          if (
+            ['maintenanceReviewed', 'maintenanceDemotions'].every(
+              (key) =>
+                Number.isSafeInteger(overview[key]) && overview[key] >= 0
+            )
+          ) {
+            for (const [label, key] of [
+              ['確定した30日維持判定', 'maintenanceReviewed'],
+              ['維持判定によるLevel降格', 'maintenanceDemotions']
+            ]) {
+              const card = node('article', 'rr-admin-request');
+              card.append(
+                node('strong', '', label),
+                node('p', 'rr-admin-muted', fmt(overview[key]) + ' 件')
+              );
+              metricCards.append(card);
+            }
+          }
           records.append(metricCards);
           records.append(
             node(
@@ -251,7 +301,8 @@
               typeof event.userId !== 'string' ||
               typeof event.eventId !== 'string' ||
               typeof event.kind !== 'string' ||
-              !event.kind.startsWith('formal_') ||
+              !event.kind.startsWith('formal_') &&
+                event.kind !== 'level_up' ||
               !Number.isSafeInteger(event.points) ||
               !['confirmed', 'pending', 'frozen', 'cancelled'].includes(
                 event.status

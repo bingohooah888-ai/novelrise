@@ -91,8 +91,10 @@ begin
                                 + interval '30 days' then
     return jsonb_build_object('status','review_due_first');
   end if;
-  if v_state.current_level = 100 then
-    return jsonb_build_object('status','level_100_surplus_policy_pending');
+  -- OWNER-approved cap: a Lv.100 XP ledger event still gets a unique claim
+  -- and counts in its 30-day maintenance window. Only Level progress stops.
+  if v_state.current_level = 100 and v_state.level_progress_xp <> 0 then
+    return jsonb_build_object('status','level_100_progress_invalid');
   end if;
   v_level := v_state.current_level;
   v_progress := v_state.level_progress_xp + v_xp.xp_value;
@@ -113,9 +115,10 @@ begin
     v_progress := v_progress-v_required;
     v_level := v_level+1;
   end loop;
-  if v_level=100 and v_progress>0 then
-    return jsonb_build_object('status','level_100_surplus_policy_pending');
-  end if;
+  -- Keep the verified source XP unchanged in public.scout_xp_ledger.
+  -- Surplus XP is discarded from *progression* only. The same transaction
+  -- below records the xp_id claim and prevents another 50 Point award.
+  if v_level=100 then v_progress:=0; end if;
 
   -- A level can be regained after demotion, but the original first-time
   -- reward is never paid twice. Existing event_key UNIQUE is reused.
@@ -266,15 +269,15 @@ begin
     return new;
   end if;
   v_result := novelight_formal_private.apply_scout_xp(new.id);
-  -- review_due_first / closed_or_pre_release_window / Lv100 surplus remain
-  -- unclaimed in scout_xp_ledger. The existing service can retry after
+  -- review_due_first / closed_or_pre_release_window / invalid Lv100
+  -- progress remain unclaimed in scout_xp_ledger. The service can retry after
   -- completing chronological 30-day reviews. No implicit auto-review here.
   if v_result->>'status' not in (
     'applied',
     'already_applied',
     'review_due_first',
     'closed_or_pre_release_window',
-    'level_100_surplus_policy_pending',
+    'level_100_progress_invalid',
     'adjustment_policy_pending'
   ) then
     raise exception 'Unexpected formal XP application status: %',v_result->>'status';

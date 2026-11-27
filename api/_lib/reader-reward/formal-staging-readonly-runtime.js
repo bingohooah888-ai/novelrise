@@ -1,5 +1,8 @@
 // Staging-only, read-only mount for the existing formal reader/admin handlers.
 // Never enables formal launch, reward issuance, wallet mutation or a worker.
+import { createHash, X509Certificate } from 'node:crypto';
+import { lstatSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import pg from 'pg';
 import { URL } from 'node:url';
@@ -10,6 +13,8 @@ const STAGING_URL = 'https://' + STAGING_REF + '.supabase.co';
 const PROOF_REFERENCE = '2026-11-10T00:00:00.000Z';
 const STAGING_READ_ONLY_ROLE = 'novelight_formal_reader_ro';
 const SESSION_POOLER_HOST = /^aws-[0-9]+-[a-z0-9-]+\.pooler\.supabase\.com$/;
+// Official Staging Session Pooler host verified in the authenticated Connect UI.
+const STAGING_SESSION_POOLER_HOST = 'aws-0-ap-northeast-1.pooler.supabase.com';
 
 export function verifyStagingReadOnlyDatabaseTarget(env) {
   const value = env.STAGING_FORMAL_RO_DATABASE_URL;
@@ -38,6 +43,79 @@ export function verifyStagingReadOnlyDatabaseTarget(env) {
   if (!credentialsOk || !(direct || pooler))
     throw new Error('FORMAL_STAGING_READER_DB_INVALID');
   return value;
+}
+
+// Build only an in-memory Pooler URL. The protected Vercel Secret, database
+// role, password and effective read-only permissions remain unchanged.
+export function deriveStagingReadOnlySessionPoolerUrl(env) {
+  if (!stagingReadOnlyGate(env)) {
+    throw new Error('FORMAL_STAGING_ROUTE_DISABLED');
+  }
+  const original = new URL(verifyStagingReadOnlyDatabaseTarget(env));
+  if (
+    original.hostname !== 'db.' + STAGING_REF + '.supabase.co' ||
+    original.username !== STAGING_READ_ONLY_ROLE
+  ) {
+    throw new Error('FORMAL_STAGING_READER_DB_INVALID');
+  }
+  original.hostname = STAGING_SESSION_POOLER_HOST;
+  original.username = STAGING_READ_ONLY_ROLE + '.' + STAGING_REF;
+  original.port = '5432';
+  const derived = original.toString();
+  verifyStagingReadOnlyDatabaseTarget({
+    ...env,
+    STAGING_FORMAL_RO_DATABASE_URL: derived
+  });
+  return derived;
+}
+
+const STAGING_PINNED_CA_PEM_SHA256 =
+  '700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7';
+const STAGING_PINNED_CA_DER_SHA256 =
+  '807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa';
+
+export function verifyStagingFormalRootCa(pem) {
+  try {
+    if (
+      typeof pem !== 'string' ||
+      createHash('sha256').update(pem, 'utf8').digest('hex') !==
+        STAGING_PINNED_CA_PEM_SHA256
+    )
+      throw new Error('CA_HASH_MISMATCH');
+    const cert = new X509Certificate(pem);
+    const now = Date.now();
+    if (
+      createHash('sha256').update(cert.raw).digest('hex') !==
+        STAGING_PINNED_CA_DER_SHA256 ||
+      !cert.ca ||
+      !cert.subject.includes('CN=Supabase Root 2021 CA') ||
+      cert.issuer !== cert.subject ||
+      !cert.verify(cert.publicKey) ||
+      Date.parse(cert.validFrom) > now ||
+      Date.parse(cert.validTo) <= now
+    )
+      throw new Error('CA_CERTIFICATE_INVALID');
+    return true;
+  } catch {
+    throw new Error('FORMAL_STAGING_TLS_CA_UNVERIFIED');
+  }
+}
+
+export function createStagingFormalTlsOptions(env) {
+  // Never read or trust a runtime-generated certificate or a client secret.
+  const target = new URL(deriveStagingReadOnlySessionPoolerUrl(env));
+  try {
+    const path = join(process.cwd(), 'certificates', 'supabase-root-2021.crt');
+    const info = lstatSync(path);
+    if (!info.isFile() || info.isSymbolicLink()) {
+      throw new Error('CA_FILE_INVALID');
+    }
+    const ca = readFileSync(path, 'utf8');
+    verifyStagingFormalRootCa(ca);
+    return { ca, rejectUnauthorized: true, servername: target.hostname };
+  } catch {
+    throw new Error('FORMAL_STAGING_TLS_CA_UNVERIFIED');
+  }
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -101,7 +179,7 @@ export function createStagingReadOnlyFormalApplication(env = process.env) {
     throw new Error('FORMAL_STAGING_ROUTE_DISABLED');
   }
   // Never reuse migration sync's privileged postgres credentials in an HTTP route.
-  const readOnlyDatabaseUrl = verifyStagingReadOnlyDatabaseTarget(env);
+  const readOnlyDatabaseUrl = deriveStagingReadOnlySessionPoolerUrl(env);
   const publishableKey =
     env.STAGING_SUPABASE_PUBLISHABLE_KEY ??
     env.NOVELIGHT_STAGING_SUPABASE_PUBLISHABLE_KEY;
@@ -113,7 +191,7 @@ export function createStagingReadOnlyFormalApplication(env = process.env) {
   }
   const client = new pg.Pool({
     connectionString: readOnlyDatabaseUrl,
-    ssl: { rejectUnauthorized: true },
+    ssl: createStagingFormalTlsOptions(env),
     // Defense in depth: each PostgreSQL session is transaction-read-only.
     options: '-c default_transaction_read_only=on',
     max: 1,
@@ -160,7 +238,9 @@ export function createStagingReadOnlyFormalApplication(env = process.env) {
       verifiedByTrustedServer: false,
       trustedServerVerified: false
     },
-    env
+    // Existing fixed staging diagnostics must report the effective route.
+    // This copy never mutates process.env or the stored Vercel Secret.
+    env: { ...env, STAGING_FORMAL_RO_DATABASE_URL: readOnlyDatabaseUrl }
   });
 }
 
