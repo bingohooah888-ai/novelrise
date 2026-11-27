@@ -220,3 +220,43 @@ test('analysis plan gating and privacy review remain fail closed', () => {
   assert.equal(missing.read(), null);
   assert.equal(admin.childNodes.at(-1).disabled, true);
 });
+
+test('temporary typed form formatter diagnostic', async () => {
+  const { format, resolveConfig } = await import('prettier');
+  const paths = [
+    'tests/ai-offline-screen-bindings.test.mjs',
+    'tests/e2e/specs/smoke.spec.js'
+  ];
+  for (const path of paths) {
+    const full = await readFile(path, 'utf8');
+    const marker = "\ntest('temporary typed form formatter diagnostic'";
+    const index = full.indexOf(marker);
+    const source = index < 0 ? full : full.slice(0, index);
+    const config = await resolveConfig(path);
+    const formatted = await format(source, { ...config, filepath: path });
+    const original = source.split('\n');
+    const expected = formatted.split('\n');
+    let start = 0;
+    while (start < original.length && original[start] === expected[start]) {
+      start++;
+    }
+    let end = 0;
+    while (
+      end < original.length - start &&
+      end < expected.length - start &&
+      original[original.length - 1 - end] ===
+        expected[expected.length - 1 - end]
+    ) {
+      end++;
+    }
+    const diff = {
+      path,
+      start,
+      remove: original.length - start - end,
+      insert: expected.slice(start, expected.length - end)
+    };
+    process.stdout.write(
+      'AI_TYPED_FORMAT_DIAGNOSTIC ' + JSON.stringify(diff) + '\n'
+    );
+  }
+});
