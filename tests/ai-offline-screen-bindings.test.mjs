@@ -177,3 +177,20 @@ test('all ten intended screens have only a hidden review host', async () => {
     assert.ok(caller.includes("page:'" + page + "'"));
   }
 });
+
+test('all existing placements build typed locked forms without source data', () => {
+  const { root, doc, client } = fixture();
+  assert.equal(
+    api.mountDormantPage({ document: doc, client, page: 'search.html' }),
+    true
+  );
+  const sections = root.childNodes.filter((node) => node.tag === 'section');
+  assert.equal(sections.length, 2);
+  const controls = sections.flatMap((node) =>
+    node.childNodes.flatMap((child) => child.childNodes)
+  );
+  assert.ok(controls.some((control) => control.tag === 'textarea'));
+  assert.ok(controls.some((control) => control.tag === 'select'));
+  assert.ok(controls.every((control) => control.disabled === true));
+  assert.equal(root.hidden, true);
+});
