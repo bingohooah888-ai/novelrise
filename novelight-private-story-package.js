@@ -74,6 +74,27 @@
     });
   }
 
+  // Same category and, for character notes, same existing character ID.
+  // Equal headings are only a review cue, not a contradiction or duplicate fact.
+  function duplicateHeadingNotes(notes) {
+    if (!Array.isArray(notes)) return [];
+    const groups = new Map();
+    for (const note of notes) {
+      if (!note || typeof note.title !== 'string' ||
+          !categories.some(([key]) => key === note.note_type)) continue;
+      const title = note.title.normalize('NFKC').trim().toLowerCase();
+      if (!title) continue;
+      if (note.note_type === 'character' && note.character_id == null) continue;
+      const key = JSON.stringify([note.note_type,
+        note.note_type === 'character' ? String(note.character_id) : '', title]);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(note);
+    }
+    const duplicates = new Set([...groups.values()]
+      .filter((group) => group.length > 1).flat());
+    return notes.filter((note) => duplicates.has(note));
+  }
+
   function sameOwner(initial, current) {
     return Boolean(
       initial?.user?.id &&
@@ -86,6 +107,7 @@
   root.NovelightPrivateStoryPackage = Object.freeze({
     buildPackage,
     filterNotes,
+    duplicateHeadingNotes,
     sameOwner
   });
 })(typeof window === 'object' ? window : globalThis);

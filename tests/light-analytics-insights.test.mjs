@@ -154,3 +154,19 @@ test('upstream comparisons suppress invalid or small counts independently', () =
   assert.match(insights.conversionPeriodText(null, 7), /取得できません/u);
   assert.match(insights.conversionPeriodText(row, 1), /取得できません/u);
 });
+
+test('comparison reports preserve aggregate semantics', () => {
+  const row = {
+    current_first_episode_reads_10s: 100,
+    current_continued_to_episode_2: 40,
+    previous_first_episode_reads_10s: 100,
+    previous_continued_to_episode_2: 55
+  };
+  const before = JSON.stringify(row);
+  const report = insights.buildComparisonReport(row, 30);
+  assert.match(report, /-15\.0ポイント/u);
+  assert.match(report, /改善・悪化を証明するものではありません/u);
+  assert.equal(insights.buildComparisonReport(null, 30), '');
+  assert.equal(insights.buildComparisonReport(row, 1), '');
+  assert.equal(JSON.stringify(row), before);
+});

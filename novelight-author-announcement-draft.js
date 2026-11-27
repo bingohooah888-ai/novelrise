@@ -52,6 +52,18 @@
     return Object.freeze({ text, length, target, remaining: target - length });
   }
 
+  // Author-supplied story facts only; no inference or automatic publication.
+  function buildSynopsis({ novelId, novelTitle, setting, goal, conflict } = {}) {
+    const fields = [setting, goal, conflict];
+    if (fields.some((value) =>
+      typeof value !== 'string' || !value.trim() || value.length > 180
+    )) return null;
+    if (!buildDraft({ kind: 'introduce', novelId, novelTitle })) return null;
+    const text = '『' + novelTitle.trim() + '』\n\n' +
+      fields.map((value) => value.trim()).join('\n\n');
+    return Object.freeze({ text, length: Array.from(text).length });
+  }
+
   function canInsert({ ready, busy, noteId, title, body } = {}) {
     return (
       ready === true &&
@@ -65,6 +77,7 @@
   root.NovelightAuthorAnnouncementDraft = Object.freeze({
     buildDraft,
     buildIntro,
+    buildSynopsis,
     canInsert
   });
 })(typeof window === 'object' ? window : globalThis);

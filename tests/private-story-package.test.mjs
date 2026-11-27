@@ -109,3 +109,19 @@ test('person filtering uses existing IDs and keeps detached character notes', ()
   assert.match(page, /id="noteCharacterFilter"/u);
   assert.match(page, /NovelightPrivateStoryPackage\.filterNotes\(/u);
 });
+
+test('duplicate headings respect category and character identity', () => {
+  const notes = [
+    { note_type: 'plot', title: 'ＡＢＣ' },
+    { note_type: 'plot', title: 'abc' },
+    { note_type: 'world', title: 'abc' },
+    { note_type: 'character', title: '設定', character_id: 1 },
+    { note_type: 'character', title: '設定', character_id: 2 },
+    { note_type: 'character', title: '設定', character_id: null }
+  ];
+  const before = JSON.stringify(notes);
+  const result = Array.from(api.duplicateHeadingNotes(notes));
+  assert.deepEqual(result, notes.slice(0, 2));
+  assert.equal(JSON.stringify(notes), before);
+  assert.match(page, /id="noteDuplicateOnly"/u);
+});
