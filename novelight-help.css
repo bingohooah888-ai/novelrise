@@ -90,3 +90,5 @@ body.novelight-theme.novelight-page-mypage .studio-sidebar{
   }
   .nl-help-page-brand-logo { height: 72px; max-width: 56vw; }
 }
+
+.nl-help-lookup{margin:0 0 22px;padding:18px 20px;border:1px solid #e2ddd3;border-radius:14px;background:#fff}.nl-help-lookup h2{margin:0 0 10px;font-size:18px}.nl-help-lookup input{box-sizing:border-box;width:100%;max-width:100%;min-height:44px;padding:8px 12px;border:1px solid #c8c5bd;border-radius:9px;font:inherit}.nl-help-lookup p,.nl-help-lookup li{font-size:14px;line-height:1.7}.nl-help-lookup ul{margin:0;padding-left:1.3em}.nl-help-lookup a{color:#58451f;text-decoration:underline}
