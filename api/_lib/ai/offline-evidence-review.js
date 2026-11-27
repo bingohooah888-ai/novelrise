@@ -832,7 +832,9 @@ export function createOfflineOwnerEvidenceReader({
         );
         const dates = new Set();
         for (const row of rows) {
-          if (!row || !/^\\d{4}-\\d{2}-\\d{2}$/u.test(row.bucket_date)) {
+          const date = row?.bucket_date;
+          if (typeof date !== 'string') invalid();
+          if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/u.test(date)) {
             invalid();
           }
           if (dates.has(row.bucket_date)) invalid();
