@@ -9,7 +9,7 @@ vm.runInNewContext(source, context);
 const { summarizeAuthorComments, replyExample } =
   context.window.NovelightComments;
 
-test('local summary counts only eligible rows and visible reply status', () => {
+test('local summary counts eligible rows and visible reply status', () => {
   const rows = [
     { can_moderate: true, is_hidden: false, author_reply_body: null },
     {
@@ -23,7 +23,8 @@ test('local summary counts only eligible rows and visible reply status', () => {
     { can_moderate: true }
   ];
   const before = JSON.stringify(rows);
-  assert.deepEqual({ ...summarizeAuthorComments(rows) }, {
+  const summary = { ...summarizeAuthorComments(rows) };
+  assert.deepEqual(summary, {
     total: 4,
     visible: 2,
     unreplied: 1,
