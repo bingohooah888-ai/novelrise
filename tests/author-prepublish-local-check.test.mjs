@@ -242,3 +242,35 @@ test('both editors expose check without changing save/publish or sending story t
   assert.match(runtime, /item\.textContent\s*=/u);
   assert.match(runtime, /finding\.line === null/u);
 });
+
+test('local segment lengths are advisory and do not include manuscript text', () => {
+  const report = analyze({
+    title: '章',
+    content: 'あい。うえお！\n' + '長'.repeat(120)
+  });
+  assert.equal(report.segmentMetrics.count, 3);
+  assert.equal(report.segmentMetrics.average, 42);
+  assert.equal(report.segmentMetrics.max, 120);
+  assert.equal(report.segmentMetrics.limited, false);
+  const finding = report.findings.find((f) => f.code === 'long-segment');
+  assert.equal(finding.line, 2);
+  assert.ok(!JSON.stringify(report).includes('あい'));
+  assert.ok(!JSON.stringify(finding).includes('長'.repeat(120)));
+});
+
+test('local segment lengths handle whitespace and bounded inspection', () => {
+  const empty = analyze({ title: '章', content: '　\n　！？' });
+  assert.equal(empty.segmentMetrics.count, 0);
+  assert.equal(empty.segmentMetrics.average, 0);
+  const bounded = analyze({ title: '章', content: 'あ'.repeat(100001) });
+  assert.equal(bounded.segmentMetrics.max, 100000);
+  assert.equal(bounded.segmentMetrics.limited, true);
+  const repeated = analyze({
+    title: '章',
+    content: Array(5).fill('長'.repeat(120)).join('\n')
+  });
+  const lines = repeated.findings
+    .filter((f) => f.code === 'long-segment')
+    .map((f) => f.line);
+  assert.deepEqual(Array.from(lines), [1, 2, 3]);
+});
