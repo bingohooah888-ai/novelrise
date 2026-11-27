@@ -137,7 +137,12 @@ test('real page mount stays hidden, disabled and clears on auth or navigation', 
   events.get('auth')();
   assert.equal(result.childNodes.length, 0);
   assert.equal(root.hidden, true);
-  for (const event of ['pagehide', 'pageshow', 'popstate', 'visibilitychange']) {
+  for (const event of [
+    'pagehide',
+    'pageshow',
+    'popstate',
+    'visibilitychange'
+  ]) {
     result.appendChild(doc.createElement('p'));
     events.get(event)();
     assert.equal(result.childNodes.length, 0);
@@ -150,16 +155,16 @@ test('real page mount stays hidden, disabled and clears on auth or navigation', 
 
 test('all ten intended screens have only a hidden review host', async () => {
   const pages = [
-    "story-notes.html",
-    "episode-edit.html",
-    "novel-edit.html",
-    "analytics.html",
-    "novel.html",
-    "search.html",
-    "admin-reports.html",
-    "admin-trust-safety.html",
-    "admin-inquiries.html",
-    "admin-analytics.html"
+    'story-notes.html',
+    'episode-edit.html',
+    'novel-edit.html',
+    'analytics.html',
+    'novel.html',
+    'search.html',
+    'admin-reports.html',
+    'admin-trust-safety.html',
+    'admin-inquiries.html',
+    'admin-analytics.html'
   ];
   for (const page of pages) {
     const html = await readFile(page, 'utf8');
@@ -171,37 +176,4 @@ test('all ten intended screens have only a hidden review host', async () => {
         : html;
     assert.ok(caller.includes("page:'" + page + "'"));
   }
-});
-
-test('temporary screen test formatter diagnostic', async () => {
-  const { format, resolveConfig } = await import('prettier');
-  const path = 'tests/ai-offline-screen-bindings.test.mjs';
-  const full = await readFile(path, 'utf8');
-  const marker = "\ntest('temporary screen test formatter diagnostic'";
-  const index = full.indexOf(marker);
-  assert.ok(index > 0);
-  const source = full.slice(0, index);
-  const config = await resolveConfig(path);
-  const formatted = await format(source, { ...config, filepath: path });
-  const original = source.split('\n');
-  const expected = formatted.split('\n');
-  let start = 0;
-  while (start < original.length && original[start] === expected[start]) {
-    start++;
-  }
-  let end = 0;
-  while (
-    end < original.length - start &&
-    end < expected.length - start &&
-    original[original.length - 1 - end] ===
-      expected[expected.length - 1 - end]
-  ) {
-    end++;
-  }
-  const diff = {
-    start,
-    remove: original.length - start - end,
-    insert: expected.slice(start, expected.length - end)
-  };
-  process.stdout.write('AI_SCREEN_FORMAT_DIAGNOSTIC ' + JSON.stringify(diff) + '\n');
 });

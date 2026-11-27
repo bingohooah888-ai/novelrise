@@ -1,9 +1,13 @@
 // Offline only: callers must independently authorize the admin and obtain
 // canonical policy and subject snapshots on the server. No automatic action.
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { URL } from 'node:url';
+import { requireAdmin } from '../admin-auth.js';
 import { requireAiFeature } from './registry.js';
 
 const SECTIONS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 
 function invalid() {
   throw new Error('AI_OFFLINE_POLICY_INVALID');
@@ -53,7 +57,8 @@ export function reviewPolicyEvidence({
   }
   exactFields(subject, ['id', 'body']);
   if (typeof subject.id !== 'string') invalid();
-  if (!/^[1-9][0-9]{0,19}$/u.test(subject.id)) invalid();
+  const numericId = /^[1-9][0-9]{0,19}$/u.test(subject.id);
+  if (!numericId && !UUID.test(subject.id)) invalid();
   const body = text(subject.body, 24000);
   requireDigest(policy, expectedPolicyHash);
   requireDigest(subject, expectedSubjectHash);
@@ -251,4 +256,162 @@ export function reviewOfflinePolicyResponse(feature, input, response) {
   const prepared = preparePolicy(feature, input);
   if (response.requestHash !== prepared.requestHash) invalid();
   return prepared.review(response.modelText);
+}
+
+// The operator explicitly reviews the retained ranges for private information.
+// The server re-reads the canonical body and verifies its digest before
+// projecting those ranges. This is NOT automatic de-identification.
+export function projectAdminReviewedExcerpt(body, selection) {
+  if (typeof body !== 'string' || body.length > 200000) invalid();
+  if (selection.privacyReviewed !== true) invalid();
+  requireDigest(body, selection.reviewedBodyHash);
+  const ranges = selection.ranges;
+  if (!Array.isArray(ranges) || !ranges.length) invalid();
+  if (ranges.length > 8) invalid();
+  let end = 0;
+  let total = 0;
+  const excerpts = ranges.map((range) => {
+    exactFields(range, ['offset', 'length']);
+    const { offset, length } = range;
+    if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length)) {
+      invalid();
+    }
+    if (offset < end || length < 1 || offset + length > body.length) {
+      invalid();
+    }
+    end = offset + length;
+    total += length;
+    if (total > 1900) invalid();
+    return text(body.slice(offset, end), 1900);
+  });
+  const projected = excerpts.join('\n[省略]\n');
+  // Additional conservative checks are not proof of anonymization.
+  if (/@|https?:\/\/|[0-9０-９]{5,}/iu.test(projected)) invalid();
+  if (/(?:[0-9０-９][\s().\-－ー]*){7}/u.test(projected)) invalid();
+  return text(projected, 2000);
+}
+
+// Read only the canonical nine published guideline sections. No execution,
+// fallback text, new policy wording or arbitrary HTML is accepted.
+async function loadPolicySections() {
+  const html = await readFile(
+    new URL('../../../content-guidelines.html', import.meta.url),
+    'utf8'
+  );
+  const pattern = /<section class="legal-card">([\s\S]*?)<\/section>/gu;
+  const cards = [...html.matchAll(pattern)];
+  if (cards.length !== SECTIONS.length) invalid();
+  return cards.map((card, index) => {
+    const heading = card[1].match(/^\s*<h2>([1-9])\. [^<>]+<\/h2>/u);
+    if (!heading || heading[1] !== SECTIONS[index]) invalid();
+    const tags =
+      /<\/?(?:h2|p|ul|li|tbody|tr|th|td|strong|a|div|table)(?: class="legal-(?:table|warning)"| href="contact\.html")?>/gu;
+    const body = card[1].replace(tags, ' ').replace(/\s+/gu, ' ').trim();
+    if (/[<>&]/u.test(body)) invalid();
+    return { section: heading[1], body: text(body, 12000) };
+  });
+}
+
+export function createOfflineAdminPolicyReader({ supabase, env } = {}) {
+  async function load(feature, selection, req, res) {
+    const admin = await requireAdmin({ req, res, supabase, env });
+    if (typeof admin?.id !== 'string' || !admin.id) invalid();
+    const common = ['reviewedBodyHash', 'ranges', 'privacyReviewed'];
+    const comment = feature === 'comment-moderation';
+    if (!comment && feature !== 'policy-risk-review') invalid();
+    exactFields(selection, [comment ? 'commentId' : 'episodeId', ...common]);
+    const id = comment ? selection.commentId : selection.episodeId;
+    if (typeof id !== 'string') invalid();
+    const numericId = /^[1-9][0-9]{0,19}$/u.test(id);
+    const validId = comment ? UUID.test(id) : numericId;
+    if (!validId) invalid();
+    const result = await supabase
+      .from(comment ? 'novel_comments' : 'episodes')
+      .select(
+        comment
+          ? 'id,novel_id,body,deleted_at,author_hidden_at'
+          : 'id,novel_id,content,status,scheduled_publish_at'
+      )
+      .eq('id', id)
+      .maybeSingle();
+    const row = result?.data;
+    if (result?.error || String(row?.id) !== id) invalid();
+    if (comment) {
+      if (row.deleted_at !== null || row.author_hidden_at !== null) invalid();
+    } else {
+      if (row.status !== 'published') invalid();
+      if (
+        row.scheduled_publish_at !== null &&
+        !(Date.parse(row.scheduled_publish_at) <= Date.now())
+      ) {
+        invalid();
+      }
+    }
+    const novelId = String(row.novel_id);
+    if (!/^[1-9][0-9]{0,19}$/u.test(novelId)) invalid();
+    const parent = await supabase
+      .from('novels')
+      .select('id,status,content_rating')
+      .eq('id', novelId)
+      .eq('status', 'published')
+      .eq('content_rating', 'general')
+      .maybeSingle();
+    if (
+      parent?.error ||
+      String(parent?.data?.id) !== novelId ||
+      parent.data.status !== 'published' ||
+      parent.data.content_rating !== 'general'
+    ) {
+      invalid();
+    }
+    const body = projectAdminReviewedExcerpt(
+      comment ? row.body : row.content,
+      selection
+    );
+    const input = {
+      principal: { id: admin.id, isAdmin: true },
+      policy: await loadPolicySections()
+    };
+    if (comment) input.comment = { id, body, visible: true };
+    else input.subject = { id, body };
+    const after = await requireAdmin({ req, res, supabase, env });
+    if (after?.id !== admin.id) invalid();
+    const prepared = prepareOfflinePolicyPrompt(feature, input);
+    const requestHash = hash([
+      prepared.requestHash,
+      novelId,
+      selection.reviewedBodyHash,
+      selection.ranges
+    ]);
+    return { input, prepared, requestHash };
+  }
+
+  return Object.freeze({
+    async prepare(feature, selection, req, res) {
+      try {
+        const value = await load(feature, selection, req, res);
+        return {
+          prompt: value.prepared.prompt,
+          requestHash: value.requestHash
+        };
+      } catch {
+        invalid();
+      }
+    },
+    async review(feature, selection, req, res, response) {
+      try {
+        exactFields(response, ['requestHash', 'modelText']);
+        const value = await load(feature, selection, req, res);
+        if (value.requestHash !== response.requestHash) invalid();
+        const checked = reviewOfflinePolicyResponse(feature, value.input, {
+          requestHash: value.prepared.requestHash,
+          modelText: response.modelText
+        });
+        // Offsets refer to the redacted projection, not the original body.
+        return { ...checked, scope: 'human_reviewed_excerpt' };
+      } catch {
+        invalid();
+      }
+    }
+  });
 }
