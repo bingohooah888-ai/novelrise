@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const source = await readFile('novelight-comments.js', 'utf8');
 const context = { window: {} };
 vm.runInNewContext(source, context);
-const { summarizeAuthorComments, replyExample } =
+const { summarizeAuthorComments, replyExample, spoilerTermMatches } =
   context.window.NovelightComments;
 
 test('local summary counts eligible rows and visible reply status', () => {
@@ -54,4 +54,26 @@ test('the author tools are presentation only and reset on read failure', () => {
   assert.match(body, /output\.readOnly = true;/u);
   assert.doesNotMatch(body, /\.rpc\(|fetch\(|innerHTML|localStorage/u);
   assert.match(source, /renderAuthorCommentTools\(state, \[\]\)/u);
+});
+
+test('spoiler cue checks only visible eligible unmarked comments', () => {
+  const rows = [
+    { id: 1, can_moderate: true, is_hidden: false, body: '青い鍵' },
+    { id: 2, can_moderate: false, is_hidden: false, body: '青い鍵' },
+    { id: 3, can_moderate: true, is_hidden: true, body: '青い鍵' },
+    {
+      id: 4,
+      can_moderate: true,
+      is_hidden: false,
+      is_spoiler: true,
+      body: '青い鍵'
+    },
+    { id: 5, can_moderate: true, is_hidden: false, body: '赤い鍵' }
+  ];
+  const before = JSON.stringify(rows);
+  assert.deepEqual(Array.from(spoilerTermMatches(rows, '青い鍵')), ['1']);
+  assert.equal(spoilerTermMatches(rows, '').length, 0);
+  assert.equal(spoilerTermMatches(rows, 'x'.repeat(801)).length, 0);
+  assert.equal(JSON.stringify(rows), before);
+  assert.match(source, /appendSpoilerReviewTools\(state, panel, comments\)/u);
 });

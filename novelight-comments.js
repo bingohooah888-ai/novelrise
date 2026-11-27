@@ -425,6 +425,60 @@
       : null;
   }
 
+  // Exact author-supplied terms are only local review cues, not spoiler
+  // classification. No future episode retrieval, automatic flags or actions.
+  function spoilerTermMatches(comments, input) {
+    if (!Array.isArray(comments) || typeof input !== 'string' || input.length > 800) return [];
+    const terms = [...new Set(input.split(/\r?\n/u).map((term) => term.trim()).filter(Boolean))];
+    if (!terms.length || terms.length > 10 || terms.some((term) => term.length > 80)) return [];
+    const ids = new Set();
+    for (const comment of comments.slice(0, FEED_LIMIT)) {
+      if (comment?.can_moderate !== true || comment.is_hidden !== false ||
+          comment.is_spoiler === true || typeof comment.body !== 'string' ||
+          comment.id == null) continue;
+      if (terms.some((term) => comment.body.includes(term))) ids.add(String(comment.id));
+    }
+    return [...ids];
+  }
+
+  function appendSpoilerReviewTools(state, panel, comments) {
+    const details = createElement('details', '');
+    details.append(
+      createElement('summary', '', '作者入力のネタバレ注意語を確認'),
+      createElement('p', '', '公開中・未指定の操作対象コメントだけを完全一致で確認します。注意語は1行1語、最大10語です。入力は送信・保存しません。')
+    );
+    const input = createElement('textarea', '');
+    input.rows = 3;
+    input.maxLength = 800;
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', '作者専用のネタバレ注意語');
+    const button = createElement('button', 'novelight-comment-moderation', '確認候補を表示');
+    button.type = 'button';
+    const status = createElement('p', '');
+    status.setAttribute('aria-live', 'polite');
+    const clear = () => {
+      for (const mark of state.list.querySelectorAll('[data-local-spoiler-review]')) mark.remove();
+      status.textContent = '';
+    };
+    input.addEventListener('input', clear);
+    button.addEventListener('click', () => {
+      clear();
+      if (!state.isAuthor) return;
+      const ids = new Set(spoilerTermMatches(comments, input.value));
+      let count = 0;
+      for (const item of state.list.querySelectorAll('[data-author-review-comment-id]')) {
+        if (!ids.has(item.dataset.authorReviewCommentId)) continue;
+        const mark = createElement('p', 'novelight-comment-hidden-note', '作者入力語と一致：確認候補（非AI・未判定）');
+        mark.dataset.localSpoilerReview = 'true';
+        item.prepend(mark);
+        count += 1;
+      }
+      status.textContent = count + '件の一致候補。違反判定・非表示・ネタバレ指定は行っていません。';
+    });
+    details.append(input, button, status);
+    panel.append(details);
+  }
+
   function renderAuthorCommentTools(state, comments) {
     const panel = state.authorTools;
     panel.replaceChildren();
@@ -480,6 +534,7 @@
       output,
       copy
     );
+    appendSpoilerReviewTools(state, panel, comments);
     panel.hidden = false;
   }
 
@@ -504,6 +559,9 @@
         'article',
         `novelight-comment${comment.is_hidden === true ? ' is-hidden' : ''}`
       );
+      if (state.isAuthor && comment.can_moderate === true && comment.is_hidden === false && comment.id != null) {
+        item.dataset.authorReviewCommentId = String(comment.id);
+      }
       const header = createElement('div', 'novelight-comment-header');
       const identity = createElement('div', 'novelight-comment-identity');
       const author = createElement(
@@ -887,6 +945,7 @@
   global.NovelightComments = Object.freeze({
     mount,
     summarizeAuthorComments,
-    replyExample
+    replyExample,
+    spoilerTermMatches
   });
 })(window);
