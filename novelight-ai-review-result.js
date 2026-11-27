@@ -594,10 +594,21 @@
         if (envelope?.result?.kind !== inputSpecs[expected.featureKey][1]) return false;
         return render(container, envelope);
       },
-      fail() {
+      fail(code) {
         clear();
+        const messages = {
+          AI_DISABLED: '現在AI実行は停止しています。',
+          AI_ACCESS_DENIED: 'アクセス権限を確認してください。',
+          AI_BUDGET_DENIED: '利用枠の確認ができないか、利用上限に達しています。',
+          AI_INVALID_INPUT: '対象と入力内容を確認してください。',
+          AI_EMPTY_RESPONSE: '確認候補が取得できませんでした。',
+          AI_PROVIDER_UNAVAILABLE: '現在AIの確認候補は取得できません。'
+        };
         const message = container.ownerDocument.createElement('p');
-        message.textContent = 'AIの確認候補は取得できません。';
+        message.setAttribute?.('role', 'status');
+        message.textContent = typeof code === 'string' && Object.hasOwn(messages, code)
+          ? messages[code]
+          : 'AIの確認候補は取得できません。';
         container.appendChild(message);
       }
     });
