@@ -1,6 +1,8 @@
 // Offline contracts only. No provider, route, database, or log ingestion.
 // Callers must establish the principal and scope from trusted server records.
 import { createHash } from 'node:crypto';
+import { requireAdmin } from '../admin-auth.js';
+import { loadReportSummaries } from '../admin-reports.js';
 import { assertAiWorkAccess } from './context.js';
 import {
   prepareOfflineEvidencePrompt,
@@ -564,4 +566,55 @@ export function reviewOfflineAggregateResponse(feature, input, response) {
   const prepared = prepareAggregate(feature, input);
   if (response.requestHash !== prepared.requestHash) invalid();
   return prepared.review(response.modelText);
+}
+
+// Unmounted read-only report composition. The existing admin guard and
+// summary loader use the same injected server client as the current GET API.
+// No handler, client creation, credentials, model call or writes are added.
+export function createOfflineAdminReportReader({ supabase, env } = {}) {
+  async function load(req, res) {
+    const user = await requireAdmin({ req, res, supabase, env });
+    if (typeof user?.id !== 'string' || !user.id) invalid();
+    const rows = await loadReportSummaries(supabase);
+    if (!Array.isArray(rows) || rows.length > 200) invalid();
+    // The existing feed is ordered newest first and capped at 200.
+    // The AI contract accepts at most the newest 100, never reported text.
+    const snapshot = rows.slice(0, 100).map((row) => {
+      if (typeof row?.id !== 'string' && !Number.isSafeInteger(row?.id)) {
+        invalid();
+      }
+      return {
+        id: String(row.id),
+        category: row.category,
+        status: row.status
+      };
+    });
+    const current = await requireAdmin({ req, res, supabase, env });
+    if (current?.id !== user.id) invalid();
+    const input = {
+      principal: { id: user.id, isAdmin: true },
+      snapshot
+    };
+    const prepared = prepareOfflineAggregatePrompt('report-triage', input);
+    return { input, prepared };
+  }
+
+  return Object.freeze({
+    async prepare(req, res) {
+      try {
+        const { prepared } = await load(req, res);
+        return prepared;
+      } catch {
+        invalid();
+      }
+    },
+    async review(req, res, response) {
+      try {
+        const { input } = await load(req, res);
+        return reviewOfflineAggregateResponse('report-triage', input, response);
+      } catch {
+        invalid();
+      }
+    }
+  });
 }

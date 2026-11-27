@@ -27,13 +27,26 @@ function id(value) {
   return value;
 }
 
+// Legacy numeric fixtures remain valid; the real comment feed uses UUIDs.
+function authorCommentId(value) {
+  if (
+    typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(
+      value
+    )
+  ) {
+    return value;
+  }
+  return id(value);
+}
+
 function sourceRows({ principal, novel, comments }) {
   assertAiWorkAccess({ principal, novel, audience: 'author' });
   if (!Array.isArray(comments) || comments.length > 50) invalid();
   const seen = new Set();
   const eligible = new Map();
   for (const row of comments) {
-    const commentId = id(row?.id);
+    const commentId = authorCommentId(row?.id);
     if (seen.has(commentId)) invalid();
     seen.add(commentId);
     if (String(row.novel_id) !== String(novel.id)) invalid();
@@ -71,7 +84,7 @@ export function reviewCommentTopics(input) {
   const items = result.items.map((item) => {
     exactFields(item, ['kind', 'commentId', 'offset', 'quote']);
     if (!KINDS.includes(item.kind)) invalid();
-    const row = rows.get(id(item.commentId));
+    const row = rows.get(authorCommentId(item.commentId));
     if (!row) invalid();
     const quote = text(item.quote, 160);
     const offset = item.offset;
@@ -101,7 +114,7 @@ export function reviewCommentTopics(input) {
 // publish command or automatic insertion. The expected digest is trusted.
 export function reviewCommentReply(input) {
   const rows = sourceRows(input);
-  const row = rows.get(id(input.commentId));
+  const row = rows.get(authorCommentId(input.commentId));
   if (!row || row.sourceHash !== input.expectedSourceHash) invalid();
   const output = parse(input.modelText, ['reply']);
   return {
@@ -287,13 +300,13 @@ function prepareComment(feature, input) {
       invalid();
     }
     if (input.commentIds.length > 12) invalid();
-    selected = input.commentIds.map(id);
+    selected = input.commentIds.map(authorCommentId);
     instruction =
       'Select up to 12 review candidates, not confirmed sentiment. ' +
       'Return {"items":[{"kind":"positive|concern|question|topic|spoiler_candidate",' +
       '"commentId":"...","offset":0,"quote":"exact text, max 160"}]}.';
   } else if (feature === 'comment-reply-assistant') {
-    selected = [id(input.commentId)];
+    selected = [authorCommentId(input.commentId)];
     instruction =
       'Draft one respectful reply for author review. ' +
       'Return {"reply":"draft, max 1000 characters"}. Do not send.';
