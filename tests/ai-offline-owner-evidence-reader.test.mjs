@@ -87,9 +87,8 @@ function fixture() {
       };
     },
     async readExistingSession({ sessionId, actorId }) {
-      const data = state.active
-        ? { id: sessionId, user_id: actorId }
-        : null;
+      const row = { id: sessionId, user_id: actorId };
+      const data = state.active ? row : null;
       return { data, error: null };
     },
     nowEpochSeconds: () => state.now
@@ -130,11 +129,10 @@ function fixture() {
             async limit(value) {
               assert.equal(table, 'episodes');
               call.limit = value;
+              const selected = (row) => call.ids.includes(String(row.id));
               const rows = state.bypassFilters
                 ? state.episodes
-                : state.episodes.filter((row) =>
-                    call.ids.includes(String(row.id))
-                  );
+                : state.episodes.filter(selected);
               if (state.revokeAfterRead) state.active = false;
               const data = rows.map((row) => ({ ...row }));
               return { data, error: state.error };
@@ -218,11 +216,8 @@ const cases = [
 ];
 
 async function mockTrial(reader, feature, selection, mock) {
-  const { prompt, requestHash } = await reader.prepare(
-    feature,
-    selection,
-    TOKEN
-  );
+  const prepared = await reader.prepare(feature, selection, TOKEN);
+  const { prompt, requestHash } = prepared;
   const modelText = await mock(prompt);
   return reader.review(feature, selection, TOKEN, { requestHash, modelText });
 }
@@ -250,18 +245,24 @@ for (const { feature, selection, output, kind } of cases) {
     };
     const result = await mockTrial(reader, feature, selection, mock);
     assert.equal(result.kind, kind);
-    const novelCalls = state.calls.filter((call) => call.table === 'novels');
-    const episodeCalls = state.calls.filter(
-      (call) => call.table === 'episodes'
-    );
+    const isNovel = (call) => call.table === 'novels';
+    const isEpisode = (call) => call.table === 'episodes';
+    const novelCalls = state.calls.filter(isNovel);
+    const episodeCalls = state.calls.filter(isEpisode);
     assert.equal(novelCalls.length, 4);
     assert.equal(episodeCalls.length, selection.episodeIds ? 2 : 0);
     for (const call of novelCalls) {
-      const filters = [['id', '1'], ['user_id', OWNER]];
+      const filters = [
+        ['id', '1'],
+        ['user_id', OWNER]
+      ];
       assert.deepEqual(call.filters, filters);
     }
     for (const call of episodeCalls) {
-      const filters = [['novel_id', '1'], ['user_id', OWNER]];
+      const filters = [
+        ['novel_id', '1'],
+        ['user_id', OWNER]
+      ];
       assert.deepEqual(call.filters, filters);
       assert.deepEqual(call.ids, selection.episodeIds.map(String));
       assert.equal(call.limit, selection.episodeIds.length + 1);
@@ -336,7 +337,7 @@ test('bad episode rows and mid-read revocation prevent prompts', async () => {
   }
 });
 
-test('response rejects changed source or session and sanitizes failures', async () => {
+test('rejects stale responses and sanitizes failures', async () => {
   const item = { ...citation, kind: 'pacing', observation };
   const modelText = JSON.stringify({ items: [item] });
   const changes = [
@@ -375,7 +376,7 @@ test('response rejects changed source or session and sanitizes failures', async 
   }
 });
 
-test('metadata revision is rejected without reading any manuscript', async () => {
+test('rejects metadata revisions without manuscript reads', async () => {
   const { state, reader } = fixture();
   const feature = 'title-synopsis-ab';
   const selection = { novelId: 1 };
