@@ -329,6 +329,11 @@ test('last reference order uses episode ordinals rather than IDs', () => {
     { key: 'c', kind: 'event', lastEpisodeNumber: 9 }
   ];
   const ordered = sortStoryEntries(items, 'last-episode-number');
+  const oldest = sortStoryEntries(items, 'oldest-last-reference');
+  assert.deepEqual(
+    oldest.map((item) => item.key),
+    ['a', 'c', 'b']
+  );
   assert.deepEqual(
     ordered.map((item) => item.key),
     ['c', 'a', 'b']
@@ -589,10 +594,20 @@ test('private chapter navigation joins real episode ordinals and offers focus ac
   const order = nodes(target, 'select')[2];
   assert.deepEqual(
     order.children.map((option) => option.value),
-    ['heading', 'source-id', 'episode-number', 'last-episode-number']
+    [
+      'heading',
+      'source-id',
+      'episode-number',
+      'last-episode-number',
+      'oldest-last-reference'
+    ]
   );
   assert.match(target.textContent, /最後の参照話数：第2話/);
   assert.match(target.textContent, /最後の参照話数：第7話/);
+  assert.match(target.textContent, /最初の参照話数：第2話/);
+  assert.match(target.textContent, /参照話数：1件（回収・経過話数の判定ではありません）/);
+  order.value = 'oldest-last-reference';
+  order.listeners.get('change')();
   order.value = 'episode-number';
   order.listeners.get('change')();
   const focus = nodes(target, 'button').find(
